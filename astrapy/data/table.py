@@ -2583,7 +2583,7 @@ class Table(Generic[ROW]):
 
         logger.info(f"dropping table '{self.name}' (self)")
         self.database.drop_table(
-            self,
+            self.name,
             if_exists=if_exists,
             table_admin_timeout_ms=table_admin_timeout_ms,
             request_timeout_ms=request_timeout_ms,
@@ -5197,7 +5197,7 @@ class AsyncTable(Generic[ROW]):
 
         logger.info(f"dropping table '{self.name}' (self)")
         drop_result = await self.database.drop_table(
-            self,
+            self.name,
             if_exists=if_exists,
             table_admin_timeout_ms=table_admin_timeout_ms,
             request_timeout_ms=request_timeout_ms,

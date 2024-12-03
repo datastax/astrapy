@@ -2492,7 +2492,7 @@ class Collection(Generic[DOC]):
 
         logger.info(f"dropping collection '{self.name}' (self)")
         self.database.drop_collection(
-            self,
+            self.name,
             collection_admin_timeout_ms=collection_admin_timeout_ms,
             request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
@@ -5061,7 +5061,7 @@ class AsyncCollection(Generic[DOC]):
 
         logger.info(f"dropping collection '{self.name}' (self)")
         await self.database.drop_collection(
-            self,
+            self.name,
             collection_admin_timeout_ms=collection_admin_timeout_ms,
             request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,

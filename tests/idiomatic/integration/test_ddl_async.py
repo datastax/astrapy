@@ -347,7 +347,10 @@ class TestDDLAsync:
             in await database_on_secondary.list_collection_names()
         )
         await database_on_secondary.drop_collection(TEST_LOCAL_COLLECTION_NAME1)
-        await async_database.drop_collection(col2_on_secondary)
+        await async_database.drop_collection(
+            col2_on_secondary.name,
+            keyspace=data_api_credentials_info["secondary_keyspace"],
+        )
         assert (
             TEST_LOCAL_COLLECTION_NAME1
             not in await database_on_secondary.list_collection_names()

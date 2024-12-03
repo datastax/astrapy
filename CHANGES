@@ -1,5 +1,6 @@
 v 2.0.0
 =======
+[Async]Database `drop_collection` method accepts only the string name of the target to drop (no collection objects anymore); added keyspace parameter.
 AsyncDatabase methods `get_collection` and `get_table` are not async functions anymore (Remove the await when calling them).
 Systematic revision of spawning and copying methods for abstractions. Several parameters added/removed/renamed (switch to the corresponding parameters inside the APIOptions instead of the removed keyword parameters):
     DataAPIClient

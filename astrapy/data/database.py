@@ -752,8 +752,9 @@ class Database:
 
     def drop_collection(
         self,
-        name_or_collection: str | Collection[DOC],
+        name: str,
         *,
+        keyspace: str | None = None,
         collection_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
@@ -762,8 +763,9 @@ class Database:
         Drop a collection from the database, along with all documents therein.
 
         Args:
-            name_or_collection: either the name of a collection or
-                a `Collection` instance.
+            name: the name of the collection to drop.
+            keyspace: the keyspace where the collection resides. If not specified,
+                the database working keyspace is assumed.
             collection_admin_timeout_ms: a timeout, in milliseconds, for
                 the underlying schema-changing HTTP request.
             request_timeout_ms: TODO
@@ -775,14 +777,7 @@ class Database:
             >>> my_db.drop_collection("my_v_col")
             >>> my_db.list_collection_names()
             ['a_collection', 'another_col']
-
-        Note:
-            when providing a collection name, it is assumed that the collection
-            is to be found in the keyspace that was set at database instance level.
         """
-
-        # lazy importing here against circular-import error
-        from astrapy.collection import Collection
 
         _collection_admin_timeout_ms, _ca_label = _select_singlereq_timeout_ca(
             timeout_options=self.api_options.timeout_options,
@@ -790,17 +785,10 @@ class Database:
             request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
         )
-        _keyspace: str | None
-        _collection_name: str
-        if isinstance(name_or_collection, Collection):
-            _keyspace = name_or_collection.keyspace
-            _collection_name = name_or_collection.name
-        else:
-            _keyspace = self.keyspace
-            _collection_name = name_or_collection
+        _keyspace = keyspace or self.keyspace
         driver_commander = self._get_driver_commander(keyspace=_keyspace)
-        dc_payload = {"deleteCollection": {"name": _collection_name}}
-        logger.info(f"deleteCollection('{_collection_name}')")
+        dc_payload = {"deleteCollection": {"name": name}}
+        logger.info(f"deleteCollection('{name}')")
         dc_response = driver_commander.request(
             payload=dc_payload,
             timeout_context=_TimeoutContext(
@@ -812,7 +800,7 @@ class Database:
                 text="Faulty response from deleteCollection API command.",
                 raw_response=dc_response,
             )
-        logger.info(f"finished deleteCollection('{_collection_name}')")
+        logger.info(f"finished deleteCollection('{name}')")
         return dc_response.get("status", {})  # type: ignore[no-any-return]
 
     def list_collections(
@@ -1371,8 +1359,9 @@ class Database:
 
     def drop_table(
         self,
-        name_or_table: str | Table[ROW],
+        name: str,
         *,
+        keyspace: str | None = None,
         if_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
@@ -1382,8 +1371,9 @@ class Database:
         Drop a table from the database, along with all rows therein and related indexes.
 
         Args:
-            name_or_table: either the name of a table or
-                a `Table` instance.
+            name: the name of the table to drop.
+            keyspace: the keyspace where the table resides. If not specified,
+                the database working keyspace is assumed.
             if_exists: if passed as True, trying to drop a non-existing table
                 will not error, just silently do nothing instead. If not provided,
                 the API default behaviour will hold.
@@ -1401,14 +1391,7 @@ class Database:
             ['games']
             >>> # not erroring because of if_not_exists:
             >>> database.drop_table("fighters", if_not_exists=True)
-
-        Note:
-            when providing a table name, it is assumed that the table
-            is to be found in the keyspace that was set at database instance level.
         """
-
-        # lazy importing here against circular-import error
-        from astrapy.table import Table
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
             timeout_options=self.api_options.timeout_options,
@@ -1416,32 +1399,25 @@ class Database:
             request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
         )
-        _keyspace: str | None
-        _table_name: str
+        _keyspace = keyspace or self.keyspace
         dt_options: dict[str, bool]
         if if_exists is not None:
             dt_options = {"ifExists": if_exists}
         else:
             dt_options = {}
-        if isinstance(name_or_table, Table):
-            _keyspace = name_or_table.keyspace
-            _table_name = name_or_table.name
-        else:
-            _keyspace = self.keyspace
-            _table_name = name_or_table
         driver_commander = self._get_driver_commander(keyspace=_keyspace)
         dt_payload = {
             "dropTable": {
                 k: v
                 for k, v in {
-                    "name": _table_name,
+                    "name": name,
                     "options": dt_options,
                 }.items()
                 if v is not None
                 if v != {}
             }
         }
-        logger.info(f"dropTable('{_table_name}')")
+        logger.info(f"dropTable('{name}')")
         dt_response = driver_commander.request(
             payload=dt_payload,
             timeout_context=_TimeoutContext(
@@ -1453,7 +1429,7 @@ class Database:
                 text="Faulty response from dropTable API command.",
                 raw_response=dt_response,
             )
-        logger.info(f"finished dropTable('{_table_name}')")
+        logger.info(f"finished dropTable('{name}')")
         return dt_response.get("status", {})  # type: ignore[no-any-return]
 
     def list_tables(
@@ -2449,8 +2425,9 @@ class AsyncDatabase:
 
     async def drop_collection(
         self,
-        name_or_collection: str | AsyncCollection[DOC],
+        name: str,
         *,
+        keyspace: str | None = None,
         collection_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
@@ -2459,8 +2436,9 @@ class AsyncDatabase:
         Drop a collection from the database, along with all documents therein.
 
         Args:
-            name_or_collection: either the name of a collection or
-                an `AsyncCollection` instance.
+            name: the name of the collection to drop.
+            keyspace: the keyspace where the collection resides. If not specified,
+                the database working keyspace is assumed.
             collection_admin_timeout_ms: a timeout, in milliseconds, for
                 the underlying schema-changing HTTP request.
             request_timeout_ms: TODO
@@ -2472,14 +2450,7 @@ class AsyncDatabase:
             >>> asyncio.run(async_database.drop_collection("my_v_col"))
             >>> asyncio.run(async_database.list_collection_names())
             ['a_collection', 'another_col']
-
-        Note:
-            when providing a collection name, it is assumed that the collection
-            is to be found in the keyspace that was set at database instance level.
         """
-
-        # lazy importing here against circular-import error
-        from astrapy.collection import AsyncCollection
 
         _collection_admin_timeout_ms, _ca_label = _select_singlereq_timeout_ca(
             timeout_options=self.api_options.timeout_options,
@@ -2487,17 +2458,10 @@ class AsyncDatabase:
             request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
         )
-        keyspace: str | None
-        _collection_name: str
-        if isinstance(name_or_collection, AsyncCollection):
-            keyspace = name_or_collection.keyspace
-            _collection_name = name_or_collection.name
-        else:
-            keyspace = self.keyspace
-            _collection_name = name_or_collection
-        driver_commander = self._get_driver_commander(keyspace=keyspace)
-        dc_payload = {"deleteCollection": {"name": _collection_name}}
-        logger.info(f"deleteCollection('{_collection_name}')")
+        _keyspace = keyspace or self.keyspace
+        driver_commander = self._get_driver_commander(keyspace=_keyspace)
+        dc_payload = {"deleteCollection": {"name": name}}
+        logger.info(f"deleteCollection('{name}')")
         dc_response = await driver_commander.async_request(
             payload=dc_payload,
             timeout_context=_TimeoutContext(
@@ -2509,7 +2473,7 @@ class AsyncDatabase:
                 text="Faulty response from deleteCollection API command.",
                 raw_response=dc_response,
             )
-        logger.info(f"finished deleteCollection('{_collection_name}')")
+        logger.info(f"finished deleteCollection('{name}')")
         return dc_response.get("status", {})  # type: ignore[no-any-return]
 
     async def list_collections(
@@ -3071,8 +3035,9 @@ class AsyncDatabase:
 
     async def drop_table(
         self,
-        name_or_table: str | AsyncTable[ROW],
+        name: str,
         *,
+        keyspace: str | None = None,
         if_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
@@ -3082,8 +3047,9 @@ class AsyncDatabase:
         Drop a table from the database, along with all rows therein and related indexes.
 
         Args:
-            name_or_table: either the name of a table or
-                an `AsyncTable` instance.
+            name: the name of the table to drop.
+            keyspace: the keyspace where the table resides. If not specified,
+                the database working keyspace is assumed.
             if_exists: if passed as True, trying to drop a non-existing table
                 will not error, just silently do nothing instead. If not provided,
                 the API default behaviour will hold.
@@ -3101,14 +3067,7 @@ class AsyncDatabase:
             ['games']
             >>> # not erroring because of if_not_exists:
             >>> asyncio.run(async_database.drop_table("fighters", if_not_exists=True))
-
-        Note:
-            when providing a table name, it is assumed that the table
-            is to be found in the keyspace that was set at database instance level.
         """
-
-        # lazy importing here against circular-import error
-        from astrapy.table import AsyncTable
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
             timeout_options=self.api_options.timeout_options,
@@ -3116,32 +3075,25 @@ class AsyncDatabase:
             request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
         )
-        _keyspace: str | None
-        _table_name: str
+        _keyspace = keyspace or self.keyspace
         dt_options: dict[str, bool]
         if if_exists is not None:
             dt_options = {"ifExists": if_exists}
         else:
             dt_options = {}
-        if isinstance(name_or_table, AsyncTable):
-            _keyspace = name_or_table.keyspace
-            _table_name = name_or_table.name
-        else:
-            _keyspace = self.keyspace
-            _table_name = name_or_table
         driver_commander = self._get_driver_commander(keyspace=_keyspace)
         dt_payload = {
             "dropTable": {
                 k: v
                 for k, v in {
-                    "name": _table_name,
+                    "name": name,
                     "options": dt_options,
                 }.items()
                 if v is not None
                 if v != {}
             }
         }
-        logger.info(f"dropTable('{_table_name}')")
+        logger.info(f"dropTable('{name}')")
         dt_response = await driver_commander.async_request(
             payload=dt_payload,
             timeout_context=_TimeoutContext(
@@ -3153,7 +3105,7 @@ class AsyncDatabase:
                 text="Faulty response from dropTable API command.",
                 raw_response=dt_response,
             )
-        logger.info(f"finished dropTable('{_table_name}')")
+        logger.info(f"finished dropTable('{name}')")
         return dt_response.get("status", {})  # type: ignore[no-any-return]
 
     async def list_tables(

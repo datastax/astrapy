@@ -233,7 +233,7 @@ class FindCursor(Generic[TRAW]):
     def buffered_count(self) -> int:
         """
         The number of items (documents, rows) currently stored in the client-side
-        buffer of this cursor. Calling this property never triggers new API calls
+        buffer of this cursor. Reading this property never triggers new API calls
         to re-fill the buffer.
 
         Returns:

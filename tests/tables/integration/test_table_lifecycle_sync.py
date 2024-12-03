@@ -331,7 +331,7 @@ class TestTableLifecycle:
         sync_database.drop_table_index("tfi_idx_p_int")
         sync_database.drop_table_index("tfi_idx_p_vector")
         sync_database.drop_table_index("tfi_idx_p_vector_sm")
-        sync_database.drop_table(table)
+        sync_database.drop_table(table.name)
 
     @pytest.mark.describe("test of alter table, sync")
     def test_alter_tableindex_sync(

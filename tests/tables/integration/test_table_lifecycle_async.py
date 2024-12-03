@@ -331,7 +331,7 @@ class TestTableLifecycle:
         await async_database.drop_table_index("tfi_idx_p_int")
         await async_database.drop_table_index("tfi_idx_p_vector")
         await async_database.drop_table_index("tfi_idx_p_vector_sm")
-        await async_database.drop_table(table)
+        await async_database.drop_table(table.name)
 
     @pytest.mark.describe("test of alter table, async")
     async def test_alter_tableindex_async(
