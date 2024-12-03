@@ -18,7 +18,7 @@ import pytest
 
 from astrapy import AsyncDatabase
 from astrapy.constants import DefaultDocumentType
-from astrapy.cursors import AsyncCollectionFindCursor, CursorState
+from astrapy.cursors import AsyncCollectionFindCursor, FindCursorState
 from astrapy.exceptions import (
     CollectionInsertManyException,
     CursorException,
@@ -239,12 +239,12 @@ class TestExceptionsAsync:
         await cur1.__anext__()
         with pytest.raises(CursorException) as exc:
             cur1.limit(1)
-        assert exc.value.cursor_state == CursorState.STARTED.value
+        assert exc.value.cursor_state == FindCursorState.STARTED.value
 
         [doc async for doc in cur1]
         with pytest.raises(CursorException) as exc:
             cur1.limit(1)
-        assert exc.value.cursor_state == CursorState.CLOSED.value
+        assert exc.value.cursor_state == FindCursorState.CLOSED.value
 
     @pytest.mark.describe("test of standard exceptions in cursors, async")
     async def test_cursor_standard_exceptions_async(

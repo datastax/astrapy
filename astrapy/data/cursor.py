@@ -59,7 +59,7 @@ def _ensure_vector(
 ) -> list[float] | DataAPIVector | None:
     """
     For Tables and - depending on the JSON response parsing - collections alike,
-    the sort vector included in the response from a find can be made into a list
+    the sort vector included in the response from a find could arrive as a list
     of Decimal instances. This utility makes it back to either a plain list of floats
     or a DataAPIVector, according the the preferences for the table/collection being
     queried.
@@ -117,7 +117,16 @@ def _revise_timeouts_for_cursor_copy(
     return (_new_request_timeout_ms, _general_method_timeout_ms)
 
 
-class CursorState(Enum):
+class FindCursorState(Enum):
+    """
+    This enum expresses the possible states for a `FindCursor`.
+
+    Values:
+        IDLE: Iteration over results has not started yet (alive=T, started=F)
+        STARTED: Iteration has started, *can* still yield results (alive=T, started=T)
+        CLOSED: Finished/forcibly stopped. Won't return more documents (alive=F)
+    """
+
     # Iteration over results has not started yet (alive=T, started=F)
     IDLE = "idle"
     # Iteration has started, *can* still yield results (alive=T, started=T)
@@ -127,7 +136,22 @@ class CursorState(Enum):
 
 
 class FindCursor(Generic[TRAW]):
-    _state: CursorState
+    """
+    A cursor obtained from a `find` invocation over a table or a collection.
+    This is the main interface to scroll through the results (resp. rows or documents).
+
+    This class is not meant to be directly instantiated by the user, rather it
+    is a superclass capturing some basic mechanisms common to all find cursors.
+
+    Cursors provide a seamless interface to the caller code, allowing iteration
+    over results while chunks of new data (pages) are exchanged periodically with
+    the API. For this reason, cursors internally manage a local buffer that is
+    progressively emptied and re-filled with a new page in a manner hidden from the
+    user -- except, some cursor methods allow to peek into this buffer should it
+    be necessary.
+    """
+
+    _state: FindCursorState
     _buffer: list[TRAW]
     _pages_retrieved: int
     _consumed: int
@@ -154,17 +178,19 @@ class FindCursor(Generic[TRAW]):
             )
 
     def _ensure_idle(self) -> None:
-        if self._state != CursorState.IDLE:
+        if self._state != FindCursorState.IDLE:
             raise CursorException(
                 text="Cursor is not idle anymore.",
                 cursor_state=self._state.value,
             )
 
     @property
-    def state(self) -> CursorState:
+    def state(self) -> FindCursorState:
         """
-        The current state of this cursor, which can be one of
-        the astrapy.cursors.CursorState enum.
+        The current state of this cursor.
+
+        Returns:
+            a value in `astrapy.cursors.FindCursorState`.
         """
 
         return self._state
@@ -173,32 +199,75 @@ class FindCursor(Generic[TRAW]):
     def alive(self) -> bool:
         """
         Whether the cursor has the potential to yield more data.
+
+        Returns:
+            alive, a boolean value. If True, the cursor *may* return more items.
         """
 
-        return self._state != CursorState.CLOSED
+        return self._state != FindCursorState.CLOSED
 
     @property
     def consumed(self) -> int:
+        """
+        The number of items the cursors has yielded, i.e. how many items
+        have been already read by the code consuming the cursor.
+
+        Returns:
+            consumed: a non-negative integer, the count of items yielded so far.
+        """
+
         return self._consumed
 
     @property
     def cursor_id(self) -> int:
         """
         An integer uniquely identifying this cursor.
+
+        Returns:
+            cursor_id: an integer number uniquely identifying the cursor.
         """
 
         return id(self)
 
     @property
     def buffered_count(self) -> int:
+        """
+        The number of items (documents, rows) currently stored in the client-side
+        buffer of this cursor. Calling this property never triggers new API calls
+        to re-fill the buffer.
+
+        Returns:
+            buffered_count: a non-negative integer, the amount of items currently
+                stored in the local buffer.
+        """
+
         return len(self._buffer)
 
     def close(self) -> None:
-        self._state = CursorState.CLOSED
+        """
+        Close the cursor, regardless of its state. A cursor can be closed at any
+        time, possibly discarding the portion of results that has not yet been
+        consumed, if any.
+
+        This is an in-place modification of the cursor.
+        """
+
+        self._state = FindCursorState.CLOSED
         self._buffer = []
 
     def rewind(self) -> None:
-        self._state = CursorState.IDLE
+        """
+        Rewind the cursor, bringing it back to its pristine state of no items
+        retrieved/consumed yet, regardless of its current state.
+        All cursor settings (filter, mapping, projection, etc) are retained.
+
+        A cursor can be rewound at any time. Keep in mind that, subject to changes
+        occurred on the table or collection the results may be different if a cursor
+        is browsed a second time after rewinding it.
+
+        This is an in-place modification of the cursor.
+        """
+        self._state = FindCursorState.IDLE
         self._buffer = []
         self._pages_retrieved = 0
         self._consumed = 0
@@ -207,14 +276,24 @@ class FindCursor(Generic[TRAW]):
 
     def consume_buffer(self, n: int | None = None) -> list[TRAW]:
         """
-        Consume (return) up to the requested number of buffered documents,
-        but not triggering new page fetches from the Data API.
+        Consume (return) up to the requested number of buffered items (rows/documents).
+        The returned items are marked as consumed, meaning that subsequently consuming
+        the cursor will start after those items.
 
-        Returns empty list (without errors): if the buffer is empty; if the
-        cursor is idle; if the cursor is closed.
+        This method is an in-place modification of the cursor and only concerns
+        the local buffer: it never triggers fetching of new pages from the Data API.
+
+        This method can be called regardless of the cursor state without exceptions
+        being raised.
 
         Args:
-            TODO
+            n: amount of items to return. If omitted, the whole buffer is returned.
+
+        Returns:
+            list: a list of items (rows/document dictionaries). If there are fewer
+                items than requested, the whole buffer is returned without errors:
+                in particular, if it is empty (such as when the cursor is closed),
+                an empty list is returned.
         """
         _n = n if n is not None else len(self._buffer)
         if _n < 0:
@@ -227,7 +306,7 @@ class FindCursor(Generic[TRAW]):
 
 class _QueryEngine(ABC, Generic[TRAW]):
     @abstractmethod
-    def fetch_page(
+    def _fetch_page(
         self,
         *,
         page_state: str | None,
@@ -237,7 +316,7 @@ class _QueryEngine(ABC, Generic[TRAW]):
         ...
 
     @abstractmethod
-    async def async_fetch_page(
+    async def _async_fetch_page(
         self,
         *,
         page_state: str | None,
@@ -289,7 +368,7 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         }
 
     @override
-    def fetch_page(
+    def _fetch_page(
         self,
         *,
         page_state: str | None,
@@ -333,7 +412,7 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         return (p_documents, n_p_state, p_r_status)
 
     @override
-    async def async_fetch_page(
+    async def _async_fetch_page(
         self,
         *,
         page_state: str | None,
@@ -426,7 +505,7 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         }
 
     @override
-    def fetch_page(
+    def _fetch_page(
         self,
         *,
         page_state: str | None,
@@ -475,7 +554,7 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         return (p_documents, n_p_state, p_r_status)
 
     @override
-    async def async_fetch_page(
+    async def _async_fetch_page(
         self,
         *,
         page_state: str | None,
@@ -525,6 +604,38 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
 
 
 class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
+    """
+    A synchronous cursor over documents, as returned by a `find` invocation on
+    a Collection. A cursor can be iterated over, materialized into a list,
+    and queried/manipulated in various ways.
+
+    Some cursor operations mutate it in-place (such as consuming its documents),
+    other return a new cursor without changing the original one. See the documentation
+    for the various methods for more details.
+
+    A cursor has two type parameters: TRAW and T. The first is the type of the "raw"
+    documents as they are obtained from the Data API, the second is the type of the
+    items after the optional mapping function (see the `.map()` method). If there is
+    no mapping, TRAW = T. In general, consuming items returns items of type T, except
+    the `consume_buffer` primitive that draws directly from the buffer and always
+    returns items of type T.
+
+    Example:
+        >>> cursor = collection.find(
+        ...     {},
+        ...     projection={"seq": True, "_id": False},
+        ...     limit=5,
+        ... )
+        >>> for document in cursor:
+        ...     print(document)
+        ...
+        {'seq': 1}
+        {'seq': 4}
+        {'seq': 15}
+        {'seq': 22}
+        {'seq': 11}
+    """
+
     _query_engine: _CollectionQueryEngine[TRAW]
     _request_timeout_ms: int | None
     _overall_timeout_ms: int | None
@@ -637,14 +748,15 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         """
         If buffer is empty, try to fill with next page, if applicable.
         If not possible, silently do nothing.
+        This method never changes the cursor state.
         """
 
-        if self._state == CursorState.CLOSED:
+        if self._state == FindCursorState.CLOSED:
             return
         if not self._buffer:
-            if self._next_page_state is not None or self._state == CursorState.IDLE:
+            if self._next_page_state is not None or self._state == FindCursorState.IDLE:
                 new_buffer, next_page_state, resp_status = (
-                    self._query_engine.fetch_page(
+                    self._query_engine._fetch_page(
                         page_state=self._next_page_state,
                         timeout_context=self._timeout_manager.remaining_timeout(
                             cap_time_ms=self._request_timeout_ms,
@@ -673,9 +785,9 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             raise StopIteration
         self._try_ensure_fill_buffer()
         if not self._buffer:
-            self._state = CursorState.CLOSED
+            self._state = FindCursorState.CLOSED
             raise StopIteration
-        self._state = CursorState.STARTED
+        self._state = FindCursorState.STARTED
         # consume one item from buffer
         traw0, rest_buffer = self._buffer[0], self._buffer[1:]
         self._buffer = rest_buffer
@@ -684,12 +796,47 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
 
     @property
     def data_source(self) -> Collection[TRAW]:
+        """
+        The Collection object that originated this cursor through a `find` operation.
+
+        Returns:
+            a Collection instance.
+        """
+
         if self._query_engine.collection is None:
             raise ValueError("Query engine has no collection.")
         return self._query_engine.collection
 
     def clone(self) -> CollectionFindCursor[TRAW, TRAW]:
-        """TODO. A new rewound cursor. Also: strips away any mapping."""
+        """
+        Create a copy of this cursor with:
+        - the same parameters (timeouts, filter, projection, etc)
+        - *except* any mapping is removed
+        - and the cursor is rewound to its pristine IDLE state.
+
+        Returns:
+            a new CollectionFindCursor, similar as this one but without mapping
+            and rewound to its initial state.
+
+        Example:
+            >>> cursor = collection.find(
+            ...     {},
+            ...     projection={"seq": True, "_id": False},
+            ...     limit=2,
+            ... ).map(lambda doc: doc["seq"])
+            >>> for value in cursor:
+            ...     print(value)
+            ...
+            1
+            4
+            >>> cloned_cursor = cursor.clone()
+            >>> for document in cloned_cursor:
+            ...     print(document)
+            ...
+            {'seq': 1}
+            {'seq': 4}
+        """
+
         if self._query_engine.collection is None:
             raise ValueError("Query engine has no collection.")
         return CollectionFindCursor(
@@ -709,14 +856,43 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         )
 
     def filter(self, filter: FilterType | None) -> CollectionFindCursor[TRAW, T]:
-        # cannot happen once started consuming
+        """
+        Return a copy of this cursor with a new filter setting.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the Collection `find` method.
+
+        Args:
+            filter: a new filter setting to apply to the returned new cursor.
+
+        Returns:
+            a new CollectionFindCursor with the same settings as this one,
+                except for `filter` which is the provided value.
+        """
+
         self._ensure_idle()
         return self._copy(filter=filter)
 
     def project(
         self, projection: ProjectionType | None
     ) -> CollectionFindCursor[TRAW, T]:
-        # cannot happen once started consuming
+        """
+        Return a copy of this cursor with a new projection setting.
+        This operation is allowed only if the cursor state is still IDLE and if
+        no mapping has been set on it.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the Collection `find` method.
+
+        Args:
+            projection: a new projection setting to apply to the returned new cursor.
+
+        Returns:
+            a new CollectionFindCursor with the same settings as this one,
+                except for `projection` which is the provided value.
+        """
+
         self._ensure_idle()
         if self._mapper is not None:
             raise CursorException(
@@ -726,36 +902,155 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         return self._copy(projection=projection)
 
     def sort(self, sort: dict[str, Any] | None) -> CollectionFindCursor[TRAW, T]:
-        # cannot happen once started consuming
+        """
+        Return a copy of this cursor with a new sort setting.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the Collection `find` method.
+
+        Args:
+            sort: a new sort setting to apply to the returned new cursor.
+
+        Returns:
+            a new CollectionFindCursor with the same settings as this one,
+                except for `sort` which is the provided value.
+        """
+
         self._ensure_idle()
         return self._copy(sort=sort)
 
     def limit(self, limit: int | None) -> CollectionFindCursor[TRAW, T]:
-        # cannot happen once started consuming
+        """
+        Return a copy of this cursor with a new limit setting.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the Collection `find` method.
+
+        Args:
+            limit: a new limit setting to apply to the returned new cursor.
+
+        Returns:
+            a new CollectionFindCursor with the same settings as this one,
+                except for `limit` which is the provided value.
+        """
+
         self._ensure_idle()
         return self._copy(limit=limit)
 
     def include_similarity(
         self, include_similarity: bool | None
     ) -> CollectionFindCursor[TRAW, T]:
-        # cannot happen once started consuming
+        """
+        Return a copy of this cursor with a new include_similarity setting.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the Collection `find` method.
+
+        Args:
+            include_similarity: a new include_similarity setting to apply
+                to the returned new cursor.
+
+        Returns:
+            a new CollectionFindCursor with the same settings as this one,
+                except for `include_similarity` which is the provided value.
+        """
+
         self._ensure_idle()
         return self._copy(include_similarity=include_similarity)
 
     def include_sort_vector(
         self, include_sort_vector: bool | None
     ) -> CollectionFindCursor[TRAW, T]:
-        # cannot happen once started consuming
+        """
+        Return a copy of this cursor with a new include_sort_vector setting.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the Collection `find` method.
+
+        Args:
+            include_sort_vector: a new include_sort_vector setting to apply
+                to the returned new cursor.
+
+        Returns:
+            a new CollectionFindCursor with the same settings as this one,
+                except for `include_sort_vector` which is the provided value.
+        """
+
         self._ensure_idle()
         return self._copy(include_sort_vector=include_sort_vector)
 
     def skip(self, skip: int | None) -> CollectionFindCursor[TRAW, T]:
-        # cannot happen once started consuming
+        """
+        Return a copy of this cursor with a new skip setting.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the Collection `find` method.
+
+        Args:
+            skip: a new skip setting to apply to the returned new cursor.
+
+        Returns:
+            a new CollectionFindCursor with the same settings as this one,
+                except for `skip` which is the provided value.
+        """
+
         self._ensure_idle()
         return self._copy(skip=skip)
 
     def map(self, mapper: Callable[[T], TNEW]) -> CollectionFindCursor[TRAW, TNEW]:
-        # cannot happen once started consuming
+        """
+        Return a copy of this cursor with a mapping function to transform
+        the returned items. Calling this method on a cursor with a mapping
+        already set results in the mapping functions being composed.
+
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Args:
+            mapper: a function transforming the objects returned by the cursor
+                into something else (i.e. a function T => TNEW).
+
+        Returns:
+            a new CollectionFindCursor with a new mapping function on the results,
+                possibly composed with any pre-existing mapping function.
+
+        Example:
+            >>> cursor = collection.find(
+            ...     {},
+            ...     projection={"seq": True, "_id": False},
+            ...     limit=2,
+            ... )
+            >>> for value in cursor:
+            ...     print(value)
+            ...
+            {'seq': 1}
+            {'seq': 4}
+            >>> cursor_mapped = collection.find(
+            ...     {},
+            ...     projection={"seq": True, "_id": False},
+            ...     limit=2,
+            ... ).map(lambda doc: doc["seq"])
+            >>> for value in cursor_mapped:
+            ...     print(value)
+            ...
+            1
+            4
+            >>>
+            >>> cursor_mapped_twice = collection.find(
+            ...     {},
+            ...     projection={"seq": True, "_id": False},
+            ...     limit=2,
+            ... ).map(lambda doc: doc["seq"]).map(lambda num: "x" * num)
+            >>> for value in cursor_mapped_twice:
+            ...     print(value)
+            ...
+            x
+            xxxx
+        """
         self._ensure_idle()
         if self._query_engine.collection is None:
             raise ValueError("Query engine has no collection.")
@@ -791,6 +1086,69 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         general_method_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
+        """
+        Consume the remaining documents in the cursor, invoking a provided callback
+        function on each of them.
+
+        Calling this method on a CLOSED cursor results in an error.
+
+        The callback function can return any value. The return value is generally
+        discarded, with the following exception: if the function returns the boolean
+        `False`, it is taken to signify that the method should quit early, leaving the
+        cursor half-consumed (ACTIVE state). If this does not occur, this method
+        results in the cursor entering CLOSED state.
+
+        Args:
+            function: a callback function whose only parameter is the type returned
+                by the cursor. This callback is invoked once per each document yielded
+                by the cursor. If the callback returns a `False`, the `for_each`
+                invocation stops early and returns without consuming further documents.
+            general_method_timeout_ms: a timeout, in milliseconds, for the whole
+                duration of this method. If not provided, there is no such timeout.
+                Note that the per-request timeout set on the cursor still applies.
+            timeout_ms: an alias for `general_method_timeout_ms`.
+
+        Example:
+            >>> cursor = collection.find(
+            ...     {},
+            ...     projection={"seq": True, "_id": False},
+            ...     limit=3,
+            ... )
+            >>> def printer(doc):
+            ...     print(f"-> {doc['seq']}")
+            ...
+            >>> cursor.for_each(printer)
+            -> 1
+            -> 4
+            -> 15
+            >>>
+            >>> if cursor.alive:
+            ...     print(f"alive: {list(cursor)}")
+            ... else:
+            ...     print("(closed)")
+            ...
+            (closed)
+            >>> cursor2 = collection.find(
+            ...     {},
+            ...     projection={"seq": True, "_id": False},
+            ...     limit=3,
+            ... )
+            >>> def checker(doc):
+            ...     print(f"-> {doc['seq']}")
+            ...     return doc['seq'] != 4
+            ...
+            >>> cursor2.for_each(checker)
+            -> 1
+            -> 4
+            >>>
+            >>> if cursor2.alive:
+            ...     print(f"alive: {list(cursor2)}")
+            ... else:
+            ...     print("(closed)")
+            ...
+            alive: [{'seq': 15}]
+        """
+
         self._ensure_alive()
         copy_req_ms, copy_ovr_ms = _revise_timeouts_for_cursor_copy(
             new_general_method_timeout_ms=general_method_timeout_ms,
@@ -814,6 +1172,50 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         general_method_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> list[T]:
+        """
+        Materialize all documents that remain to be consumed from a cursor into a list.
+
+        Calling this method on a CLOSED cursor results in an error.
+
+        If the cursor is IDLE, the result will be the whole set of documents returned
+        by the `find` operation; otherwise, the documents already consumed by the cursor
+        will not be in the resulting list.
+
+        Calling this method is not recommended if a huge list of results is anticipated:
+        it would involve a large number of data exchanges with the Data API and possibly
+        a massive memory usage to construct the list. In such cases, a lazy pattern
+        of iterating and consuming the documents is to be preferred.
+
+        Args:
+            general_method_timeout_ms: a timeout, in milliseconds, for the whole
+                duration of this method. If not provided, there is no such timeout.
+                Note that the per-request timeout set on the cursor still applies.
+            timeout_ms: an alias for `general_method_timeout_ms`.
+
+        Returns:
+            list: a list of documents (or other values depending on the mapping
+                function, if one is set). These are all items that were left
+                to be consumed on the cursor when `to_list` is called.
+
+        Example:
+            >>> collection.find(
+            ...     {},
+            ...     projection={"seq": True, "_id": False},
+            ...     limit=3,
+            ... ).to_list()
+            [{'seq': 1}, {'seq': 4}, {'seq': 15}]
+            >>>
+            >>> cursor = collection.find(
+            ...     {},
+            ...     projection={"seq": True, "_id": False},
+            ...     limit=5,
+            ... ).map(lambda doc: doc["seq"])
+            >>>
+            >>> first_value = cursor.__next__()
+            >>> cursor.to_list()
+            [4, 15, 22, 11]
+        """
+
         self._ensure_alive()
         copy_req_ms, copy_ovr_ms = _revise_timeouts_for_cursor_copy(
             new_general_method_timeout_ms=general_method_timeout_ms,
@@ -830,19 +1232,47 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         return documents
 
     def has_next(self) -> bool:
-        if self._state == CursorState.CLOSED:
+        """
+        Whether the cursor actually has more documents to return.
+
+        `has_next` can be called on any cursor, but on a CLOSED cursor
+        will always return False.
+
+        This method can trigger the fetch operation of a new page, if the current
+        buffer is empty.
+
+        Calling `has_next` on an IDLE cursor triggers the first page fetch, but the
+        cursor stays in the IDLE state until actual consumption starts.
+
+        Returns:
+            has_next: a boolean value of True if there is at least one further item
+                available to consume; False otherwise (including the case of CLOSED
+                cursor).
+        """
+
+        if self._state == FindCursorState.CLOSED:
             return False
         self._try_ensure_fill_buffer()
         return len(self._buffer) > 0
 
     def get_sort_vector(self) -> list[float] | DataAPIVector | None:
         """
-        Return the vector used in this ANN search, if applicable.
-        If this is not an ANN search, or it was invoked without the
-        `include_sort_vector` parameter, return None.
+        Return the query vector used in the vector (ANN) search that originated
+        this cursor, if applicable. If this is not an ANN search, or it was invoked
+        without the `include_sort_vector` flag, return None.
 
-        Invoking this method on a still-idle cursor will trigger an API call
-        to get the first page of results.
+        Calling `get_sort_vector` on an IDLE cursor triggers the first page fetch,
+        but the cursor stays in the IDLE state until actual consumption starts.
+
+        The method can be invoked on a CLOSED cursor and will return either None
+        or the sort vector used in the search.
+
+        Returns:
+            get_sort_vector: the query vector used in the search if this was a
+                vector search (otherwise None). The vector is returned either
+                as a DataAPIVector or a plain list of number depending on the
+                `APIOptions.serdes_options` that apply. The query vector is available
+                also for vectorize-based ANN searches.
         """
 
         self._try_ensure_fill_buffer()
@@ -970,15 +1400,15 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         If not possible, silently do nothing.
         """
 
-        if self._state == CursorState.CLOSED:
+        if self._state == FindCursorState.CLOSED:
             return
         if not self._buffer:
-            if self._next_page_state is not None or self._state == CursorState.IDLE:
+            if self._next_page_state is not None or self._state == FindCursorState.IDLE:
                 (
                     new_buffer,
                     next_page_state,
                     resp_status,
-                ) = await self._query_engine.async_fetch_page(
+                ) = await self._query_engine._async_fetch_page(
                     page_state=self._next_page_state,
                     timeout_context=self._timeout_manager.remaining_timeout(
                         cap_time_ms=self._request_timeout_ms,
@@ -1008,9 +1438,9 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             raise StopAsyncIteration
         await self._try_ensure_fill_buffer()
         if not self._buffer:
-            self._state = CursorState.CLOSED
+            self._state = FindCursorState.CLOSED
             raise StopAsyncIteration
-        self._state = CursorState.STARTED
+        self._state = FindCursorState.STARTED
         # consume one item from buffer
         traw0, rest_buffer = self._buffer[0], self._buffer[1:]
         self._buffer = rest_buffer
@@ -1165,7 +1595,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         return documents
 
     async def has_next(self) -> bool:
-        if self._state == CursorState.CLOSED:
+        if self._state == FindCursorState.CLOSED:
             return False
         await self._try_ensure_fill_buffer()
         return len(self._buffer) > 0
@@ -1305,12 +1735,12 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         If not possible, silently do nothing.
         """
 
-        if self._state == CursorState.CLOSED:
+        if self._state == FindCursorState.CLOSED:
             return
         if not self._buffer:
-            if self._next_page_state is not None or self._state == CursorState.IDLE:
+            if self._next_page_state is not None or self._state == FindCursorState.IDLE:
                 new_buffer, next_page_state, resp_status = (
-                    self._query_engine.fetch_page(
+                    self._query_engine._fetch_page(
                         page_state=self._next_page_state,
                         timeout_context=self._timeout_manager.remaining_timeout(
                             cap_time_ms=self._request_timeout_ms,
@@ -1339,9 +1769,9 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             raise StopIteration
         self._try_ensure_fill_buffer()
         if not self._buffer:
-            self._state = CursorState.CLOSED
+            self._state = FindCursorState.CLOSED
             raise StopIteration
-        self._state = CursorState.STARTED
+        self._state = FindCursorState.STARTED
         # consume one item from buffer
         traw0, rest_buffer = self._buffer[0], self._buffer[1:]
         self._buffer = rest_buffer
@@ -1494,7 +1924,7 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         return documents
 
     def has_next(self) -> bool:
-        if self._state == CursorState.CLOSED:
+        if self._state == FindCursorState.CLOSED:
             return False
         self._try_ensure_fill_buffer()
         return len(self._buffer) > 0
@@ -1634,15 +2064,15 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         If not possible, silently do nothing.
         """
 
-        if self._state == CursorState.CLOSED:
+        if self._state == FindCursorState.CLOSED:
             return
         if not self._buffer:
-            if self._next_page_state is not None or self._state == CursorState.IDLE:
+            if self._next_page_state is not None or self._state == FindCursorState.IDLE:
                 (
                     new_buffer,
                     next_page_state,
                     resp_status,
-                ) = await self._query_engine.async_fetch_page(
+                ) = await self._query_engine._async_fetch_page(
                     page_state=self._next_page_state,
                     timeout_context=self._timeout_manager.remaining_timeout(
                         cap_time_ms=self._request_timeout_ms,
@@ -1672,9 +2102,9 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             raise StopAsyncIteration
         await self._try_ensure_fill_buffer()
         if not self._buffer:
-            self._state = CursorState.CLOSED
+            self._state = FindCursorState.CLOSED
             raise StopAsyncIteration
-        self._state = CursorState.STARTED
+        self._state = FindCursorState.STARTED
         # consume one item from buffer
         traw0, rest_buffer = self._buffer[0], self._buffer[1:]
         self._buffer = rest_buffer
@@ -1829,7 +2259,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         return documents
 
     async def has_next(self) -> bool:
-        if self._state == CursorState.CLOSED:
+        if self._state == FindCursorState.CLOSED:
             return False
         await self._try_ensure_fill_buffer()
         return len(self._buffer) > 0

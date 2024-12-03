@@ -71,12 +71,12 @@ Complete rewriting of cursors and enhancement of the cursor protocol:
     - Cursor classes renamed to `[Async]CollectionCursor`
     - Base class for all (find) cursors renamed to `FindCursor`
     - introduced `map` and `to_list` methods
-    - `cursor.state` now has values in `CursorState` enum (take `cursor.state.value` for a string)
+    - `cursor.state` now has values in `FindCursorState` enum (take `cursor.state.value` for a string)
     - 'cursor.address' is removed from the API
     - `cursor.rewind()` returns None, mutates cursor in-place
     - removed 'cursor.distinct()': use the  corresponding collection(/table) method.
     - removed 'CursorIsStartedException': now `CursorException` raised for all state-related illegal calls
-    - Cursors' state described by the `CursorState` enum
+    - Cursors' state described by the `FindCursorState` enum
     - removed cursor '.keyspace' property
 (internal) simplified timeout management classes and representations.
 (internal) Async/Collection's find_one method uses findOne API command.

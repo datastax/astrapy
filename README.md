@@ -667,7 +667,7 @@ Cursors:
 from astrapy.cursors import (
     AsyncCursor,
     Cursor,
-    CursorState,
+    FindCursorState,
 )
 ```
 

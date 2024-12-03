@@ -17,7 +17,7 @@ from __future__ import annotations
 import pytest
 
 from astrapy import Database
-from astrapy.cursors import CursorState
+from astrapy.cursors import FindCursorState
 from astrapy.exceptions import (
     CollectionInsertManyException,
     CursorException,
@@ -224,12 +224,12 @@ class TestExceptionsSync:
         cur1.__next__()
         with pytest.raises(CursorException) as exc:
             cur1.limit(1)
-        assert exc.value.cursor_state == CursorState.STARTED.value
+        assert exc.value.cursor_state == FindCursorState.STARTED.value
 
         list(cur1)
         with pytest.raises(CursorException) as exc:
             cur1.limit(1)
-        assert exc.value.cursor_state == CursorState.CLOSED.value
+        assert exc.value.cursor_state == FindCursorState.CLOSED.value
 
     @pytest.mark.describe("test of standard exceptions in cursors, sync")
     def test_cursor_standard_exceptions_sync(self, sync_database: Database) -> None:

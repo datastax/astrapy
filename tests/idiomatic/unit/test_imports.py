@@ -85,7 +85,7 @@ def test_imports() -> None:
     from astrapy.cursors import (  # noqa: F401
         AsyncCollectionFindCursor,
         CollectionFindCursor,
-        CursorState,
+        FindCursorState,
     )
     from astrapy.exceptions import (  # noqa: F401
         CollectionDeleteManyException,
