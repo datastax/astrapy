@@ -59,7 +59,10 @@ def preprocess_collection_payload_value(
             _value = convert_vector_to_floats(_value)
         # now _value is either a list or a DataAPIVector.
         # can/should it be binary-encoded?
-        can_bin_encode = path[0] in {"insertOne", "insertMany"}
+        can_bin_encode = False
+        # TODO: reinstate the following condition once the Data API
+        # correctly excludes $binary from indexing for collections:
+        # can_bin_encode = path[0] in {"insertOne", "insertMany"}
         # will it be bin-encoded?
         if isinstance(_value, DataAPIVector):
             # if I can, I will

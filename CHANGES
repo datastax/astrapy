@@ -114,7 +114,7 @@ Reworked the options system:
     - collection and database's `info` method gets timeout parameters
     - (not user-facing) classes in the hierarchy other than DataAPIClient have breaking changes in their constructor (now options-first and keyword-arg-only)
     - introduced `serdes_options.custom_datatypes_in_reading`, also controlling datetime management in Collections
-    - introduced `serdes_options.binary_encode_vectors`, affecting read/write wire format for collections
+    - introduced `serdes_options.binary_encode_vectors`, affecting (in a future client version) read/write wire format for collections. (It is currently only used in Table vector writes).
     - introduced `serdes_options.unroll_iterables_to_lists` to make the write path tolerant w.r.t. lazy iterables, numpy etc in writing vectors/lists
     - token and embedding API key coercion into `*Provider` happens at the Options' init layer
 Major restructuring of the codebase into directories

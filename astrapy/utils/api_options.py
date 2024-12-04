@@ -281,6 +281,7 @@ class SerdesOptions:
             as instances of `DataAPIVector`, while for collections this affects
             the encoding of the quantity found in the "$vector" field, if present,
             regardless of its representation in the method argument. Defaults to True.
+            *Note: For release `2.0.0-preview`, binary encoding in collections is OFF.*
         custom_datatypes_in_reading: Read-Path. This setting determines whether return
             values from read methods should use astrapy custom classes (default setting
             of True), or try to use only standard-library data types instead (False).

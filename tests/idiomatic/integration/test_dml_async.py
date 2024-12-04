@@ -212,19 +212,20 @@ class TestDMLAsync:
         )
 
         # check how the documents are stored
+        # TODO: reinstate the expectation once collection regains conditional binenc.
         expect_binaries = {
-            "Yb_Yc_()": True,
-            "Yb_Yc_[]": True,
-            "Yb_Yc_DV": True,
-            "Nb_Yc_()": False,
-            "Nb_Yc_[]": False,
-            "Nb_Yc_DV": False,
+            "Yb_Yc_()": False,  # True,
+            "Yb_Yc_[]": False,  # True,
+            "Yb_Yc_DV": False,  # True,
+            "Nb_Yc_()": False,  # False,
+            "Nb_Yc_[]": False,  # False,
+            "Nb_Yc_DV": False,  # False,
             #
-            "Yb_Nc_[]": True,
-            "Yb_Nc_DV": True,
+            "Yb_Nc_[]": False,  # True,
+            "Yb_Nc_DV": False,  # True,
             #
-            "Nb_Nc_[]": False,
-            "Nb_Nc_DV": False,
+            "Nb_Nc_[]": False,  # False,
+            "Nb_Nc_DV": False,  # False,
         }
         raw_find_response = await async_empty_collection.command(
             body={"find": {"projection": {"_id": True, "$vector": True}}},
