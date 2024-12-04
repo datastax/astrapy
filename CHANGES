@@ -68,7 +68,7 @@ Collections are optionally typed:
     - `get_collection` and `create_collection` get a `document_type` parameter to go with the type hint `Collection[MyType]`
     - if unspecified fall back to `DefaultCollection = Collection[DefaultDocumentType]` (where `DefaultDocumentType = dict[str, Any]`)
 Complete rewriting of cursors and enhancement of the cursor protocol:
-    - Cursors are typed, similarly to Tables and Collections
+    - Cursors are typed, similarly to Tables and Collections. The `find` method has an optional `document_type` parameter for typechecking.
     - Cursor classes renamed to `[Async]CollectionCursor`
     - Base class for all (find) cursors renamed to `FindCursor`
     - introduced `map` and `to_list` methods

@@ -1544,6 +1544,12 @@ class Table(Generic[ROW]):
                 To optimize bandwidth usage, it is recommended to use a projection,
                 especially to avoid unnecessary columns of type vector with
                 high-dimensional embeddings.
+            row_type: this parameter acts a formal specifier for the type checker.
+                If omitted, the resulting cursor is implicitly a
+                `TableFindCursor[ROW, ROW]`, i.e. maintains the same type for
+                the items it returns as that for the rows in the table. Strictly
+                typed code may want to specify this parameter especially when a
+                projection is given.
             skip: if provided, it is a number of rows that would be obtained first
                 in the response and are instead skipped.
             limit: a maximum amount of rows to get from the table. The returned cursor
@@ -4142,6 +4148,12 @@ class AsyncTable(Generic[ROW]):
                 To optimize bandwidth usage, it is recommended to use a projection,
                 especially to avoid unnecessary columns of type vector with
                 high-dimensional embeddings.
+            row_type: this parameter acts a formal specifier for the type checker.
+                If omitted, the resulting cursor is implicitly an
+                `AsyncTableFindCursor[ROW, ROW]`, i.e. maintains the same type for
+                the items it returns as that for the rows in the table. Strictly
+                typed code may want to specify this parameter especially when a
+                projection is given.
             skip: if provided, it is a number of rows that would be obtained first
                 in the response and are instead skipped.
             limit: a maximum amount of rows to get from the table. The returned cursor

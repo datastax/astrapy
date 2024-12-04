@@ -30,6 +30,11 @@ class TestDoc(TypedDict):
     p_ascii: str
 
 
+class TestMiniDoc(TypedDict):
+    p_bigint: int
+
+
+FIND_PROJECTION = {"_id": False, "p_bigint": True}
 DOCUMENT = {"p_ascii": "abc", "p_bigint": 10000, "p_float": 0.123}
 TYPED_DOCUMENT: TestDoc = {"p_ascii": "abc", "p_bigint": 10000}
 FIND_FILTER = {"p_ascii": "abc", "p_bigint": 10000}
@@ -68,6 +73,21 @@ class TestCollectionTyping:
         cu_x = cu_doc["p_ascii"]  # noqa: F841
         with pytest.raises(KeyError):
             cu_y = cu_doc["c"]  # noqa: F841
+
+        # untyped, cursors type inference on find
+        c_co_untyped_cursor = c_co_untyped.find({}, projection=FIND_PROJECTION)
+        cucur_doc = c_co_untyped_cursor.__next__()
+        assert cucur_doc is not None
+        cucur_b: int
+        cucur_b = cucur_doc["p_bigint"]  # noqa: F841
+        assert set(cucur_doc.keys()) == {"p_bigint"}
+        # untyped, these are all ok:
+        cucur_x: str
+        cucur_y: float
+        cucur_x = cucur_doc["p_bigint"]  # noqa: F841
+        with pytest.raises(KeyError):
+            cucur_y = cucur_doc["c"]  # noqa: F841
+
         c_co_untyped.delete_many({})
 
         # Typed
@@ -95,6 +115,23 @@ class TestCollectionTyping:
         ct_x = ct_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
         with pytest.raises(KeyError):
             ct_y = ct_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
+
+        # typed, cursors type inference on find
+        c_co_typed_cursor = c_co_typed.find(
+            {}, projection=FIND_PROJECTION, document_type=TestMiniDoc
+        )
+        ctcur_doc = c_co_typed_cursor.__next__()
+        assert ctcur_doc is not None
+        ctcur_b: int
+        ctcur_b = ctcur_doc["p_bigint"]  # noqa: F841
+        assert set(ctcur_doc.keys()) == {"p_bigint"}
+        # these two SHOULD NOT typecheck (i.e. require the ignore directive)
+        ctcur_x: str
+        ctcur_y: float
+        ctcur_x = ctcur_doc["p_bigint"]  # type: ignore[assignment]  # noqa: F841
+        with pytest.raises(KeyError):
+            ctcur_y = ctcur_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
+
         c_co_typed.delete_many({})
 
     @pytest.mark.describe("test of typing get_collection, sync")
@@ -121,6 +158,7 @@ class TestCollectionTyping:
         gu_x = gu_doc["p_ascii"]  # noqa: F841
         with pytest.raises(KeyError):
             gu_y = gu_doc["c"]  # noqa: F841
+
         g_co_untyped.delete_many({})
 
         # Typed
@@ -142,10 +180,11 @@ class TestCollectionTyping:
         gt_x = gt_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
         with pytest.raises(KeyError):
             gt_y = gt_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
+
         g_co_typed.delete_many({})
 
-    @pytest.mark.describe("test of typing collection cursors, sync")
-    def test_collection_cursors_typing_sync(
+    @pytest.mark.describe("test of typing collection cursors with map, sync")
+    def test_collection_cursormap_typing_sync(
         self,
         sync_database: Database,
         sync_empty_collection: DefaultCollection,
@@ -295,6 +334,21 @@ class TestCollectionTyping:
         cu_x = cu_doc["p_ascii"]  # noqa: F841
         with pytest.raises(KeyError):
             cu_y = cu_doc["c"]  # noqa: F841
+
+        # untyped, cursors type inference on find
+        c_co_untyped_cursor = ac_co_untyped.find({}, projection=FIND_PROJECTION)
+        cucur_doc = await c_co_untyped_cursor.__anext__()
+        assert cucur_doc is not None
+        cucur_b: int
+        cucur_b = cucur_doc["p_bigint"]  # noqa: F841
+        assert set(cucur_doc.keys()) == {"p_bigint"}
+        # untyped, these are all ok:
+        cucur_x: str
+        cucur_y: float
+        cucur_x = cucur_doc["p_bigint"]  # noqa: F841
+        with pytest.raises(KeyError):
+            cucur_y = cucur_doc["c"]  # noqa: F841
+
         await ac_co_untyped.delete_many({})
 
         # Typed
@@ -322,6 +376,23 @@ class TestCollectionTyping:
         ct_x = ct_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
         with pytest.raises(KeyError):
             ct_y = ct_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
+
+        # typed, cursors type inference on find
+        c_co_typed_cursor = ac_co_typed.find(
+            {}, projection=FIND_PROJECTION, document_type=TestMiniDoc
+        )
+        ctcur_doc = await c_co_typed_cursor.__anext__()
+        assert ctcur_doc is not None
+        ctcur_b: int
+        ctcur_b = ctcur_doc["p_bigint"]  # noqa: F841
+        assert set(ctcur_doc.keys()) == {"p_bigint"}
+        # these two SHOULD NOT typecheck (i.e. require the ignore directive)
+        ctcur_x: str
+        ctcur_y: float
+        ctcur_x = ctcur_doc["p_bigint"]  # type: ignore[assignment]  # noqa: F841
+        with pytest.raises(KeyError):
+            ctcur_y = ctcur_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
+
         await ac_co_typed.delete_many({})
 
     @pytest.mark.describe("test of typing get_collection, async")
@@ -348,6 +419,7 @@ class TestCollectionTyping:
         gu_x = gu_doc["p_ascii"]  # noqa: F841
         with pytest.raises(KeyError):
             gu_y = gu_doc["c"]  # noqa: F841
+
         await ag_co_untyped.delete_many({})
 
         # Typed
@@ -369,10 +441,11 @@ class TestCollectionTyping:
         gt_x = gt_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
         with pytest.raises(KeyError):
             gt_y = gt_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
+
         await ag_co_typed.delete_many({})
 
-    @pytest.mark.describe("test of typing collection cursors, async")
-    async def test_collection_cursors_typing_async(
+    @pytest.mark.describe("test of typing collection cursors with map, async")
+    async def test_collection_cursormap_typing_async(
         self,
         async_database: AsyncDatabase,
         async_empty_collection: DefaultAsyncCollection,

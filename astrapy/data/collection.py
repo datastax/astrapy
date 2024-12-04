@@ -19,7 +19,7 @@ import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Generic, Iterable
+from typing import TYPE_CHECKING, Any, Generic, Iterable, overload
 
 from astrapy.constants import (
     DOC,
@@ -914,11 +914,13 @@ class Collection(Generic[DOC]):
             )
             return full_result
 
+    @overload
     def find(
         self,
         filter: FilterType | None = None,
         *,
         projection: ProjectionType | None = None,
+        document_type: None = None,
         skip: int | None = None,
         limit: int | None = None,
         include_similarity: bool | None = None,
@@ -926,7 +928,38 @@ class Collection(Generic[DOC]):
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> CollectionFindCursor[DOC, DOC]:
+    ) -> CollectionFindCursor[DOC, DOC]: ...
+
+    @overload
+    def find(
+        self,
+        filter: FilterType | None = None,
+        *,
+        projection: ProjectionType | None = None,
+        document_type: type[DOC2],
+        skip: int | None = None,
+        limit: int | None = None,
+        include_similarity: bool | None = None,
+        include_sort_vector: bool | None = None,
+        sort: SortType | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> CollectionFindCursor[DOC, DOC2]: ...
+
+    def find(
+        self,
+        filter: FilterType | None = None,
+        *,
+        projection: ProjectionType | None = None,
+        document_type: type[DOC2] | None = None,
+        skip: int | None = None,
+        limit: int | None = None,
+        include_similarity: bool | None = None,
+        include_sort_vector: bool | None = None,
+        sort: SortType | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> CollectionFindCursor[DOC, DOC2]:
         """
         Find documents on the collection, matching a certain provided filter.
 
@@ -962,6 +995,12 @@ class Collection(Generic[DOC]):
                 The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
+            document_type: this parameter acts a formal specifier for the type checker.
+                If omitted, the resulting cursor is implicitly a
+                `CollectionFindCursor[DOC, DOC]`, i.e. maintains the same type for
+                the items it returns as that for the documents in the table. Strictly
+                typed code may want to specify this parameter especially when a
+                projection is given.
             skip: with this integer parameter, what would be the first `skip`
                 documents returned by the query are discarded, and the results
                 start from the (skip+1)-th document.
@@ -3371,11 +3410,13 @@ class AsyncCollection(Generic[DOC]):
             )
             return full_result
 
+    @overload
     def find(
         self,
         filter: FilterType | None = None,
         *,
         projection: ProjectionType | None = None,
+        document_type: None = None,
         skip: int | None = None,
         limit: int | None = None,
         include_similarity: bool | None = None,
@@ -3383,7 +3424,38 @@ class AsyncCollection(Generic[DOC]):
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> AsyncCollectionFindCursor[DOC, DOC]:
+    ) -> AsyncCollectionFindCursor[DOC, DOC]: ...
+
+    @overload
+    def find(
+        self,
+        filter: FilterType | None = None,
+        *,
+        projection: ProjectionType | None = None,
+        document_type: type[DOC2],
+        skip: int | None = None,
+        limit: int | None = None,
+        include_similarity: bool | None = None,
+        include_sort_vector: bool | None = None,
+        sort: SortType | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> AsyncCollectionFindCursor[DOC, DOC2]: ...
+
+    def find(
+        self,
+        filter: FilterType | None = None,
+        *,
+        projection: ProjectionType | None = None,
+        document_type: type[DOC2] | None = None,
+        skip: int | None = None,
+        limit: int | None = None,
+        include_similarity: bool | None = None,
+        include_sort_vector: bool | None = None,
+        sort: SortType | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> AsyncCollectionFindCursor[DOC, DOC2]:
         """
         Find documents on the collection, matching a certain provided filter.
 
@@ -3419,6 +3491,12 @@ class AsyncCollection(Generic[DOC]):
                 The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
+            document_type: this parameter acts a formal specifier for the type checker.
+                If omitted, the resulting cursor is implicitly an
+                `AsyncCollectionFindCursor[DOC, DOC]`, i.e. maintains the same type for
+                the items it returns as that for the documents in the table. Strictly
+                typed code may want to specify this parameter especially when a
+                projection is given.
             skip: with this integer parameter, what would be the first `skip`
                 documents returned by the query are discarded, and the results
                 start from the (skip+1)-th document.

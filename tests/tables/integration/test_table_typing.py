@@ -109,7 +109,7 @@ class TestTableTyping:
         with pytest.raises(KeyError):
             cu_y = cu_doc["c"]  # noqa: F841
 
-        # untyped, cursors
+        # untyped, cursors type inference on find
         c_tb_untyped_cursor = c_tb_untyped.find({}, projection=FIND_PROJECTION)
         cucur_doc = c_tb_untyped_cursor.__next__()
         assert cucur_doc is not None
@@ -155,13 +155,15 @@ class TestTableTyping:
         with pytest.raises(KeyError):
             ct_y = ct_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
 
-        # typed, cursors
-        c_tb_typed_cursor = c_tb_typed.find({}, row_type=TestMiniDoc)
+        # typed, cursors type inference on find
+        c_tb_typed_cursor = c_tb_typed.find(
+            {}, projection=FIND_PROJECTION, row_type=TestMiniDoc
+        )
         ctcur_doc = c_tb_typed_cursor.__next__()
         assert ctcur_doc is not None
         ctcur_b: int
         ctcur_b = ctcur_doc["p_bigint"]  # noqa: F841
-        assert set(ctcur_doc.keys()) == {"p_ascii", "p_bigint", "p_float"}
+        assert set(ctcur_doc.keys()) == {"p_bigint"}
         # these two SHOULD NOT typecheck (i.e. require the ignore directive)
         ctcur_x: str
         ctcur_y: float
@@ -252,7 +254,7 @@ class TestTableTyping:
         with pytest.raises(KeyError):
             cu_y = cu_doc["c"]  # noqa: F841
 
-        # untyped, cursors
+        # untyped, cursors type inference on find
         c_tb_untyped_acursor = ac_tb_untyped.find({}, projection=FIND_PROJECTION)
         cucur_doc = await c_tb_untyped_acursor.__anext__()
         assert cucur_doc is not None
@@ -298,13 +300,15 @@ class TestTableTyping:
         with pytest.raises(KeyError):
             ct_y = ct_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
 
-        # typed, cursors
-        c_tb_typed_acursor = ac_tb_typed.find({}, row_type=TestMiniDoc)
+        # typed, cursors type inference on find
+        c_tb_typed_acursor = ac_tb_typed.find(
+            {}, projection=FIND_PROJECTION, row_type=TestMiniDoc
+        )
         ctcur_doc = await c_tb_typed_acursor.__anext__()
         assert ctcur_doc is not None
         ctcur_b: int
         ctcur_b = ctcur_doc["p_bigint"]  # noqa: F841
-        assert set(ctcur_doc.keys()) == {"p_ascii", "p_bigint", "p_float"}
+        assert set(ctcur_doc.keys()) == {"p_bigint"}
         # these two SHOULD NOT typecheck (i.e. require the ignore directive)
         ctcur_x: str
         ctcur_y: float
