@@ -218,13 +218,13 @@ class TestDMLAsync:
             "Yb_Yc_DV": True,
             "Nb_Yc_()": False,
             "Nb_Yc_[]": False,
-            "Nb_Yc_DV": True,
+            "Nb_Yc_DV": False,
             #
             "Yb_Nc_[]": True,
             "Yb_Nc_DV": True,
             #
             "Nb_Nc_[]": False,
-            "Nb_Nc_DV": True,
+            "Nb_Nc_DV": False,
         }
         raw_find_response = await async_empty_collection.command(
             body={"find": {"projection": {"_id": True, "$vector": True}}},

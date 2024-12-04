@@ -22,7 +22,6 @@ from typing import (
     Iterable,
 )
 
-# TODO consider replacing with DataAPISet in this context
 from astrapy.data.utils.collection_converters import preprocess_collection_payload_value
 from astrapy.data_types import DataAPIMap, DataAPISet
 from astrapy.utils.api_options import FullSerdesOptions

@@ -47,7 +47,6 @@ def preprocess_collection_payload_value(
     """
     The path helps determining special treatments
     """
-    # TODO improve this flow, rewriting the path-dependent choices
 
     # vector-related pre-processing and coercion
     _value = value
@@ -64,7 +63,7 @@ def preprocess_collection_payload_value(
         # will it be bin-encoded?
         if isinstance(_value, DataAPIVector):
             # if I can, I will
-            if can_bin_encode:
+            if can_bin_encode and options.binary_encode_vectors:
                 return convert_to_ejson_bytes(_value.to_bytes())
             else:
                 # back to a regular list
@@ -136,7 +135,6 @@ def postprocess_collection_response_value(
     """
     The path helps determining special treatments
     """
-    # TODO improve the response postprocessing once rewriting this logic (path mgmt)
 
     # for reads, everywhere there's a $vector it can be treated as such and reconverted
     if path[-1:] == ["$vector"]:

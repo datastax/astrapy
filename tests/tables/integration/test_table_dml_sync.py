@@ -25,6 +25,7 @@ from astrapy.exceptions import DataAPIException, TableInsertManyException
 from astrapy.results import TableInsertManyResult
 
 from ..conftest import (
+    IS_ASTRA_DB,
     DefaultTable,
     _repaint_NaNs,
     _typify_tuple,
@@ -621,14 +622,26 @@ class TestTableDMLSync:
         # (nonvector) sorting
         sync_empty_table_all_returns.insert_many(INSMANY_AR_ROWS)
         # sorting as per clustering column
-        srows_in_part = sync_empty_table_all_returns.find(
-            filter={"p_ascii": "A", "p_bigint": 100},
-            sort={"p_int": SortMode.DESCENDING},
-            limit=INSMANY_AR_ROW_HALFN + 1,
-        ).to_list()
-        assert len(srows_in_part) == INSMANY_AR_ROW_HALFN
-        srows_in_part_pints = [row["p_int"] for row in srows_in_part]
-        assert sorted(srows_in_part_pints) == srows_in_part_pints[::-1]
+        if IS_ASTRA_DB:  # TODO, reinstate full find once fix deployed
+            # (i.e. remove this branching point in favour of local)
+            srows_in_part = sync_empty_table_all_returns.find(
+                filter={"p_ascii": "A", "p_bigint": 100},
+                sort={"p_int": SortMode.DESCENDING},
+                limit=20,
+            ).to_list()
+            assert len(srows_in_part) == 20
+            srows_in_part_pints = [row["p_int"] for row in srows_in_part]
+            assert sorted(srows_in_part_pints) == srows_in_part_pints[::-1]
+        else:
+            # Latest Data API:
+            srows_in_part = sync_empty_table_all_returns.find(
+                filter={"p_ascii": "A", "p_bigint": 100},
+                sort={"p_int": SortMode.DESCENDING},
+                limit=INSMANY_AR_ROW_HALFN + 1,
+            ).to_list()
+            assert len(srows_in_part) == INSMANY_AR_ROW_HALFN
+            srows_in_part_pints = [row["p_int"] for row in srows_in_part]
+            assert sorted(srows_in_part_pints) == srows_in_part_pints[::-1]
         # sorting by any regular column
         srows_anycol = sync_empty_table_all_returns.find(
             filter={"p_ascii": "A", "p_bigint": 100},

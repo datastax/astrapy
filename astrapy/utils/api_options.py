@@ -278,7 +278,7 @@ class SerdesOptions:
         binary_encode_vectors: Write-Path. Whether to encode vectors using the faster,
             more efficient binary encoding as opposed to sending plain lists
             of numbers. For Tables, this affects vectors passed to write methods
-            as instances of `DataAPIVector`, while for collections this affect
+            as instances of `DataAPIVector`, while for collections this affects
             the encoding of the quantity found in the "$vector" field, if present,
             regardless of its representation in the method argument. Defaults to True.
         custom_datatypes_in_reading: Read-Path. This setting determines whether return
