@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Any, Generic, Iterable, TypeVar, overload
 
 from astrapy.constants import (
     ROW,
+    ROW2,
     DefaultRowType,
     FilterType,
     ProjectionType,
@@ -1465,11 +1466,13 @@ class Table(Generic[ROW]):
             logger.info(f"finished inserting {len(_rows)} rows in '{self.name}'")
             return full_result
 
+    @overload
     def find(
         self,
         filter: FilterType | None = None,
         *,
         projection: ProjectionType | None = None,
+        row_type: None = None,
         skip: int | None = None,
         limit: int | None = None,
         include_similarity: bool | None = None,
@@ -1477,7 +1480,38 @@ class Table(Generic[ROW]):
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> TableFindCursor[ROW, ROW]:
+    ) -> TableFindCursor[ROW, ROW]: ...
+
+    @overload
+    def find(
+        self,
+        filter: FilterType | None = None,
+        *,
+        projection: ProjectionType | None = None,
+        row_type: type[ROW2],
+        skip: int | None = None,
+        limit: int | None = None,
+        include_similarity: bool | None = None,
+        include_sort_vector: bool | None = None,
+        sort: SortType | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> TableFindCursor[ROW, ROW2]: ...
+
+    def find(
+        self,
+        filter: FilterType | None = None,
+        *,
+        projection: ProjectionType | None = None,
+        row_type: type[ROW2] | None = None,
+        skip: int | None = None,
+        limit: int | None = None,
+        include_similarity: bool | None = None,
+        include_sort_vector: bool | None = None,
+        sort: SortType | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> TableFindCursor[ROW, ROW2]:
         """
         Find rows on the table matching the provided filters
         and according to sorting criteria including vector similarity.
@@ -4030,11 +4064,13 @@ class AsyncTable(Generic[ROW]):
             logger.info(f"finished inserting {len(_rows)} rows in '{self.name}'")
             return full_result
 
+    @overload
     def find(
         self,
         filter: FilterType | None = None,
         *,
         projection: ProjectionType | None = None,
+        row_type: None = None,
         skip: int | None = None,
         limit: int | None = None,
         include_similarity: bool | None = None,
@@ -4042,7 +4078,38 @@ class AsyncTable(Generic[ROW]):
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> AsyncTableFindCursor[ROW, ROW]:
+    ) -> AsyncTableFindCursor[ROW, ROW]: ...
+
+    @overload
+    def find(
+        self,
+        filter: FilterType | None = None,
+        *,
+        projection: ProjectionType | None = None,
+        row_type: type[ROW2],
+        skip: int | None = None,
+        limit: int | None = None,
+        include_similarity: bool | None = None,
+        include_sort_vector: bool | None = None,
+        sort: SortType | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> AsyncTableFindCursor[ROW, ROW2]: ...
+
+    def find(
+        self,
+        filter: FilterType | None = None,
+        *,
+        projection: ProjectionType | None = None,
+        row_type: type[ROW2] | None = None,
+        skip: int | None = None,
+        limit: int | None = None,
+        include_similarity: bool | None = None,
+        include_sort_vector: bool | None = None,
+        sort: SortType | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> AsyncTableFindCursor[ROW, ROW2]:
         """
         Find rows on the table matching the provided filters
         and according to sorting criteria including vector similarity.

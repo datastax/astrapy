@@ -35,6 +35,11 @@ class AlteredTestDoc(TypedDict):
     added: int
 
 
+class TestMiniDoc(TypedDict):
+    p_bigint: int
+
+
+FIND_PROJECTION = {"p_bigint": True}
 TYPING_TABLE_NAME = "test_typing_table"
 TYPING_TABLE_DEFINITION = {
     "columns": {
@@ -104,6 +109,20 @@ class TestTableTyping:
         with pytest.raises(KeyError):
             cu_y = cu_doc["c"]  # noqa: F841
 
+        # untyped, cursors
+        c_tb_untyped_cursor = c_tb_untyped.find({}, projection=FIND_PROJECTION)
+        cucur_doc = c_tb_untyped_cursor.__next__()
+        assert cucur_doc is not None
+        cucur_b: int
+        cucur_b = cucur_doc["p_bigint"]  # noqa: F841
+        assert set(cucur_doc.keys()) == {"p_bigint"}
+        # untyped, these are all ok:
+        cucur_x: str
+        cucur_y: float
+        cucur_x = cucur_doc["p_bigint"]  # noqa: F841
+        with pytest.raises(KeyError):
+            cucur_y = cucur_doc["c"]  # noqa: F841
+
         # untyped, check using alter table's return value
         altered_c_tb_untyped = c_tb_untyped.alter(ALTER_ADD_COLUMN)
         altered_cu_doc = altered_c_tb_untyped.find_one(FIND_FILTER)
@@ -135,6 +154,20 @@ class TestTableTyping:
         ct_x = ct_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
         with pytest.raises(KeyError):
             ct_y = ct_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
+
+        # typed, cursors
+        c_tb_typed_cursor = c_tb_typed.find({}, row_type=TestMiniDoc)
+        ctcur_doc = c_tb_typed_cursor.__next__()
+        assert ctcur_doc is not None
+        ctcur_b: int
+        ctcur_b = ctcur_doc["p_bigint"]  # noqa: F841
+        assert set(ctcur_doc.keys()) == {"p_ascii", "p_bigint", "p_float"}
+        # these two SHOULD NOT typecheck (i.e. require the ignore directive)
+        ctcur_x: str
+        ctcur_y: float
+        ctcur_x = ctcur_doc["p_bigint"]  # type: ignore[assignment]  # noqa: F841
+        with pytest.raises(KeyError):
+            ctcur_y = ctcur_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
 
         # typed, check using alter table's return value
         altered_c_tb_typed = c_tb_typed.alter(ALTER_ADD_COLUMN, row_type=AlteredTestDoc)
@@ -190,8 +223,8 @@ class TestTableTyping:
         with pytest.raises(KeyError):
             gt_y = gt_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
 
-    @pytest.mark.describe("test of typing create_table, async")
-    async def test_create_table_typing_async(
+    @pytest.mark.describe("test of typing create_table and alter_table, async")
+    async def test_create_alter_table_typing_async(
         self,
         async_database: AsyncDatabase,
         async_typing_test_table: DefaultAsyncTable,
@@ -218,6 +251,20 @@ class TestTableTyping:
         cu_x = cu_doc["p_ascii"]  # noqa: F841
         with pytest.raises(KeyError):
             cu_y = cu_doc["c"]  # noqa: F841
+
+        # untyped, cursors
+        c_tb_untyped_acursor = ac_tb_untyped.find({}, projection=FIND_PROJECTION)
+        cucur_doc = await c_tb_untyped_acursor.__anext__()
+        assert cucur_doc is not None
+        cucur_b: int
+        cucur_b = cucur_doc["p_bigint"]  # noqa: F841
+        assert set(cucur_doc.keys()) == {"p_bigint"}
+        # untyped, these are all ok:
+        cucur_x: str
+        cucur_y: float
+        cucur_x = cucur_doc["p_bigint"]  # noqa: F841
+        with pytest.raises(KeyError):
+            cucur_y = cucur_doc["c"]  # noqa: F841
 
         # untyped, check using alter table's return value
         altered_ac_tb_untyped = await ac_tb_untyped.alter(ALTER_ADD_COLUMN)
@@ -250,6 +297,20 @@ class TestTableTyping:
         ct_x = ct_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
         with pytest.raises(KeyError):
             ct_y = ct_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
+
+        # typed, cursors
+        c_tb_typed_acursor = ac_tb_typed.find({}, row_type=TestMiniDoc)
+        ctcur_doc = await c_tb_typed_acursor.__anext__()
+        assert ctcur_doc is not None
+        ctcur_b: int
+        ctcur_b = ctcur_doc["p_bigint"]  # noqa: F841
+        assert set(ctcur_doc.keys()) == {"p_ascii", "p_bigint", "p_float"}
+        # these two SHOULD NOT typecheck (i.e. require the ignore directive)
+        ctcur_x: str
+        ctcur_y: float
+        ctcur_x = ctcur_doc["p_bigint"]  # type: ignore[assignment]  # noqa: F841
+        with pytest.raises(KeyError):
+            ctcur_y = ctcur_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
 
         # typed, check using alter table's return value
         altered_ac_tb_typed = await ac_tb_typed.alter(

@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Any, Generic, Iterable
 
 from astrapy.constants import (
     DOC,
+    DOC2,
     FilterType,
     ProjectionType,
     ReturnDocument,

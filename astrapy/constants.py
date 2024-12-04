@@ -35,7 +35,9 @@ CallerType = tuple[str | None, str | None]
 
 
 ROW = TypeVar("ROW")
+ROW2 = TypeVar("ROW2")
 DOC = TypeVar("DOC")
+DOC2 = TypeVar("DOC2")
 
 
 def normalize_optional_projection(
