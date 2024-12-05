@@ -2783,6 +2783,8 @@ class AsyncTable(Generic[ROW]):
         api_options: a complete specification of the API Options for this instance.
 
     Examples:
+        >>> # NOTE: may require slight adaptation to an async context.
+        >>>
         >>> from astrapy import DataAPIClient, AsyncTable
         >>> client = astrapy.DataAPIClient()
         >>> async_database = client.get_async_database(
@@ -3113,7 +3115,7 @@ class AsyncTable(Generic[ROW]):
 
         Args:
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, the AsyncTable defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -3169,7 +3171,7 @@ class AsyncTable(Generic[ROW]):
         Args:
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
                 underlying DevOps API request.
-                If not provided, the Table defaults apply.
+                If not provided, the AsyncTable defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `database_admin_timeout_ms`.
@@ -4955,7 +4957,7 @@ class AsyncTable(Generic[ROW]):
                 count that the Data API can reach (regardless of upper_bound),
                 an exception will be raised.
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, the AsyncTable defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `general_method_timeout_ms`.
@@ -5039,7 +5041,7 @@ class AsyncTable(Generic[ROW]):
 
         Args:
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, the AsyncTable defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `general_method_timeout_ms`.

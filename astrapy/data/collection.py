@@ -437,10 +437,12 @@ class Collection(Generic[DOC]):
         for usages such as real-time collection validation by the application.
 
         Args:
-            collection_admin_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            collection_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Collection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `collection_admin_timeout_ms`.
+            timeout_ms: an alias for `collection_admin_timeout_ms`.
 
         Returns:
             a CollectionDefinition instance describing the collection.
@@ -492,10 +494,13 @@ class Collection(Generic[DOC]):
         to the collection internal configuration).
 
         Args:
-            database_admin_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the DevOps API request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying DevOps API request.
+                If not provided, the Collection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `database_admin_timeout_ms`.
+            timeout_ms: an alias for `database_admin_timeout_ms`.
 
         Example:
             >>> my_coll.info().database_info.region
@@ -589,10 +594,12 @@ class Collection(Generic[DOC]):
             document: the dictionary expressing the document to insert.
                 The `_id` field of the document can be left out, in which
                 case it will be created automatically.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Collection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionInsertOneResult object.
@@ -1199,10 +1206,12 @@ class Collection(Generic[DOC]):
                 the documents are returned. See the Note about sorting for details.
                 Vector-based ANN sorting is achieved by providing a "$vector"
                 or a "$vectorize" key in `sort`.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Collection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a dictionary expressing the required document, otherwise None.
@@ -1419,10 +1428,12 @@ class Collection(Generic[DOC]):
                 Furthermore, if the actual number of documents exceeds the maximum
                 count that the Data API can reach (regardless of upper_bound),
                 an exception will be raised.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Collection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             the exact count of matching documents.
@@ -1499,10 +1510,12 @@ class Collection(Generic[DOC]):
         Contrary to `count_documents`, this method has no filtering parameters.
 
         Args:
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Collection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a server-provided estimate count of the documents in the collection.
@@ -1593,10 +1606,12 @@ class Collection(Generic[DOC]):
                 the document found on database is returned; if set to
                 `ReturnDocument.AFTER`, or the string "after", the new
                 document is returned. The default is "before".
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Collection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             A document (or a projection thereof, as required), either the one
@@ -1712,10 +1727,12 @@ class Collection(Generic[DOC]):
                 If True, `replacement` is inserted as a new document
                 if no matches are found on the collection. If False,
                 the operation silently does nothing in case of no matches.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Collection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionUpdateResult object summarizing the outcome of
@@ -1839,10 +1856,12 @@ class Collection(Generic[DOC]):
                 the document found on database is returned; if set to
                 `ReturnDocument.AFTER`, or the string "after", the new
                 document is returned. The default is "before".
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Collection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             A document (or a projection thereof, as required), either the one
@@ -1964,10 +1983,12 @@ class Collection(Generic[DOC]):
                 to an empty document) is inserted if no matches are found on
                 the collection. If False, the operation silently does nothing
                 in case of no matches.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Collection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionUpdateResult object summarizing the outcome of
@@ -2221,10 +2242,12 @@ class Collection(Generic[DOC]):
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
                 deleted one. See the `find` method for more on sorting.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Collection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             Either the document (or a projection thereof, as requested), or None
@@ -2312,10 +2335,12 @@ class Collection(Generic[DOC]):
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
                 deleted one. See the `find` method for more on sorting.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Collection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionDeleteResult object summarizing the outcome of the
@@ -2502,12 +2527,11 @@ class Collection(Generic[DOC]):
         all the documents it contains.
 
         Args:
-            collection_admin_timeout_ms: a timeout, in milliseconds,
-                for the underlying HTTP request.
-                Remember there is not guarantee that a request that has
-                timed out us not in fact honored.
-                If not passed, the collection-level setting is used instead.
-            request_timeout_ms: TODO
+            collection_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Collection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `collection_admin_timeout_ms`.
             timeout_ms: an alias for `collection_admin_timeout_ms`.
 
         Example:
@@ -2557,10 +2581,12 @@ class Collection(Generic[DOC]):
             body: a JSON-serializable dictionary, the payload of the request.
             raise_api_errors: if True, responses with a nonempty 'errors' field
                 result in an astrapy exception being raised.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Collection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a dictionary with the response of the HTTP request.
@@ -2614,6 +2640,8 @@ class AsyncCollection(Generic[DOC]):
         api_options: a complete specification of the API Options for this instance.
 
     Examples:
+        >>> # NOTE: may require slight adaptation to an async context.
+        >>>
         >>> from astrapy import DataAPIClient
         >>> client = DataAPIClient()
         >>> async_database = client.get_async_database(
@@ -2900,6 +2928,8 @@ class AsyncCollection(Generic[DOC]):
             the new copy, a Collection instance.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> my_async_coll.to_sync().count_documents({}, upper_bound=100)
             77
         """
@@ -2932,16 +2962,21 @@ class AsyncCollection(Generic[DOC]):
         for usages such as real-time collection validation by the application.
 
         Args:
-            collection_admin_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            collection_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided,
+                the AsyncCollection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `collection_admin_timeout_ms`.
+            timeout_ms: an alias for `collection_admin_timeout_ms`.
 
         Returns:
             a CollectionDefinition instance describing the collection.
             (See also the database `list_collections` method.)
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> asyncio.run(my_async_coll.options())
             CollectionDefinition(vector=CollectionVectorOptions(dimension=3, metric='cosine'))
         """
@@ -2987,12 +3022,17 @@ class AsyncCollection(Generic[DOC]):
         to the collection internal configuration).
 
         Args:
-            database_admin_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the DevOps API request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying DevOps API request.
+                If not provided, the AsyncCollection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `database_admin_timeout_ms`.
+            timeout_ms: an alias for `database_admin_timeout_ms`.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> asyncio.run(my_async_coll.info()).database_info.region
             'us-east1'
             >>> asyncio.run(my_async_coll.info()).full_name
@@ -3082,18 +3122,23 @@ class AsyncCollection(Generic[DOC]):
         Insert a single document in the collection in an atomic operation.
 
         Args:
-            general_method_timeout_ms: TODO
             document: the dictionary expressing the document to insert.
                 The `_id` field of the document can be left out, in which
                 case it will be created automatically.
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided,
+                the AsyncCollection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionInsertOneResult object.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> async def write_and_count(acol: AsyncCollection) -> None:
             ...     count0 = await acol.count_documents({}, upper_bound=10)
             ...     print("count0", count0)
@@ -3194,6 +3239,8 @@ class AsyncCollection(Generic[DOC]):
             a CollectionInsertManyResult object.
 
         Examples:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> async def write_and_count(acol: AsyncCollection) -> None:
             ...             count0 = await acol.count_documents({}, upper_bound=10)
             ...             print("count0", count0)
@@ -3532,6 +3579,8 @@ class AsyncCollection(Generic[DOC]):
             run a for loop: `for document in collection.sort(...):`).
 
         Examples:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> async def run_finds(acol: AsyncCollection) -> None:
             ...             filter = {"seq": {"$exists": True}}
             ...             print("find results 1:")
@@ -3705,15 +3754,20 @@ class AsyncCollection(Generic[DOC]):
                 the documents are returned. See the Note about sorting for details.
                 Vector-based ANN sorting is achieved by providing a "$vector"
                 or a "$vectorize" key in `sort`.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided,
+                the AsyncCollection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a dictionary expressing the required document, otherwise None.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> async def demo_find_one(acol: AsyncCollection) -> None:
             ....    print("Count:", await acol.count_documents({}, upper_bound=100))
             ...     result0 = await acol.find_one({})
@@ -3832,6 +3886,8 @@ class AsyncCollection(Generic[DOC]):
             that match the filter. The result list has no repeated items.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> async def run_distinct(acol: AsyncCollection) -> None:
             ...     await acol.insert_many(
             ...         [
@@ -3949,10 +4005,13 @@ class AsyncCollection(Generic[DOC]):
                 Furthermore, if the actual number of documents exceeds the maximum
                 count that the Data API can reach (regardless of upper_bound),
                 an exception will be raised.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided,
+                the AsyncCollection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             the exact count of matching documents.
@@ -4034,15 +4093,20 @@ class AsyncCollection(Generic[DOC]):
         Contrary to `count_documents`, this method has no filtering parameters.
 
         Args:
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided,
+                the AsyncCollection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a server-provided estimate count of the documents in the collection.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> asyncio.run(my_async_coll.estimated_document_count())
             35700
         """
@@ -4129,10 +4193,13 @@ class AsyncCollection(Generic[DOC]):
                 the document found on database is returned; if set to
                 `ReturnDocument.AFTER`, or the string "after", the new
                 document is returned. The default is "before".
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided,
+                the AsyncCollection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             A document, either the one before the replace operation or the
@@ -4141,6 +4208,8 @@ class AsyncCollection(Generic[DOC]):
             was inserted (depending on the `return_document` parameter).
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> async def do_find_one_and_replace(acol: AsyncCollection) -> None:
             ...             await acol.insert_one({"_id": "rule1", "text": "all animals are equal"})
             ...             result0 = await acol.find_one_and_replace(
@@ -4253,16 +4322,21 @@ class AsyncCollection(Generic[DOC]):
                 If True, `replacement` is inserted as a new document
                 if no matches are found on the collection. If False,
                 the operation silently does nothing in case of no matches.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided,
+                the AsyncCollection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionUpdateResult object summarizing the outcome of
             the replace operation.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> async def do_replace_one(acol: AsyncCollection) -> None:
             ...     await acol.insert_one({"Marco": "Polo"})
             ...     result0 = await acol.replace_one(
@@ -4396,10 +4470,13 @@ class AsyncCollection(Generic[DOC]):
                 the document found on database is returned; if set to
                 `ReturnDocument.AFTER`, or the string "after", the new
                 document is returned. The default is "before".
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided,
+                the AsyncCollection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             A document (or a projection thereof, as required), either the one
@@ -4409,6 +4486,8 @@ class AsyncCollection(Generic[DOC]):
             was applied (depending on the `return_document` parameter).
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> async def do_find_one_and_update(acol: AsyncCollection) -> None:
             ...     await acol.insert_one({"Marco": "Polo"})
             ...     result0 = await acol.find_one_and_update(
@@ -4527,16 +4606,21 @@ class AsyncCollection(Generic[DOC]):
                 to an empty document) is inserted if no matches are found on
                 the collection. If False, the operation silently does nothing
                 in case of no matches.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided,
+                the AsyncCollection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionUpdateResult object summarizing the outcome of
             the update operation.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> async def do_update_one(acol: AsyncCollection) -> None:
             ...     await acol.insert_one({"Marco": "Polo"})
             ...     result0 = await acol.update_one(
@@ -4651,6 +4735,8 @@ class AsyncCollection(Generic[DOC]):
             the update operation.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> async def do_update_many(acol: AsyncCollection) -> None:
             ...     await acol.insert_many([{"c": "red"}, {"c": "green"}, {"c": "blue"}])
             ...     result0 = await acol.update_many(
@@ -4812,16 +4898,21 @@ class AsyncCollection(Generic[DOC]):
                 replaced one. See the `find` method for more on sorting.
                 Vector-based ANN sorting is achieved by providing a "$vector"
                 or a "$vectorize" key in `sort`.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided,
+                the AsyncCollection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             Either the document (or a projection thereof, as requested), or None
             if no matches were found in the first place.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> async def do_find_one_and_delete(acol: AsyncCollection) -> None:
             ...     await acol.insert_many(
             ...         [
@@ -4911,30 +5002,37 @@ class AsyncCollection(Generic[DOC]):
                 replaced one. See the `find` method for more on sorting.
                 Vector-based ANN sorting is achieved by providing a "$vector"
                 or a "$vectorize" key in `sort`.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided,
+                the AsyncCollection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionDeleteResult object summarizing the outcome of the
             delete operation.
 
         Example:
-            >>> my_coll.insert_many([{"seq": 1}, {"seq": 0}, {"seq": 2}])
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
+            >>> asyncio.run(my_async_coll.insert_many(
+            ...     [{"seq": 1}, {"seq": 0}, {"seq": 2}]
+            ... ))
             CollectionInsertManyResult(...)
-            >>> my_coll.delete_one({"seq": 1})
+            >>> asyncio.run(my_async_coll.delete_one({"seq": 1}))
             CollectionDeleteResult(raw_results=..., deleted_count=1)
-            >>> my_coll.distinct("seq")
+            >>> asyncio.run(my_async_coll.distinct("seq"))
             [0, 2]
-            >>> my_coll.delete_one(
+            >>> asyncio.run(my_async_coll.delete_one(
             ...     {"seq": {"$exists": True}},
             ...     sort={"seq": astrapy.constants.SortMode.DESCENDING},
-            ... )
+            ... ))
             CollectionDeleteResult(raw_results=..., deleted_count=1)
-            >>> my_coll.distinct("seq")
+            >>> asyncio.run(my_async_coll.distinct("seq"))
             [0]
-            >>> my_coll.delete_one({"seq": 2})
+            >>> asyncio.run(my_async_coll.delete_one({"seq": 2}))
             CollectionDeleteResult(raw_results=..., deleted_count=0)
         """
 
@@ -5009,6 +5107,8 @@ class AsyncCollection(Generic[DOC]):
             delete operation.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> async def do_delete_many(acol: AsyncCollection) -> None:
             ...     await acol.insert_many([{"seq": 1}, {"seq": 0}, {"seq": 2}])
             ...     delete_result0 = await acol.delete_many({"seq": {"$lte": 1}})
@@ -5106,15 +5206,17 @@ class AsyncCollection(Generic[DOC]):
         all the documents it contains.
 
         Args:
-            collection_admin_timeout_ms: a timeout, in milliseconds,
-                for the underlying HTTP request.
-                If not passed, the collection-level setting is used instead.
-                Remember there is not guarantee that a request that has
-                timed out us not in fact honored.
-            request_timeout_ms: TODO
+            collection_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided,
+                the AsyncCollection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `collection_admin_timeout_ms`.
             timeout_ms: an alias for `collection_admin_timeout_ms`.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> async def drop_and_check(acol: AsyncCollection) -> None:
             ...     doc0 = await acol.find_one({})
             ...     print("doc0", doc0)
@@ -5165,15 +5267,20 @@ class AsyncCollection(Generic[DOC]):
             body: a JSON-serializable dictionary, the payload of the request.
             raise_api_errors: if True, responses with a nonempty 'errors' field
                 result in an astrapy exception being raised.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the collection-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided,
+                the AsyncCollection defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a dictionary with the response of the HTTP request.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> asyncio.await(my_async_coll.command({"countDocuments": {}}))
             {'status': {'count': 123}}
         """
