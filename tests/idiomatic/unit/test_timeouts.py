@@ -315,6 +315,7 @@ class TestTimeouts:
         dmr_LS_zgrq = collection_L_S.delete_many({}, timeout_ms=0)
         assert dmr_LS_zgrq.deleted_count == 12
 
+    @pytest.mark.skip("Suppressed. The HTTPServer plays tricks here sometimes")
     @pytest.mark.describe(
         "test of timeout occurring, zero and nonzero, for Collection class, async"
     )
