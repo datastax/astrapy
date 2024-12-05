@@ -54,7 +54,20 @@ class TableInfo:
 @dataclass
 class TableColumnTypeDescriptor(ABC):
     """
-    TODO
+    Represents and describes a column in a Table, with its type and any
+    additional property.
+
+    This is an abstract class, whose concrete implementation are the various
+    kinds of column descriptors such as `TableScalarColumnTypeDescriptor`,
+    `TableVectorColumnTypeDescriptor`, `TableValuedColumnTypeDescriptor`, and so on.
+
+    Attributes:
+        column_type: an instance of one of the various column-type classes, according
+            to the type of the column. In other words, each subclass of
+            `TableColumnTypeDescriptor` has an appropriate object as its
+            `column_type` attributes.
+            For example the `column_type` of `TableValuedColumnTypeDescriptor`
+            is a `TableValuedColumnType`.
     """
 
     column_type: (
@@ -95,6 +108,11 @@ class TableColumnTypeDescriptor(ABC):
     def coerce(
         cls, raw_input: TableColumnTypeDescriptor | dict[str, Any] | str
     ) -> TableColumnTypeDescriptor:
+        """
+        Normalize the input, whether an object already or a plain dictionary
+        of the right structure, into a TableColumnTypeDescriptor.
+        """
+
         if isinstance(raw_input, TableColumnTypeDescriptor):
             return raw_input
         elif isinstance(raw_input, str):
@@ -106,7 +124,12 @@ class TableColumnTypeDescriptor(ABC):
 @dataclass
 class TableScalarColumnTypeDescriptor(TableColumnTypeDescriptor):
     """
-    TODO
+    Represents and describes a column in a Table, of scalar type, i.e. which contains
+    a single simple value.
+
+    Attributes:
+        column_type: a `TableScalarColumnType` value. When creating the object,
+            simple strings such as "TEXT" or "UUID" are also accepted.
     """
 
     column_type: TableScalarColumnType
@@ -127,7 +150,8 @@ class TableScalarColumnTypeDescriptor(TableColumnTypeDescriptor):
     @classmethod
     def _from_dict(cls, raw_dict: dict[str, Any]) -> TableScalarColumnTypeDescriptor:
         """
-        TODO
+        Create an instance of TableScalarColumnTypeDescriptor from a dictionary
+        such as one from the Data API.
         """
 
         _warn_residual_keys(cls, raw_dict, {"type"})
@@ -139,7 +163,16 @@ class TableScalarColumnTypeDescriptor(TableColumnTypeDescriptor):
 @dataclass
 class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
     """
-    TODO
+    Represents and describes a column in a Table, of vector type, i.e. which contains
+    a list of `dimension` floats that is treated specially as a "vector".
+
+    Attributes:
+        column_type: a `TableVectorColumnType` value. This can be omitted when
+            creating the object. It only ever assumes the "VECTOR" value.
+        dimension: an integer, the number of components (numbers) in the vectors.
+            This can be left unspecified in some cases of vectorize-enabled columns.
+        service: an optional `VectorServiceOptions` object defining the vectorize
+            settings (i.e. server-side embedding computation) for the column.
     """
 
     column_type: TableVectorColumnType
@@ -201,7 +234,15 @@ class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
 @dataclass
 class TableValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
     """
-    TODO
+    Represents and describes a column in a Table, of a 'valued' type that stores
+    multiple values. This means either a list or a set of homogeneous items.
+
+    Attributes:
+        column_type: an instance of `TableValuedColumnType`. When creating the
+            object, simple strings such as "list" or "set" are also accepted.
+        value_type: the type of the individual items stored in the column.
+            This is a `TableScalarColumnType`, but when creating the object,
+            strings such as "TEXT" or "UUID" are also accepted.
     """
 
     column_type: TableValuedColumnType
@@ -244,7 +285,19 @@ class TableValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
 @dataclass
 class TableKeyValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
     """
-    TODO
+    Represents and describes a column in a Table, of a 'key-value' type, that stores
+    an associative map (essentially a dict) between keys of a certain scalar type and
+    values of a certain scalar type. The only such kind of column is a "map".
+
+    Attributes:
+        column_type: an instance of `TableKeyValuedColumnType`. When creating the
+            object, this can be omitted as it only ever assumes the "MAP" value.
+        key_type: the type of the individual keys in the map column.
+            This is a `TableScalarColumnType`, but when creating the object,
+            strings such as "TEXT" or "UUID" are also accepted.
+        value_type: the type of the individual values stored in the map for a single key.
+            This is a `TableScalarColumnType`, but when creating the object,
+            strings such as "TEXT" or "UUID" are also accepted.
     """
 
     column_type: TableKeyValuedColumnType
@@ -292,7 +345,20 @@ class TableKeyValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
 @dataclass
 class TableAPISupportDescriptor:
     """
-    TODO
+    Represents the additional information returned by the Data API when describing
+    a table with unsupported columns. Unsupported columns may have been created by
+    means other than the Data API (e.g. CQL direct interaction with the database).
+
+    The Data API reports these columns when listing the tables and their metadata,
+    and provides the information marshaled in this object to detail which level
+    of support the column has (for instance, it can be a partial support where the
+    column is readable by the API but not writable).
+
+    Attributes:
+        cql_definition: a free-form string containing the CQL definition for the column.
+        create_table: whether a column of this nature can be used in API table creation.
+        insert: whether a column of this nature can be written through the API.
+        read: whether a column of this nature can be read through the API.
     """
 
     cql_definition: str
@@ -344,8 +410,17 @@ class TableAPISupportDescriptor:
 @dataclass
 class TableUnsupportedColumnTypeDescriptor(TableColumnTypeDescriptor):
     """
-    TODO
-    This has no coerce since it is always only found in API responses
+    Represents and describes a column in a Table, of unsupported type.
+
+    Note that this column type descriptor cannot be used in table creation,
+    rather it can only be returned when listing the tables or getting their
+    metadata by the API.
+
+    Attributes:
+        column_type: an instance of `TableUnsupportedColumnType`.
+        api_support: a `TableAPISupportDescriptor` object giving more details.
+
+    This class has no `coerce` method, since it is always only found in API responses.
     """
 
     column_type: TableUnsupportedColumnType
@@ -390,7 +465,20 @@ class TableUnsupportedColumnTypeDescriptor(TableColumnTypeDescriptor):
 @dataclass
 class TablePrimaryKeyDescriptor:
     """
-    TODO
+    Represents the part of a table definition that describes the primary key.
+
+    Attributes:
+        partition_by: a list of column names forming the partition key, i.e.
+            the portion of primary key that determines physical grouping and storage
+            of rows on the database. Rows with the same values for the partition_by
+            columns are guaranteed to be stored next to each other. This list
+            cannot be empty.
+        partition_sort: this defines how rows are to be sorted within a partition.
+            It is a dictionary that specifies, for each column of the primary key
+            not in the `partition_by` field, whether the sorting is ascending
+            or descending (see the values in the `SortMode` constant).
+            The sorting within a partition considers all columns in this dictionary,
+            in a hierarchical way: hence, ordering in this dictionary is relevant.
     """
 
     partition_by: list[str]
@@ -434,6 +522,11 @@ class TablePrimaryKeyDescriptor:
     def coerce(
         cls, raw_input: TablePrimaryKeyDescriptor | dict[str, Any] | str
     ) -> TablePrimaryKeyDescriptor:
+        """
+        Normalize the input, whether an object already or a plain dictionary
+        of the right structure, into a TablePrimaryKeyDescriptor.
+        """
+
         if isinstance(raw_input, TablePrimaryKeyDescriptor):
             return raw_input
         elif isinstance(raw_input, str):
@@ -448,11 +541,101 @@ class BaseTableDefinition:
     A structure expressing the definition ("schema") of a table.
     See the Data API specifications for detailed specification and allowed values.
 
+    Instances of this object can be created in three ways: using a fluent interface,
+    passing a fully-formed definition to the class constructor, or coercing an
+    appropriately-shaped plain dictionary into this class.
+    For the practical purpose of creating tables, it is recommended
+    to import and use the `CreateTableDefinition` alias to this class.
+    See the examples below and the Table documentation for more details.
+
     Attributes:
         columns: a map from column names to their type definition object.
         primary_key: a specification of the primary key for the table.
 
-    TODO ways to build one, examples (here and throughout)
+    Example:
+        >>> from astrapy.constants import SortMode
+        >>> from astrapy.info import (
+        ...     CreateTableDefinition,
+        ...     TablePrimaryKeyDescriptor,
+        ...     TableScalarColumnType,
+        ...     TableScalarColumnTypeDescriptor,
+        ...     TableValuedColumnType,
+        ...     TableValuedColumnTypeDescriptor,
+        ...     TableVectorColumnTypeDescriptor,
+        ... )
+        >>>
+        >>> # Create a table definition with the fluent interface:
+        >>> table_definition = (
+        ...     CreateTableDefinition.zero()
+        ...     .add_column("match_id", TableScalarColumnType.TEXT)
+        ...     .add_column("round", TableScalarColumnType.INT)
+        ...     .add_vector_column("m_vector", dimension=3)
+        ...     .add_column("score", TableScalarColumnType.INT)
+        ...     .add_column("when", TableScalarColumnType.TIMESTAMP)
+        ...     .add_column("winner", TableScalarColumnType.TEXT)
+        ...     .add_set_column("fighters", TableScalarColumnType.UUID)
+        ...     .add_partition_by(["match_id"])
+        ...     .add_partition_sort({"round": SortMode.ASCENDING})
+        ...     .build()
+        ... )
+        >>>
+        >>> # Create a table definition passing everything to the constructor:
+        >>> table_definition_1 = CreateTableDefinition(
+        ...     columns={
+        ...         "match_id": TableScalarColumnTypeDescriptor(
+        ...             TableScalarColumnType.TEXT,
+        ...         ),
+        ...         "round": TableScalarColumnTypeDescriptor(
+        ...             TableScalarColumnType.INT,
+        ...         ),
+        ...         "m_vector": TableVectorColumnTypeDescriptor(
+        ...             column_type="vector", dimension=3
+        ...         ),
+        ...         "score": TableScalarColumnTypeDescriptor(
+        ...             TableScalarColumnType.INT,
+        ...         ),
+        ...         "when": TableScalarColumnTypeDescriptor(
+        ...             TableScalarColumnType.TIMESTAMP,
+        ...         ),
+        ...         "winner": TableScalarColumnTypeDescriptor(
+        ...             TableScalarColumnType.TEXT,
+        ...         ),
+        ...         "fighters": TableValuedColumnTypeDescriptor(
+        ...             column_type=TableValuedColumnType.SET,
+        ...             value_type=TableScalarColumnType.UUID,
+        ...         ),
+        ...     },
+        ...     primary_key=TablePrimaryKeyDescriptor(
+        ...         partition_by=["match_id"],
+        ...         partition_sort={"round": SortMode.ASCENDING},
+        ...     ),
+        ... )
+        >>>
+        >>> # Coerce a dictionary into a table definition:
+        >>> table_definition_2_dict = {
+        ...     "columns": {
+        ...         "match_id": {"type": "text"},
+        ...         "round": {"type": "int"},
+        ...         "m_vector": {"type": "vector", "dimension": 3},
+        ...         "score": {"type": "int"},
+        ...         "when": {"type": "timestamp"},
+        ...         "winner": {"type": "text"},
+        ...         "fighters": {"type": "set", "valueType": "uuid"},
+        ...     },
+        ...     "primaryKey": {
+        ...         "partitionBy": ["match_id"],
+        ...         "partitionSort": {"round": 1},
+        ...     },
+        ... }
+        >>> table_definition_2 = CreateTableDefinition.coerce(
+        ...     table_definition_2_dict
+        ... )
+        >>>
+        >>> # The three created objects are exactly identical:
+        >>> table_definition_2 == table_definition_1
+        True
+        >>> table_definition_2 == table_definition
+        True
     """
 
     columns: dict[str, TableColumnTypeDescriptor]
@@ -503,6 +686,11 @@ class BaseTableDefinition:
     def coerce(
         cls, raw_input: BaseTableDefinition | dict[str, Any]
     ) -> BaseTableDefinition:
+        """
+        Normalize the input, whether an object already or a plain dictionary
+        of the right structure, into a BaseTableDefinition.
+        """
+
         if isinstance(raw_input, BaseTableDefinition):
             return raw_input
         else:
@@ -510,6 +698,21 @@ class BaseTableDefinition:
 
     @staticmethod
     def zero() -> BaseTableDefinition:
+        """
+        Create an "empty" builder for constructing a table definition through
+        a fluent interface. The resulting object has no columns and no primary key,
+        traits that are to be added progressively with the corresponding methods.
+
+        Since it describes a "table with no columns at all", the result of
+        this method alone is not an acceptable table definition for running a table
+        creation method on a Database.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Returns:
+            a BaseTableDefinition formally describing a table with no columns.
+        """
+
         return BaseTableDefinition(
             columns={},
             primary_key=TablePrimaryKeyDescriptor(
@@ -519,8 +722,25 @@ class BaseTableDefinition:
         )
 
     def add_primitive_column(
-        self, column_name: str, column_type: str
+        self, column_name: str, column_type: str | TableScalarColumnType
     ) -> BaseTableDefinition:
+        """
+        Return a new table definition object with an added column
+        of a primitive (or scalar) type. This method is for use within the
+        fluent interface for progressively building a complete table definition.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Args:
+            column_name: the name of the new column to add to the definition.
+            column_type: a string, or a `TableScalarColumnType` value, defining
+                the scalar type for the column.
+
+        Returns:
+            a BaseTableDefinition obtained by adding (or replacing) the desired
+            column to this table definition.
+        """
+
         return BaseTableDefinition(
             columns={
                 **self.columns,
@@ -533,12 +753,52 @@ class BaseTableDefinition:
             primary_key=self.primary_key,
         )
 
-    def add_column(self, column_name: str, column_type: str) -> BaseTableDefinition:
+    def add_column(
+        self, column_name: str, column_type: str | TableScalarColumnType
+    ) -> BaseTableDefinition:
+        """
+        Return a new table definition object with an added column
+        of a primitive (or scalar) type. This method is for use within the
+        fluent interface for progressively building a complete table definition.
+
+        This method is an alias for `add_primitive_column`.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Args:
+            column_name: the name of the new column to add to the definition.
+            column_type: a string, or a `TableScalarColumnType` value, defining
+                the scalar type for the column.
+
+        Returns:
+            a BaseTableDefinition obtained by adding (or replacing) the desired
+            column to this table definition.
+        """
+
         return self.add_primitive_column(
             column_name=column_name, column_type=column_type
         )
 
-    def add_set_column(self, column_name: str, value_type: str) -> BaseTableDefinition:
+    def add_set_column(
+        self, column_name: str, value_type: str | TableScalarColumnType
+    ) -> BaseTableDefinition:
+        """
+        Return a new table definition object with an added column
+        of 'set' type. This method is for use within the
+        fluent interface for progressively building a complete table definition.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Args:
+            column_name: the name of the new column to add to the definition.
+            value_type: a string, or a `TableScalarColumnType` value, defining
+                the data type for the items in the set.
+
+        Returns:
+            a BaseTableDefinition obtained by adding (or replacing) the desired
+            column to this table definition.
+        """
+
         return BaseTableDefinition(
             columns={
                 **self.columns,
@@ -551,7 +811,26 @@ class BaseTableDefinition:
             primary_key=self.primary_key,
         )
 
-    def add_list_column(self, column_name: str, value_type: str) -> BaseTableDefinition:
+    def add_list_column(
+        self, column_name: str, value_type: str | TableScalarColumnType
+    ) -> BaseTableDefinition:
+        """
+        Return a new table definition object with an added column
+        of 'list' type. This method is for use within the
+        fluent interface for progressively building a complete table definition.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Args:
+            column_name: the name of the new column to add to the definition.
+            value_type: a string, or a `TableScalarColumnType` value, defining
+                the data type for the items in the list.
+
+        Returns:
+            a BaseTableDefinition obtained by adding (or replacing) the desired
+            column to this table definition.
+        """
+
         return BaseTableDefinition(
             columns={
                 **self.columns,
@@ -565,8 +844,30 @@ class BaseTableDefinition:
         )
 
     def add_map_column(
-        self, column_name: str, key_type: str, value_type: str
+        self,
+        column_name: str,
+        key_type: str | TableScalarColumnType,
+        value_type: str | TableScalarColumnType,
     ) -> BaseTableDefinition:
+        """
+        Return a new table definition object with an added column
+        of 'map' type. This method is for use within the
+        fluent interface for progressively building a complete table definition.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Args:
+            column_name: the name of the new column to add to the definition.
+            key_type: a string, or a `TableScalarColumnType` value, defining
+                the data type for the keys in the map.
+            value_type: a string, or a `TableScalarColumnType` value, defining
+                the data type for the values in the map.
+
+        Returns:
+            a BaseTableDefinition obtained by adding (or replacing) the desired
+            column to this table definition.
+        """
+
         return BaseTableDefinition(
             columns={
                 **self.columns,
@@ -583,9 +884,33 @@ class BaseTableDefinition:
         self,
         column_name: str,
         *,
-        dimension: int,
+        dimension: int | None = None,
         service: VectorServiceOptions | dict[str, Any] | None = None,
     ) -> BaseTableDefinition:
+        """
+        Return a new table definition object with an added column
+        of 'vector' type. This method is for use within the
+        fluent interface for progressively building a complete table definition.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Args:
+            column_name: the name of the new column to add to the definition.
+            dimension: the dimensionality of the vector, i.e. the number of components
+                each vector in this column will have. If a `service` parameter is
+                supplied and the vectorize model allows for it, the dimension may be
+                left unspecified to have the API set a default value.
+                The Data API will raise an error if a table creation is attempted with
+                a vector column for which neither a service nor the dimension are given.
+            service: a `VectorServiceOptions` object, or an equivalent plain dictionary,
+                defining the server-side embedding service associated to the column,
+                if desired.
+
+        Returns:
+            a BaseTableDefinition obtained by adding (or replacing) the desired
+            column to this table definition.
+        """
+
         return BaseTableDefinition(
             columns={
                 **self.columns,
@@ -600,16 +925,71 @@ class BaseTableDefinition:
             primary_key=self.primary_key,
         )
 
-    def add_partition_by(self, partition_columns: list[str]) -> BaseTableDefinition:
+    def add_partition_by(
+        self, partition_columns: list[str] | str
+    ) -> BaseTableDefinition:
+        """
+        Return a new table definition object with one or more added `partition_by`
+        columns. This method is for use within the
+        fluent interface for progressively building a complete table definition.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Successive calls append the requested columns at the end of the pre-existing
+        `partition_by` list. In other words, these two patterns are equivalent:
+        (1) X.add_partition_by(["col1", "col2"])
+        (2) X.add_partition_by(["col1"]).add_partition_by("col2")
+
+        Note that no deduplication is applied to the overall
+        result: the caller should take care of not supplying the same column name
+        more than once.
+
+        Args:
+            partition_columns: a list of column names (strings) to be added to the
+                full table partition key. A single string (not a list) is also accepted.
+
+        Returns:
+            a BaseTableDefinition obtained by enriching the `partition_by`
+            of this table definition as requested.
+        """
+
+        _partition_columns = (
+            partition_columns
+            if isinstance(partition_columns, list)
+            else [partition_columns]
+        )
+
         return BaseTableDefinition(
             columns=self.columns,
             primary_key=TablePrimaryKeyDescriptor(
-                partition_by=self.primary_key.partition_by + partition_columns,
+                partition_by=self.primary_key.partition_by + _partition_columns,
                 partition_sort=self.primary_key.partition_sort,
             ),
         )
 
     def add_partition_sort(self, partition_sort: dict[str, int]) -> BaseTableDefinition:
+        """
+        Return a new table definition object with one or more added `partition_sort`
+        column specifications. This method is for use within the
+        fluent interface for progressively building a complete table definition.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Successive calls append (or replace) the requested columns at the end of
+        the pre-existing `partition_sort` dictionary. In other words, these two
+        patterns are equivalent:
+        (1) X.add_partition_sort({"c1": 1, "c2": -1})
+        (2) X.add_partition_sort({"c1": 1}).add_partition_sort({"c2": -1})
+
+        Args:
+            partition_sort: a dictoinary mapping column names to their sort mode
+            (ascending/descending, i.e 1/-1. See also `astrapy.constants.SortMode`).
+
+        Returns:
+            a BaseTableDefinition obtained by enriching the `partition_sort`
+            of this table definition as requested.
+        """
+
         return BaseTableDefinition(
             columns=self.columns,
             primary_key=TablePrimaryKeyDescriptor(
@@ -619,6 +999,22 @@ class BaseTableDefinition:
         )
 
     def build(self) -> BaseTableDefinition:
+        """
+        The final step in the fluent (builder) interface. Calling this method
+        finalizes the definition that has been built so far and makes it into a
+        table definition ready for use in e.g. table creation.
+
+        Note that this step may be automatically invoked by the receiving methods:
+        however it is a good practice - and also adds to the readability of the code -
+        to call it explicitly.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Returns:
+            a BaseTableDefinition obtained by finalizing the definition being
+                built so far.
+        """
+
         return self
 
 
@@ -683,6 +1079,11 @@ class BaseTableDescriptor:
     def coerce(
         cls, raw_input: BaseTableDescriptor | dict[str, Any]
     ) -> BaseTableDescriptor:
+        """
+        Normalize the input, whether an object already or a plain dictionary
+        of the right structure, into a BaseTableDescriptor.
+        """
+
         if isinstance(raw_input, BaseTableDescriptor):
             return raw_input
         else:
@@ -692,7 +1093,18 @@ class BaseTableDescriptor:
 @dataclass
 class TableIndexOptions:
     """
-    TODO
+    An object describing the options for a table regular (non-vector) index.
+
+    Both when creating indexes and retrieving index metadata from the API, instances
+    of TableIndexOptions are used to express the corresponding index settings.
+
+    Attributes:
+        ascii: whether the index should convert to US-ASCII before indexing.
+            It can be passed only for indexes on a TEXT or ASCII column.
+        normalize: whether the index should normalize Unicode and diacritics before
+            indexing. It can be passed only for indexes on a TEXT or ASCII column.
+        case_sensitive: whether the index should index the input in a case-sensitive
+            manner. It can be passed only for indexes on a TEXT or ASCII column.
     """
 
     ascii: bool | UnsetType = _UNSET
@@ -753,6 +1165,11 @@ class TableIndexOptions:
 
     @classmethod
     def coerce(cls, raw_input: TableIndexOptions | dict[str, Any]) -> TableIndexOptions:
+        """
+        Normalize the input, whether an object already or a plain dictionary
+        of the right structure, into a TableIndexOptions.
+        """
+
         if isinstance(raw_input, TableIndexOptions):
             return raw_input
         else:
@@ -762,7 +1179,18 @@ class TableIndexOptions:
 @dataclass
 class TableVectorIndexOptions:
     """
-    TODO
+    An object describing the options for a table vector index, which is the index
+    that enables vector (ANN) search on a column.
+
+    Both when creating indexes and retrieving index metadata from the API, instances
+    of TableIndexOptions are used to express the corresponding index settings.
+
+    Attributes:
+        metric: the similarity metric used in the index. It must be one of the strings
+            defined in `astrapy.constants.VectorMetric` (such as "dot_product").
+        source_model: an optional parameter to help the index pick the set of
+            parameters best suited to a specific embedding model. If omitted, the Data
+            API will use its defaults. See the Data API documentation for more details.
     """
 
     metric: str | UnsetType = _UNSET
@@ -815,6 +1243,11 @@ class TableVectorIndexOptions:
     def coerce(
         cls, raw_input: TableVectorIndexOptions | dict[str, Any] | None
     ) -> TableVectorIndexOptions:
+        """
+        Normalize the input, whether an object already or a plain dictionary
+        of the right structure, into a TableVectorIndexOptions.
+        """
+
         if isinstance(raw_input, TableVectorIndexOptions):
             return raw_input
         elif raw_input is None:
@@ -826,7 +1259,13 @@ class TableVectorIndexOptions:
 @dataclass
 class TableBaseIndexDefinition(ABC):
     """
-    TODO
+    An object describing an index definition, including the name of the indexed column
+    and the index options if there are any.
+    This is an abstract class common to the various types of index:
+    see the appropriate subclass for more details.
+
+    Attributes:
+        column: the name of the indexed column.
     """
 
     column: str
@@ -836,6 +1275,12 @@ class TableBaseIndexDefinition(ABC):
 
     @classmethod
     def _from_dict(cls, raw_input: dict[str, Any]) -> TableBaseIndexDefinition:
+        """
+        Create an instance of TableBaseIndexDefinition from a dictionary
+        such as one from the Data API. This method inspects the input dictionary
+        to select the right class to use so as to represent the index definition.
+        """
+
         if "options" not in raw_input:
             if raw_input["column"] == "UNKNOWN" and "apiSupport" in raw_input:
                 return TableUnsupportedIndexDefinition.coerce(raw_input)
@@ -851,7 +1296,12 @@ class TableBaseIndexDefinition(ABC):
 @dataclass
 class TableIndexDefinition(TableBaseIndexDefinition):
     """
-    TODO
+    An object describing a regular (non-vector) index definition,
+    including the name of the indexed column and the index options.
+
+    Attributes:
+        column: the name of the indexed column.
+        options: a `TableIndexOptions` detailing the index configuration.
     """
 
     options: TableIndexOptions
@@ -894,6 +1344,11 @@ class TableIndexDefinition(TableBaseIndexDefinition):
     def coerce(
         cls, raw_input: TableIndexDefinition | dict[str, Any]
     ) -> TableIndexDefinition:
+        """
+        Normalize the input, whether an object already or a plain dictionary
+        of the right structure, into a TableIndexDefinition.
+        """
+
         if isinstance(raw_input, TableIndexDefinition):
             return raw_input
         else:
@@ -904,7 +1359,12 @@ class TableIndexDefinition(TableBaseIndexDefinition):
 @dataclass
 class TableVectorIndexDefinition(TableBaseIndexDefinition):
     """
-    TODO
+    An object describing a vector index definition,
+    including the name of the indexed column and the index options.
+
+    Attributes:
+        column: the name of the indexed column.
+        options: a `TableVectorIndexOptions` detailing the index configuration.
     """
 
     options: TableVectorIndexOptions
@@ -937,6 +1397,11 @@ class TableVectorIndexDefinition(TableBaseIndexDefinition):
     def coerce(
         cls, raw_input: TableVectorIndexDefinition | dict[str, Any]
     ) -> TableVectorIndexDefinition:
+        """
+        Normalize the input, whether an object already or a plain dictionary
+        of the right structure, into a TableVectorIndexDefinition.
+        """
+
         if isinstance(raw_input, TableVectorIndexDefinition):
             return raw_input
         else:
@@ -947,7 +1412,19 @@ class TableVectorIndexDefinition(TableBaseIndexDefinition):
 @dataclass
 class TableAPIIndexSupportDescriptor:
     """
-    TODO
+    Represents the additional information returned by the Data API when describing
+    an index that has 'unsupported' status. Unsupported indexes may have been created by
+    means other than the Data API (e.g. CQL direct interaction with the database).
+
+    The Data API reports these indexes along with the others when listing the indexes,
+    and provides the information marshaled in this object to detail which level
+    of support the index has (for instance, it can be a partial support where the
+    index can still be used to filter reads).
+
+    Attributes:
+        cql_definition: a free-form string containing the CQL definition for the index.
+        create_index: whether such an index can be created through the Data API.
+        filter: whether the index can be involved in a Data API filter clause.
     """
 
     cql_definition: str
@@ -995,7 +1472,13 @@ class TableAPIIndexSupportDescriptor:
 @dataclass
 class TableUnsupportedIndexDefinition(TableBaseIndexDefinition):
     """
-    TODO
+    An object describing the definition of an unsupported index found on a table,
+    including the name of the indexed column and the index support status.
+
+    Attributes:
+        column: the name of the indexed column.
+        api_support: a `TableAPIIndexSupportDescriptor` detailing the level of support
+            for the index by the Data API.
     """
 
     api_support: TableAPIIndexSupportDescriptor
@@ -1030,6 +1513,11 @@ class TableUnsupportedIndexDefinition(TableBaseIndexDefinition):
     def coerce(
         cls, raw_input: TableUnsupportedIndexDefinition | dict[str, Any]
     ) -> TableUnsupportedIndexDefinition:
+        """
+        Normalize the input, whether an object already or a plain dictionary
+        of the right structure, into a TableUnsupportedIndexDefinition.
+        """
+
         if isinstance(raw_input, TableUnsupportedIndexDefinition):
             return raw_input
         else:
@@ -1039,13 +1527,26 @@ class TableUnsupportedIndexDefinition(TableBaseIndexDefinition):
 @dataclass
 class TableIndexDescriptor:
     """
-    TODO
+    The top-level object describing a table index on a column.
+
+    The hierarchical arrangement of `TableIndexDescriptor`, which contains a
+    `TableBaseIndexDefinition` (plus possibly index options within the latter),
+    is designed to mirror the shape of payloads and response about indexes in the
+    Data API.
+
+    Attributes:
+        name: the name of the index. Index names are unique within a keyspace: hence,
+            two tables in the same keyspace cannot use the same name for their indexes.
+        definition: an appropriate concrete subclass of `TableBaseIndexDefinition`
+            providing the detailed definition of the index.
     """
 
     name: str
     definition: TableBaseIndexDefinition
 
     def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
         return {
             "name": self.name,
             "definition": self.definition.as_dict(),
@@ -1067,6 +1568,11 @@ class TableIndexDescriptor:
     def coerce(
         raw_input: TableIndexDescriptor | dict[str, Any],
     ) -> TableIndexDescriptor:
+        """
+        Normalize the input, whether an object already or a plain dictionary
+        of the right structure, into a TableIndexDescriptor.
+        """
+
         if isinstance(raw_input, TableIndexDescriptor):
             return raw_input
         else:
@@ -1076,7 +1582,13 @@ class TableIndexDescriptor:
 @dataclass
 class AlterTableOperation(ABC):
     """
-    TODO
+    An abstract class representing a generic "alter table" operation. Concrete
+    implementations are used to represent operations such as adding/dropping columns
+    and adding/dropping the vectorize service (server-side embedding computations).
+
+    `AlterTableOperation` objects are the parameter to the Table's `alter` method.
+
+    Please consult the documentation of the concrete subclasses for more info.
     """
 
     _name: str
@@ -1086,6 +1598,36 @@ class AlterTableOperation(ABC):
 
     @staticmethod
     def from_full_dict(operation_dict: dict[str, Any]) -> AlterTableOperation:
+        """
+        Inspect a provided dictionary and make it into the correct concrete subclass
+        of AlterTableOperation depending on its contents.
+
+        Note: while the nature of the operation must be the top-level single key of
+        the (nested) dictionary parameter to this method (such as "add" or
+        "dropVectorize"), the resulting `AlterTableOperation` object encodes the content
+        of the corresponding value. Likewise, the calling the `as_dict()` method of
+        the result from this method does not return the whole original input, rather
+        the "one level in" part (see the example provided here).
+
+        Args:
+            operation_dict: a dictionary such as `{"add": ...}`, whose outermost *value*
+            corresponds to the desired operation.
+
+        Returns:
+            an `AlterTableOperation` object chosen after inspection of
+                the provided input.
+
+        Example:
+            >>> full_dict = {"drop": {"columns": ["col1", "col2"]}}
+            >>> alter_op = AlterTableOperation.from_full_dict(full_dict)
+            >>> alter_op
+            AlterTableDropColumns(columns=[col1,col2])
+            >>> alter_op.as_dict()
+            {'columns': ['col1', 'col2']}
+            >>> alter_op.as_dict() == full_dict["drop"]
+            True
+        """
+
         key_set = set(operation_dict.keys())
         if key_set == {"add"}:
             return AlterTableAddColumns.coerce(operation_dict["add"])
@@ -1105,7 +1647,13 @@ class AlterTableOperation(ABC):
 @dataclass
 class AlterTableAddColumns(AlterTableOperation):
     """
-    TODO
+    An object representing the alter-table operation of adding column(s),
+    for use as argument to the table's `alter()` method.
+
+    Attributes:
+        columns: a mapping between the names of the columns to add and
+            `TableColumnTypeDescriptor` objects, formatted in the same way as
+            the `columns` attribute of `CreateTableDefinition`.
     """
 
     columns: dict[str, TableColumnTypeDescriptor]
@@ -1143,6 +1691,11 @@ class AlterTableAddColumns(AlterTableOperation):
     def coerce(
         cls, raw_input: AlterTableAddColumns | dict[str, Any]
     ) -> AlterTableAddColumns:
+        """
+        Normalize the input, whether an object already or a plain dictionary
+        of the right structure, into an AlterTableAddColumns.
+        """
+
         if isinstance(raw_input, AlterTableAddColumns):
             return raw_input
         else:
@@ -1152,7 +1705,11 @@ class AlterTableAddColumns(AlterTableOperation):
 @dataclass
 class AlterTableDropColumns(AlterTableOperation):
     """
-    TODO
+    An object representing the alter-table operation of dropping column(s),
+    for use as argument to the table's `alter()` method.
+
+    Attributes:
+        columns: a list of the column names to drop.
     """
 
     columns: list[str]
@@ -1186,6 +1743,11 @@ class AlterTableDropColumns(AlterTableOperation):
     def coerce(
         cls, raw_input: AlterTableDropColumns | dict[str, Any]
     ) -> AlterTableDropColumns:
+        """
+        Normalize the input, whether an object already or a plain dictionary
+        of the right structure, into an AlterTableDropColumns.
+        """
+
         if isinstance(raw_input, AlterTableDropColumns):
             return raw_input
         else:
@@ -1195,7 +1757,14 @@ class AlterTableDropColumns(AlterTableOperation):
 @dataclass
 class AlterTableAddVectorize(AlterTableOperation):
     """
-    TODO
+    An object representing the alter-table operation of enabling the vectorize service
+    (i.e. server-side embedding computation) on one or more columns,
+    for use as argument to the table's `alter()` method.
+
+    Attributes:
+        columns: a mapping between column names and the corresponding
+            `VectorServiceOptions` objects describing the settings for the
+            desired vectorize service.
     """
 
     columns: dict[str, VectorServiceOptions]
@@ -1245,6 +1814,11 @@ class AlterTableAddVectorize(AlterTableOperation):
     def coerce(
         cls, raw_input: AlterTableAddVectorize | dict[str, Any]
     ) -> AlterTableAddVectorize:
+        """
+        Normalize the input, whether an object already or a plain dictionary
+        of the right structure, into an AlterTableAddVectorize.
+        """
+
         if isinstance(raw_input, AlterTableAddVectorize):
             return raw_input
         else:
@@ -1254,7 +1828,15 @@ class AlterTableAddVectorize(AlterTableOperation):
 @dataclass
 class AlterTableDropVectorize(AlterTableOperation):
     """
-    TODO
+    An object representing the alter-table operation of removing the vectorize
+    service (i.e. the server-side embedding computation) from one or more columns,
+    for use as argument to the table's `alter()` method.
+
+    Note: this operation does not drop the column, simply unsets its vectorize
+    service. Existing embedding vectors, stored in the table, are retained.
+
+    Attributes:
+        columns: a list of the column names whose vectorize service is to be removed.
     """
 
     columns: list[str]
@@ -1288,6 +1870,11 @@ class AlterTableDropVectorize(AlterTableOperation):
     def coerce(
         cls, raw_input: AlterTableDropVectorize | dict[str, Any]
     ) -> AlterTableDropVectorize:
+        """
+        Normalize the input, whether an object already or a plain dictionary
+        of the right structure, into an AlterTableDropVectorize.
+        """
+
         if isinstance(raw_input, AlterTableDropVectorize):
             return raw_input
         else:

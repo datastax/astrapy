@@ -144,6 +144,11 @@ class CollectionDefinition:
     A structure expressing the options of a collection.
     See the Data API specifications for detailed specification and allowed values.
 
+    Instances of this object can be created in three ways: using a fluent interface,
+    passing a fully-formed definition to the class constructor, or coercing an
+    appropriately-shaped plain dictionary into this class.
+    See the examples below and the Table documentation for more details.
+
     Attributes:
         vector: an optional CollectionVectorOptions object.
         indexing: an optional dictionary with the "indexing" collection properties.
@@ -152,6 +157,46 @@ class CollectionDefinition:
             just `["*"]`, to exclude from/include in collection indexing,
             respectively.
         default_id: an optional CollectionDefaultIDOptions object (see).
+
+    Example:
+        >>> from astrapy.constants import VectorMetric
+        >>> from astrapy.info import CollectionDefinition, CollectionVectorOptions
+        >>>
+        >>> # Create a collection definition with the fluent interface:
+        >>> collection_definition = (
+        ...     CollectionDefinition.zero()
+        ...     .set_vector_dimension(3)
+        ...     .set_vector_metric(VectorMetric.DOT_PRODUCT)
+        ...     .set_indexing("deny", ["annotations", "logs"])
+        ...     .build()
+        ... )
+        >>>
+        >>> # Create a collection definition passing everything to the constructor:
+        >>> collection_definition_1 = CollectionDefinition(
+        ...     vector=CollectionVectorOptions(
+        ...         dimension=3,
+        ...         metric=VectorMetric.DOT_PRODUCT,
+        ...     ),
+        ...     indexing={"deny": ["annotations", "logs"]},
+        ... )
+        >>>
+        >>> # Coerce a dictionary into a collection definition:
+        >>> collection_definition_2_dict = {
+        ...     "indexing": {"deny": ["annotations", "logs"]},
+        ...     "vector": {
+        ...         "dimension": 3,
+        ...         "metric": VectorMetric.DOT_PRODUCT,
+        ...     },
+        ... }
+        >>> collection_definition_2 = CollectionDefinition.coerce(
+        ...     collection_definition_2_dict
+        ... )
+        >>>
+        >>> # The three created objects are exactly identical:
+        >>> collection_definition_2 == collection_definition_1
+        True
+        >>> collection_definition_2 == collection_definition
+        True
     """
 
     vector: CollectionVectorOptions | None = None
@@ -212,6 +257,7 @@ class CollectionDefinition:
     def coerce(
         cls, raw_input: CollectionDefinition | dict[str, Any]
     ) -> CollectionDefinition:
+        """TODO"""
         if isinstance(raw_input, CollectionDefinition):
             return raw_input
         else:
@@ -219,11 +265,13 @@ class CollectionDefinition:
 
     @staticmethod
     def zero() -> CollectionDefinition:
+        """TODO"""
         return CollectionDefinition()
 
     def set_indexing(
         self, indexing_mode: str | None, indexing_target: list[str] | None = None
     ) -> CollectionDefinition:
+        """TODO"""
         if indexing_mode is None:
             if indexing_target is not None:
                 raise ValueError("Cannot pass an indexing target if unsetting indexing")
@@ -247,6 +295,7 @@ class CollectionDefinition:
         )
 
     def set_default_id(self, default_id_type: str | None) -> CollectionDefinition:
+        """TODO"""
         if default_id_type is None:
             return CollectionDefinition(
                 vector=self.vector,
@@ -263,6 +312,7 @@ class CollectionDefinition:
         )
 
     def set_vector_dimension(self, dimension: int | None) -> CollectionDefinition:
+        """TODO"""
         _vector_options = self.vector or CollectionVectorOptions()
         return CollectionDefinition(
             vector=CollectionVectorOptions(
@@ -276,6 +326,7 @@ class CollectionDefinition:
         )
 
     def set_vector_metric(self, metric: str | None) -> CollectionDefinition:
+        """TODO"""
         _vector_options = self.vector or CollectionVectorOptions()
         return CollectionDefinition(
             vector=CollectionVectorOptions(
@@ -289,6 +340,7 @@ class CollectionDefinition:
         )
 
     def set_vector_source_model(self, source_model: str | None) -> CollectionDefinition:
+        """TODO"""
         _vector_options = self.vector or CollectionVectorOptions()
         return CollectionDefinition(
             vector=CollectionVectorOptions(
@@ -310,6 +362,7 @@ class CollectionDefinition:
         parameters: dict[str, Any] | None = None,
     ) -> CollectionDefinition:
         """
+        TODO
         Three valid patterns: (1) pass a ready-made service,
         (2) pass its attributes, or (3) None, to unset.
         """
@@ -368,6 +421,7 @@ class CollectionDefinition:
             )
 
     def build(self) -> CollectionDefinition:
+        """TODO"""
         return self
 
 
@@ -447,6 +501,7 @@ class CollectionDescriptor:
     def coerce(
         cls, raw_input: CollectionDescriptor | dict[str, Any]
     ) -> CollectionDescriptor:
+        """TODO"""
         if isinstance(raw_input, CollectionDescriptor):
             return raw_input
         else:

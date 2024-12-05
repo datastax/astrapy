@@ -240,6 +240,32 @@ class TestListTableDescriptors:
 
     @pytest.mark.describe("test of fluent interface for table definition")
     def test_tabledefinition_fluent(self) -> None:
+        pb0 = CreateTableDefinition.zero().add_partition_by(["p_text", "p_int"])
+        pb1 = (
+            CreateTableDefinition.zero()
+            .add_partition_by("p_text")
+            .add_partition_by("p_int")
+        )
+        pb2 = (
+            CreateTableDefinition.zero()
+            .add_partition_by(["p_text"])
+            .add_partition_by(["p_int"])
+        )
+        pb3 = (
+            CreateTableDefinition.zero()
+            .add_partition_by("p_text")
+            .add_partition_by(["p_int"])
+        )
+        pbz = (
+            CreateTableDefinition.zero()
+            .add_partition_by(["p_int"])
+            .add_partition_by("p_text")
+        )
+        assert pb0 == pb1
+        assert pb0 == pb2
+        assert pb0 == pb3
+        assert pb0 != pbz
+
         def0 = (
             CreateTableDefinition.zero()
             .add_column("p_text", "text")
