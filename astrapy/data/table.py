@@ -357,7 +357,35 @@ class Table(Generic[ROW]):
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         """
-        TODO
+        Create an AsyncTable from this one. Save for the arguments
+        explicitly provided as overrides, everything else is kept identical
+        to this table in the copy (the database is converted into
+        an async object).
+
+        Args:
+            embedding_api_key: optional API key(s) for interacting with the table.
+                If an embedding service is configured, and this parameter is not None,
+                each Data API call will include the necessary embedding-related headers
+                as specified by this parameter. If a string is passed, it translates
+                into the one "embedding api key" header
+                (i.e. `astrapy.authentication.EmbeddingAPIKeyHeaderProvider`).
+                For some vectorize providers/models, if using header-based authentication,
+                specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
+                should be supplied.
+            api_options: any additional options to set for the result, in the form of
+                an APIOptions instance (where one can set just the needed attributes).
+                In case the same setting is also provided as named parameter,
+                the latter takes precedence.
+
+        Returns:
+            the new copy, an AsyncTable instance.
+
+        Example:
+            >>> asyncio.run(my_table.to_async().find_one(
+            ...     {"match_id": "fight4"},
+            ...     projection={"winner": True},
+            ... ))
+            {"pk": 1, "column": "value}
         """
 
         arg_api_options = APIOptions(
@@ -381,13 +409,24 @@ class Table(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> ListTableDefinition:
         """
-        TODO
+        Query the Data API and return a structure defining the table schema.
+        If there are no unsupported colums in the table, the return value has
+        the same contents as could have been provided to a `create_table` method call.
+
+        Args:
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
                 underlying API request. If not provided, the Table defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
+
+        Returns:
+            A `ListTableDefinition` object, available for inspection.
+
+        Example:
+            >>> my_table.definition()
+            BaseTableDefinition(columns=[match_id,round,fighters, ...  # shortened
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
@@ -424,7 +463,30 @@ class Table(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> TableInfo:
         """
-        TODO
+        Return information on the table. This should not be confused with the table
+        definition (i.e. the schema).
+
+        Args:
+            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying DevOps API request.
+                If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `database_admin_timeout_ms`.
+            timeout_ms: an alias for `database_admin_timeout_ms`.
+
+        Returns:
+            A TableInfo object for inspection.
+
+        Example:
+            >>> # Note: output reformatted for clarity.
+            >>> my_table.info()
+            TableInfo(
+                database_info=AstraDBDatabaseInfo(id=..., name=..., ...),
+                keyspace='default_keyspace',
+                name='games',
+                full_name='default_keyspace.games'
+            )
         """
 
         return TableInfo(
@@ -480,7 +542,12 @@ class Table(Generic[ROW]):
     @property
     def full_name(self) -> str:
         """
-        TODO
+        The fully-qualified table name within the database,
+        in the form "keyspace.table_name".
+
+        Example:
+            >>> my_table.full_name
+            'default_keyspace.my_table'
         """
 
         return f"{self.keyspace}.{self.name}"
@@ -2641,7 +2708,32 @@ class Table(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         """
-        TODO
+        Send a POST request to the Data API for this table with
+        an arbitrary, caller-provided payload.
+        No transformations or type conversions are made on the provided payload.
+
+        Args:
+            body: a JSON-serializable dictionary, the payload of the request.
+            raise_api_errors: if True, responses with a nonempty 'errors' field
+                result in an astrapy exception being raised.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the AsyncTable defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
+
+        Returns:
+            a dictionary with the response of the HTTP request.
+
+        Example:
+            >>> my_table.command({
+            ...     "findOne": {
+            ...         "filter": {"match_id": "fight4"},
+            ...         "projection": {"winner": True},
+            ...     }
+            ... })
+            {'data': {'document': {'winner': 'Victor'}}, 'status': ...  # shortened
         """
 
         _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
@@ -2963,7 +3055,35 @@ class AsyncTable(Generic[ROW]):
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         """
-        TODO
+        Create a Table from this one. Save for the arguments
+        explicitly provided as overrides, everything else is kept identical
+        to this table in the copy (the database is converted into
+        an async object).
+
+        Args:
+            embedding_api_key: optional API key(s) for interacting with the table.
+                If an embedding service is configured, and this parameter is not None,
+                each Data API call will include the necessary embedding-related headers
+                as specified by this parameter. If a string is passed, it translates
+                into the one "embedding api key" header
+                (i.e. `astrapy.authentication.EmbeddingAPIKeyHeaderProvider`).
+                For some vectorize providers/models, if using header-based authentication,
+                specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
+                should be supplied.
+            api_options: any additional options to set for the result, in the form of
+                an APIOptions instance (where one can set just the needed attributes).
+                In case the same setting is also provided as named parameter,
+                the latter takes precedence.
+
+        Returns:
+            the new copy, a Table instance.
+
+        Example:
+            >>> my_async_table.to_sync().find_one(
+            ...     {"match_id": "fight4"},
+            ...     projection={"winner": True},
+            ... )
+            {"pk": 1, "column": "value}
         """
 
         arg_api_options = APIOptions(
@@ -2987,13 +3107,26 @@ class AsyncTable(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> ListTableDefinition:
         """
-        TODO
+        Query the Data API and return a structure defining the table schema.
+        If there are no unsupported colums in the table, the return value has
+        the same contents as could have been provided to a `create_table` method call.
+
+        Args:
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the AsyncTable defaults apply.
+                underlying API request. If not provided, the Table defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
+
+        Returns:
+            A `ListTableDefinition` object, available for inspection.
+
+        Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
+            >>> asyncio.run(my_table.definition())
+            BaseTableDefinition(columns=[match_id,round,fighters, ...  # shortened
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
@@ -3030,7 +3163,32 @@ class AsyncTable(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> TableInfo:
         """
-        TODO
+        Return information on the table. This should not be confused with the table
+        definition (i.e. the schema).
+
+        Args:
+            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying DevOps API request.
+                If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `database_admin_timeout_ms`.
+            timeout_ms: an alias for `database_admin_timeout_ms`.
+
+        Returns:
+            A TableInfo object for inspection.
+
+        Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
+            >>> # Note: output reformatted for clarity.
+            >>> asyncio.run(my_async_table.info())
+            TableInfo(
+                database_info=AstraDBDatabaseInfo(id=..., name=..., ...),
+                keyspace='default_keyspace',
+                name='games',
+                full_name='default_keyspace.games'
+            )
         """
 
         db_info = await self.database.info(
@@ -3087,7 +3245,12 @@ class AsyncTable(Generic[ROW]):
     @property
     def full_name(self) -> str:
         """
-        TODO
+        The fully-qualified table name within the database,
+        in the form "keyspace.table_name".
+
+        Example:
+            >>> my_async_table.full_name
+            'default_keyspace.my_table'
         """
 
         return f"{self.keyspace}.{self.name}"
@@ -4791,10 +4954,12 @@ class AsyncTable(Generic[ROW]):
                 Furthermore, if the actual number of rows exceeds the maximum
                 count that the Data API can reach (regardless of upper_bound),
                 an exception will be raised.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not provided, the Table defaults apply.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             the exact count of matching rows.
@@ -4873,10 +5038,12 @@ class AsyncTable(Generic[ROW]):
         Contrary to `count_documents`, this method has no filtering parameters.
 
         Args:
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the table-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a server-provided estimate count of the documents in the table.
@@ -5295,7 +5462,34 @@ class AsyncTable(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         """
-        TODO
+        Send a POST request to the Data API for this table with
+        an arbitrary, caller-provided payload.
+        No transformations or type conversions are made on the provided payload.
+
+        Args:
+            body: a JSON-serializable dictionary, the payload of the request.
+            raise_api_errors: if True, responses with a nonempty 'errors' field
+                result in an astrapy exception being raised.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the AsyncTable defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
+
+        Returns:
+            a dictionary with the response of the HTTP request.
+
+        Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
+            >>> asyncio.run(my_async_table.command({
+            ...     "findOne": {
+            ...         "filter": {"match_id": "fight4"},
+            ...         "projection": {"winner": True},
+            ...     }
+            ... }))
+            {'data': {'document': {'winner': 'Victor'}}, 'status': ...  # shortened
         """
 
         _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(

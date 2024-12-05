@@ -34,7 +34,20 @@ def _failsafe_parse_date(date_string: str | None) -> datetime.datetime | None:
 @dataclass
 class AstraDBAdminDatabaseRegionInfo:
     """
-    TODO docstring+attrs
+    Represents a region where a database is located and reachable.
+    A database can be single-region or multi-region: correspondingly, the
+    `regions` list attribute of the database's `AstraDBAdminDatabaseInfo` object
+    can have one or several entries, each a `AstraDBAdminDatabaseRegionInfo` instance.
+
+    Attributes:
+        region_name: the name of the region. This is what the DevOps API calls "region"
+            in its raw response and can be used as an identifier rather than a
+            pretty-printable descriptive string.
+        id: This is the datacenter ID, usually composed by the database ID followed
+            by a dash and a further integer identifier.
+        api_endpoint: the API endpoint one can use to connect to the database through
+            a particular region.
+        created_at: information on when the region was added to the database.
     """
 
     region_name: str
@@ -71,7 +84,23 @@ class AstraDBAdminDatabaseRegionInfo:
 @dataclass
 class _BaseAstraDBDatabaseInfo:
     """
-    TODO docstring+attrs
+    An object describing a set of properties of a database, a superclass
+    shared by the `AstraDBDatabaseInfo` and `AstraDBAdminDatabaseInfo` classes.
+
+    Attributes:
+        id: the Database ID, in the form of a UUID string with dashes. Example:
+            "01234567-89ab-cdef-0123-456789abcdef".
+        name: the name of the database as set by the user at creation time.
+            The database name is not necessarily unique across databases in an org.
+        keyspaces: A list of the keyspaces available in the database.
+        status: A string describing the current status of the database. Example values
+            are: "ACTIVE", "MAINTENANCE", "INITIALIZING", and others (see
+            the DevOps API documentation for more on database statuses).
+        environment: a string identifying the environment for the database. In the
+            typical usage, this equals "prod".
+        cloud_provider: a string describing the cloud provider hosting the database.
+        raw: a dictionary containing the full response from the DevOps API call
+            to obtain the database information.
     """
 
     id: str
@@ -114,20 +143,35 @@ class _BaseAstraDBDatabaseInfo:
 @dataclass
 class AstraDBDatabaseInfo(_BaseAstraDBDatabaseInfo):
     """
-    Represents the identifying information for a database,
-    including the region the connection is established to.
+    A class representing the information of an Astra DB database, including
+    region details. This is the type of the response from the Database `info`
+    method.
 
-    TODO revise docstring (also paste the attributes of baseclass)
+    Note:
+        a database can in general be replicated across multiple regions, in an
+        active/active manner. Yet, when connecting to it, one always explicitly
+        specifies a certain region: in other words, the connection (as represented
+        by the `Database` class and analogous) is always done to a specific region.
+        In this sense, this class represents the notion of "a database reached from
+        a certain region". See class `AstraDBAdminDatabaseInfo` for (possibly)
+        multi-region database information.
 
     Attributes:
-        id: the database ID.
-        region: the ID of the region through which the connection to DB is done.
-        keyspace: the keyspace this DB is set to work with. None if not set.
-        name: the database name. Not necessarily unique: there can be multiple
-            databases with the same name.
-        environment: a label, whose value can be `Environment.PROD`,
-            or another value in `Environment.*`.
-        raw_info: the full response from the DevOPS API call to get this info.
+        id: the Database ID, in the form of a UUID string with dashes. Example:
+            "01234567-89ab-cdef-0123-456789abcdef".
+        name: the name of the database as set by the user at creation time.
+            The database name is not necessarily unique across databases in an org.
+        keyspaces: A list of the keyspaces available in the database.
+        status: A string describing the current status of the database. Example values
+            are: "ACTIVE", "MAINTENANCE", "INITIALIZING", and others (see
+            the DevOps API documentation for more on database statuses).
+        environment: a string identifying the environment for the database. In the
+            typical usage, this equals "prod".
+        cloud_provider: a string describing the cloud provider hosting the database.
+        raw: a dictionary containing the full response from the DevOps API call
+            to obtain the database information.
+        region: the region this database is accessed through.
+        api_endpoint: the API Endpoint used to connect to this database in this region.
 
     Note:
         The `raw_info` dictionary usually has a `region` key describing
@@ -136,7 +180,7 @@ class AstraDBDatabaseInfo(_BaseAstraDBDatabaseInfo):
         which the connection is established: the latter is the one specified
         by the "api endpoint" used for connecting. In other words, for multi-region
         databases it is possible that
-            database_info.region != database_info.raw_info["region"]
+        `database_info.region != database_info.raw_info["region"]`.
         Conversely, in case of a AstraDBDatabaseInfo not obtained through a
         connected database, such as when calling `Admin.list_databases()`,
         all fields except `environment` (e.g. keyspace, region, etc)
@@ -175,36 +219,49 @@ class AstraDBDatabaseInfo(_BaseAstraDBDatabaseInfo):
 @dataclass
 class AstraDBAdminDatabaseInfo(_BaseAstraDBDatabaseInfo):
     """
-    Represents the full response from the DevOps API about a database info.
+    A class representing the information of an Astra DB database, including
+    region details. This is the type of the response from the AstraDBDatabaseAdmin
+    `info` method.
 
-    TODO revise docstring (also paste the attributes of baseclass)
-
-    Additional database details information is kept in the
-    "raw DevOps API response" part, the `raw` dictionary attribute.
-    For more information, please consult the DevOps API documentation.
+    Note:
+        This class, if applicable, describes a multi-region database in all its
+        regions, as opposed to the `AstraDBDatabaseInfo`.
 
     Attributes:
-        info: an AstraDBDatabaseInfo instance for the underlying database.
-            The AstraDBDatabaseInfo is a subset of the information described by
-            AstraDBAdminDatabaseInfo - in terms of the DevOps API response,
-            it corresponds to just its "info" subdictionary.
-        available_actions: the "availableActions" value in the full API response.
-        cost: the "cost" value in the full API response.
-        cqlsh_url: the "cqlshUrl" value in the full API response.
-        creation_time: the "creationTime" value in the full API response.
-        data_endpoint_url: the "dataEndpointUrl" value in the full API response.
-        grafana_url: the "grafanaUrl" value in the full API response.
-        graphql_url: the "graphqlUrl" value in the full API response.
-        id: the "id" value in the full API response.
-        last_usage_time: the "lastUsageTime" value in the full API response.
-        metrics: the "metrics" value in the full API response.
-        observed_status: the "observedStatus" value in the full API response.
-        org_id: the "orgId" value in the full API response.
-        owner_id: the "ownerId" value in the full API response.
-        status: the "status" value in the full API response.
-        storage: the "storage" value in the full API response.
-        termination_time: the "terminationTime" value in the full API response.
-        raw_info: the full raw response from the DevOps API.
+        id: the Database ID, in the form of a UUID string with dashes. Example:
+            "01234567-89ab-cdef-0123-456789abcdef".
+        name: the name of the database as set by the user at creation time.
+            The database name is not necessarily unique across databases in an org.
+        keyspaces: A list of the keyspaces available in the database.
+        status: A string describing the current status of the database. Example values
+            are: "ACTIVE", "MAINTENANCE", "INITIALIZING", and others (see
+            the DevOps API documentation for more on database statuses).
+        environment: a string identifying the environment for the database. In the
+            typical usage, this equals "prod".
+        cloud_provider: a string describing the cloud provider hosting the database.
+        raw: a dictionary containing the full response from the DevOps API call
+            to obtain the database information.
+        created_at: information about when the database has been created.
+        last_used: information about when the database was accessed last.
+        org_id: the ID of the Astra organization the database belongs to,
+            in the form of a UUID string with dashes.
+        owner_id: the ID of the Astra account owning the database, in the form
+            of a UUID string with dashes.
+        regions: a list of `AstraDBAdminDatabaseRegionInfo` objects, one for each of
+            the regions the database is replicated to.
+
+    Note:
+        The `raw_info` dictionary usually has a `region` key describing
+        the default region as configured in the database, which does not
+        necessarily (for multi-region databases) match the region through
+        which the connection is established: the latter is the one specified
+        by the "api endpoint" used for connecting. In other words, for multi-region
+        databases it is possible that
+        `database_info.region != database_info.raw_info["region"]`.
+        Conversely, in case of a AstraDBDatabaseInfo not obtained through a
+        connected database, such as when calling `Admin.list_databases()`,
+        all fields except `environment` (e.g. keyspace, region, etc)
+        are set as found on the DevOps API response directly.
     """
 
     created_at: datetime.datetime | None
