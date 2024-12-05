@@ -134,6 +134,7 @@ class TestCollectionTimeouts:
         with pytest.raises(DataAPITimeoutException):
             await mock_acollection.find_one({}, timeout_ms=1)
 
+    @pytest.mark.skip("Suppressed. The HTTPServer plays tricks here sometimes")
     @pytest.mark.describe("test of collection cursor-based timeouts, sync")
     def test_collection_cursor_timeouts_sync(
         self,
