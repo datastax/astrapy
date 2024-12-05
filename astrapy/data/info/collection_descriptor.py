@@ -257,7 +257,11 @@ class CollectionDefinition:
     def coerce(
         cls, raw_input: CollectionDefinition | dict[str, Any]
     ) -> CollectionDefinition:
-        """TODO"""
+        """
+        Normalize the input, whether an object already or a plain dictionary
+        of the right structure, into a CollectionDefinition.
+        """
+
         if isinstance(raw_input, CollectionDefinition):
             return raw_input
         else:
@@ -265,13 +269,42 @@ class CollectionDefinition:
 
     @staticmethod
     def zero() -> CollectionDefinition:
-        """TODO"""
+        """
+        Create an "empty" builder for constructing a collection definition through
+        a fluent interface. The resulting object has no defined properties,
+        traits that can be added progressively with the corresponding methods.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Returns:
+            a CollectionDefinition for the simplest possible creatable collection.
+        """
+
         return CollectionDefinition()
 
     def set_indexing(
         self, indexing_mode: str | None, indexing_target: list[str] | None = None
     ) -> CollectionDefinition:
-        """TODO"""
+        """
+        Return a new collection definition object with a new indexing setting.
+        The indexing can be set to something (fully overwriting any pre-existing
+        configuration), or removed entirely. This method is for use within the
+        fluent interface for progressively building a complete collection definition.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Args:
+            indexing_mode: one of "allow" or "deny" to configure indexing, or None
+                in case one wants to remove the setting.
+            indexing_target: a list of the document paths covered by the allow/deny
+                prescription. Passing this parameter when `indexing_mode` is None
+                results in an error.
+
+        Returns:
+            a CollectionDefinition obtained by adding (or replacing) the desired
+            indexing setting to this collection definition.
+        """
+
         if indexing_mode is None:
             if indexing_target is not None:
                 raise ValueError("Cannot pass an indexing target if unsetting indexing")
@@ -295,7 +328,23 @@ class CollectionDefinition:
         )
 
     def set_default_id(self, default_id_type: str | None) -> CollectionDefinition:
-        """TODO"""
+        """
+        Return a new collection definition object with a new setting for the
+        collection 'default ID type'. This method is for use within the
+        fluent interface for progressively building a complete collection definition.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Args:
+            default_id_type: one of the values of `astrapy.constants.DefaultIdType`
+                (or the equivalent string) to set a default ID type for a collection;
+                alternatively, None to remove the corresponding configuration.
+
+        Returns:
+            a CollectionDefinition obtained by adding (or replacing) the desired
+            default ID type setting to this collection definition.
+        """
+
         if default_id_type is None:
             return CollectionDefinition(
                 vector=self.vector,
@@ -312,7 +361,24 @@ class CollectionDefinition:
         )
 
     def set_vector_dimension(self, dimension: int | None) -> CollectionDefinition:
-        """TODO"""
+        """
+        Return a new collection definition object with a new setting for the
+        collection's vector dimension. This method is for use within the
+        fluent interface for progressively building a complete collection definition.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Args:
+            dimension: an integer, the number of components of vectors in the
+                collection. Setting even just one vector-related property makes
+                the described collection a "vector collection".
+                Providing None removes this setting.
+
+        Returns:
+            a CollectionDefinition obtained by adding (or replacing) the desired
+            vector-related setting to this collection definition.
+        """
+
         _vector_options = self.vector or CollectionVectorOptions()
         return CollectionDefinition(
             vector=CollectionVectorOptions(
@@ -326,7 +392,25 @@ class CollectionDefinition:
         )
 
     def set_vector_metric(self, metric: str | None) -> CollectionDefinition:
-        """TODO"""
+        """
+        Return a new collection definition object with a new setting for the
+        collection's vector similarity metric. This method is for use within the
+        fluent interface for progressively building a complete collection definition.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Args:
+            metric: a value of those in `astrapy.constants.VectorMetric`, or an
+                equivalent string such as "dot_product", used for vector search
+                within the collection. Setting even just one vector-related property
+                makes the described collection a "vector collection".
+                Providing None removes this setting.
+
+        Returns:
+            a CollectionDefinition obtained by adding (or replacing) the desired
+            vector-related setting to this collection definition.
+        """
+
         _vector_options = self.vector or CollectionVectorOptions()
         return CollectionDefinition(
             vector=CollectionVectorOptions(
@@ -340,7 +424,26 @@ class CollectionDefinition:
         )
 
     def set_vector_source_model(self, source_model: str | None) -> CollectionDefinition:
-        """TODO"""
+        """
+        Return a new collection definition object with a new setting for the
+        collection's vector 'source model' parameter. This method is for use within the
+        fluent interface for progressively building a complete collection definition.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Args:
+            source_model: an optional string setting for the vector index, to help
+                it pick the set of parameters best suited to a specific embedding model.
+                See the Data API documentation for more details.
+                Setting even just one vector-related property makes the described
+                collection a "vector collection". Providing None
+                removes this setting - the Data API will use its defaults.
+
+        Returns:
+            a CollectionDefinition obtained by adding (or replacing) the desired
+            vector-related setting to this collection definition.
+        """
+
         _vector_options = self.vector or CollectionVectorOptions()
         return CollectionDefinition(
             vector=CollectionVectorOptions(
@@ -362,10 +465,63 @@ class CollectionDefinition:
         parameters: dict[str, Any] | None = None,
     ) -> CollectionDefinition:
         """
-        TODO
-        Three valid patterns: (1) pass a ready-made service,
-        (2) pass its attributes, or (3) None, to unset.
+        Return a new collection definition object with a new setting for the
+        collection's vectorize (i.e. server-side embeddings) service.
+        This method is for use within the fluent interface for progressively
+        building a complete collection definition.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Args:
+            provider: this can be (1) a whole `VectorServiceOptions` object encoding
+                all desired properties for a vectorize service; or (2) it can be None,
+                to signify removal of the entire vectorize setting; alternatively,
+                (3) it can be a string, the vectorize provider name as seen in the
+                response from the database's `find_embedding_providers` method. In the
+                latter case, the other parameters should also be provided as needed.
+                See the examples below for an illustration of these usage patterns.
+            model_name: a string, the name of the vectorize model to use (must be
+                compatible with the chosen provider).
+            authentication: a dictionary with the required authentication information
+                if the vectorize makes use of secrets (API Keys) stored in the database
+                Key Management System. See the Data API for more information on
+                storing an API Key secret in one's Astra DB account.
+            parameters: a free-form key-value mapping providing additional,
+                model-dependent configuration settings. The allowed parameters for
+                a given model are specified in the response of the Database
+                `find_embedding_providers` method.
+
+        Returns:
+            a CollectionDefinition obtained by adding (or replacing) the desired
+            vector-related setting to this collection definition.
+
+        Example:
+            >>> from astrapy.info import CollectionDefinition, VectorServiceOptions
+            >>>
+            >>> zero = CollectionDefinition.zero()
+            >>>
+            >>> svc1 = zero.set_vector_service(
+            ...     "myProvider",
+            ...     "myModelName",
+            ...     parameters={"p": "z"},
+            ... )
+            >>> print(svc1.as_dict())
+            {'vector': {'service': {'provider': 'myProvider', 'modelName': 'myModelName', 'parameters': {'p': 'z'}}}}
+            >>>
+            >>> myVecSvcOpt = VectorServiceOptions(
+            ...     provider="myProvider",
+            ...     model_name="myModelName",
+            ...     parameters={"p": "z"},
+            ... )
+            >>> svc2 = zero.set_vector_service(myVecSvcOpt)
+            >>> print(svc2.as_dict())
+            {'vector': {'service': {'provider': 'myProvider', 'modelName': 'myModelName', 'parameters': {'p': 'z'}}}}
+            >>>
+            >>> reset = svc1.set_vector_service(None)
+            >>> print(reset.as_dict())
+            {}
         """
+
         _vector_options = self.vector or CollectionVectorOptions()
         if isinstance(provider, VectorServiceOptions):
             if (
@@ -421,7 +577,22 @@ class CollectionDefinition:
             )
 
     def build(self) -> CollectionDefinition:
-        """TODO"""
+        """
+        The final step in the fluent (builder) interface. Calling this method
+        finalizes the definition that has been built so far and makes it into a
+        collection definition ready for use in e.g. table creation.
+
+        Note that this step may be automatically invoked by the receiving methods:
+        however it is a good practice - and also adds to the readability of the code -
+        to call it explicitly.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Returns:
+            a CollectionDefinition obtained by finalizing the definition being
+                built so far.
+        """
+
         return self
 
 
@@ -501,7 +672,11 @@ class CollectionDescriptor:
     def coerce(
         cls, raw_input: CollectionDescriptor | dict[str, Any]
     ) -> CollectionDescriptor:
-        """TODO"""
+        """
+        Normalize the input, whether an object already or a plain dictionary
+        of the right structure, into a CollectionDescriptor.
+        """
+
         if isinstance(raw_input, CollectionDescriptor):
             return raw_input
         else:
