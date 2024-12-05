@@ -115,7 +115,7 @@ class Table(Generic[ROW]):
         ...     TableScalarColumnType,
         ... )
         >>> table_definition = (
-        ...     CreateTableDefinition.zero()
+        ...     CreateTableDefinition.builder()
         ...     .add_column("match_id", TableScalarColumnType.TEXT)
         ...     .add_column("round", TableScalarColumnType.INT)
         ...     .add_vector_column("m_vector", dimension=3)
@@ -125,6 +125,7 @@ class Table(Generic[ROW]):
         ...     .add_set_column("fighters", TableScalarColumnType.UUID)
         ...     .add_partition_by(["match_id"])
         ...     .add_partition_sort({"round": SortMode.ASCENDING})
+        ...     .build()
         ... )
         >>> my_table = database.create_table(
         ...     "games",
@@ -2799,7 +2800,7 @@ class AsyncTable(Generic[ROW]):
         ...     TableScalarColumnType,
         ... )
         >>> table_definition = (
-        ...     CreateTableDefinition.zero()
+        ...     CreateTableDefinition.builder()
         ...     .add_column("match_id", TableScalarColumnType.TEXT)
         ...     .add_column("round", TableScalarColumnType.INT)
         ...     .add_vector_column("m_vector", dimension=3)
@@ -2809,6 +2810,7 @@ class AsyncTable(Generic[ROW]):
         ...     .add_set_column("fighters", TableScalarColumnType.UUID)
         ...     .add_partition_by(["match_id"])
         ...     .add_partition_sort({"round": SortMode.ASCENDING})
+        ...     .build()
         ... )
         >>> my_table = await async_database.create_table(
         ...     "games",

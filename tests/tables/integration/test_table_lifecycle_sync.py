@@ -158,7 +158,7 @@ class TestTableLifecycle:
         )
 
         ct_fluent_definition = (
-            CreateTableDefinition.zero()
+            CreateTableDefinition.builder()
             .add_column("p_text", "text")
             .add_column("p_int", "int")
             .add_column("p_boolean", "boolean")

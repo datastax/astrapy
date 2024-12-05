@@ -261,8 +261,8 @@ def test_recast_api_collection_dict() -> None:
 
 @pytest.mark.describe("test of fluent interface for CollectionDefinition")
 def test_fluent_collection_definition() -> None:
-    zero = CollectionDefinition.zero()
-    assert zero.as_dict() == {}
+    zero = CollectionDefinition.builder()
+    assert zero.build().as_dict() == {}
 
     rich = (
         zero.set_indexing("allow", ["a", "b"])
@@ -272,6 +272,7 @@ def test_fluent_collection_definition() -> None:
         .set_vector_service(
             "prov", "mod", authentication={"a": "u"}, parameters={"p": "a"}
         )
+        .build()
     )
     expected_rich_dict = {
         "vector": {
@@ -296,5 +297,6 @@ def test_fluent_collection_definition() -> None:
         .set_vector_metric(None)
         .set_vector_source_model(None)
         .set_vector_service(None)
+        .build()
     )
-    assert zero_2.as_dict() == {}
+    assert zero_2.build().as_dict() == {}

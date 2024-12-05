@@ -85,12 +85,13 @@ def sync_service_collection(
     collection = sync_database.create_collection(
         TEST_SERVICE_COLLECTION_NAME,
         definition=(
-            CollectionDefinition.zero()
+            CollectionDefinition.builder()
             .set_vector_metric(VectorMetric.DOT_PRODUCT)
             .set_vector_service(
                 provider=params["provider"],
                 model_name=params["modelName"],
             )
+            .build()
         ),
         embedding_api_key=params["api_key"],
     )

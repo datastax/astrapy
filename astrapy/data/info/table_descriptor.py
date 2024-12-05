@@ -566,7 +566,7 @@ class BaseTableDefinition:
         >>>
         >>> # Create a table definition with the fluent interface:
         >>> table_definition = (
-        ...     CreateTableDefinition.zero()
+        ...     CreateTableDefinition.builder()
         ...     .add_column("match_id", TableScalarColumnType.TEXT)
         ...     .add_column("round", TableScalarColumnType.INT)
         ...     .add_vector_column("m_vector", dimension=3)
@@ -697,7 +697,7 @@ class BaseTableDefinition:
             return cls._from_dict(raw_input)
 
     @staticmethod
-    def zero() -> BaseTableDefinition:
+    def builder() -> BaseTableDefinition:
         """
         Create an "empty" builder for constructing a table definition through
         a fluent interface. The resulting object has no columns and no primary key,

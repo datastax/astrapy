@@ -86,8 +86,9 @@ class DataAPIClient:
         >>> my_coll = my_db0.create_collection(
         ...     "movies",
         ...     definition=(
-        ...         CollectionDefinition.zero()
+        ...         CollectionDefinition.builder()
         ...         .set_vector_dimension(2)
+        ...         .build()
         ...     ),
         ... )
         >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.3]})
@@ -237,8 +238,9 @@ class DataAPIClient:
             >>> my_coll = my_db0.create_collection(
             ...     "movies",
             ...     definition=(
-            ...         CollectionDefinition.zero()
+            ...         CollectionDefinition.builder()
             ...         .set_vector_dimension(2)
+            ...         .build()
             ...     ),
             ... )
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
@@ -326,8 +328,9 @@ class DataAPIClient:
             ...     my_a_coll = await async_db.create_collection(
             ...         "movies",
             ...         definition=(
-            ...             CollectionDefinition.zero()
+            ...             CollectionDefinition.builder()
             ...             .set_vector_dimension(2)
+            ...         .build()
             ...         )
             ...     )
             ...     await my_a_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})

@@ -53,10 +53,11 @@ class TestCollectionTyping:
         c_co_untyped = sync_database.create_collection(
             sync_empty_collection.name,
             definition=(
-                CollectionDefinition.zero()
+                CollectionDefinition.builder()
                 .set_vector_dimension(2)
                 .set_vector_metric(VectorMetric.COSINE)
                 .set_indexing("deny", ["not_indexed"])
+                .build()
             ),
         )
         c_co_untyped.insert_one(DOCUMENT)
@@ -94,10 +95,11 @@ class TestCollectionTyping:
         c_co_typed: Collection[TestDoc] = sync_database.create_collection(
             sync_empty_collection.name,
             definition=(
-                CollectionDefinition.zero()
+                CollectionDefinition.builder()
                 .set_vector_dimension(2)
                 .set_vector_metric(VectorMetric.COSINE)
                 .set_indexing("deny", ["not_indexed"])
+                .build()
             ),
             document_type=TestDoc,
         )
@@ -314,10 +316,11 @@ class TestCollectionTyping:
         ac_co_untyped = await async_database.create_collection(
             async_empty_collection.name,
             definition=(
-                CollectionDefinition.zero()
+                CollectionDefinition.builder()
                 .set_vector_dimension(2)
                 .set_vector_metric(VectorMetric.COSINE)
                 .set_indexing("deny", ["not_indexed"])
+                .build()
             ),
         )
         await ac_co_untyped.insert_one(DOCUMENT)
@@ -355,10 +358,11 @@ class TestCollectionTyping:
         ac_co_typed: AsyncCollection[TestDoc] = await async_database.create_collection(
             async_empty_collection.name,
             definition=(
-                CollectionDefinition.zero()
+                CollectionDefinition.builder()
                 .set_vector_dimension(2)
                 .set_vector_metric(VectorMetric.COSINE)
                 .set_indexing("deny", ["not_indexed"])
+                .build()
             ),
             document_type=TestDoc,
         )

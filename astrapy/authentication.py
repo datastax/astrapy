@@ -290,8 +290,9 @@ class EmbeddingAPIKeyHeaderProvider(EmbeddingHeadersProvider):
         >>> collection = database.create_collection(
         ...     "vectorize_aws_collection",
         ...     definition=(
-        ...         CollectionDefinition.zero()
+        ...         CollectionDefinition.builder()
         ...         .set_vector_service(service_options)
+        ...         .build()
         ...     ),
         ...     embedding_api_key=my_emb_api_key,
         ... )
@@ -350,8 +351,9 @@ class AWSEmbeddingHeadersProvider(EmbeddingHeadersProvider):
         >>> collection = database.create_collection(
         ...     "vectorize_aws_collection",
         ...     definition=(
-        ...         CollectionDefinition.zero()
+        ...         CollectionDefinition.builder()
         ...         .set_vector_service(service_options)
+        ...         .build()
         ...     ),
         ...     embedding_api_key=my_aws_emb_api_key,
         ... )

@@ -667,10 +667,11 @@ class Database:
             >>> from astrapy.info import CollectionDefinition
             >>>
             >>> collection_definition = (
-            ...     CollectionDefinition.zero()
+            ...     CollectionDefinition.builder()
             ...     .set_vector_dimension(3)
             ...     .set_vector_metric(VectorMetric.DOT_PRODUCT)
             ...     .set_indexing("deny", ["annotations", "logs"])
+            ...     .build()
             ... )
             >>> my_collection = database.create_collection(
             ...     "my_events",
@@ -1156,7 +1157,7 @@ class Database:
             ...     TableScalarColumnType,
             ... )
             >>> table_definition = (
-            ...     CreateTableDefinition.zero()
+            ...     CreateTableDefinition.builder()
             ...     .add_column("match_id", TableScalarColumnType.TEXT)
             ...     .add_column("round", TableScalarColumnType.INT)
             ...     .add_vector_column("m_vector", dimension=3)
@@ -1166,6 +1167,7 @@ class Database:
             ...     .add_set_column("fighters", TableScalarColumnType.UUID)
             ...     .add_partition_by(["match_id"])
             ...     .add_partition_sort({"round": SortMode.ASCENDING})
+            ...     .build()
             ... )
             >>> my_table = database.create_table(
             ...     "games",
@@ -2370,10 +2372,11 @@ class AsyncDatabase:
             >>> from astrapy.info import CollectionDefinition
             >>>
             >>> collection_definition = (
-            ...     CollectionDefinition.zero()
+            ...     CollectionDefinition.builder()
             ...     .set_vector_dimension(3)
             ...     .set_vector_metric(VectorMetric.DOT_PRODUCT)
             ...     .set_indexing("deny", ["annotations", "logs"])
+            ...     .build()
             ... )
             >>> my_collection = asyncio.run(async_database.create_collection(
             ...     "my_events",
@@ -2868,7 +2871,7 @@ class AsyncDatabase:
             ...     TableScalarColumnType,
             ... )
             >>> table_definition = (
-            ...     CreateTableDefinition.zero()
+            ...     CreateTableDefinition.builder()
             ...     .add_column("match_id", TableScalarColumnType.TEXT)
             ...     .add_column("round", TableScalarColumnType.INT)
             ...     .add_vector_column("m_vector", dimension=3)
@@ -2878,6 +2881,7 @@ class AsyncDatabase:
             ...     .add_set_column("fighters", TableScalarColumnType.UUID)
             ...     .add_partition_by(["match_id"])
             ...     .add_partition_sort({"round": SortMode.ASCENDING})
+            ...     .build()
             ... )
             >>> my_async_table = asyncio.run(async_database.create_table(
             ...     "games",

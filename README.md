@@ -34,9 +34,10 @@ my_database = my_client.get_database(
 my_collection = my_database.create_collection(
     "dreams_collection",
     definition=(
-        CollectionDefinition.zero()
+        CollectionDefinition.builder()
         .set_vector_dimension(3)
         .set_vector_metric(VectorMetric.COSINE)
+        .build()
     )
 )
 
@@ -122,12 +123,13 @@ my_database = my_client.get_database(
 
 # Create a table and a vector index on it
 table_definition = (
-    CreateTableDefinition.zero()
+    CreateTableDefinition.builder()
     .add_column("dream_id", TableScalarColumnType.INT)
     .add_column("summary", TableScalarColumnType.TEXT)
     .add_set_column("tags", TableScalarColumnType.TEXT)
     .add_vector_column("dream_vector", dimension=3)
     .add_partition_by(["dream_id"])
+    .build()
 )
 index_options=TableVectorIndexOptions(
     metric=VectorMetric.COSINE,
@@ -372,9 +374,9 @@ my_database = my_client.get_database(
 
 my_collection = my_database.create_collection(
     "ecommerce",
-    definition=CollectionDefinition.zero().set_default_id(
+    definition=CollectionDefinition.builder().set_default_id(
         DefaultIdType.UUIDV6
-    ),
+    ).build(),
 )
 
 my_collection.insert_one({"_id": ObjectId("65fd9b52d7fabba03349d013")})

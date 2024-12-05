@@ -71,7 +71,7 @@ class TestDDLSync:
         )
         assert col1_dict == col1
         fluent_definition1 = (
-            CollectionDefinition.zero()
+            CollectionDefinition.builder()
             .set_vector_dimension(123)
             .set_vector_metric(VectorMetric.EUCLIDEAN)
             .set_indexing("deny", ["a", "b", "c"])

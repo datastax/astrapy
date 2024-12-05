@@ -240,26 +240,34 @@ class TestListTableDescriptors:
 
     @pytest.mark.describe("test of fluent interface for table definition")
     def test_tabledefinition_fluent(self) -> None:
-        pb0 = CreateTableDefinition.zero().add_partition_by(["p_text", "p_int"])
+        pb0 = (
+            CreateTableDefinition.builder()
+            .add_partition_by(["p_text", "p_int"])
+            .build()
+        )
         pb1 = (
-            CreateTableDefinition.zero()
+            CreateTableDefinition.builder()
             .add_partition_by("p_text")
             .add_partition_by("p_int")
+            .build()
         )
         pb2 = (
-            CreateTableDefinition.zero()
+            CreateTableDefinition.builder()
             .add_partition_by(["p_text"])
             .add_partition_by(["p_int"])
+            .build()
         )
         pb3 = (
-            CreateTableDefinition.zero()
+            CreateTableDefinition.builder()
             .add_partition_by("p_text")
             .add_partition_by(["p_int"])
+            .build()
         )
         pbz = (
-            CreateTableDefinition.zero()
+            CreateTableDefinition.builder()
             .add_partition_by(["p_int"])
             .add_partition_by("p_text")
+            .build()
         )
         assert pb0 == pb1
         assert pb0 == pb2
@@ -267,7 +275,7 @@ class TestListTableDescriptors:
         assert pb0 != pbz
 
         def0 = (
-            CreateTableDefinition.zero()
+            CreateTableDefinition.builder()
             .add_column("p_text", "text")
             .add_column("p_int", "int")
             .add_column("p_boolean", "boolean")
@@ -285,6 +293,7 @@ class TestListTableDescriptors:
             )
             .add_partition_by(["p_text", "p_int"])
             .add_partition_sort({"p_boolean": -1, "p_float": 1})
+            .build()
         )
         def1 = CreateTableDefinition.coerce(
             {
@@ -317,7 +326,7 @@ class TestListTableDescriptors:
         assert def0 == def1
 
         adef0 = (
-            CreateTableDefinition.zero()
+            CreateTableDefinition.builder()
             .add_list_column("p_list", "tinyint")
             .add_vector_column(
                 "p_vectorize",
@@ -327,6 +336,7 @@ class TestListTableDescriptors:
                     "modelName": "mistral-embed",
                 },
             )
+            .build()
         )
         adef1 = CreateTableDefinition.coerce(
             {

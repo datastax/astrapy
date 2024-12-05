@@ -247,7 +247,7 @@ class TestVectorizeMethodsAsync:
             await async_database.create_collection(
                 "collection_name",
                 definition=(
-                    CollectionDefinition.zero()
+                    CollectionDefinition.builder()
                     .set_vector_dimension(
                         service_collection_parameters["dimension"] + 10
                     )
@@ -255,5 +255,6 @@ class TestVectorizeMethodsAsync:
                         provider=service_collection_parameters["provider"],
                         model_name=service_collection_parameters["modelName"],
                     )
+                    .build()
                 ),
             )

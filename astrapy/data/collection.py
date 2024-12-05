@@ -147,10 +147,11 @@ class Collection(Generic[DOC]):
         >>> from astrapy.info import CollectionDefinition
         >>>
         >>> collection_definition = (
-        ...     CollectionDefinition.zero()
+        ...     CollectionDefinition.builder()
         ...     .set_vector_dimension(3)
         ...     .set_vector_metric(VectorMetric.DOT_PRODUCT)
         ...     .set_indexing("deny", ["annotations", "logs"])
+        ...     .build()
         ... )
         >>> my_collection = database.create_collection(
         ...     "my_events",
@@ -2654,10 +2655,11 @@ class AsyncCollection(Generic[DOC]):
         >>> from astrapy.info import CollectionDefinition
         >>>
         >>> collection_definition = (
-        ...     CollectionDefinition.zero()
+        ...     CollectionDefinition.builder()
         ...     .set_vector_dimension(3)
         ...     .set_vector_metric(VectorMetric.DOT_PRODUCT)
         ...     .set_indexing("deny", ["annotations", "logs"])
+        ...     .build()
         ... )
         >>> my_collection = await async_database.create_collection(
         ...     "my_events",

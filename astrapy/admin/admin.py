@@ -1041,8 +1041,9 @@ class AstraDBAdmin:
             >>> my_coll = my_new_db.create_collection(
             ...     "movies",
             ...     definition=(
-            ...         CollectionDefinition.zero()
+            ...         CollectionDefinition.builder()
             ...         .set_vector_dimension(2)
+            ...         .build()
             ...     )
             ... )
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.2]})
@@ -1702,8 +1703,9 @@ class AstraDBAdmin:
             >>> coll = my_db.create_collection(
             ...     "movies",
             ...     definition=(
-            ...         CollectionDefinition.zero()
+            ...         CollectionDefinition.builder()
             ...         .set_vector_dimension(2)
+            ...         .build()
             ...     )
             ... )
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
@@ -1859,8 +1861,9 @@ class AstraDBAdmin:
             ...     a_coll = await my_async_db.create_collection(
             ...         "movies",
             ...         definition=(
-            ...             CollectionDefinition.zero()
+            ...             CollectionDefinition.builder()
             ...             .set_vector_dimension(2)
+            ...             .build()
             ...         )
             ...     )
             ...     await a_coll.insert_one(

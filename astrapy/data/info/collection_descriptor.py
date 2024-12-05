@@ -164,7 +164,7 @@ class CollectionDefinition:
         >>>
         >>> # Create a collection definition with the fluent interface:
         >>> collection_definition = (
-        ...     CollectionDefinition.zero()
+        ...     CollectionDefinition.builder()
         ...     .set_vector_dimension(3)
         ...     .set_vector_metric(VectorMetric.DOT_PRODUCT)
         ...     .set_indexing("deny", ["annotations", "logs"])
@@ -268,7 +268,7 @@ class CollectionDefinition:
             return cls._from_dict(raw_input)
 
     @staticmethod
-    def zero() -> CollectionDefinition:
+    def builder() -> CollectionDefinition:
         """
         Create an "empty" builder for constructing a collection definition through
         a fluent interface. The resulting object has no defined properties,
@@ -498,14 +498,14 @@ class CollectionDefinition:
         Example:
             >>> from astrapy.info import CollectionDefinition, VectorServiceOptions
             >>>
-            >>> zero = CollectionDefinition.zero()
+            >>> zero = CollectionDefinition.builder()
             >>>
             >>> svc1 = zero.set_vector_service(
             ...     "myProvider",
             ...     "myModelName",
             ...     parameters={"p": "z"},
             ... )
-            >>> print(svc1.as_dict())
+            >>> print(svc1.build().as_dict())
             {'vector': {'service': {'provider': 'myProvider', 'modelName': 'myModelName', 'parameters': {'p': 'z'}}}}
             >>>
             >>> myVecSvcOpt = VectorServiceOptions(
@@ -513,11 +513,11 @@ class CollectionDefinition:
             ...     model_name="myModelName",
             ...     parameters={"p": "z"},
             ... )
-            >>> svc2 = zero.set_vector_service(myVecSvcOpt)
+            >>> svc2 = zero.set_vector_service(myVecSvcOpt).build()
             >>> print(svc2.as_dict())
             {'vector': {'service': {'provider': 'myProvider', 'modelName': 'myModelName', 'parameters': {'p': 'z'}}}}
             >>>
-            >>> reset = svc1.set_vector_service(None)
+            >>> reset = svc1.set_vector_service(None).build()
             >>> print(reset.as_dict())
             {}
         """

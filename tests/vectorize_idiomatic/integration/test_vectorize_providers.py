@@ -126,10 +126,11 @@ class TestVectorizeProviders:
             collection = db.create_collection(
                 collection_name,
                 definition=(
-                    CollectionDefinition.zero()
+                    CollectionDefinition.builder()
                     .set_vector_dimension(dimension)
                     .set_vector_metric("cosine")
                     .set_vector_service(service_options)
+                    .build()
                 ),
                 embedding_api_key=embedding_api_key,
             )
@@ -217,10 +218,11 @@ class TestVectorizeProviders:
             collection = db.create_collection(
                 collection_name,
                 definition=(
-                    CollectionDefinition.zero()
+                    CollectionDefinition.builder()
                     .set_vector_dimension(dimension)
                     .set_vector_metric("cosine")
                     .set_vector_service(service_options)
+                    .build()
                 ),
             )
             # this is to cope with the Data API normalizing options
@@ -320,10 +322,11 @@ class TestVectorizeProviders:
             collection = db.create_collection(
                 collection_name,
                 definition=(
-                    CollectionDefinition.zero()
+                    CollectionDefinition.builder()
                     .set_vector_dimension(dimension)
                     .set_vector_metric("cosine")
                     .set_vector_service(service_options)
+                    .build()
                 ),
             )
             # test service back from collection info

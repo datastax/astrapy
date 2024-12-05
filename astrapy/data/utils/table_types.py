@@ -18,6 +18,13 @@ from astrapy.utils.str_enum import StrEnum
 
 
 class TableScalarColumnType(StrEnum):
+    """
+    Enum to describe the scalar column types for Tables.
+
+    A 'scalar' type is a non-composite type: that means, no sets, lists, maps
+    and other non-primitive data types.
+    """
+
     ASCII = "ascii"
     BIGINT = "bigint"
     BLOB = "blob"
@@ -39,17 +46,33 @@ class TableScalarColumnType(StrEnum):
 
 
 class TableValuedColumnType(StrEnum):
+    """
+    An enum to describe the types of column with "values".
+    """
+
     LIST = "list"
     SET = "set"
 
 
 class TableKeyValuedColumnType(StrEnum):
+    """
+    An enum to describe the types of column with "keys and values".
+    """
+
     MAP = "map"
 
 
 class TableVectorColumnType(StrEnum):
+    """
+    An enum to describe the types of 'vector-like' column.
+    """
+
     VECTOR = "vector"
 
 
 class TableUnsupportedColumnType(StrEnum):
+    """
+    An enum to describe the types of column falling into the 'unsupported' group.
+    """
+
     UNSUPPORTED = "UNSUPPORTED"
