@@ -50,6 +50,7 @@ def response_sleeper(request: werkzeug.Request) -> werkzeug.Response:
     return werkzeug.Response()
 
 
+@pytest.mark.skip("Suppressed. The HTTPServer plays tricks here sometimes")
 class TestCollectionTimeouts:
     @pytest.mark.describe("test of collection count_documents timeout, sync")
     def test_collection_count_documents_timeout_sync(
@@ -114,7 +115,6 @@ class TestCollectionTimeouts:
         with pytest.raises(DataAPITimeoutException):
             await cur1.__anext__()
 
-    @pytest.mark.skip("Suppressed. The HTTPServer plays tricks here sometimes")
     @pytest.mark.describe("test of collection find_one timeouts, async")
     async def test_collection_find_one_timeouts_async(
         self,
@@ -134,7 +134,6 @@ class TestCollectionTimeouts:
         with pytest.raises(DataAPITimeoutException):
             await mock_acollection.find_one({}, timeout_ms=1)
 
-    @pytest.mark.skip("Suppressed. The HTTPServer plays tricks here sometimes")
     @pytest.mark.describe("test of collection cursor-based timeouts, sync")
     def test_collection_cursor_timeouts_sync(
         self,

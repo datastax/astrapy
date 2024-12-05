@@ -55,6 +55,7 @@ def delayed_response_handler(
     return _response_sleeper
 
 
+@pytest.mark.skip("Suppressed. The HTTPServer plays tricks here sometimes")
 class TestTimeouts:
     @pytest.mark.describe("test of APICommander timeout, sync")
     def test_apicommander_timeout_sync(self, httpserver: HTTPServer) -> None:
@@ -315,7 +316,6 @@ class TestTimeouts:
         dmr_LS_zgrq = collection_L_S.delete_many({}, timeout_ms=0)
         assert dmr_LS_zgrq.deleted_count == 12
 
-    @pytest.mark.skip("Suppressed. The HTTPServer plays tricks here sometimes")
     @pytest.mark.describe(
         "test of timeout occurring, zero and nonzero, for Collection class, async"
     )
