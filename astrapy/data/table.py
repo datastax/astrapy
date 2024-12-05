@@ -112,17 +112,17 @@ class Table(Generic[ROW]):
         >>> from astrapy.constants import SortMode
         >>> from astrapy.info import (
         ...     CreateTableDefinition,
-        ...     TableScalarColumnType,
+        ...     ColumnType,
         ... )
         >>> table_definition = (
         ...     CreateTableDefinition.builder()
-        ...     .add_column("match_id", TableScalarColumnType.TEXT)
-        ...     .add_column("round", TableScalarColumnType.INT)
+        ...     .add_column("match_id", ColumnType.TEXT)
+        ...     .add_column("round", ColumnType.INT)
         ...     .add_vector_column("m_vector", dimension=3)
-        ...     .add_column("score", TableScalarColumnType.INT)
-        ...     .add_column("when", TableScalarColumnType.TIMESTAMP)
-        ...     .add_column("winner", TableScalarColumnType.TEXT)
-        ...     .add_set_column("fighters", TableScalarColumnType.UUID)
+        ...     .add_column("score", ColumnType.INT)
+        ...     .add_column("when", ColumnType.TIMESTAMP)
+        ...     .add_column("winner", ColumnType.TEXT)
+        ...     .add_set_column("fighters", ColumnType.UUID)
         ...     .add_partition_by(["match_id"])
         ...     .add_partition_sort({"round": SortMode.ASCENDING})
         ...     .build()
@@ -145,26 +145,26 @@ class Table(Generic[ROW]):
         >>> table_definition_1 = CreateTableDefinition(
         ...     columns={
         ...         "match_id": TableScalarColumnTypeDescriptor(
-        ...             TableScalarColumnType.TEXT,
+        ...             ColumnType.TEXT,
         ...         ),
         ...         "round": TableScalarColumnTypeDescriptor(
-        ...             TableScalarColumnType.INT,
+        ...             ColumnType.INT,
         ...         ),
         ...         "m_vector": TableVectorColumnTypeDescriptor(
         ...             column_type="vector", dimension=3
         ...         ),
         ...         "score": TableScalarColumnTypeDescriptor(
-        ...             TableScalarColumnType.INT,
+        ...             ColumnType.INT,
         ...         ),
         ...         "when": TableScalarColumnTypeDescriptor(
-        ...             TableScalarColumnType.TIMESTAMP,
+        ...             ColumnType.TIMESTAMP,
         ...         ),
         ...         "winner": TableScalarColumnTypeDescriptor(
-        ...             TableScalarColumnType.TEXT,
+        ...             ColumnType.TEXT,
         ...         ),
         ...         "fighters": TableValuedColumnTypeDescriptor(
         ...             column_type=TableValuedColumnType.SET,
-        ...             value_type=TableScalarColumnType.UUID,
+        ...             value_type=ColumnType.UUID,
         ...         ),
         ...     },
         ...     primary_key=TablePrimaryKeyDescriptor(
@@ -921,7 +921,7 @@ class Table(Generic[ROW]):
             ...     AlterTableAddVectorize,
             ...     AlterTableDropColumns,
             ...     AlterTableDropVectorize,
-            ...     TableScalarColumnType,
+            ...     ColumnType,
             ...     TableScalarColumnTypeDescriptor,
             ...     VectorServiceOptions,
             ... )
@@ -931,7 +931,7 @@ class Table(Generic[ROW]):
             ...     AlterTableAddColumns(
             ...         columns={
             ...             "tie_break": TableScalarColumnTypeDescriptor(
-            ...                 column_type=TableScalarColumnType.BOOLEAN,
+            ...                 column_type=ColumnType.BOOLEAN,
             ...             ),
             ...         }
             ...     )
@@ -2797,17 +2797,17 @@ class AsyncTable(Generic[ROW]):
         >>> from astrapy.constants import SortMode
         >>> from astrapy.info import (
         ...     CreateTableDefinition,
-        ...     TableScalarColumnType,
+        ...     ColumnType,
         ... )
         >>> table_definition = (
         ...     CreateTableDefinition.builder()
-        ...     .add_column("match_id", TableScalarColumnType.TEXT)
-        ...     .add_column("round", TableScalarColumnType.INT)
+        ...     .add_column("match_id", ColumnType.TEXT)
+        ...     .add_column("round", ColumnType.INT)
         ...     .add_vector_column("m_vector", dimension=3)
-        ...     .add_column("score", TableScalarColumnType.INT)
-        ...     .add_column("when", TableScalarColumnType.TIMESTAMP)
-        ...     .add_column("winner", TableScalarColumnType.TEXT)
-        ...     .add_set_column("fighters", TableScalarColumnType.UUID)
+        ...     .add_column("score", ColumnType.INT)
+        ...     .add_column("when", ColumnType.TIMESTAMP)
+        ...     .add_column("winner", ColumnType.TEXT)
+        ...     .add_set_column("fighters", ColumnType.UUID)
         ...     .add_partition_by(["match_id"])
         ...     .add_partition_sort({"round": SortMode.ASCENDING})
         ...     .build()
@@ -2830,26 +2830,26 @@ class AsyncTable(Generic[ROW]):
         >>> table_definition_1 = CreateTableDefinition(
         ...     columns={
         ...         "match_id": TableScalarColumnTypeDescriptor(
-        ...             TableScalarColumnType.TEXT,
+        ...             ColumnType.TEXT,
         ...         ),
         ...         "round": TableScalarColumnTypeDescriptor(
-        ...             TableScalarColumnType.INT,
+        ...             ColumnType.INT,
         ...         ),
         ...         "m_vector": TableVectorColumnTypeDescriptor(
         ...             column_type="vector", dimension=3
         ...         ),
         ...         "score": TableScalarColumnTypeDescriptor(
-        ...             TableScalarColumnType.INT,
+        ...             ColumnType.INT,
         ...         ),
         ...         "when": TableScalarColumnTypeDescriptor(
-        ...             TableScalarColumnType.TIMESTAMP,
+        ...             ColumnType.TIMESTAMP,
         ...         ),
         ...         "winner": TableScalarColumnTypeDescriptor(
-        ...             TableScalarColumnType.TEXT,
+        ...             ColumnType.TEXT,
         ...         ),
         ...         "fighters": TableValuedColumnTypeDescriptor(
         ...             column_type=TableValuedColumnType.SET,
-        ...             value_type=TableScalarColumnType.UUID,
+        ...             value_type=ColumnType.UUID,
         ...         ),
         ...     },
         ...     primary_key=TablePrimaryKeyDescriptor(
@@ -3639,7 +3639,7 @@ class AsyncTable(Generic[ROW]):
             ...     AlterTableAddVectorize,
             ...     AlterTableDropColumns,
             ...     AlterTableDropVectorize,
-            ...     TableScalarColumnType,
+            ...     ColumnType,
             ...     TableScalarColumnTypeDescriptor,
             ...     VectorServiceOptions,
             ... )
@@ -3649,7 +3649,7 @@ class AsyncTable(Generic[ROW]):
             ...     AlterTableAddColumns(
             ...         columns={
             ...             "tie_break": TableScalarColumnTypeDescriptor(
-            ...                 column_type=TableScalarColumnType.BOOLEAN,
+            ...                 column_type=ColumnType.BOOLEAN,
             ...             ),
             ...         }
             ...     )

@@ -21,8 +21,8 @@ from typing import Any, cast
 from astrapy.data.info.database_info import AstraDBDatabaseInfo
 from astrapy.data.info.vectorize import VectorServiceOptions
 from astrapy.data.utils.table_types import (
+    ColumnType,
     TableKeyValuedColumnType,
-    TableScalarColumnType,
     TableUnsupportedColumnType,
     TableValuedColumnType,
     TableVectorColumnType,
@@ -71,7 +71,7 @@ class TableColumnTypeDescriptor(ABC):
     """
 
     column_type: (
-        TableScalarColumnType
+        ColumnType
         | TableValuedColumnType
         | TableKeyValuedColumnType
         | TableVectorColumnType
@@ -128,14 +128,14 @@ class TableScalarColumnTypeDescriptor(TableColumnTypeDescriptor):
     a single simple value.
 
     Attributes:
-        column_type: a `TableScalarColumnType` value. When creating the object,
+        column_type: a `ColumnType` value. When creating the object,
             simple strings such as "TEXT" or "UUID" are also accepted.
     """
 
-    column_type: TableScalarColumnType
+    column_type: ColumnType
 
-    def __init__(self, column_type: str | TableScalarColumnType) -> None:
-        self.column_type = TableScalarColumnType.coerce(column_type)
+    def __init__(self, column_type: str | ColumnType) -> None:
+        self.column_type = ColumnType.coerce(column_type)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.column_type})"
@@ -241,20 +241,20 @@ class TableValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
         column_type: an instance of `TableValuedColumnType`. When creating the
             object, simple strings such as "list" or "set" are also accepted.
         value_type: the type of the individual items stored in the column.
-            This is a `TableScalarColumnType`, but when creating the object,
+            This is a `ColumnType`, but when creating the object,
             strings such as "TEXT" or "UUID" are also accepted.
     """
 
     column_type: TableValuedColumnType
-    value_type: TableScalarColumnType
+    value_type: ColumnType
 
     def __init__(
         self,
         *,
         column_type: str | TableValuedColumnType,
-        value_type: str | TableScalarColumnType,
+        value_type: str | ColumnType,
     ) -> None:
-        self.value_type = TableScalarColumnType.coerce(value_type)
+        self.value_type = ColumnType.coerce(value_type)
         super().__init__(column_type=TableValuedColumnType.coerce(column_type))
 
     def __repr__(self) -> str:
@@ -293,26 +293,26 @@ class TableKeyValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
         column_type: an instance of `TableKeyValuedColumnType`. When creating the
             object, this can be omitted as it only ever assumes the "MAP" value.
         key_type: the type of the individual keys in the map column.
-            This is a `TableScalarColumnType`, but when creating the object,
+            This is a `ColumnType`, but when creating the object,
             strings such as "TEXT" or "UUID" are also accepted.
         value_type: the type of the individual values stored in the map for a single key.
-            This is a `TableScalarColumnType`, but when creating the object,
+            This is a `ColumnType`, but when creating the object,
             strings such as "TEXT" or "UUID" are also accepted.
     """
 
     column_type: TableKeyValuedColumnType
-    key_type: TableScalarColumnType
-    value_type: TableScalarColumnType
+    key_type: ColumnType
+    value_type: ColumnType
 
     def __init__(
         self,
         *,
         column_type: str | TableKeyValuedColumnType,
-        value_type: str | TableScalarColumnType,
-        key_type: str | TableScalarColumnType,
+        value_type: str | ColumnType,
+        key_type: str | ColumnType,
     ) -> None:
-        self.key_type = TableScalarColumnType.coerce(key_type)
-        self.value_type = TableScalarColumnType.coerce(value_type)
+        self.key_type = ColumnType.coerce(key_type)
+        self.value_type = ColumnType.coerce(value_type)
         super().__init__(column_type=TableKeyValuedColumnType.coerce(column_type))
 
     def __repr__(self) -> str:
@@ -557,7 +557,7 @@ class BaseTableDefinition:
         >>> from astrapy.info import (
         ...     CreateTableDefinition,
         ...     TablePrimaryKeyDescriptor,
-        ...     TableScalarColumnType,
+        ...     ColumnType,
         ...     TableScalarColumnTypeDescriptor,
         ...     TableValuedColumnType,
         ...     TableValuedColumnTypeDescriptor,
@@ -567,13 +567,13 @@ class BaseTableDefinition:
         >>> # Create a table definition with the fluent interface:
         >>> table_definition = (
         ...     CreateTableDefinition.builder()
-        ...     .add_column("match_id", TableScalarColumnType.TEXT)
-        ...     .add_column("round", TableScalarColumnType.INT)
+        ...     .add_column("match_id", ColumnType.TEXT)
+        ...     .add_column("round", ColumnType.INT)
         ...     .add_vector_column("m_vector", dimension=3)
-        ...     .add_column("score", TableScalarColumnType.INT)
-        ...     .add_column("when", TableScalarColumnType.TIMESTAMP)
-        ...     .add_column("winner", TableScalarColumnType.TEXT)
-        ...     .add_set_column("fighters", TableScalarColumnType.UUID)
+        ...     .add_column("score", ColumnType.INT)
+        ...     .add_column("when", ColumnType.TIMESTAMP)
+        ...     .add_column("winner", ColumnType.TEXT)
+        ...     .add_set_column("fighters", ColumnType.UUID)
         ...     .add_partition_by(["match_id"])
         ...     .add_partition_sort({"round": SortMode.ASCENDING})
         ...     .build()
@@ -583,26 +583,26 @@ class BaseTableDefinition:
         >>> table_definition_1 = CreateTableDefinition(
         ...     columns={
         ...         "match_id": TableScalarColumnTypeDescriptor(
-        ...             TableScalarColumnType.TEXT,
+        ...             ColumnType.TEXT,
         ...         ),
         ...         "round": TableScalarColumnTypeDescriptor(
-        ...             TableScalarColumnType.INT,
+        ...             ColumnType.INT,
         ...         ),
         ...         "m_vector": TableVectorColumnTypeDescriptor(
         ...             column_type="vector", dimension=3
         ...         ),
         ...         "score": TableScalarColumnTypeDescriptor(
-        ...             TableScalarColumnType.INT,
+        ...             ColumnType.INT,
         ...         ),
         ...         "when": TableScalarColumnTypeDescriptor(
-        ...             TableScalarColumnType.TIMESTAMP,
+        ...             ColumnType.TIMESTAMP,
         ...         ),
         ...         "winner": TableScalarColumnTypeDescriptor(
-        ...             TableScalarColumnType.TEXT,
+        ...             ColumnType.TEXT,
         ...         ),
         ...         "fighters": TableValuedColumnTypeDescriptor(
         ...             column_type=TableValuedColumnType.SET,
-        ...             value_type=TableScalarColumnType.UUID,
+        ...             value_type=ColumnType.UUID,
         ...         ),
         ...     },
         ...     primary_key=TablePrimaryKeyDescriptor(
@@ -722,7 +722,7 @@ class BaseTableDefinition:
         )
 
     def add_scalar_column(
-        self, column_name: str, column_type: str | TableScalarColumnType
+        self, column_name: str, column_type: str | ColumnType
     ) -> BaseTableDefinition:
         """
         Return a new table definition object with an added column
@@ -734,7 +734,7 @@ class BaseTableDefinition:
 
         Args:
             column_name: the name of the new column to add to the definition.
-            column_type: a string, or a `TableScalarColumnType` value, defining
+            column_type: a string, or a `ColumnType` value, defining
                 the scalar type for the column.
 
         Returns:
@@ -747,7 +747,7 @@ class BaseTableDefinition:
                 **self.columns,
                 **{
                     column_name: TableScalarColumnTypeDescriptor(
-                        column_type=TableScalarColumnType.coerce(column_type)
+                        column_type=ColumnType.coerce(column_type)
                     )
                 },
             },
@@ -755,7 +755,7 @@ class BaseTableDefinition:
         )
 
     def add_column(
-        self, column_name: str, column_type: str | TableScalarColumnType
+        self, column_name: str, column_type: str | ColumnType
     ) -> BaseTableDefinition:
         """
         Return a new table definition object with an added column
@@ -769,7 +769,7 @@ class BaseTableDefinition:
 
         Args:
             column_name: the name of the new column to add to the definition.
-            column_type: a string, or a `TableScalarColumnType` value, defining
+            column_type: a string, or a `ColumnType` value, defining
                 the scalar type for the column.
 
         Returns:
@@ -780,7 +780,7 @@ class BaseTableDefinition:
         return self.add_scalar_column(column_name=column_name, column_type=column_type)
 
     def add_set_column(
-        self, column_name: str, value_type: str | TableScalarColumnType
+        self, column_name: str, value_type: str | ColumnType
     ) -> BaseTableDefinition:
         """
         Return a new table definition object with an added column
@@ -791,7 +791,7 @@ class BaseTableDefinition:
 
         Args:
             column_name: the name of the new column to add to the definition.
-            value_type: a string, or a `TableScalarColumnType` value, defining
+            value_type: a string, or a `ColumnType` value, defining
                 the data type for the items in the set.
 
         Returns:
@@ -812,7 +812,7 @@ class BaseTableDefinition:
         )
 
     def add_list_column(
-        self, column_name: str, value_type: str | TableScalarColumnType
+        self, column_name: str, value_type: str | ColumnType
     ) -> BaseTableDefinition:
         """
         Return a new table definition object with an added column
@@ -823,7 +823,7 @@ class BaseTableDefinition:
 
         Args:
             column_name: the name of the new column to add to the definition.
-            value_type: a string, or a `TableScalarColumnType` value, defining
+            value_type: a string, or a `ColumnType` value, defining
                 the data type for the items in the list.
 
         Returns:
@@ -846,8 +846,8 @@ class BaseTableDefinition:
     def add_map_column(
         self,
         column_name: str,
-        key_type: str | TableScalarColumnType,
-        value_type: str | TableScalarColumnType,
+        key_type: str | ColumnType,
+        value_type: str | ColumnType,
     ) -> BaseTableDefinition:
         """
         Return a new table definition object with an added column
@@ -858,9 +858,9 @@ class BaseTableDefinition:
 
         Args:
             column_name: the name of the new column to add to the definition.
-            key_type: a string, or a `TableScalarColumnType` value, defining
+            key_type: a string, or a `ColumnType` value, defining
                 the data type for the keys in the map.
-            value_type: a string, or a `TableScalarColumnType` value, defining
+            value_type: a string, or a `ColumnType` value, defining
                 the data type for the values in the map.
 
         Returns:

@@ -29,7 +29,7 @@ from astrapy.data.utils.table_converters import (
     create_row_tpostprocessor,
     preprocess_table_payload,
 )
-from astrapy.data.utils.table_types import TableScalarColumnType
+from astrapy.data.utils.table_types import ColumnType
 from astrapy.data_types import (
     DataAPIDate,
     DataAPIDuration,
@@ -429,7 +429,7 @@ class TestTableConverters:
             (
                 OUTPUT_ROW_TO_POSTPROCESS[col_name]["$binary"]  # type: ignore[index]
                 if isinstance(col_desc, TableScalarColumnTypeDescriptor)
-                and col_desc.column_type == TableScalarColumnType.BLOB
+                and col_desc.column_type == ColumnType.BLOB
                 else OUTPUT_ROW_TO_POSTPROCESS[col_name]
             )
             for col_name, col_desc in primary_key_schema.items()
@@ -470,7 +470,7 @@ class TestTableConverters:
             (
                 OUTPUT_NONCUSTOMTYPES_ROW_TO_POSTPROCESS[col_name]["$binary"]  # type: ignore[index]
                 if isinstance(col_desc, TableScalarColumnTypeDescriptor)
-                and col_desc.column_type == TableScalarColumnType.BLOB
+                and col_desc.column_type == ColumnType.BLOB
                 else OUTPUT_NONCUSTOMTYPES_ROW_TO_POSTPROCESS[col_name]
             )
             for col_name, col_desc in primary_key_schema.items()

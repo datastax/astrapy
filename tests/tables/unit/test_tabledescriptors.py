@@ -17,7 +17,7 @@ from __future__ import annotations
 import pytest
 
 from astrapy.data.info.table_descriptor import AlterTableOperation
-from astrapy.data.utils.table_types import TableScalarColumnType
+from astrapy.data.utils.table_types import ColumnType
 from astrapy.info import (
     AlterTableAddColumns,
     AlterTableAddVectorize,
@@ -415,12 +415,8 @@ class TestListTableDescriptors:
         )
         addc = AlterTableAddColumns(
             columns={
-                "p_int": TableScalarColumnTypeDescriptor(
-                    column_type=TableScalarColumnType.INT
-                ),
-                "p_text": TableScalarColumnTypeDescriptor(
-                    column_type=TableScalarColumnType.TEXT
-                ),
+                "p_int": TableScalarColumnTypeDescriptor(column_type=ColumnType.INT),
+                "p_text": TableScalarColumnTypeDescriptor(column_type=ColumnType.TEXT),
             }
         )
         assert addc_o == addc

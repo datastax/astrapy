@@ -25,7 +25,7 @@ from astrapy.data.utils.table_converters import (
 )
 from astrapy.data_types import DataAPITimestamp
 from astrapy.info import (
-    TableScalarColumnType,
+    ColumnType,
     TableScalarColumnTypeDescriptor,
 )
 from astrapy.utils.api_options import FullSerdesOptions
@@ -44,7 +44,7 @@ class TestDatetimeSerdesOptions:
             datetime_tzinfo=tz,
         )
         columns: dict[str, TableColumnTypeDescriptor] = {
-            "mu": TableScalarColumnTypeDescriptor(TableScalarColumnType.TIMESTAMP),
+            "mu": TableScalarColumnTypeDescriptor(ColumnType.TIMESTAMP),
         }
         postprocessor = create_row_tpostprocessor(
             columns=columns,
@@ -69,7 +69,7 @@ class TestDatetimeSerdesOptions:
             datetime_tzinfo=tz,
         )
         columns: dict[str, TableColumnTypeDescriptor] = {
-            "mu": TableScalarColumnTypeDescriptor(TableScalarColumnType.TIMESTAMP),
+            "mu": TableScalarColumnTypeDescriptor(ColumnType.TIMESTAMP),
         }
         postprocessor = create_row_tpostprocessor(
             columns=columns,
@@ -93,7 +93,7 @@ class TestDatetimeSerdesOptions:
             datetime_tzinfo=None,
         )
         columns: dict[str, TableColumnTypeDescriptor] = {
-            "mu": TableScalarColumnTypeDescriptor(TableScalarColumnType.TIMESTAMP),
+            "mu": TableScalarColumnTypeDescriptor(ColumnType.TIMESTAMP),
         }
         postprocessor = create_row_tpostprocessor(
             columns=columns,

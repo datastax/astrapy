@@ -37,8 +37,8 @@ from astrapy.data.utils.extended_json_converters import (
     convert_to_ejson_bytes,
 )
 from astrapy.data.utils.table_types import (
+    ColumnType,
     TableKeyValuedColumnType,
-    TableScalarColumnType,
     TableUnsupportedColumnType,
     TableValuedColumnType,
     TableVectorColumnType,
@@ -67,12 +67,12 @@ DATETIME_DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
 
 
 def _create_scalar_tpostprocessor(
-    column_type: TableScalarColumnType,
+    column_type: ColumnType,
     options: FullSerdesOptions,
 ) -> Callable[[Any], Any]:
     if column_type in {
-        TableScalarColumnType.TEXT,
-        TableScalarColumnType.ASCII,
+        ColumnType.TEXT,
+        ColumnType.ASCII,
     }:
 
         def _tpostprocessor_text(raw_value: Any) -> str | None:
@@ -80,7 +80,7 @@ def _create_scalar_tpostprocessor(
 
         return _tpostprocessor_text
 
-    elif column_type == TableScalarColumnType.BOOLEAN:
+    elif column_type == ColumnType.BOOLEAN:
 
         def _tpostprocessor_bool(raw_value: Any) -> bool | None:
             return raw_value  # type: ignore[no-any-return]
@@ -88,11 +88,11 @@ def _create_scalar_tpostprocessor(
         return _tpostprocessor_bool
 
     elif column_type in {
-        TableScalarColumnType.INT,
-        TableScalarColumnType.VARINT,
-        TableScalarColumnType.BIGINT,
-        TableScalarColumnType.SMALLINT,
-        TableScalarColumnType.TINYINT,
+        ColumnType.INT,
+        ColumnType.VARINT,
+        ColumnType.BIGINT,
+        ColumnType.SMALLINT,
+        ColumnType.TINYINT,
     }:
 
         def _tpostprocessor_int(raw_value: Any) -> int | None:
@@ -104,8 +104,8 @@ def _create_scalar_tpostprocessor(
         return _tpostprocessor_int
 
     elif column_type in {
-        TableScalarColumnType.FLOAT,
-        TableScalarColumnType.DOUBLE,
+        ColumnType.FLOAT,
+        ColumnType.DOUBLE,
     }:
 
         def _tpostprocessor_float(raw_value: Any) -> float | None:
@@ -118,7 +118,7 @@ def _create_scalar_tpostprocessor(
 
         return _tpostprocessor_float
 
-    elif column_type == TableScalarColumnType.BLOB:
+    elif column_type == ColumnType.BLOB:
 
         def _tpostprocessor_bytes(raw_value: Any) -> bytes | None:
             if raw_value is None:
@@ -136,7 +136,7 @@ def _create_scalar_tpostprocessor(
 
         return _tpostprocessor_bytes
 
-    elif column_type == TableScalarColumnType.UUID:
+    elif column_type == ColumnType.UUID:
 
         def _tpostprocessor_uuid(raw_value: Any) -> UUID | None:
             if raw_value is None:
@@ -145,7 +145,7 @@ def _create_scalar_tpostprocessor(
 
         return _tpostprocessor_uuid
 
-    elif column_type == TableScalarColumnType.DATE:
+    elif column_type == ColumnType.DATE:
         if options.custom_datatypes_in_reading:
 
             def _tpostprocessor_date(raw_value: Any) -> DataAPIDate | None:
@@ -164,7 +164,7 @@ def _create_scalar_tpostprocessor(
 
             return _tpostprocessor_date_stdlib
 
-    elif column_type == TableScalarColumnType.TIME:
+    elif column_type == ColumnType.TIME:
         if options.custom_datatypes_in_reading:
 
             def _tpostprocessor_time(raw_value: Any) -> DataAPITime | None:
@@ -183,7 +183,7 @@ def _create_scalar_tpostprocessor(
 
             return _tpostprocessor_time_stdlib
 
-    elif column_type == TableScalarColumnType.TIMESTAMP:
+    elif column_type == ColumnType.TIMESTAMP:
         if options.custom_datatypes_in_reading:
 
             def _tpostprocessor_timestamp(raw_value: Any) -> DataAPITimestamp | None:
@@ -205,7 +205,7 @@ def _create_scalar_tpostprocessor(
 
             return _tpostprocessor_timestamp_stdlib
 
-    elif column_type == TableScalarColumnType.DURATION:
+    elif column_type == ColumnType.DURATION:
         if options.custom_datatypes_in_reading:
 
             def _tpostprocessor_duration(raw_value: Any) -> DataAPIDuration | None:
@@ -226,7 +226,7 @@ def _create_scalar_tpostprocessor(
 
             return _tpostprocessor_duration_stdlib
 
-    elif column_type == TableScalarColumnType.INET:
+    elif column_type == ColumnType.INET:
 
         def _tpostprocessor_inet(
             raw_value: Any,
@@ -237,7 +237,7 @@ def _create_scalar_tpostprocessor(
 
         return _tpostprocessor_inet
 
-    elif column_type == TableScalarColumnType.DECIMAL:
+    elif column_type == ColumnType.DECIMAL:
 
         def _tpostprocessor_decimal(raw_value: Any) -> decimal.Decimal | None:
             if raw_value is None:
@@ -258,15 +258,15 @@ def _create_unsupported_tpostprocessor(
 ) -> Callable[[Any], Any]:
     if cql_definition == "counter":
         return _create_scalar_tpostprocessor(
-            column_type=TableScalarColumnType.INT, options=options
+            column_type=ColumnType.INT, options=options
         )
     elif cql_definition == "varchar":
         return _create_scalar_tpostprocessor(
-            column_type=TableScalarColumnType.TEXT, options=options
+            column_type=ColumnType.TEXT, options=options
         )
     elif cql_definition == "timeuuid":
         return _create_scalar_tpostprocessor(
-            column_type=TableScalarColumnType.UUID, options=options
+            column_type=ColumnType.UUID, options=options
         )
     else:
         raise ValueError(
@@ -328,7 +328,7 @@ def _create_column_tpostprocessor(
     elif isinstance(col_def, TableVectorColumnTypeDescriptor):
         if col_def.column_type == TableVectorColumnType.VECTOR:
             value_tpostprocessor = _create_scalar_tpostprocessor(
-                TableScalarColumnType.FLOAT,
+                ColumnType.FLOAT,
                 options=options,
             )
 
@@ -487,7 +487,7 @@ def create_row_tpostprocessor(
     if similarity_pseudocolumn is not None:
         # whatever in the passed schema, requiring similarity overrides that 'column':
         tpostprocessor_map[similarity_pseudocolumn] = _create_scalar_tpostprocessor(
-            column_type=TableScalarColumnType.FLOAT, options=options
+            column_type=ColumnType.FLOAT, options=options
         )
         tfiller_map[similarity_pseudocolumn] = None
     column_name_set = set(tpostprocessor_map.keys())

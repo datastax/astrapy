@@ -17,7 +17,7 @@ from __future__ import annotations
 from astrapy.utils.str_enum import StrEnum
 
 
-class TableScalarColumnType(StrEnum):
+class ColumnType(StrEnum):
     """
     Enum to describe the scalar column types for Tables.
 

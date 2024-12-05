@@ -105,7 +105,7 @@ from astrapy.constants import VectorMetric
 from astrapy.data_types import DataAPIVector
 from astrapy.info import (
     CreateTableDefinition,
-    TableScalarColumnType,
+    ColumnType,
     TableVectorIndexDefinition,
     TableVectorIndexOptions,
 )
@@ -124,9 +124,9 @@ my_database = my_client.get_database(
 # Create a table and a vector index on it
 table_definition = (
     CreateTableDefinition.builder()
-    .add_column("dream_id", TableScalarColumnType.INT)
-    .add_column("summary", TableScalarColumnType.TEXT)
-    .add_set_column("tags", TableScalarColumnType.TEXT)
+    .add_column("dream_id", ColumnType.INT)
+    .add_column("summary", ColumnType.TEXT)
+    .add_set_column("tags", ColumnType.TEXT)
     .add_vector_column("dream_vector", dimension=3)
     .add_partition_by(["dream_id"])
     .build()
