@@ -32,6 +32,7 @@ from astrapy.constants import (
 )
 from astrapy.exceptions import (
     DevOpsAPIException,
+    InvalidEnvironmentException,
     UnexpectedDataAPIResponseException,
     _select_singlereq_timeout_ca,
     _select_singlereq_timeout_da,
@@ -358,9 +359,12 @@ class Database:
         each invocation of this method triggers a new request to the DevOps API.
 
         Args:
-            database_admin_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the DevOps API request.
-            timeout_ms: an alias for `request_timeout_ms`.
+            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `database_admin_timeout_ms`.
+            timeout_ms: an alias for `database_admin_timeout_ms`.
 
         Example:
             >>> my_db.info().region
@@ -374,8 +378,11 @@ class Database:
             between the `region` and the `raw["region"]` attributes.
         """
 
-        # TODO check env and raise the right exception here
-        # TODO refactor the call to manage _da_label
+        if self.api_options.environment not in Environment.astra_db_values:
+            raise InvalidEnvironmentException(
+                "Environments outside of Astra DB are not supported."
+            )
+
         _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
             timeout_options=self.api_options.timeout_options,
             database_admin_timeout_ms=database_admin_timeout_ms,
@@ -393,9 +400,7 @@ class Database:
             logger.info("finished getting database info")
             return database_info
         else:
-            raise DevOpsAPIException(
-                "Database is not in a supported environment for this operation."
-            )
+            raise DevOpsAPIException("Failure while fetching database info.")
 
     @property
     def id(self) -> str:
@@ -635,7 +640,7 @@ class Database:
             keyspace: the keyspace where the collection is to be created.
                 If not specified, the general setting for this database is used.
             collection_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Collection defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -766,9 +771,11 @@ class Database:
             name: the name of the collection to drop.
             keyspace: the keyspace where the collection resides. If not specified,
                 the database working keyspace is assumed.
-            collection_admin_timeout_ms: a timeout, in milliseconds, for
-                the underlying schema-changing HTTP request.
-            request_timeout_ms: TODO
+            collection_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `collection_admin_timeout_ms`.
             timeout_ms: an alias for `collection_admin_timeout_ms`.
 
         Example:
@@ -817,10 +824,12 @@ class Database:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
-            collection_admin_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for
-                the underlying HTTP request.
-            timeout_ms: an alias for `request_timeout_ms`.
+            collection_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `collection_admin_timeout_ms`.
+            timeout_ms: an alias for `collection_admin_timeout_ms`.
 
         Returns:
             a list of CollectionDescriptor instances one for each collection.
@@ -888,10 +897,12 @@ class Database:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
-            collection_admin_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for
-                the underlying HTTP request.
-            timeout_ms: an alias for `request_timeout_ms`.
+            collection_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `collection_admin_timeout_ms`.
+            timeout_ms: an alias for `collection_admin_timeout_ms`.
 
         Returns:
             a list of the collection names as strings, in no particular order.
@@ -1112,7 +1123,7 @@ class Database:
                 table creation takes place on the database). Defaults to False,
                 i.e. an error is raised by the API in case of table-name collision.
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -1307,7 +1318,7 @@ class Database:
                 will not error, just silently do nothing instead. If not provided,
                 the API default behaviour will hold.
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Database defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -1377,10 +1388,11 @@ class Database:
             if_exists: if passed as True, trying to drop a non-existing table
                 will not error, just silently do nothing instead. If not provided,
                 the API default behaviour will hold.
-            table_admin_timeout_ms: a timeout, in milliseconds, for
-                the underlying schema-changing HTTP request.
-                If not provided, the Database defaults apply.
-            request_timeout_ms: TODO
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
@@ -1446,10 +1458,12 @@ class Database:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
-            table_admin_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for
-                the underlying HTTP request.
-            timeout_ms: an alias for `request_timeout_ms`.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Returns:
             a list of ListTableDescriptor instances, one for each table.
@@ -1523,10 +1537,12 @@ class Database:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
-            table_admin_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for
-                the underlying HTTP request.
-            timeout_ms: an alias for `request_timeout_ms`.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Returns:
             a list of the table names as strings, in no particular order.
@@ -1590,10 +1606,12 @@ class Database:
                 This parameter cannot be used if `keyspace=None` is explicitly provided.
             raise_api_errors: if True, responses with a nonempty 'errors' field
                 result in an astrapy exception being raised.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for
-                the underlying HTTP request.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a dictionary with the response of the HTTP request.
@@ -2006,6 +2024,8 @@ class AsyncDatabase:
             None.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> asyncio.run(async_database.list_collection_names())
             ['coll_1', 'coll_2']
             >>> async_database.use_keyspace("an_empty_keyspace")
@@ -2031,15 +2051,21 @@ class AsyncDatabase:
         each invocation of this method triggers a new request to the DevOps API.
 
         Args:
-            database_admin_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the DevOps API request.
-            timeout_ms: an alias for `request_timeout_ms`.
+            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `database_admin_timeout_ms`.
+            timeout_ms: an alias for `database_admin_timeout_ms`.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> asyncio.run(async_database.info()).region
             'eu-west-1'
-
-            >>> asyncio.run(async_database.info()).raw_info['datacenters'][0]['dateCreated']
+            >>> asyncio.run(
+            ...     async_database.info()
+            ... ).raw_info['datacenters'][0]['dateCreated']
             '2023-01-30T12:34:56Z'
 
         Note:
@@ -2047,8 +2073,11 @@ class AsyncDatabase:
             between the `region` and the `raw["region"]` attributes.
         """
 
-        # TODO check env and raise the right exception here
-        # TODO refactor the call to manage _da_label
+        if self.api_options.environment not in Environment.astra_db_values:
+            raise InvalidEnvironmentException(
+                "Environments outside of Astra DB are not supported."
+            )
+
         _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
             timeout_options=self.api_options.timeout_options,
             database_admin_timeout_ms=database_admin_timeout_ms,
@@ -2066,9 +2095,7 @@ class AsyncDatabase:
             logger.info("finished getting database info")
             return database_info
         else:
-            raise DevOpsAPIException(
-                "Database is not in a supported environment for this operation."
-            )
+            raise DevOpsAPIException("Failure while fetching database info.")
 
     @property
     def id(self) -> str:
@@ -2076,7 +2103,7 @@ class AsyncDatabase:
         The ID of this database.
 
         Example:
-            >>> async_database.id
+            >>> my_async_database.id
             '01234567-89ab-cdef-0123-456789abcdef'
         """
 
@@ -2098,7 +2125,7 @@ class AsyncDatabase:
         (as specified by the API Endpoint).
 
         Example:
-            >>> my_db.region
+            >>> my_async_database.region
             'us-west-2'
         """
 
@@ -2119,6 +2146,8 @@ class AsyncDatabase:
         See the `info()` method for more details.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> asyncio.run(async_database.name())
             'the_application_database'
         """
@@ -2213,6 +2242,8 @@ class AsyncDatabase:
                 (but without any form of validation).
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> async def count_docs(adb: AsyncDatabase, c_name: str) -> int:
             ...    async_col = adb.get_collection(c_name)
             ...    return await async_col.count_documents({}, upper_bound=100)
@@ -2311,8 +2342,7 @@ class AsyncDatabase:
             keyspace: the keyspace where the collection is to be created.
                 If not specified, the general setting for this database is used.
             collection_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request.
-                If not provided, the AsyncCollection defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -2333,6 +2363,8 @@ class AsyncDatabase:
             an `AsyncCollection` instance, representing the newly-created collection.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> # Create a collection using the fluent syntax for its definition
             >>> from astrapy.constants import VectorMetric
             >>> from astrapy.info import CollectionDefinition
@@ -2347,7 +2379,6 @@ class AsyncDatabase:
             ...     "my_events",
             ...     definition=collection_definition,
             ... ))
-
             >>>
             >>> # Create a collection with the definition as object
             >>> from astrapy.info import CollectionVectorOptions
@@ -2364,7 +2395,7 @@ class AsyncDatabase:
             ...     definition=collection_definition_1,
             ... ))
             >>>
-
+            >>>
             >>> # Create a collection with the definition as plain dictionary
             >>> collection_definition_2 = {
             ...     "indexing": {"deny": ["annotations", "logs"]},
@@ -2439,12 +2470,16 @@ class AsyncDatabase:
             name: the name of the collection to drop.
             keyspace: the keyspace where the collection resides. If not specified,
                 the database working keyspace is assumed.
-            collection_admin_timeout_ms: a timeout, in milliseconds, for
-                the underlying schema-changing HTTP request.
-            request_timeout_ms: TODO
+            collection_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `collection_admin_timeout_ms`.
             timeout_ms: an alias for `collection_admin_timeout_ms`.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> asyncio.run(async_database.list_collection_names())
             ['a_collection', 'my_v_col', 'another_col']
             >>> asyncio.run(async_database.drop_collection("my_v_col"))
@@ -2490,15 +2525,19 @@ class AsyncDatabase:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
-            collection_admin_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for
-                the underlying HTTP request.
-            timeout_ms: an alias for `request_timeout_ms`.
+            collection_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `collection_admin_timeout_ms`.
+            timeout_ms: an alias for `collection_admin_timeout_ms`.
 
         Returns:
             a list of CollectionDescriptor instances one for each collection.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> async def a_list_colls(adb: AsyncDatabase) -> None:
             ...     a_coll_list = await adb.list_collections()
             ...     print("* list:", a_coll_list)
@@ -2563,15 +2602,19 @@ class AsyncDatabase:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
-            collection_admin_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for
-                the underlying HTTP request.
-            timeout_ms: an alias for `request_timeout_ms`.
+            collection_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `collection_admin_timeout_ms`.
+            timeout_ms: an alias for `collection_admin_timeout_ms`.
 
         Returns:
             a list of the collection names as strings, in no particular order.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> asyncio.run(async_database.list_collection_names())
             ['a_collection', 'another_col']
         """
@@ -2670,6 +2713,8 @@ class AsyncDatabase:
                 (but without any form of validation).
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> # Get an AsyncTable object (and read a property of it as an example):
             >>> my_async_table = async_database.get_table("games")
             >>> my_async_table.full_name
@@ -2788,7 +2833,7 @@ class AsyncDatabase:
                 table creation takes place on the database). Defaults to False,
                 i.e. an error is raised by the API in case of table-name collision.
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -2814,6 +2859,8 @@ class AsyncDatabase:
             newly-created table.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> # Create a table using the fluent syntax for definition
             >>> from astrapy.constants import SortMode
             >>> from astrapy.info import (
@@ -2983,13 +3030,15 @@ class AsyncDatabase:
                 will not error, just silently do nothing instead. If not provided,
                 the API default behaviour will hold.
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Database defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> # Drop an index from the keyspace:
             >>> await async_database.drop_table_index("score_index")
             >>> # Drop an index, unless it does not exist already:
@@ -3053,13 +3102,16 @@ class AsyncDatabase:
             if_exists: if passed as True, trying to drop a non-existing table
                 will not error, just silently do nothing instead. If not provided,
                 the API default behaviour will hold.
-            table_admin_timeout_ms: a timeout, in milliseconds, for
-                the underlying schema-changing HTTP request.
-                If not provided, the AsyncDatabase defaults apply.
-            request_timeout_ms: TODO
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> asyncio.run(async_database.list_table_names())
             ['fighters', 'games']
             >>> asyncio.run(async_database.drop_table("fighters"))
@@ -3122,25 +3174,30 @@ class AsyncDatabase:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
-            table_admin_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for
-                the underlying HTTP request.
-            timeout_ms: an alias for `request_timeout_ms`.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Returns:
             a list of ListTableDescriptor instances, one for each table.
 
         Example:
-            TODO
-            >>> async def a_list_tables(adb: AsyncDatabase) -> None:
-            ...     a_table_list = await adb.list_tables()
-            ...     print("* list:", a_table_list)
-            ...     for table_desc in await adb.list_tables():
-            ...         print("* table_desc:", table_desc)
-            ...
-            >>> asyncio.run(a_list_tables(async_database))
-            * list: [ListTableDescriptor(name='my_table', options=TableOptions())]
-            * table_desc: ListTableDescriptor(name='my_table', options=TableOptions())
+            >>> tables = asyncio.run(my_async_database.list_tables())
+            >>> tables
+            [BaseTableDescriptor(name='fighters', definition=BaseTableDefinition(...
+            >>> tables[1].name
+            'games'
+            >>> tables[1].definition.columns
+            {'match_id': TableScalarColumnTypeDescriptor(TableScalarColumnType.TEXT),...
+            >>> tables[1].definition.columns['score']
+            TableScalarColumnTypeDescriptor(TableScalarColumnType.INT)
+            >>> tables[1].definition.primary_key.partition_by
+            ['match_id']
+            >>> tables[1].definition.primary_key.partition_sort
+            {'round': 1}
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
@@ -3196,15 +3253,19 @@ class AsyncDatabase:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
-            table_admin_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for
-                the underlying HTTP request.
-            timeout_ms: an alias for `request_timeout_ms`.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Returns:
             a list of the table names as strings, in no particular order.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> async def destroy_temp_table(async_db: AsyncDatabase) -> None:
             ...     print(await async_db.list_table_names())
             ...     await async_db.drop_table("my_v_tab")
@@ -3269,15 +3330,19 @@ class AsyncDatabase:
                 This parameter cannot be used if `keyspace=None` is explicitly provided.
             raise_api_errors: if True, responses with a nonempty 'errors' field
                 result in an astrapy exception being raised.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for
-                the underlying HTTP request.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a dictionary with the response of the HTTP request.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> my_db.command({"findCollections": {}})
             {'status': {'collections': ['my_coll']}}
             >>> my_db.command({"countDocuments": {}}, collection_or_table_name="my_coll")
@@ -3371,6 +3436,8 @@ class AsyncDatabase:
             for other environments, an instance of `DataAPIDatabaseAdmin` is returned.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> my_db_admin = async_database.get_database_admin()
             >>> if "new_keyspace" not in my_db_admin.list_keyspaces():
             ...     my_db_admin.create_keyspace("new_keyspace")

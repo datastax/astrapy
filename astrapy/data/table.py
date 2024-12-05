@@ -415,7 +415,7 @@ class Table(Generic[ROW]):
 
         Args:
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -469,7 +469,7 @@ class Table(Generic[ROW]):
         Args:
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
                 underlying DevOps API request.
-                If not provided, the Table defaults apply.
+                If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `database_admin_timeout_ms`.
@@ -625,7 +625,7 @@ class Table(Generic[ROW]):
                 index creation takes place on the database). The API default of False
                 means that an error is raised by the API in case of name collision.
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -700,7 +700,7 @@ class Table(Generic[ROW]):
                 index creation takes place on the database). The API default of False
                 means that an error is raised by the API in case of name collision.
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -766,7 +766,7 @@ class Table(Generic[ROW]):
 
         Args:
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -815,7 +815,7 @@ class Table(Generic[ROW]):
 
         Args:
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -908,7 +908,7 @@ class Table(Generic[ROW]):
                 If provided, it must match the type hint specified in the assignment.
                 See the examples below.
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -1048,7 +1048,7 @@ class Table(Generic[ROW]):
                 be of the right data type for the insertion to succeed.
                 Non-primary-key columns can also be explicitly set to null.
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `general_method_timeout_ms`.
@@ -1249,10 +1249,10 @@ class Table(Generic[ROW]):
                 a given time. It cannot be more than one for ordered insertions.
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
                 whole operation, which may consist of several API requests.
-                If not provided, the corresponding Table defaults apply.
+                If not provided, this object's defaults apply.
             request_timeout_ms: a timeout, in milliseconds, to impose on each
                 individual HTTP request to the Data API to accomplish the operation.
-                If not provided, the corresponding Table defaults apply.
+                If not provided, this object's defaults apply.
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
@@ -1649,7 +1649,7 @@ class Table(Generic[ROW]):
                 Consult the Data API documentation for more details on this topic.
             request_timeout_ms: a timeout, in milliseconds, to impose on each
                 individual HTTP request to the Data API to accomplish the operation.
-                If not provided, the Table defaults apply.
+                If not provided, this object's defaults apply.
             timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
@@ -1897,7 +1897,7 @@ class Table(Generic[ROW]):
                 implications.
                 Consult the Data API documentation for more details on this topic.
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `general_method_timeout_ms`.
@@ -2097,9 +2097,9 @@ class Table(Generic[ROW]):
                 requested operation (which may involve multiple API requests).
                 This method, being based on `find` (see) may entail successive HTTP API
                 requests, depending on the amount of involved rows.
-                If not provided, the Table defaults apply.
+                If not provided, this object's defaults apply.
             request_timeout_ms: a timeout, in milliseconds, for each API request.
-                If not provided, the corresponding Table defaults apply.
+                If not provided, this object's defaults apply.
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
@@ -2221,7 +2221,7 @@ class Table(Generic[ROW]):
                 count that the Data API can reach (regardless of upper_bound),
                 an exception will be raised.
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `general_method_timeout_ms`.
@@ -2303,7 +2303,7 @@ class Table(Generic[ROW]):
 
         Args:
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `general_method_timeout_ms`.
@@ -2367,7 +2367,7 @@ class Table(Generic[ROW]):
                 Note that the update operation cannot alter the primary key columns.
                 See the Data API documentation for more details.
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `general_method_timeout_ms`.
@@ -2480,7 +2480,7 @@ class Table(Generic[ROW]):
                 primary key. A row (at most one) is deleted if it matches that primary
                 key. An example filter may be `{"match_id": "fight4", "round": 1}`.
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `general_method_timeout_ms`.
@@ -2579,7 +2579,7 @@ class Table(Generic[ROW]):
                   a non-least-significant partitionSort column provided.
                 - `{"pa1": x, "pa2": y, "ps2": t}`: cannot skip "ps1"
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `general_method_timeout_ms`.
@@ -2650,7 +2650,7 @@ class Table(Generic[ROW]):
                 will not error, just silently do nothing instead. If not provided,
                 the API default behaviour will hold.
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -2717,7 +2717,7 @@ class Table(Generic[ROW]):
             raise_api_errors: if True, responses with a nonempty 'errors' field
                 result in an astrapy exception being raised.
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the AsyncTable defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `general_method_timeout_ms`.
@@ -3115,7 +3115,7 @@ class AsyncTable(Generic[ROW]):
 
         Args:
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the AsyncTable defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -3171,7 +3171,7 @@ class AsyncTable(Generic[ROW]):
         Args:
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
                 underlying DevOps API request.
-                If not provided, the AsyncTable defaults apply.
+                If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `database_admin_timeout_ms`.
@@ -3330,7 +3330,7 @@ class AsyncTable(Generic[ROW]):
                 index creation takes place on the database). The API default of False
                 means that an error is raised by the API in case of name collision.
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the AsyncTable defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -3407,7 +3407,7 @@ class AsyncTable(Generic[ROW]):
                 index creation takes place on the database). The API default of False
                 means that an error is raised by the API in case of name collision.
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the AsyncTable defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -3475,7 +3475,7 @@ class AsyncTable(Generic[ROW]):
 
         Args:
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the AsyncTable defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -3526,7 +3526,7 @@ class AsyncTable(Generic[ROW]):
 
         Args:
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the AsyncTable defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -3541,7 +3541,8 @@ class AsyncTable(Generic[ROW]):
             >>>
             >>> indexes = asyncio.run(my_async_table.list_indexes())
             >>> indexes
-            [TableIndexDescriptor(name='m_vector_index', definition=...)...]  # Note: shortened
+            [TableIndexDescriptor(name='m_vector_index', definition=...)...]
+            >>> # (Note: shortened output above)
             >>> indexes[1].definition.column
             'winner'
             >>> indexes[1].definition.options.case_sensitive
@@ -3622,7 +3623,7 @@ class AsyncTable(Generic[ROW]):
                 the type hint specified in the assignment.
                 See the examples below.
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the AsyncTable defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -3764,7 +3765,7 @@ class AsyncTable(Generic[ROW]):
                 be of the right data type for the insertion to succeed.
                 Non-primary-key columns can also be explicitly set to null.
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the AsyncTable defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `general_method_timeout_ms`.
@@ -3964,10 +3965,10 @@ class AsyncTable(Generic[ROW]):
                 a given time. It cannot be more than one for ordered insertions.
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
                 whole operation, which may consist of several API requests.
-                If not provided, the corresponding AsyncTable defaults apply.
+                If not provided, this object's defaults apply.
             request_timeout_ms: a timeout, in milliseconds, to impose on each
                 individual HTTP request to the Data API to accomplish the operation.
-                If not provided, the corresponding Table defaults apply.
+                If not provided, this object's defaults apply.
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
@@ -4351,7 +4352,7 @@ class AsyncTable(Generic[ROW]):
                 Consult the Data API documentation for more details on this topic.
             request_timeout_ms: a timeout, in milliseconds, to impose on each
                 individual HTTP request to the Data API to accomplish the operation.
-                If not provided, the AsyncTable defaults apply.
+                If not provided, this object's defaults apply.
             timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
@@ -4622,7 +4623,7 @@ class AsyncTable(Generic[ROW]):
                 implications.
                 Consult the Data API documentation for more details on this topic.
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the AsyncTable defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `general_method_timeout_ms`.
@@ -4828,9 +4829,9 @@ class AsyncTable(Generic[ROW]):
                 requested operation (which may involve multiple API requests).
                 This method, being based on `find` (see) may entail successive HTTP API
                 requests, depending on the amount of involved rows.
-                If not provided, the AsyncTable defaults apply.
+                If not provided, this object's defaults apply.
             request_timeout_ms: a timeout, in milliseconds, for each API request.
-                If not provided, the corresponding Table defaults apply.
+                If not provided, this object's defaults apply.
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
@@ -4957,7 +4958,7 @@ class AsyncTable(Generic[ROW]):
                 count that the Data API can reach (regardless of upper_bound),
                 an exception will be raised.
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the AsyncTable defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `general_method_timeout_ms`.
@@ -5041,7 +5042,7 @@ class AsyncTable(Generic[ROW]):
 
         Args:
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the AsyncTable defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `general_method_timeout_ms`.
@@ -5107,7 +5108,7 @@ class AsyncTable(Generic[ROW]):
                 Note that the update operation cannot alter the primary key columns.
                 See the Data API documentation for more details.
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the AsyncTable defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `general_method_timeout_ms`.
@@ -5222,7 +5223,7 @@ class AsyncTable(Generic[ROW]):
                 primary key. A row (at most one) is deleted if it matches that primary
                 key. An example filter may be `{"match_id": "fight4", "round": 1}`.
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the AsyncTable defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `general_method_timeout_ms`.
@@ -5327,7 +5328,7 @@ class AsyncTable(Generic[ROW]):
                   a non-least-significant partitionSort column provided.
                 - `{"pa1": x, "pa2": y, "ps2": t}`: cannot skip "ps1"
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the AsyncTable defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `general_method_timeout_ms`.
@@ -5400,7 +5401,7 @@ class AsyncTable(Generic[ROW]):
                 will not error, just silently do nothing instead. If not provided,
                 the API default behaviour will hold.
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the AsyncTable defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -5473,7 +5474,7 @@ class AsyncTable(Generic[ROW]):
             raise_api_errors: if True, responses with a nonempty 'errors' field
                 result in an astrapy exception being raised.
             general_method_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the AsyncTable defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `general_method_timeout_ms`.

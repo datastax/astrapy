@@ -598,7 +598,7 @@ class AstraDBAdmin:
                 restrict the results.
             page_size: number of results per page from the DevOps API.
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (While in the case of very many databases this method may entail
                 multiple DevOps API requests, it is assumed here that this method
                 amounts almost always to one single request: the only timeout
@@ -731,7 +731,7 @@ class AstraDBAdmin:
                 restrict the results.
             page_size: number of results per page from the DevOps API.
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (While in the case of very many databases this method may entail
                 multiple DevOps API requests, it is assumed here that this method
                 amounts almost always to one single request: the only timeout
@@ -856,7 +856,7 @@ class AstraDBAdmin:
                 "01234567-89ab-cdef-0123-456789abcdef".
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
                 underlying DevOps API request.
-                If not provided, the Table defaults apply.
+                If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `database_admin_timeout_ms`.
@@ -924,7 +924,7 @@ class AstraDBAdmin:
                 "01234567-89ab-cdef-0123-456789abcdef".
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
                 underlying DevOps API request.
-                If not provided, the Table defaults apply.
+                If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `database_admin_timeout_ms`.
@@ -1561,7 +1561,7 @@ class AstraDBAdmin:
                 to determine the default region and use it subsequently.
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
                 underlying DevOps API request for 'region', should it be necessary.
-                If not provided, the Table defaults apply.
+                If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `database_admin_timeout_ms`.
@@ -1675,7 +1675,7 @@ class AstraDBAdmin:
                 to determine the default region and use it subsequently.
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
                 underlying DevOps API request for 'region', should it be necessary.
-                If not provided, the Table defaults apply.
+                If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `database_admin_timeout_ms`.
@@ -1827,7 +1827,7 @@ class AstraDBAdmin:
                 to determine the default region and use it subsequently.
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
                 underlying DevOps API request for 'region', should it be necessary.
-                If not provided, the Table defaults apply.
+                If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `database_admin_timeout_ms`.
@@ -2305,7 +2305,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
         Args:
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `database_admin_timeout_ms`.
@@ -2345,7 +2345,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
         Args:
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `database_admin_timeout_ms`.
@@ -2386,7 +2386,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
         Args:
             keyspace_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `keyspace_admin_timeout_ms`.
@@ -2425,7 +2425,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
         Args:
             keyspace_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `keyspace_admin_timeout_ms`.
@@ -3055,7 +3055,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 The same default logic as for `AstraDBAdmin.get_database` applies.
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
                 underlying DevOps API request for 'region', should it be necessary.
-                If not provided, the Table defaults apply.
+                If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `database_admin_timeout_ms`.
@@ -3115,7 +3115,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 The same default logic as for `AstraDBAdmin.get_database` applies.
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
                 underlying DevOps API request for 'region', should it be necessary.
-                If not provided, the Table defaults apply.
+                If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `database_admin_timeout_ms`.
@@ -3159,7 +3159,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
         Args:
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `database_admin_timeout_ms`.
@@ -3220,7 +3220,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
         Args:
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `database_admin_timeout_ms`.
@@ -3450,7 +3450,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
 
         Args:
             keyspace_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `keyspace_admin_timeout_ms`.
@@ -3512,7 +3512,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 that spawned this DatabaseAdmin, if any, gets updated to work on
                 the newly-created keyspace starting when this method returns.
             keyspace_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `keyspace_admin_timeout_ms`.
@@ -3581,7 +3581,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             name: the keyspace to delete. If it does not exist in this database,
                 an error is raised.
             keyspace_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `keyspace_admin_timeout_ms`.
@@ -3633,7 +3633,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
 
         Args:
             keyspace_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `keyspace_admin_timeout_ms`.
@@ -3696,7 +3696,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 that spawned this DatabaseAdmin, if any, gets updated to work on
                 the newly-created keyspace starting when this method returns.
             keyspace_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `keyspace_admin_timeout_ms`.
@@ -3768,7 +3768,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             name: the keyspace to delete. If it does not exist in this database,
                 an error is raised.
             keyspace_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `keyspace_admin_timeout_ms`.
@@ -3921,7 +3921,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
 
         Args:
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `database_admin_timeout_ms`.
@@ -3982,7 +3982,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
 
         Args:
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, this object's defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `database_admin_timeout_ms`.
