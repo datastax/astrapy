@@ -31,7 +31,7 @@ from astrapy.exceptions import (
     DataAPIErrorDescriptor,
     DataAPIHttpException,
     DataAPIResponseException,
-    DevOpsAPIException,
+    InvalidEnvironmentException,
 )
 from astrapy.results import CollectionDeleteResult, CollectionInsertManyResult
 
@@ -322,7 +322,7 @@ def test_collection_delete_many_exception() -> None:
 def test_get_database_info_failures_sync() -> None:
     client = DataAPIClient(environment=Environment.OTHER)
     db = client.get_database("http://not.a.real.thing", keyspace="ks")
-    with pytest.raises(DevOpsAPIException):
+    with pytest.raises(InvalidEnvironmentException):
         db.info()
 
 
@@ -330,7 +330,7 @@ def test_get_database_info_failures_sync() -> None:
 async def test_get_database_info_failures_async() -> None:
     client = DataAPIClient(environment=Environment.OTHER)
     adb = client.get_async_database("http://not.a.real.thing", keyspace="ks")
-    with pytest.raises(DevOpsAPIException):
+    with pytest.raises(InvalidEnvironmentException):
         await adb.info()
 
 

@@ -721,13 +721,14 @@ class BaseTableDefinition:
             ),
         )
 
-    def add_primitive_column(
+    def add_scalar_column(
         self, column_name: str, column_type: str | TableScalarColumnType
     ) -> BaseTableDefinition:
         """
         Return a new table definition object with an added column
-        of a primitive (or scalar) type. This method is for use within the
-        fluent interface for progressively building a complete table definition.
+        of a scalar type (i.e. not a list, set or other composite type).
+        This method is for use within the fluent interface for progressively
+        building a complete table definition.
 
         See the class docstring for a full example on using the fluent interface.
 
@@ -758,10 +759,11 @@ class BaseTableDefinition:
     ) -> BaseTableDefinition:
         """
         Return a new table definition object with an added column
-        of a primitive (or scalar) type. This method is for use within the
-        fluent interface for progressively building a complete table definition.
+        of a scalar type (i.e. not a list, set or other composite type).
+        This method is for use within the fluent interface for progressively
+        building a complete table definition.
 
-        This method is an alias for `add_primitive_column`.
+        This method is an alias for `add_scalar_column`.
 
         See the class docstring for a full example on using the fluent interface.
 
@@ -775,9 +777,7 @@ class BaseTableDefinition:
             column to this table definition.
         """
 
-        return self.add_primitive_column(
-            column_name=column_name, column_type=column_type
-        )
+        return self.add_scalar_column(column_name=column_name, column_type=column_type)
 
     def add_set_column(
         self, column_name: str, value_type: str | TableScalarColumnType

@@ -271,7 +271,7 @@ class TestListTableDescriptors:
             .add_column("p_text", "text")
             .add_column("p_int", "int")
             .add_column("p_boolean", "boolean")
-            .add_primitive_column("p_float", "float")
+            .add_scalar_column("p_float", "float")
             .add_set_column("p_set", "int")
             .add_map_column("p_map", "text", "int")
             .add_vector_column("p_vector", dimension=191)
