@@ -53,7 +53,7 @@ Other changes to existing API:
         - removed its 'raw_options' attribute (redundant w.r.t `CollectionDescriptor.raw_descriptor`)
         - `CollectionDefinition`: implemented fluent interface to build collection definition objects
     - renamed `CollectionVectorServiceOptions` class to `VectorServiceOptions`
-    - renamed `astrapy.constants.SortDocuments` to `SortMode` (keeping the old name as an alias)
+    - renamed `astrapy.constants.SortDocuments` to `SortMode`
     - renamed (collection-specific) "Result" classes like this:
         - 'DeleteResult' ==> `CollectionDeleteResult`
         - 'InsertOneResult' ==> `CollectionInsertOneResult`

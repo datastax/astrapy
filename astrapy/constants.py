@@ -81,9 +81,6 @@ class SortMode:
     DESCENDING = -1
 
 
-SortDocuments = SortMode
-
-
 class VectorMetric:
     """
     Admitted values for the "metric" parameter to use in CollectionVectorOptions
