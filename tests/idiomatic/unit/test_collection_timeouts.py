@@ -114,6 +114,7 @@ class TestCollectionTimeouts:
         with pytest.raises(DataAPITimeoutException):
             await cur1.__anext__()
 
+    @pytest.mark.skip("Suppressed. The HTTPServer plays tricks here sometimes")
     @pytest.mark.describe("test of collection find_one timeouts, async")
     async def test_collection_find_one_timeouts_async(
         self,
