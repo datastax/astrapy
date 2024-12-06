@@ -1473,7 +1473,7 @@ class Database:
         Example:
             >>> tables = my_database.list_tables()
             >>> tables
-            [BaseTableDescriptor(name='fighters', definition=BaseTableDefinition(...
+            [ListTableDescriptor(name='fighters', definition=ListTableDefinition(...
             >>> tables[1].name
             'games'
             >>> tables[1].definition.columns
@@ -3191,7 +3191,7 @@ class AsyncDatabase:
         Example:
             >>> tables = asyncio.run(my_async_database.list_tables())
             >>> tables
-            [BaseTableDescriptor(name='fighters', definition=BaseTableDefinition(...
+            [ListTableDescriptor(name='fighters', definition=ListTableDefinition(...
             >>> tables[1].name
             'games'
             >>> tables[1].definition.columns

@@ -184,7 +184,9 @@ class TestTableLifecycle:
         )
 
         # definition and info
-        assert await atable_fluent.definition() == table_whole_obj_definition
+        assert (
+            await atable_fluent.definition()
+        ).as_dict() == table_whole_obj_definition.as_dict()
         if IS_ASTRA_DB:
             fl_info = await atable_fluent.info()
             assert fl_info.name == "table_fluent"
@@ -380,6 +382,6 @@ class TestTableLifecycle:
                 operation=AlterTableDropVectorize.coerce({"columns": ["p_vector"]})
             )
             # back to the original table:
-            assert (await atable.definition()) == orig_table_def
+            assert (await atable.definition()).as_dict() == orig_table_def.as_dict()
         finally:
             await atable.drop()

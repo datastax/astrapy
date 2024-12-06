@@ -426,7 +426,7 @@ class Table(Generic[ROW]):
 
         Example:
             >>> my_table.definition()
-            BaseTableDefinition(columns=[match_id,round,fighters, ...  # shortened
+            ListTableDefinition(columns=[match_id,round,fighters, ...  # shortened
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
@@ -3129,7 +3129,7 @@ class AsyncTable(Generic[ROW]):
             >>> # NOTE: may require slight adaptation to an async context.
             >>>
             >>> asyncio.run(my_table.definition())
-            BaseTableDefinition(columns=[match_id,round,fighters, ...  # shortened
+            ListTableDefinition(columns=[match_id,round,fighters, ...  # shortened
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(

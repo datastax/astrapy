@@ -35,15 +35,15 @@ from astrapy.utils.parsing import _warn_residual_keys
 @dataclass
 class CreateTableDefinition:
     """
-    A structure expressing the definition ("schema") of a table.
+    A structure expressing the definition ("schema") of a table to be created through
+    the Data API. This object is passed as the `definition` parameter to the database
+    `create_table` method.
+
     See the Data API specifications for detailed specification and allowed values.
 
     Instances of this object can be created in three ways: using a fluent interface,
     passing a fully-formed definition to the class constructor, or coercing an
     appropriately-shaped plain dictionary into this class.
-    For the practical purpose of creating tables, it is recommended
-    to import and use the `CreateTableDefinition` alias to this class.
-    See the examples below and the Table documentation for more details.
 
     Attributes:
         columns: a map from column names to their type definition object.
@@ -515,75 +515,3 @@ class CreateTableDefinition:
         """
 
         return self
-
-
-@dataclass
-class CreateTableDescriptor:
-    """
-    A structure expressing full description of a table as the Data API
-    returns it, i.e. its name and its `definition` sub-structure.
-
-    Attributes:
-        name: the name of the table.
-        definition: a CreateTableDefinition instance.
-        raw_descriptor: the raw response from the Data API.
-    """
-
-    name: str
-    definition: CreateTableDefinition
-    raw_descriptor: dict[str, Any] | None
-
-    def __repr__(self) -> str:
-        not_null_pieces = [
-            pc
-            for pc in [
-                f"name={self.name.__repr__()}",
-                f"definition={self.definition.__repr__()}",
-                None if self.raw_descriptor is None else "raw_descriptor=...",
-            ]
-            if pc is not None
-        ]
-        return f"{self.__class__.__name__}({', '.join(not_null_pieces)})"
-
-    def as_dict(self) -> dict[str, Any]:
-        """
-        Recast this object into a dictionary.
-        Empty `definition` will not be returned at all.
-        """
-
-        return {
-            k: v
-            for k, v in {
-                "name": self.name,
-                "definition": self.definition.as_dict(),
-            }.items()
-            if v
-        }
-
-    @classmethod
-    def _from_dict(cls, raw_dict: dict[str, Any]) -> CreateTableDescriptor:
-        """
-        Create an instance of CreateTableDescriptor from a dictionary
-        such as one from the Data API.
-        """
-
-        _warn_residual_keys(cls, raw_dict, {"name", "definition"})
-        return CreateTableDescriptor(
-            name=raw_dict["name"],
-            definition=CreateTableDefinition.coerce(raw_dict.get("definition") or {}),
-            raw_descriptor=raw_dict,
-        )
-
-    @classmethod
-    def coerce(
-        cls, raw_input: CreateTableDescriptor | dict[str, Any]
-    ) -> CreateTableDescriptor:
-        """
-        Normalize the input, whether an object already or a plain dictionary
-        of the right structure, into a CreateTableDescriptor.
-        """
-
-        if isinstance(raw_input, CreateTableDescriptor):
-            return raw_input
-        else:
-            return cls._from_dict(raw_input)

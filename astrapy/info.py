@@ -42,7 +42,6 @@ from astrapy.data.info.table_descriptor.table_columns import (
 )
 from astrapy.data.info.table_descriptor.table_creation import (
     CreateTableDefinition,
-    CreateTableDescriptor,
 )
 from astrapy.data.info.table_descriptor.table_indexes import (
     TableAPIIndexSupportDescriptor,
@@ -88,7 +87,6 @@ __all__ = [
     "CollectionVectorOptions",
     "ColumnType",
     "CreateTableDefinition",
-    "CreateTableDescriptor",
     "EmbeddingProvider",
     "EmbeddingProviderAuthentication",
     "EmbeddingProviderModel",
