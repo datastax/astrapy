@@ -14,24 +14,33 @@
 
 from __future__ import annotations
 
-import datetime
+from datetime import date, datetime, timezone
 from typing import Any
 
 import pytest
 
-from astrapy import AsyncCollection
-from astrapy.constants import DocumentType, ReturnDocument, SortDocuments
-from astrapy.cursors import AsyncCursor
-from astrapy.exceptions import DataAPIResponseException, InsertManyException
+from astrapy.constants import DefaultDocumentType, ReturnDocument, SortMode
+from astrapy.cursors import AsyncCollectionFindCursor
+from astrapy.data_types import DataAPITimestamp, DataAPIVector
+from astrapy.exceptions import CollectionInsertManyException, DataAPIResponseException
 from astrapy.ids import UUID, ObjectId
-from astrapy.results import DeleteResult, InsertOneResult
+from astrapy.results import CollectionDeleteResult, CollectionInsertOneResult
+from astrapy.utils.api_options import APIOptions, SerdesOptions
+
+from ..conftest import DefaultAsyncCollection
+
+
+async def _alist(
+    acursor: AsyncCollectionFindCursor[DefaultDocumentType, Any],
+) -> list[Any]:
+    return [doc async for doc in acursor]
 
 
 class TestDMLAsync:
     @pytest.mark.describe("test of collection count_documents, async")
     async def test_collection_count_documents_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         assert (
             await async_empty_collection.count_documents(filter={}, upper_bound=100)
@@ -54,7 +63,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of collection estimated_document_count, async")
     async def test_collection_estimated_document_count_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         await async_empty_collection.insert_one({"doc": 1, "group": "A"})
         await async_empty_collection.insert_one({"doc": 2, "group": "B"})
@@ -67,7 +76,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of overflowing collection count_documents, async")
     async def test_collection_overflowing_count_documents_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         await async_empty_collection.insert_many([{"a": i} for i in range(900)])
         assert (
@@ -95,10 +104,10 @@ class TestDMLAsync:
     @pytest.mark.describe("test of collection insert_one, async")
     async def test_collection_insert_one_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         io_result1 = await async_empty_collection.insert_one({"doc": 1, "group": "A"})
-        assert isinstance(io_result1, InsertOneResult)
+        assert isinstance(io_result1, CollectionInsertOneResult)
         io_result2 = await async_empty_collection.insert_one(
             {"_id": "xxx", "doc": 2, "group": "B"}
         )
@@ -113,26 +122,147 @@ class TestDMLAsync:
     @pytest.mark.describe("test of collection insert_one with vector, async")
     async def test_collection_insert_one_vector_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         await async_empty_collection.insert_one({"tag": "v1", "$vector": [-1, -2]})
         retrieved1 = await async_empty_collection.find_one(
             {"tag": "v1"}, projection={"*": 1}
         )
         assert retrieved1 is not None
-        assert retrieved1["$vector"] == [-1, -2]
+        assert retrieved1["$vector"] == DataAPIVector([-1, -2])
 
         await async_empty_collection.insert_one({"tag": "v2", "$vector": [-3, -4]})
         retrieved2 = await async_empty_collection.find_one(
             {"tag": "v2"}, projection={"*": 1}
         )
         assert retrieved2 is not None
-        assert retrieved2["$vector"] == [-3, -4]
+        assert retrieved2["$vector"] == DataAPIVector([-3, -4])
+
+    @pytest.mark.describe("test of collection vector insertion options, async")
+    async def test_collection_vector_insertion_options_async(
+        self,
+        async_empty_collection: DefaultAsyncCollection,
+    ) -> None:
+        acollection_Yb_Yc = async_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    binary_encode_vectors=True,
+                    unroll_iterables_to_lists=True,
+                ),
+            ),
+        )
+        acollection_Nb_Yc = async_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    binary_encode_vectors=False,
+                    unroll_iterables_to_lists=True,
+                ),
+            ),
+        )
+        acollection_Yb_Nc = async_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    binary_encode_vectors=True,
+                    unroll_iterables_to_lists=False,
+                ),
+            ),
+        )
+        acollection_Nb_Nc = async_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    binary_encode_vectors=False,
+                    unroll_iterables_to_lists=False,
+                ),
+            ),
+        )
+
+        # writes w.r.t. options
+        await acollection_Yb_Yc.insert_one(
+            {"_id": "Yb_Yc_()", "$vector": (i for i in [0.1, 0.2])}
+        )
+        await acollection_Yb_Yc.insert_one({"_id": "Yb_Yc_[]", "$vector": [0.3, 0.4]})
+        await acollection_Yb_Yc.insert_one(
+            {"_id": "Yb_Yc_DV", "$vector": DataAPIVector([0.5, 0.6])}
+        )
+
+        await acollection_Nb_Yc.insert_one(
+            {"_id": "Nb_Yc_()", "$vector": (i for i in [0.1, 0.2])}
+        )
+        await acollection_Nb_Yc.insert_one({"_id": "Nb_Yc_[]", "$vector": [0.3, 0.4]})
+        await acollection_Nb_Yc.insert_one(
+            {"_id": "Nb_Yc_DV", "$vector": DataAPIVector([0.5, 0.6])}
+        )
+
+        with pytest.raises(TypeError):
+            await acollection_Yb_Nc.insert_one(
+                {"_id": "Yb_Nc_()", "$vector": (i for i in [0.1, 0.2])}
+            )
+        await acollection_Yb_Nc.insert_one({"_id": "Yb_Nc_[]", "$vector": [0.3, 0.4]})
+        await acollection_Yb_Nc.insert_one(
+            {"_id": "Yb_Nc_DV", "$vector": DataAPIVector([0.5, 0.6])}
+        )
+
+        with pytest.raises(TypeError):
+            await acollection_Nb_Nc.insert_one(
+                {"_id": "Nb_Nc_()", "$vector": (i for i in [0.1, 0.2])}
+            )
+        await acollection_Nb_Nc.insert_one({"_id": "Nb_Nc_[]", "$vector": [0.3, 0.4]})
+        await acollection_Nb_Nc.insert_one(
+            {"_id": "Nb_Nc_DV", "$vector": DataAPIVector([0.5, 0.6])}
+        )
+
+        # check how the documents are stored
+        # TODO: reinstate the expectation once collection regains conditional binenc.
+        expect_binaries = {
+            "Yb_Yc_()": False,  # True,
+            "Yb_Yc_[]": False,  # True,
+            "Yb_Yc_DV": False,  # True,
+            "Nb_Yc_()": False,  # False,
+            "Nb_Yc_[]": False,  # False,
+            "Nb_Yc_DV": False,  # False,
+            #
+            "Yb_Nc_[]": False,  # True,
+            "Yb_Nc_DV": False,  # True,
+            #
+            "Nb_Nc_[]": False,  # False,
+            "Nb_Nc_DV": False,  # False,
+        }
+        raw_find_response = await async_empty_collection.command(
+            body={"find": {"projection": {"_id": True, "$vector": True}}},
+        )
+        raw_docs = raw_find_response["data"]["documents"]
+        for raw_doc in raw_docs:
+            expect_binary = expect_binaries[raw_doc["_id"]]
+            has_binary = "$binary" in raw_doc["$vector"]
+            assert expect_binary is has_binary
+
+        acollection_Ycc = async_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=True,
+                ),
+            ),
+        )
+        acollection_Ncc = async_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=False,
+                ),
+            ),
+        )
+        docs_Ycc = [
+            doc async for doc in acollection_Ycc.find(projection={"$vector": True})
+        ]
+        docs_Ncc = [
+            doc async for doc in acollection_Ncc.find(projection={"$vector": True})
+        ]
+        assert all(isinstance(doc["$vector"], DataAPIVector) for doc in docs_Ycc)
+        assert all(not isinstance(doc["$vector"], DataAPIVector) for doc in docs_Ncc)
 
     @pytest.mark.describe("test of collection delete_one, async")
     async def test_collection_delete_one_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         await async_empty_collection.insert_one({"doc": 1, "group": "A"})
         await async_empty_collection.insert_one({"doc": 2, "group": "B"})
@@ -142,7 +272,7 @@ class TestDMLAsync:
             == 3
         )
         do_result1 = await async_empty_collection.delete_one({"group": "A"})
-        assert isinstance(do_result1, DeleteResult)
+        assert isinstance(do_result1, CollectionDeleteResult)
         assert do_result1.deleted_count == 1
         assert (
             await async_empty_collection.count_documents(filter={}, upper_bound=100)
@@ -162,7 +292,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of collection delete_many, async")
     async def test_collection_delete_many_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         await async_empty_collection.insert_one({"doc": 1, "group": "A"})
         await async_empty_collection.insert_one({"doc": 2, "group": "B"})
@@ -172,7 +302,7 @@ class TestDMLAsync:
             == 3
         )
         do_result1 = await async_empty_collection.delete_many({"group": "A"})
-        assert isinstance(do_result1, DeleteResult)
+        assert isinstance(do_result1, CollectionDeleteResult)
         assert do_result1.deleted_count == 2
         assert (
             await async_empty_collection.count_documents(filter={}, upper_bound=100)
@@ -194,7 +324,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of collection chunk-requiring delete_many, async")
     async def test_collection_chunked_delete_many_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         await async_empty_collection.insert_many(
             [{"doc": i, "group": "A"} for i in range(50)]
@@ -206,7 +336,7 @@ class TestDMLAsync:
             await async_empty_collection.count_documents(filter={}, upper_bound=100)
         ) == 60
         do_result1 = await async_empty_collection.delete_many({"group": "A"})
-        assert isinstance(do_result1, DeleteResult)
+        assert isinstance(do_result1, CollectionDeleteResult)
         assert do_result1.deleted_count == 50
         assert (
             await async_empty_collection.count_documents(filter={}, upper_bound=100)
@@ -215,16 +345,13 @@ class TestDMLAsync:
     @pytest.mark.describe("test of collection find, async")
     async def test_collection_find_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         await async_empty_collection.insert_many([{"seq": i} for i in range(30)])
         Nski = 1
         Nlim = 28
-        Nsor = {"seq": SortDocuments.DESCENDING}
+        Nsor = {"seq": SortMode.DESCENDING}
         Nfil = {"seq": {"$exists": True}}
-
-        async def _alist(acursor: AsyncCursor) -> list[DocumentType]:
-            return [doc async for doc in acursor]
 
         # case 0000 of find-pattern matrix
         assert (
@@ -413,7 +540,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of cursors from collection.find, async")
     async def test_collection_cursors_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         """
         Functionalities of cursors from find, other than the various
@@ -435,21 +562,18 @@ class TestDMLAsync:
 
         assert cursor0b.data_source == async_empty_collection
 
-        async def _alist(acursor: AsyncCursor) -> list[DocumentType]:
-            return [doc async for doc in acursor]
-
         # rewinding, slicing and retrieved
         cursor1 = async_empty_collection.find(sort={"seq": 1})
         await cursor1.__anext__()
         await cursor1.__anext__()
         items1 = (await _alist(cursor1))[:2]  # noqa: F841
-        assert await _alist(cursor1.rewind()) == await _alist(
+        cursor1.rewind()
+        assert await _alist(cursor1) == await _alist(
             async_empty_collection.find(sort={"seq": 1})
         )
         cursor1.rewind()
 
         # address, cursor_id, collection
-        assert cursor1.address == async_empty_collection._api_commander.full_path
         assert isinstance(cursor1.cursor_id, int)
         assert cursor1.data_source == async_empty_collection
 
@@ -473,37 +597,83 @@ class TestDMLAsync:
         with pytest.raises(StopAsyncIteration):
             await cursor4.__anext__()
 
-        # distinct
-        cursor5 = async_empty_collection.find()
-        dist5 = await cursor5.distinct("ternary")
-        assert (len(await _alist(cursor5))) == 10
-        assert set(dist5) == {0, 1, 2}
-        cursor6 = async_empty_collection.find()
-        for _ in range(9):
-            await cursor6.__anext__()
-        dist6 = await cursor6.distinct("ternary")
-        assert (len(await _alist(cursor6))) == 1
-        assert set(dist6) == {0, 1, 2}
-
         # distinct from collections
         assert set(await async_empty_collection.distinct("ternary")) == {0, 1, 2}
         assert set(await async_empty_collection.distinct("nonfield")) == set()
 
-        # Note: this, i.e. cursor[i]/cursor[i:j], is disabled
-        # pending full skip/limit support by the Data API.
-        # # indexing by integer
-        # cursor7 = async_empty_collection.find(sort={"seq": 1})
-        # assert cursor7[5]["seq"] == 5
+    @pytest.mark.describe(
+        "test of collective and mappings on cursors from collection.find, async"
+    )
+    async def test_collection_cursors_collective_maps_async(
+        self,
+        async_empty_collection: DefaultAsyncCollection,
+    ) -> None:
+        """
+        Functionalities of cursors from find: map, tolist, foreach.
+        """
+        await async_empty_collection.insert_many(
+            [{"seq": i, "ternary": (i % 3)} for i in range(75)]
+        )
 
-        # # indexing by wrong type
-        # with pytest.raises(TypeError):
-        #     cursor7.rewind()
-        #     cursor7["wrong"]
+        cur0 = async_empty_collection.find(filter={"seq": {"$gte": 10}})
+        assert len(await _alist(cur0)) == 65
+
+        # map
+        def mapper(doc: DefaultDocumentType) -> tuple[int, str]:
+            return (doc["seq"], f"T{doc['ternary']}")
+
+        cur1_map = async_empty_collection.find(filter={"seq": {"$gte": 10}}).map(mapper)
+        items1_map = await _alist(cur1_map)
+        assert len(items1_map) == 65
+        assert (20, "T2") in items1_map
+        assert all(isinstance(tup[0], int) for tup in items1_map)
+        assert all(isinstance(tup[1], str) for tup in items1_map)
+
+        # map composition
+
+        def mapper_2(tup: tuple[int, str]) -> str:
+            return f"{tup[1]}/{tup[0]}"
+
+        cur2_maps = (
+            async_empty_collection.find(filter={"seq": {"$gte": 10}})
+            .map(mapper)
+            .map(mapper_2)
+        )
+        items2_maps = await _alist(cur2_maps)
+        assert len(items2_maps) == 65
+        assert "T2/20" in items2_maps
+        assert all(isinstance(itm, str) for itm in items2_maps)
+
+        # clone (map-stripping, rewinding)
+        cloned_2 = cur2_maps.clone()
+        from_cl = await cloned_2.__anext__()
+        assert isinstance(from_cl, dict)
+        assert "seq" in from_cl
+        assert "ternary" in from_cl
+
+        # for each
+        accum: list[int] = []
+
+        def ingest(doc: DefaultDocumentType, acc: list[int] = accum) -> None:
+            acc += [doc["ternary"]]
+
+        await async_empty_collection.find(filter={"seq": {"$gte": 10}}).for_each(ingest)
+        assert len(accum) == 65
+        assert set(accum) == {0, 1, 2}
+
+        # to list
+        cur3_tl = async_empty_collection.find(
+            filter={"seq": {"$gte": 10}},
+            projection={"_id": False},
+        )
+        items3_tl = await cur3_tl.to_list()
+        assert len(items3_tl) == 65
+        assert {"seq": 50, "ternary": 2} in items3_tl
 
     @pytest.mark.describe("test of distinct with non-hashable items, async")
     async def test_collection_distinct_nonhashable_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
         documents: list[dict[str, Any]] = [
@@ -515,35 +685,46 @@ class TestDMLAsync:
             {"f": [10, 11]},
             {"f": [11, 10]},
             {"f": [10]},
-            {"f": datetime.datetime(2000, 1, 1, 12, 00, 00)},
+            {"f": datetime(2000, 1, 1, 12, 0, 0, tzinfo=timezone.utc)},
             {"f": None},
         ]
         await acol.insert_many(documents * 2)
 
         d_items = await acol.distinct("f")
-        expected = [
-            1,
-            "a",
-            {"subf": 99},
-            {"subf": 99, "another": {"subsubf": [True, False]}},
-            10,
-            11,
-            datetime.datetime(2000, 1, 1, 12, 0),
-            None,
-        ]
-        assert len(d_items) == len(expected)
+        assert len(d_items) == 8
         for doc in documents:
             if "f" in doc:
                 if isinstance(doc["f"], list):
                     for item in doc["f"]:
                         assert item in d_items
+                elif isinstance(doc["f"], datetime):
+                    da_ts = DataAPITimestamp.from_datetime(doc["f"])
+                    assert da_ts in d_items
                 else:
                     assert doc["f"] in d_items
+
+        d_items_noncustom = await acol.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=False,
+                )
+            ),
+        ).distinct("f")
+        assert len(d_items_noncustom) == 8
+        for doc in documents:
+            if "f" in doc:
+                if isinstance(doc["f"], list):
+                    for item in doc["f"]:
+                        assert item in d_items_noncustom
+                elif isinstance(doc["f"], datetime):
+                    assert doc["f"] in d_items_noncustom
+                else:
+                    assert doc["f"] in d_items_noncustom
 
     @pytest.mark.describe("test of usage of projection in distinct, async")
     async def test_collection_projections_distinct_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
         await acol.insert_one({"x": [{"y": "Y", "0": "ZERO"}]})
@@ -557,7 +738,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of unacceptable paths for distinct, async")
     async def test_collection_wrong_paths_distinct_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         with pytest.raises(ValueError):
             await async_empty_collection.distinct("root.1..subf")
@@ -571,7 +752,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of collection find with vectors, async")
     async def test_collection_find_find_one_vectors_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         q_vector = [3, 3]
         await async_empty_collection.insert_many(
@@ -594,17 +775,6 @@ class TestDMLAsync:
             )
         ]
         assert [hit["tag"] for hit in hits] == ["A", "B", "C"]
-
-        with pytest.raises(ValueError):
-            await async_empty_collection.find(
-                {},
-                sort={
-                    "$vector": q_vector,
-                    "tag": SortDocuments.DESCENDING,
-                },
-                projection=["tag"],
-                limit=3,
-            ).distinct("tag")
 
         top_doc = await async_empty_collection.find_one({}, sort={"$vector": [1, 0]})
         assert top_doc is not None
@@ -634,21 +804,12 @@ class TestDMLAsync:
         assert "$similarity" in f1doc_wi_s
         assert f1doc_wi_s["$similarity"] > 0.0
 
-        with pytest.raises(ValueError):
-            await async_empty_collection.find({}, include_similarity=True).distinct("x")
-
-        with pytest.raises(ValueError):
-            await async_empty_collection.find_one({}, include_similarity=True)
-
     @pytest.mark.describe("test of include_sort_vector in collection find, async")
     async def test_collection_include_sort_vector_find_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
-        q_vector = [10, 9]
-
-        async def _alist(acursor: AsyncCursor) -> list[DocumentType]:
-            return [doc async for doc in acursor]
+        q_vector = DataAPIVector([10, 9])
 
         # with empty collection
         for include_sv in [False, True]:
@@ -730,10 +891,67 @@ class TestDMLAsync:
                 else:
                     assert (await this_ite_1.get_sort_vector()) is None
 
+    @pytest.mark.describe("test of include_sort_vector with serdes options, async")
+    async def test_collection_include_sort_vector_serdes_options_async(
+        self,
+        async_empty_collection: DefaultAsyncCollection,
+    ) -> None:
+        acol_v0_d0 = async_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=False,
+                    use_decimals_in_collections=False,
+                ),
+            ),
+        )
+        acol_v0_d1 = async_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=False,
+                    use_decimals_in_collections=True,
+                ),
+            ),
+        )
+        acol_v1_d0 = async_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=True,
+                    use_decimals_in_collections=False,
+                ),
+            ),
+        )
+        acol_v1_d1 = async_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=True,
+                    use_decimals_in_collections=True,
+                ),
+            ),
+        )
+        cur0_v0_d0 = acol_v0_d0.find(sort={"$vector": [1, 2]})
+        cur0_v0_d1 = acol_v0_d1.find(sort={"$vector": [1, 2]})
+        cur0_v1_d0 = acol_v1_d0.find(sort={"$vector": [1, 2]})
+        cur0_v1_d1 = acol_v1_d1.find(sort={"$vector": [1, 2]})
+
+        assert await cur0_v0_d0.get_sort_vector() is None
+        assert await cur0_v0_d1.get_sort_vector() is None
+        assert await cur0_v1_d0.get_sort_vector() is None
+        assert await cur0_v1_d1.get_sort_vector() is None
+
+        cur1_v0_d0 = acol_v0_d0.find(sort={"$vector": [1, 2]}, include_sort_vector=True)
+        cur1_v0_d1 = acol_v0_d1.find(sort={"$vector": [1, 2]}, include_sort_vector=True)
+        cur1_v1_d0 = acol_v1_d0.find(sort={"$vector": [1, 2]}, include_sort_vector=True)
+        cur1_v1_d1 = acol_v1_d1.find(sort={"$vector": [1, 2]}, include_sort_vector=True)
+
+        assert await cur1_v0_d0.get_sort_vector() == [1, 2]
+        assert await cur1_v0_d1.get_sort_vector() == [1, 2]
+        assert await cur1_v1_d0.get_sort_vector() == DataAPIVector([1, 2])
+        assert await cur1_v1_d1.get_sort_vector() == DataAPIVector([1, 2])
+
     @pytest.mark.describe("test of projections in collection find with vectors, async")
     async def test_collection_find_projections_vectors_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         await async_empty_collection.insert_one(
             {
@@ -790,7 +1008,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of collection insert_many with empty list, async")
     async def test_collection_insert_many_empty_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
         await acol.insert_many([], ordered=True)
@@ -800,7 +1018,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of collection insert_many, async")
     async def test_collection_insert_many_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
 
@@ -808,17 +1026,17 @@ class TestDMLAsync:
         assert set(ins_result1.inserted_ids) == {"a", "b"}
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
 
-        with pytest.raises(InsertManyException):
+        with pytest.raises(CollectionInsertManyException):
             await acol.insert_many([{"_id": "a"}, {"_id": "c"}], ordered=True)
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
 
-        with pytest.raises(InsertManyException):
+        with pytest.raises(CollectionInsertManyException):
             await acol.insert_many(
                 [{"_id": "c"}, {"_id": "a"}, {"_id": "d"}], ordered=True
             )
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "c"}
 
-        with pytest.raises(InsertManyException):
+        with pytest.raises(CollectionInsertManyException):
             await acol.insert_many(
                 [{"_id": "c"}, {"_id": "d"}, {"_id": "e"}],
                 ordered=False,
@@ -828,7 +1046,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of collection insert_many with vectors, async")
     async def test_collection_insert_many_vectors_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
         await acol.insert_many(
@@ -846,7 +1064,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of collection find_one, async")
     async def test_collection_find_one_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         col = async_empty_collection
         await col.insert_many(
@@ -889,10 +1107,96 @@ class TestDMLAsync:
         assert doc_proj == {"_id": "a", "kind": "letter"}
         assert doc_full == {"_id": "a", "seq": 1, "kind": "letter"}
 
+    @pytest.mark.describe(
+        "test of custom_datatypes_in_reading APIOptions setting, async"
+    )
+    async def test_custom_datatypes_in_reading_async(
+        self,
+        async_empty_collection: DefaultAsyncCollection,
+    ) -> None:
+        acol_standard_dtypes = async_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=False,
+                ),
+            ),
+        )
+        acol_custom_dtypes = async_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=True,
+                ),
+            ),
+        )
+        the_dtime = datetime(2000, 1, 1, 10, 11, 12, 123000, tzinfo=timezone.utc)
+        the_date = date(1998, 12, 31)
+
+        # read path
+        await async_empty_collection.insert_one(
+            {
+                "_id": "t0",
+                "the_dtime": the_dtime,
+                "the_date": the_date,
+            },
+        )
+        doc_standard_dtypes = await acol_standard_dtypes.find_one({"_id": "t0"})
+        doc_custom_dtypes = await acol_custom_dtypes.find_one({"_id": "t0"})
+
+        assert doc_standard_dtypes is not None
+        assert doc_custom_dtypes is not None
+        dtime_standard_dtypes = doc_standard_dtypes["the_dtime"]
+        dtime_custom_dtypes = doc_custom_dtypes["the_dtime"]
+        date_standard_dtypes = doc_standard_dtypes["the_date"]
+        date_custom_dtypes = doc_custom_dtypes["the_date"]
+
+        assert isinstance(dtime_standard_dtypes, datetime)
+        assert isinstance(dtime_custom_dtypes, DataAPITimestamp)
+        assert (
+            DataAPITimestamp.from_datetime(dtime_standard_dtypes) == dtime_custom_dtypes
+        )
+
+        assert dtime_custom_dtypes == DataAPITimestamp.from_datetime(
+            dtime_standard_dtypes
+        )
+        assert isinstance(date_standard_dtypes, datetime)
+        assert isinstance(date_custom_dtypes, DataAPITimestamp)
+        assert (
+            DataAPITimestamp.from_datetime(date_standard_dtypes) == date_custom_dtypes
+        )
+        assert date_custom_dtypes == DataAPITimestamp.from_datetime(
+            date_standard_dtypes
+        )
+
+        # write path
+        await async_empty_collection.delete_one({"_id": "t0"})
+        await acol_standard_dtypes.insert_one(
+            {"_id": "default_dtype_dt", "the_dtime": the_dtime}
+        )
+        # in write path, custom classes still accepted
+        await acol_standard_dtypes.insert_one(
+            {
+                "_id": "default_dtype_ats",
+                "the_dtime": DataAPITimestamp.from_datetime(the_dtime),
+            }
+        )
+        await acol_custom_dtypes.insert_one(
+            {"_id": "custom_dtype_dt", "the_dtime": the_dtime}
+        )
+        await acol_custom_dtypes.insert_one(
+            {
+                "_id": "custom_dtype_ats",
+                "the_dtime": DataAPITimestamp.from_datetime(the_dtime),
+            }
+        )
+
+        all_dates = [doc["the_dtime"] async for doc in async_empty_collection.find({})]
+        assert len(all_dates) == 4
+        assert len(set(all_dates)) == 1
+
     @pytest.mark.describe("test of find_one_and_replace, async")
     async def test_collection_find_one_and_replace_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
 
@@ -1041,7 +1345,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of replace_one, async")
     async def test_collection_replace_one_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
 
@@ -1088,7 +1392,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of replace_one with vectors, async")
     async def test_collection_replace_one_vector_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
         await acol.insert_many(
@@ -1105,7 +1409,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of update_one, async")
     async def test_collection_update_one_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
 
@@ -1151,7 +1455,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of update_many, async")
     async def test_collection_update_many_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
         await acol.insert_many([{"a": 1, "seq": i} for i in range(4)])
@@ -1184,7 +1488,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of update_many, async")
     async def test_collection_paginated_update_many_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
         await acol.insert_many([{"a": 1} for _ in range(50)])
@@ -1202,7 +1506,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of collection find_one_and_delete, async")
     async def test_collection_find_one_and_delete_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         await async_empty_collection.insert_one({"doc": 1, "group": "A"})
         await async_empty_collection.insert_one({"doc": 2, "group": "B"})
@@ -1246,7 +1550,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of collection find_one_and_delete with vectors, async")
     async def test_collection_find_one_and_delete_vectors_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
         await acol.insert_many(
@@ -1262,7 +1566,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of find_one_and_update, async")
     async def test_collection_find_one_and_update_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
 
@@ -1435,7 +1739,7 @@ class TestDMLAsync:
     @pytest.mark.describe("test of the various ids in the document id field, async")
     async def test_collection_ids_as_doc_id_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         types_and_ids = {
             "uuid1": UUID("8ccd6ff8-e61b-11ee-a2fc-7df4a8c4164b"),
@@ -1468,7 +1772,7 @@ class TestDMLAsync:
     )
     async def test_collection_ids_throughout_dml_methods_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         types_and_ids = {
             "uuid1": UUID("8ccd6ff8-e61b-11ee-a2fc-7df4a8c4164b"),

@@ -18,15 +18,19 @@ from typing import Any
 
 import pytest
 
-from astrapy import Collection, Database
+from astrapy import Database
+from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import DataAPIResponseException
+from astrapy.info import CollectionDefinition
+
+from ..conftest import DefaultCollection
 
 
 class TestVectorizeMethodsSync:
     @pytest.mark.describe("test of vectorize in collection methods, sync")
     def test_collection_methods_vectorize_sync(
         self,
-        sync_empty_service_collection: Collection,
+        sync_empty_service_collection: DefaultCollection,
         service_collection_parameters: dict[str, Any],
     ) -> None:
         col = sync_empty_service_collection
@@ -129,13 +133,17 @@ class TestVectorizeMethodsSync:
     )
     def test_collection_include_sort_vector_vectorize_find_sync(
         self,
-        sync_empty_service_collection: Collection,
+        sync_empty_service_collection: DefaultCollection,
     ) -> None:
         # with empty collection
         q_text = "A sentence for searching."
 
         def _is_vector(v: Any) -> bool:
-            return isinstance(v, list) and isinstance(v[0], float)
+            if isinstance(v, list) and isinstance(v[0], float):
+                return True
+            if isinstance(v, DataAPIVector):
+                return True
+            return False
 
         for include_sv in [False, True]:
             for sort_cl_label in ["vze"]:
@@ -222,9 +230,15 @@ class TestVectorizeMethodsSync:
         with pytest.raises(DataAPIResponseException):
             sync_database.create_collection(
                 "collection_name",
-                dimension=service_collection_parameters["dimension"] + 10,
-                service={
-                    "provider": service_collection_parameters["provider"],
-                    "modelName": service_collection_parameters["modelName"],
-                },
+                definition=(
+                    CollectionDefinition.builder()
+                    .set_vector_dimension(
+                        service_collection_parameters["dimension"] + 10
+                    )
+                    .set_vector_service(
+                        provider=service_collection_parameters["provider"],
+                        model_name=service_collection_parameters["modelName"],
+                    )
+                    .build()
+                ),
             )

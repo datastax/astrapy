@@ -39,8 +39,8 @@ PRE_DROP_SAFETY_TIMEOUT = 120
 
 def admin_test_envs_tokens() -> list[Any]:
     """
-    This actually returns a List of `_pytest.mark.structures.ParameterSet` instances,
-    each wrapping a Tuple[str, Optional[str]] = (env, token)
+    This actually returns a list of `_pytest.mark.structures.ParameterSet` instances,
+    each wrapping a tuple[str, Optional[str]] = (env, token)
     """
     envs_tokens: list[Any] = []
     for admin_env in ADMIN_ENV_LIST:
@@ -138,17 +138,15 @@ class TestAdmin:
         assert keyspaces1 == {"custom_keyspace"}
 
         # create two keyspaces
-        w_create_ks_response = db_admin.create_keyspace(
+        db_admin.create_keyspace(
             "waited_ks",
             wait_until_active=True,
         )
-        assert w_create_ks_response == {"ok": 1}
 
-        nw_create_ks_response = db_admin.create_keyspace(
+        db_admin.create_keyspace(
             "nonwaited_ks",
             wait_until_active=False,
         )
-        assert nw_create_ks_response == {"ok": 1}
         wait_until_true(
             poll_interval=KEYSPACE_POLL_SLEEP_TIME,
             max_seconds=KEYSPACE_TIMEOUT,
@@ -167,17 +165,15 @@ class TestAdmin:
         assert db_admin.get_async_database().to_sync() == db
 
         # drop nss, wait, nonwait
-        w_drop_ks_response = db_admin.drop_keyspace(
+        db_admin.drop_keyspace(
             "waited_ks",
             wait_until_active=True,
         )
-        assert w_drop_ks_response == {"ok": 1}
 
-        nw_drop_ks_response = db_admin.drop_keyspace(
+        db_admin.drop_keyspace(
             "nonwaited_ks",
             wait_until_active=False,
         )
-        assert nw_drop_ks_response == {"ok": 1}
         wait_until_true(
             poll_interval=KEYSPACE_POLL_SLEEP_TIME,
             max_seconds=KEYSPACE_TIMEOUT,
@@ -194,8 +190,7 @@ class TestAdmin:
             max_seconds=PRE_DROP_SAFETY_TIMEOUT,
             condition=lambda: db_admin.info().status == "ACTIVE",
         )
-        db_drop_response = db_admin.drop()
-        assert db_drop_response == {"ok": 1}
+        db_admin.drop()
 
         db_ids = {db.id for db in admin.list_databases()}
         assert created_db_id not in db_ids
@@ -308,10 +303,8 @@ class TestAdmin:
             max_seconds=PRE_DROP_SAFETY_TIMEOUT,
             condition=lambda: db_admin_w.info().status == "ACTIVE",
         )
-        drop_nw_response = db_admin_nw.drop(wait_until_active=False)
-        assert drop_nw_response == {"ok": 1}
-        drop_w_response = admin.drop_database(created_db_id_w)
-        assert drop_w_response == {"ok": 1}
+        db_admin_nw.drop(wait_until_active=False)
+        admin.drop_database(created_db_id_w)
 
         def _waiter2() -> bool:
             db_ids = {db.id for db in admin.list_databases()}
@@ -382,17 +375,15 @@ class TestAdmin:
         assert keyspaces1 == {"custom_keyspace"}
 
         # create two keyspaces
-        w_create_ks_response = await db_admin.async_create_keyspace(
+        await db_admin.async_create_keyspace(
             "waited_ks",
             wait_until_active=True,
         )
-        assert w_create_ks_response == {"ok": 1}
 
-        nw_create_ks_response = await db_admin.async_create_keyspace(
+        await db_admin.async_create_keyspace(
             "nonwaited_ks",
             wait_until_active=False,
         )
-        assert nw_create_ks_response == {"ok": 1}
 
         async def _awaiter1() -> bool:
             return "nonwaited_ks" in (await db_admin.async_list_keyspaces())
@@ -415,17 +406,15 @@ class TestAdmin:
         assert db_admin.get_database().to_async() == adb
 
         # drop nss, wait, nonwait
-        w_drop_ks_response = await db_admin.async_drop_keyspace(
+        await db_admin.async_drop_keyspace(
             "waited_ks",
             wait_until_active=True,
         )
-        assert w_drop_ks_response == {"ok": 1}
 
-        nw_drop_ks_response = await db_admin.async_drop_keyspace(
+        await db_admin.async_drop_keyspace(
             "nonwaited_ks",
             wait_until_active=False,
         )
-        assert nw_drop_ks_response == {"ok": 1}
 
         async def _awaiter2() -> bool:
             ks_list = await db_admin.async_list_keyspaces()
@@ -451,8 +440,7 @@ class TestAdmin:
             max_seconds=PRE_DROP_SAFETY_TIMEOUT,
             acondition=_awaiter3,
         )
-        db_drop_response = await db_admin.async_drop()
-        assert db_drop_response == {"ok": 1}
+        await db_admin.async_drop()
 
         db_ids = {db.id for db in (await admin.async_list_databases())}
         assert created_db_id not in db_ids
@@ -574,10 +562,8 @@ class TestAdmin:
             max_seconds=PRE_DROP_SAFETY_TIMEOUT,
             acondition=_awaiter3,
         )
-        drop_nw_response = await db_admin_nw.async_drop(wait_until_active=False)
-        assert drop_nw_response == {"ok": 1}
-        drop_w_response = await admin.async_drop_database(created_db_id_w)
-        assert drop_w_response == {"ok": 1}
+        await db_admin_nw.async_drop(wait_until_active=False)
+        await admin.async_drop_database(created_db_id_w)
 
         async def _awaiter4() -> bool:
             db_ids = {db.id for db in (await admin.async_list_databases())}

@@ -17,7 +17,7 @@ from __future__ import annotations
 import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase, DataAPIClient
-from astrapy.authentication import StaticTokenProvider, coerce_token_provider
+from astrapy.authentication import StaticTokenProvider
 from astrapy.constants import Environment
 from astrapy.exceptions import DevOpsAPIException
 from astrapy.settings.defaults import DEFAULT_ASTRA_DB_KEYSPACE
@@ -31,6 +31,7 @@ from ..conftest import (
     TEST_COLLECTION_INSTANCE_NAME,
     DataAPICredentials,
     DataAPICredentialsInfo,
+    DefaultAsyncCollection,
 )
 
 api_ep5643_prod = (
@@ -48,7 +49,7 @@ class TestDatabasesAsync:
         opts0 = defaultAPIOptions(environment=data_api_credentials_info["environment"])
         opts = opts0.with_override(
             APIOptions(
-                token=coerce_token_provider(data_api_credentials_kwargs["token"]),
+                token=data_api_credentials_kwargs["token"],
             )
         )
 
@@ -73,7 +74,7 @@ class TestDatabasesAsync:
         opts0 = defaultAPIOptions(environment=data_api_credentials_info["environment"])
         opts = opts0.with_override(
             APIOptions(
-                token=coerce_token_provider(data_api_credentials_kwargs["token"]),
+                token=data_api_credentials_kwargs["token"],
             )
         )
 
@@ -91,7 +92,6 @@ class TestDatabasesAsync:
         self,
     ) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
-        callers1 = [("x", "y")]
         db1 = AsyncDatabase(
             api_endpoint="api_endpoint",
             keyspace="keyspace",
@@ -106,35 +106,24 @@ class TestDatabasesAsync:
                 ),
             ),
         )
-        assert db1 != db1._copy(api_endpoint="x")
         assert db1 != db1._copy(token="x")
         assert db1 != db1._copy(keyspace="x")
-        assert db1 != db1._copy(callers=callers1)
-        assert db1 != db1._copy(api_path="x")
-        assert db1 != db1._copy(api_version="x")
 
         db2 = db1._copy(
-            api_endpoint="x",
             token="x",
             keyspace="x",
-            callers=callers1,
-            api_path="x",
-            api_version="x",
         )
         assert db2 != db1
 
         assert db1.with_options(keyspace="x") != db1
-        assert db1.with_options(callers=callers1) != db1
 
         assert db1.with_options(keyspace="x").with_options(keyspace="keyspace") == db1
-        assert db1.with_options(callers=callers1).with_options(callers=callers0) == db1
 
     @pytest.mark.describe("test of Database rich conversions, async")
     async def test_rich_convert_database_async(
         self,
     ) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
-        callers1 = [("x", "y")]
         db1 = AsyncDatabase(
             api_endpoint="api_endpoint",
             keyspace="keyspace",
@@ -149,30 +138,18 @@ class TestDatabasesAsync:
                 ),
             ),
         )
-        assert db1 != db1.to_sync(api_endpoint="o").to_async()
         assert db1 != db1.to_sync(token="o").to_async()
         assert db1 != db1.to_sync(keyspace="o").to_async()
-        assert db1 != db1.to_sync(callers=callers1).to_async()
-        assert db1 != db1.to_sync(api_path="o").to_async()
-        assert db1 != db1.to_sync(api_version="o").to_async()
 
         db2s = db1.to_sync(
-            api_endpoint="x",
             token="x",
             keyspace="x",
-            callers=callers1,
-            api_path="x",
-            api_version="x",
         )
         assert db2s.to_async() != db1
 
         db3 = db2s.to_async(
-            api_endpoint="api_endpoint",
             token="token",
             keyspace="keyspace",
-            callers=callers0,
-            api_path="api_path",
-            api_version="api_version",
         )
         assert db3 == db1
 
@@ -180,16 +157,16 @@ class TestDatabasesAsync:
     async def test_database_get_collection_async(
         self,
         async_database: AsyncDatabase,
-        async_collection_instance: AsyncCollection,
+        async_collection_instance: DefaultAsyncCollection,
     ) -> None:
-        collection = await async_database.get_collection(TEST_COLLECTION_INSTANCE_NAME)
+        collection = async_database.get_collection(TEST_COLLECTION_INSTANCE_NAME)
         assert collection == async_collection_instance
 
         assert getattr(async_database, TEST_COLLECTION_INSTANCE_NAME) == collection
         assert async_database[TEST_COLLECTION_INSTANCE_NAME] == collection
 
         KEYSPACE_2 = "other_keyspace"
-        collection_ks2 = await async_database.get_collection(
+        collection_ks2 = async_database.get_collection(
             TEST_COLLECTION_INSTANCE_NAME, keyspace=KEYSPACE_2
         )
         assert collection_ks2 == AsyncCollection(
@@ -200,14 +177,15 @@ class TestDatabasesAsync:
         )
         assert collection_ks2.database.keyspace == KEYSPACE_2
 
-    @pytest.mark.describe("test database id, async")
-    async def test_database_id_async(self) -> None:
+    @pytest.mark.describe("test database id and region, async")
+    async def test_database_id_region_async(self) -> None:
         db1 = AsyncDatabase(
             api_endpoint="https://a1234567-89ab-cdef-0123-456789abcdef-us-central1.apps.astra-dev.datastax.com",
             keyspace="k",
             api_options=defaultAPIOptions(environment="dev"),
         )
         assert db1.id == "a1234567-89ab-cdef-0123-456789abcdef"
+        assert db1.region == "us-central1"
 
         db2 = AsyncDatabase(
             api_endpoint="http://localhost:12345",
@@ -216,6 +194,8 @@ class TestDatabasesAsync:
         )
         with pytest.raises(DevOpsAPIException):
             db2.id
+        with pytest.raises(DevOpsAPIException):
+            db2.region
 
     @pytest.mark.describe("test database default keyspace per environment, async")
     async def test_database_default_keyspace_per_environment_async(self) -> None:

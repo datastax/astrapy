@@ -16,27 +16,24 @@ from __future__ import annotations
 
 import pytest
 
-from astrapy import AsyncCollection, AsyncDatabase
-from astrapy.constants import DocumentType
-from astrapy.cursors import AsyncCursor, CursorState
+from astrapy import AsyncDatabase
+from astrapy.constants import DefaultDocumentType
+from astrapy.cursors import AsyncCollectionFindCursor, FindCursorState
 from astrapy.exceptions import (
-    CollectionAlreadyExistsException,
-    CollectionNotFoundException,
-    CursorIsStartedException,
+    CollectionInsertManyException,
+    CursorException,
     DataAPIResponseException,
-    DevOpsAPIException,
-    InsertManyException,
     TooManyDocumentsToCountException,
 )
 
-from ..conftest import IS_ASTRA_DB, DataAPICredentials
+from ..conftest import IS_ASTRA_DB, DefaultAsyncCollection
 
 
 class TestExceptionsAsync:
     @pytest.mark.describe("test of collection insert_many type-failure modes, async")
     async def test_collection_insert_many_type_failures_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
         bad_docs = [{"_id": tid} for tid in ["a", "b", "c", ValueError, "e", "f"]]
@@ -56,9 +53,13 @@ class TestExceptionsAsync:
     @pytest.mark.describe("test of collection insert_many insert-failure modes, async")
     async def test_collection_insert_many_insert_failures_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
-        async def _alist(acursor: AsyncCursor) -> list[DocumentType]:
+        async def _alist(
+            acursor: AsyncCollectionFindCursor[
+                DefaultDocumentType, DefaultDocumentType
+            ],
+        ) -> list[DefaultDocumentType]:
             return [doc async for doc in acursor]
 
         acol = async_empty_collection
@@ -86,7 +87,7 @@ class TestExceptionsAsync:
         assert len(await _alist(acol.find({}))) == 6
 
         await acol.delete_many({})
-        with pytest.raises(InsertManyException) as exc:
+        with pytest.raises(CollectionInsertManyException) as exc:
             await acol.insert_many(dup_docs, ordered=True, chunk_size=2, concurrency=1)
         assert len(exc.value.error_descriptors) == 1
         assert len(exc.value.detailed_error_descriptors) == 1
@@ -96,7 +97,7 @@ class TestExceptionsAsync:
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
 
         await acol.delete_many({})
-        with pytest.raises(InsertManyException) as exc:
+        with pytest.raises(CollectionInsertManyException) as exc:
             await acol.insert_many(dup_docs, ordered=False, chunk_size=2, concurrency=1)
         assert len(exc.value.error_descriptors) == 3
         assert len(exc.value.detailed_error_descriptors) == 2
@@ -107,7 +108,7 @@ class TestExceptionsAsync:
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "d", "e", "f"}
 
         await acol.delete_many({})
-        with pytest.raises(InsertManyException) as exc:
+        with pytest.raises(CollectionInsertManyException) as exc:
             im_result3 = await acol.insert_many(
                 dup_docs, ordered=False, chunk_size=2, concurrency=2
             )
@@ -122,7 +123,7 @@ class TestExceptionsAsync:
     @pytest.mark.describe("test of collection insert_one failure modes, async")
     async def test_collection_insert_one_failures_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
         with pytest.raises(TypeError):
@@ -139,19 +140,17 @@ class TestExceptionsAsync:
     @pytest.mark.describe("test of collection options failure modes, async")
     async def test_collection_options_failures_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection._copy()
         acol._name += "_hacked"
-        with pytest.raises(CollectionNotFoundException) as exc:
+        with pytest.raises(ValueError, match="not found"):
             await acol.options()
-        assert exc.value.collection_name == acol._name
-        assert exc.value.keyspace == async_empty_collection.keyspace
 
     @pytest.mark.describe("test of collection count_documents failure modes, async")
     async def test_collection_count_documents_failures_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection._copy()
         acol._name += "_hacked"
@@ -168,7 +167,7 @@ class TestExceptionsAsync:
     @pytest.mark.describe("test of collection one-doc DML failure modes, async")
     async def test_collection_monodoc_dml_failures_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection._copy()
         acol._name += "_hacked"
@@ -188,41 +187,6 @@ class TestExceptionsAsync:
         with pytest.raises(DataAPIResponseException):
             await acol.update_one({"a": 1}, {"$set": {"a": -1}})
 
-    @pytest.mark.describe("test of check_exists for database create_collection, async")
-    async def test_database_create_collection_check_exists_async(
-        self,
-        async_database: AsyncDatabase,
-    ) -> None:
-        TEST_LOCAL_COLLECTION_NAME = "test_check_exists"
-        await async_database.create_collection(
-            TEST_LOCAL_COLLECTION_NAME,
-            dimension=3,
-        )
-
-        with pytest.raises(CollectionAlreadyExistsException):
-            await async_database.create_collection(
-                TEST_LOCAL_COLLECTION_NAME,
-                dimension=3,
-            )
-        with pytest.raises(CollectionAlreadyExistsException):
-            await async_database.create_collection(
-                TEST_LOCAL_COLLECTION_NAME,
-                indexing={"deny": ["a"]},
-            )
-        await async_database.create_collection(
-            TEST_LOCAL_COLLECTION_NAME,
-            dimension=3,
-            check_exists=False,
-        )
-        with pytest.raises(DataAPIResponseException):
-            await async_database.create_collection(
-                TEST_LOCAL_COLLECTION_NAME,
-                indexing={"deny": ["a"]},
-                check_exists=False,
-            )
-
-        await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
-
     @pytest.mark.describe("test of database one-request method failures, async")
     async def test_database_method_failures_async(
         self,
@@ -238,74 +202,58 @@ class TestExceptionsAsync:
             await async_database.command(body={"myCommand": {"k": "v"}}, keyspace="ns")
         with pytest.raises(DataAPIResponseException):
             await async_database.command(
-                body={"myCommand": {"k": "v"}}, keyspace="ns", collection_name="coll"
+                body={"myCommand": {"k": "v"}},
+                keyspace="ns",
+                collection_or_table_name="coll",
             )
         with pytest.raises(DataAPIResponseException):
             [
                 coll
-                async for coll in async_database.list_collections(
+                for coll in await async_database.list_collections(
                     keyspace="nonexisting"
                 )
             ]
         with pytest.raises(DataAPIResponseException):
             await async_database.list_collection_names(keyspace="nonexisting")
 
-    @pytest.mark.describe("test of database info failures, async")
-    async def test_get_database_info_failures_async(
-        self,
-        async_database: AsyncDatabase,
-        data_api_credentials_kwargs: DataAPICredentials,
-    ) -> None:
-        hacked_ks = (data_api_credentials_kwargs["keyspace"] or "") + "_hacked"
-        with pytest.raises(DevOpsAPIException):
-            async_database._copy(keyspace=hacked_ks).info()
-
     @pytest.mark.describe("test of hard exceptions in cursors, async")
     async def test_cursor_hard_exceptions_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         with pytest.raises(TypeError):
-            await async_empty_collection.find(
-                {},
-                sort={"f": ValueError("nonserializable")},
-            ).distinct("a")
-        # # Note: this, i.e. cursor[i]/cursor[i:j], is disabled
-        # # pending full skip/limit support by the Data API.
-        # with pytest.raises(IndexError):
-        #     async_empty_collection.find(
-        #         {},
-        #         sort={"f": SortDocuments.ASCENDING},
-        #     )[100]
+            await async_empty_collection.distinct(
+                "a",
+                filter={"f": ValueError("nonserializable")},
+            )
 
     @pytest.mark.describe("test of custom exceptions in cursors, async")
     async def test_cursor_custom_exceptions_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         await async_empty_collection.insert_many([{"a": 1}] * 4)
         cur1 = async_empty_collection.find({})
         cur1.limit(10)
 
         await cur1.__anext__()
-        with pytest.raises(CursorIsStartedException) as exc:
+        with pytest.raises(CursorException) as exc:
             cur1.limit(1)
-        assert exc.value.cursor_state == CursorState.STARTED.value
+        assert exc.value.cursor_state == FindCursorState.STARTED.value
 
         [doc async for doc in cur1]
-        with pytest.raises(CursorIsStartedException) as exc:
+        with pytest.raises(CursorException) as exc:
             cur1.limit(1)
-        assert exc.value.cursor_state == CursorState.CLOSED.value
+        assert exc.value.cursor_state == FindCursorState.CLOSED.value
 
     @pytest.mark.describe("test of standard exceptions in cursors, async")
     async def test_cursor_standard_exceptions_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_database: AsyncDatabase,
     ) -> None:
-        awcol = async_empty_collection._copy(keyspace="nonexisting")
+        awcol = async_database.get_collection("nonexisting")
         cur1 = awcol.find({})
         cur2 = awcol.find({})
-        cur3 = awcol.find({})
 
         with pytest.raises(DataAPIResponseException):
             async for item in cur1:
@@ -315,25 +263,15 @@ class TestExceptionsAsync:
             await cur2.__anext__()
 
         with pytest.raises(DataAPIResponseException):
-            await cur3.distinct("f")
-
-        with pytest.raises(DataAPIResponseException):
             await awcol.distinct("f")
 
         with pytest.raises(DataAPIResponseException):
             await awcol.find_one({})
 
-    @pytest.mark.describe("test of exceptions in command-cursors, async")
-    async def test_commandcursor_hard_exceptions_async(
+    @pytest.mark.describe("test of exceptions in list_collections, async")
+    async def test_list_collections_hard_exceptions_async(
         self,
         async_database: AsyncDatabase,
     ) -> None:
         with pytest.raises(DataAPIResponseException):
-            async_database.list_collections(keyspace="nonexisting")
-
-        cur1 = async_database.list_collections()
-        [doc async for doc in cur1]
-        with pytest.raises(CursorIsStartedException) as exc:
-            async for col in cur1:
-                pass
-        assert exc.value.cursor_state == "exhausted"
+            await async_database.list_collections(keyspace="nonexisting")

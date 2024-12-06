@@ -14,23 +14,26 @@
 
 from __future__ import annotations
 
-import datetime
+from datetime import date, datetime, timezone
 from typing import Any
 
 import pytest
 
-from astrapy import Collection
-from astrapy.constants import ReturnDocument, SortDocuments
-from astrapy.exceptions import DataAPIResponseException, InsertManyException
+from astrapy.constants import DefaultDocumentType, ReturnDocument, SortMode
+from astrapy.data_types import DataAPITimestamp, DataAPIVector
+from astrapy.exceptions import CollectionInsertManyException, DataAPIResponseException
 from astrapy.ids import UUID, ObjectId
-from astrapy.results import DeleteResult, InsertOneResult
+from astrapy.results import CollectionDeleteResult, CollectionInsertOneResult
+from astrapy.utils.api_options import APIOptions, SerdesOptions
+
+from ..conftest import DefaultCollection
 
 
 class TestDMLSync:
     @pytest.mark.describe("test of collection count_documents, sync")
     def test_collection_count_documents_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 0
         sync_empty_collection.insert_one({"doc": 1, "group": "A"})
@@ -47,7 +50,7 @@ class TestDMLSync:
     @pytest.mark.describe("test of collection estimated_document_count, sync")
     def test_collection_estimated_document_count_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         sync_empty_collection.insert_one({"doc": 1, "group": "A"})
         sync_empty_collection.insert_one({"doc": 2, "group": "B"})
@@ -60,7 +63,7 @@ class TestDMLSync:
     @pytest.mark.describe("test of overflowing collection count_documents, sync")
     def test_collection_overflowing_count_documents_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         sync_empty_collection.insert_many([{"a": i} for i in range(900)])
         assert sync_empty_collection.count_documents(filter={}, upper_bound=950) == 900
@@ -76,10 +79,10 @@ class TestDMLSync:
     @pytest.mark.describe("test of collection insert_one, sync")
     def test_collection_insert_one_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         io_result1 = sync_empty_collection.insert_one({"doc": 1, "group": "A"})
-        assert isinstance(io_result1, InsertOneResult)
+        assert isinstance(io_result1, CollectionInsertOneResult)
         io_result2 = sync_empty_collection.insert_one(
             {"_id": "xxx", "doc": 2, "group": "B"}
         )
@@ -94,29 +97,146 @@ class TestDMLSync:
     @pytest.mark.describe("test of collection insert_one with vector, sync")
     def test_collection_insert_one_vector_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         sync_empty_collection.insert_one({"tag": "v1", "$vector": [-1, -2]})
         retrieved1 = sync_empty_collection.find_one({"tag": "v1"}, projection={"*": 1})
         assert retrieved1 is not None
-        assert retrieved1["$vector"] == [-1, -2]
+        assert retrieved1["$vector"] == DataAPIVector([-1, -2])
 
         sync_empty_collection.insert_one({"tag": "v2", "$vector": [-3, -4]})
         retrieved2 = sync_empty_collection.find_one({"tag": "v2"}, projection={"*": 1})
         assert retrieved2 is not None
-        assert retrieved2["$vector"] == [-3, -4]
+        assert retrieved2["$vector"] == DataAPIVector([-3, -4])
+
+    @pytest.mark.describe("test of collection vector insertion options, sync")
+    def test_collection_vector_insertion_options_sync(
+        self,
+        sync_empty_collection: DefaultCollection,
+    ) -> None:
+        collection_Yb_Yc = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    binary_encode_vectors=True,
+                    unroll_iterables_to_lists=True,
+                ),
+            ),
+        )
+        collection_Nb_Yc = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    binary_encode_vectors=False,
+                    unroll_iterables_to_lists=True,
+                ),
+            ),
+        )
+        collection_Yb_Nc = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    binary_encode_vectors=True,
+                    unroll_iterables_to_lists=False,
+                ),
+            ),
+        )
+        collection_Nb_Nc = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    binary_encode_vectors=False,
+                    unroll_iterables_to_lists=False,
+                ),
+            ),
+        )
+
+        # writes w.r.t. options
+        collection_Yb_Yc.insert_one(
+            {"_id": "Yb_Yc_()", "$vector": (i for i in [0.1, 0.2])}
+        )
+        collection_Yb_Yc.insert_one({"_id": "Yb_Yc_[]", "$vector": [0.3, 0.4]})
+        collection_Yb_Yc.insert_one(
+            {"_id": "Yb_Yc_DV", "$vector": DataAPIVector([0.5, 0.6])}
+        )
+
+        collection_Nb_Yc.insert_one(
+            {"_id": "Nb_Yc_()", "$vector": (i for i in [0.1, 0.2])}
+        )
+        collection_Nb_Yc.insert_one({"_id": "Nb_Yc_[]", "$vector": [0.3, 0.4]})
+        collection_Nb_Yc.insert_one(
+            {"_id": "Nb_Yc_DV", "$vector": DataAPIVector([0.5, 0.6])}
+        )
+
+        with pytest.raises(TypeError):
+            collection_Yb_Nc.insert_one(
+                {"_id": "Yb_Nc_()", "$vector": (i for i in [0.1, 0.2])}
+            )
+        collection_Yb_Nc.insert_one({"_id": "Yb_Nc_[]", "$vector": [0.3, 0.4]})
+        collection_Yb_Nc.insert_one(
+            {"_id": "Yb_Nc_DV", "$vector": DataAPIVector([0.5, 0.6])}
+        )
+
+        with pytest.raises(TypeError):
+            collection_Nb_Nc.insert_one(
+                {"_id": "Nb_Nc_()", "$vector": (i for i in [0.1, 0.2])}
+            )
+        collection_Nb_Nc.insert_one({"_id": "Nb_Nc_[]", "$vector": [0.3, 0.4]})
+        collection_Nb_Nc.insert_one(
+            {"_id": "Nb_Nc_DV", "$vector": DataAPIVector([0.5, 0.6])}
+        )
+
+        # check how the documents are stored
+        # TODO: reinstate the expectation once collection regains conditional binenc.
+        expect_binaries = {
+            "Yb_Yc_()": False,  # True,
+            "Yb_Yc_[]": False,  # True,
+            "Yb_Yc_DV": False,  # True,
+            "Nb_Yc_()": False,  # False,
+            "Nb_Yc_[]": False,  # False,
+            "Nb_Yc_DV": False,  # False,
+            #
+            "Yb_Nc_[]": False,  # True,
+            "Yb_Nc_DV": False,  # True,
+            #
+            "Nb_Nc_[]": False,  # False,
+            "Nb_Nc_DV": False,  # False,
+        }
+        raw_find_response = sync_empty_collection.command(
+            body={"find": {"projection": {"_id": True, "$vector": True}}},
+        )
+        raw_docs = raw_find_response["data"]["documents"]
+        for raw_doc in raw_docs:
+            expect_binary = expect_binaries[raw_doc["_id"]]
+            has_binary = "$binary" in raw_doc["$vector"]
+            assert expect_binary is has_binary
+
+        collection_Ycc = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=True,
+                ),
+            ),
+        )
+        collection_Ncc = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=False,
+                ),
+            ),
+        )
+        docs_Ycc = list(collection_Ycc.find(projection={"$vector": True}))
+        docs_Ncc = list(collection_Ncc.find(projection={"$vector": True}))
+        assert all(isinstance(doc["$vector"], DataAPIVector) for doc in docs_Ycc)
+        assert all(not isinstance(doc["$vector"], DataAPIVector) for doc in docs_Ncc)
 
     @pytest.mark.describe("test of collection delete_one, sync")
     def test_collection_delete_one_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         sync_empty_collection.insert_one({"doc": 1, "group": "A"})
         sync_empty_collection.insert_one({"doc": 2, "group": "B"})
         sync_empty_collection.insert_one({"doc": 3, "group": "A"})
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 3
         do_result1 = sync_empty_collection.delete_one({"group": "A"})
-        assert isinstance(do_result1, DeleteResult)
+        assert isinstance(do_result1, CollectionDeleteResult)
         assert do_result1.deleted_count == 1
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 2
 
@@ -128,14 +248,14 @@ class TestDMLSync:
     @pytest.mark.describe("test of collection delete_many, sync")
     def test_collection_delete_many_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         sync_empty_collection.insert_one({"doc": 1, "group": "A"})
         sync_empty_collection.insert_one({"doc": 2, "group": "B"})
         sync_empty_collection.insert_one({"doc": 3, "group": "A"})
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 3
         do_result1 = sync_empty_collection.delete_many({"group": "A"})
-        assert isinstance(do_result1, DeleteResult)
+        assert isinstance(do_result1, CollectionDeleteResult)
         assert do_result1.deleted_count == 2
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 1
 
@@ -148,25 +268,25 @@ class TestDMLSync:
     @pytest.mark.describe("test of collection chunk-requiring delete_many, sync")
     def test_collection_chunked_delete_many_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         sync_empty_collection.insert_many([{"doc": i, "group": "A"} for i in range(50)])
         sync_empty_collection.insert_many([{"doc": i, "group": "B"} for i in range(10)])
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 60
         do_result1 = sync_empty_collection.delete_many({"group": "A"})
-        assert isinstance(do_result1, DeleteResult)
+        assert isinstance(do_result1, CollectionDeleteResult)
         assert do_result1.deleted_count == 50
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 10
 
     @pytest.mark.describe("test of collection find, sync")
     def test_collection_find_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         sync_empty_collection.insert_many([{"seq": i} for i in range(30)])
         Nski = 1
         Nlim = 28
-        Nsor = {"seq": SortDocuments.DESCENDING}
+        Nsor = {"seq": SortMode.DESCENDING}
         Nfil = {"seq": {"$exists": True}}
 
         # case 0000 of find-pattern matrix
@@ -356,7 +476,7 @@ class TestDMLSync:
     @pytest.mark.describe("test of cursors from collection.find, sync")
     def test_collection_cursors_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         """
         Functionalities of cursors from find, other than the various
@@ -383,13 +503,11 @@ class TestDMLSync:
         cursor1.__next__()
         cursor1.__next__()
         items1 = list(cursor1)[:2]  # noqa: F841
-        assert list(cursor1.rewind()) == list(
-            sync_empty_collection.find(sort={"seq": 1})
-        )
+        cursor1.rewind()
+        assert list(cursor1) == list(sync_empty_collection.find(sort={"seq": 1}))
         cursor1.rewind()
 
         # address, cursor_id, collection
-        assert cursor1.address == sync_empty_collection._api_commander.full_path
         assert isinstance(cursor1.cursor_id, int)
         assert cursor1.data_source == sync_empty_collection
 
@@ -413,37 +531,83 @@ class TestDMLSync:
         with pytest.raises(StopIteration):
             cursor4.__next__()
 
-        # distinct
-        cursor5 = sync_empty_collection.find()
-        dist5 = cursor5.distinct("ternary")
-        assert (len(list(cursor5))) == 10
-        assert set(dist5) == {0, 1, 2}
-        cursor6 = sync_empty_collection.find()
-        for _ in range(9):
-            cursor6.__next__()
-        dist6 = cursor6.distinct("ternary")
-        assert (len(list(cursor6))) == 1
-        assert set(dist6) == {0, 1, 2}
-
         # distinct from collections
         assert set(sync_empty_collection.distinct("ternary")) == {0, 1, 2}
         assert set(sync_empty_collection.distinct("nonfield")) == set()
 
-        # Note: this, i.e. cursor[i]/cursor[i:j], is disabled
-        # pending full skip/limit support by the Data API.
-        # # indexing by integer
-        # cursor7 = sync_empty_collection.find(sort={"seq": 1})
-        # assert cursor7[5]["seq"] == 5
+    @pytest.mark.describe(
+        "test of collective and mappings on cursors from collection.find, sync"
+    )
+    def test_collection_cursors_collective_maps_sync(
+        self,
+        sync_empty_collection: DefaultCollection,
+    ) -> None:
+        """
+        Functionalities of cursors from find: map, tolist, foreach.
+        """
+        sync_empty_collection.insert_many(
+            [{"seq": i, "ternary": (i % 3)} for i in range(75)]
+        )
 
-        # # indexing by wrong type
-        # with pytest.raises(TypeError):
-        #     cursor7.rewind()
-        #     cursor7["wrong"]
+        cur0 = sync_empty_collection.find(filter={"seq": {"$gte": 10}})
+        assert len(list(cur0)) == 65
+
+        # map
+        def mapper(doc: DefaultDocumentType) -> tuple[int, str]:
+            return (doc["seq"], f"T{doc['ternary']}")
+
+        cur1_map = sync_empty_collection.find(filter={"seq": {"$gte": 10}}).map(mapper)
+        items1_map = list(cur1_map)
+        assert len(items1_map) == 65
+        assert (20, "T2") in items1_map
+        assert all(isinstance(tup[0], int) for tup in items1_map)
+        assert all(isinstance(tup[1], str) for tup in items1_map)
+
+        # map composition
+
+        def mapper_2(tup: tuple[int, str]) -> str:
+            return f"{tup[1]}/{tup[0]}"
+
+        cur2_maps = (
+            sync_empty_collection.find(filter={"seq": {"$gte": 10}})
+            .map(mapper)
+            .map(mapper_2)
+        )
+        items2_maps = list(cur2_maps)
+        assert len(items2_maps) == 65
+        assert "T2/20" in items2_maps
+        assert all(isinstance(itm, str) for itm in items2_maps)
+
+        # clone (map-stripping, rewinding)
+        cloned_2 = cur2_maps.clone()
+        from_cl = next(cloned_2)
+        assert isinstance(from_cl, dict)
+        assert "seq" in from_cl
+        assert "ternary" in from_cl
+
+        # for each
+        accum: list[int] = []
+
+        def ingest(doc: DefaultDocumentType, acc: list[int] = accum) -> None:
+            acc += [doc["ternary"]]
+
+        (sync_empty_collection.find(filter={"seq": {"$gte": 10}}).for_each(ingest))
+        assert len(accum) == 65
+        assert set(accum) == {0, 1, 2}
+
+        # to list
+        cur3_tl = sync_empty_collection.find(
+            filter={"seq": {"$gte": 10}},
+            projection={"_id": False},
+        )
+        items3_tl = cur3_tl.to_list()
+        assert len(items3_tl) == 65
+        assert {"seq": 50, "ternary": 2} in items3_tl
 
     @pytest.mark.describe("test of distinct with non-hashable items, sync")
     def test_collection_distinct_nonhashable_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
         documents: list[dict[str, Any]] = [
@@ -455,35 +619,46 @@ class TestDMLSync:
             {"f": [10, 11]},
             {"f": [11, 10]},
             {"f": [10]},
-            {"f": datetime.datetime(2000, 1, 1, 12, 00, 00)},
+            {"f": datetime(2000, 1, 1, 12, 0, 0, tzinfo=timezone.utc)},
             {"f": None},
         ]
         col.insert_many(documents * 2)
 
         d_items = col.distinct("f")
-        expected = [
-            1,
-            "a",
-            {"subf": 99},
-            {"subf": 99, "another": {"subsubf": [True, False]}},
-            10,
-            11,
-            datetime.datetime(2000, 1, 1, 12, 0),
-            None,
-        ]
-        assert len(d_items) == len(expected)
+        assert len(d_items) == 8
         for doc in documents:
             if "f" in doc:
                 if isinstance(doc["f"], list):
                     for item in doc["f"]:
                         assert item in d_items
+                elif isinstance(doc["f"], datetime):
+                    da_ts = DataAPITimestamp.from_datetime(doc["f"])
+                    assert da_ts in d_items
                 else:
                     assert doc["f"] in d_items
+
+        d_items_noncustom = col.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=False,
+                )
+            ),
+        ).distinct("f")
+        assert len(d_items_noncustom) == 8
+        for doc in documents:
+            if "f" in doc:
+                if isinstance(doc["f"], list):
+                    for item in doc["f"]:
+                        assert item in d_items_noncustom
+                elif isinstance(doc["f"], datetime):
+                    assert doc["f"] in d_items_noncustom
+                else:
+                    assert doc["f"] in d_items_noncustom
 
     @pytest.mark.describe("test of usage of projection in distinct, sync")
     def test_collection_projections_distinct_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
         col.insert_one({"x": [{"y": "Y", "0": "ZERO"}]})
@@ -497,7 +672,7 @@ class TestDMLSync:
     @pytest.mark.describe("test of unacceptable paths for distinct, sync")
     def test_collection_wrong_paths_distinct_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         with pytest.raises(ValueError):
             sync_empty_collection.distinct("root.1..subf")
@@ -511,7 +686,7 @@ class TestDMLSync:
     @pytest.mark.describe("test of collection find, find_one with vectors, sync")
     def test_collection_find_find_one_vectors_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         q_vector = [3, 3]
         sync_empty_collection.insert_many(
@@ -539,7 +714,7 @@ class TestDMLSync:
                 sync_empty_collection.find(
                     {},
                     projection=["tag"],
-                    sort={"$vector": q_vector, "tag": SortDocuments.DESCENDING},
+                    sort={"$vector": q_vector, "tag": SortMode.DESCENDING},
                     limit=3,
                 )
             )
@@ -572,18 +747,12 @@ class TestDMLSync:
         assert "$similarity" in f1doc_wi_s
         assert f1doc_wi_s["$similarity"] > 0.0
 
-        with pytest.raises(ValueError):
-            sync_empty_collection.find({}, include_similarity=True)
-
-        with pytest.raises(ValueError):
-            sync_empty_collection.find_one({}, include_similarity=True)
-
     @pytest.mark.describe("test of include_sort_vector in collection find, sync")
     def test_collection_include_sort_vector_find_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
-        q_vector = [10, 9]
+        q_vector = DataAPIVector([10, 9])
         # with empty collection
         for include_sv in [False, True]:
             for sort_cl_label in ["reg", "vec"]:
@@ -660,10 +829,67 @@ class TestDMLSync:
                 else:
                     assert this_ite_2.get_sort_vector() is None
 
+    @pytest.mark.describe("test of include_sort_vector with serdes options, sync")
+    def test_collection_include_sort_vector_serdes_options_sync(
+        self,
+        sync_empty_collection: DefaultCollection,
+    ) -> None:
+        col_v0_d0 = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=False,
+                    use_decimals_in_collections=False,
+                ),
+            ),
+        )
+        col_v0_d1 = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=False,
+                    use_decimals_in_collections=True,
+                ),
+            ),
+        )
+        col_v1_d0 = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=True,
+                    use_decimals_in_collections=False,
+                ),
+            ),
+        )
+        col_v1_d1 = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=True,
+                    use_decimals_in_collections=True,
+                ),
+            ),
+        )
+        cur0_v0_d0 = col_v0_d0.find(sort={"$vector": [1, 2]})
+        cur0_v0_d1 = col_v0_d1.find(sort={"$vector": [1, 2]})
+        cur0_v1_d0 = col_v1_d0.find(sort={"$vector": [1, 2]})
+        cur0_v1_d1 = col_v1_d1.find(sort={"$vector": [1, 2]})
+
+        assert cur0_v0_d0.get_sort_vector() is None
+        assert cur0_v0_d1.get_sort_vector() is None
+        assert cur0_v1_d0.get_sort_vector() is None
+        assert cur0_v1_d1.get_sort_vector() is None
+
+        cur1_v0_d0 = col_v0_d0.find(sort={"$vector": [1, 2]}, include_sort_vector=True)
+        cur1_v0_d1 = col_v0_d1.find(sort={"$vector": [1, 2]}, include_sort_vector=True)
+        cur1_v1_d0 = col_v1_d0.find(sort={"$vector": [1, 2]}, include_sort_vector=True)
+        cur1_v1_d1 = col_v1_d1.find(sort={"$vector": [1, 2]}, include_sort_vector=True)
+
+        assert cur1_v0_d0.get_sort_vector() == [1, 2]
+        assert cur1_v0_d1.get_sort_vector() == [1, 2]
+        assert cur1_v1_d0.get_sort_vector() == DataAPIVector([1, 2])
+        assert cur1_v1_d1.get_sort_vector() == DataAPIVector([1, 2])
+
     @pytest.mark.describe("test of projections in collection find with vectors, sync")
     def test_collection_find_projections_vectors_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         sync_empty_collection.insert_one(
             {
@@ -719,7 +945,7 @@ class TestDMLSync:
     @pytest.mark.describe("test of collection insert_many with empty list, sync")
     def test_collection_insert_many_empty_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
         col.insert_many([], ordered=True)
@@ -729,7 +955,7 @@ class TestDMLSync:
     @pytest.mark.describe("test of collection insert_many, sync")
     def test_collection_insert_many_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
 
@@ -737,15 +963,15 @@ class TestDMLSync:
         assert set(ins_result1.inserted_ids) == {"a", "b"}
         assert {doc["_id"] for doc in col.find()} == {"a", "b"}
 
-        with pytest.raises(InsertManyException):
+        with pytest.raises(CollectionInsertManyException):
             col.insert_many([{"_id": "a"}, {"_id": "c"}], ordered=True)
         assert {doc["_id"] for doc in col.find()} == {"a", "b"}
 
-        with pytest.raises(InsertManyException):
+        with pytest.raises(CollectionInsertManyException):
             col.insert_many([{"_id": "c"}, {"_id": "a"}, {"_id": "d"}], ordered=True)
         assert {doc["_id"] for doc in col.find()} == {"a", "b", "c"}
 
-        with pytest.raises(InsertManyException):
+        with pytest.raises(CollectionInsertManyException):
             col.insert_many(
                 [{"_id": "c"}, {"_id": "d"}, {"_id": "e"}],
                 ordered=False,
@@ -755,7 +981,7 @@ class TestDMLSync:
     @pytest.mark.describe("test of collection insert_many with vectors, sync")
     def test_collection_insert_many_vectors_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
         col.insert_many(
@@ -774,7 +1000,7 @@ class TestDMLSync:
     @pytest.mark.describe("test of collection find_one, sync")
     def test_collection_find_one_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
         col.insert_many(
@@ -817,10 +1043,93 @@ class TestDMLSync:
         assert doc_proj == {"_id": "a", "kind": "letter"}
         assert doc_full == {"_id": "a", "seq": 1, "kind": "letter"}
 
+    @pytest.mark.describe(
+        "test of custom_datatypes_in_reading APIOptions setting, sync"
+    )
+    def test_custom_datatypes_in_reading_sync(
+        self,
+        sync_empty_collection: DefaultCollection,
+    ) -> None:
+        col_standard_dtypes = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=False,
+                ),
+            ),
+        )
+        col_custom_dtypes = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=True,
+                ),
+            ),
+        )
+        the_dtime = datetime(2000, 1, 1, 10, 11, 12, 123000, tzinfo=timezone.utc)
+        the_date = date(1998, 12, 31)
+
+        # read path
+        sync_empty_collection.insert_one(
+            {
+                "_id": "t0",
+                "the_dtime": the_dtime,
+                "the_date": the_date,
+            },
+        )
+        doc_standard_dtypes = col_standard_dtypes.find_one({"_id": "t0"})
+        doc_custom_dtypes = col_custom_dtypes.find_one({"_id": "t0"})
+
+        assert doc_standard_dtypes is not None
+        assert doc_custom_dtypes is not None
+        dtime_standard_dtypes = doc_standard_dtypes["the_dtime"]
+        dtime_custom_dtypes = doc_custom_dtypes["the_dtime"]
+        date_standard_dtypes = doc_standard_dtypes["the_date"]
+        date_custom_dtypes = doc_custom_dtypes["the_date"]
+
+        assert isinstance(dtime_standard_dtypes, datetime)
+        assert isinstance(dtime_custom_dtypes, DataAPITimestamp)
+        assert (
+            DataAPITimestamp.from_datetime(dtime_standard_dtypes) == dtime_custom_dtypes
+        )
+        assert dtime_custom_dtypes == DataAPITimestamp.from_datetime(
+            dtime_standard_dtypes
+        )
+        assert isinstance(date_standard_dtypes, datetime)
+        assert isinstance(date_custom_dtypes, DataAPITimestamp)
+        assert (
+            DataAPITimestamp.from_datetime(date_standard_dtypes) == date_custom_dtypes
+        )
+        assert date_custom_dtypes == DataAPITimestamp.from_datetime(
+            date_standard_dtypes
+        )
+
+        # write path
+        sync_empty_collection.delete_one({"_id": "t0"})
+        col_standard_dtypes.insert_one(
+            {"_id": "default_dtype_dt", "the_dtime": the_dtime}
+        )
+        # in write path, custom classes still accepted
+        col_standard_dtypes.insert_one(
+            {
+                "_id": "default_dtype_ats",
+                "the_dtime": DataAPITimestamp.from_datetime(the_dtime),
+            }
+        )
+        col_custom_dtypes.insert_one({"_id": "custom_dtype_dt", "the_dtime": the_dtime})
+        col_custom_dtypes.insert_one(
+            {
+                "_id": "custom_dtype_ats",
+                "the_dtime": DataAPITimestamp.from_datetime(the_dtime),
+            }
+        )
+
+        all_dates = [doc["the_dtime"] for doc in sync_empty_collection.find({})]
+        assert len(all_dates) == 4
+        assert len(set(all_dates)) == 1
+
     @pytest.mark.describe("test of find_one_and_replace, sync")
     def test_collection_find_one_and_replace_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
 
@@ -969,7 +1278,7 @@ class TestDMLSync:
     @pytest.mark.describe("test of replace_one, sync")
     def test_collection_replace_one_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
 
@@ -1007,7 +1316,7 @@ class TestDMLSync:
     @pytest.mark.describe("test of replace_one with vectors, sync")
     def test_collection_replace_one_vector_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
         col.insert_many(
@@ -1024,7 +1333,7 @@ class TestDMLSync:
     @pytest.mark.describe("test of update_one, sync")
     def test_collection_update_one_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
 
@@ -1068,7 +1377,7 @@ class TestDMLSync:
     @pytest.mark.describe("test of update_many, sync")
     def test_collection_update_many_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
         col.insert_many([{"a": 1, "seq": i} for i in range(4)])
@@ -1101,7 +1410,7 @@ class TestDMLSync:
     @pytest.mark.describe("test of update_many, sync")
     def test_collection_paginated_update_many_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
         col.insert_many([{"a": 1} for _ in range(50)])
@@ -1119,7 +1428,7 @@ class TestDMLSync:
     @pytest.mark.describe("test of collection find_one_and_delete, sync")
     def test_collection_find_one_and_delete_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         sync_empty_collection.insert_one({"doc": 1, "group": "A"})
         sync_empty_collection.insert_one({"doc": 2, "group": "B"})
@@ -1151,7 +1460,7 @@ class TestDMLSync:
     @pytest.mark.describe("test of collection find_one_and_delete with vectors, sync")
     def test_collection_find_one_and_delete_vectors_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
         col.insert_many(
@@ -1167,7 +1476,7 @@ class TestDMLSync:
     @pytest.mark.describe("test of find_one_and_update, sync")
     def test_collection_find_one_and_update_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
 
@@ -1332,7 +1641,7 @@ class TestDMLSync:
     @pytest.mark.describe("test of the various ids in the document id field, sync")
     def test_collection_ids_as_doc_id_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         types_and_ids = {
             "uuid1": UUID("8ccd6ff8-e61b-11ee-a2fc-7df4a8c4164b"),
@@ -1365,7 +1674,7 @@ class TestDMLSync:
     )
     def test_collection_ids_throughout_dml_methods_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         types_and_ids = {
             "uuid1": UUID("8ccd6ff8-e61b-11ee-a2fc-7df4a8c4164b"),

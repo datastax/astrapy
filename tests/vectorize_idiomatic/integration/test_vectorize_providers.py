@@ -22,8 +22,8 @@ import pytest
 
 from astrapy import Database
 from astrapy.authentication import AWSEmbeddingHeadersProvider, EmbeddingHeadersProvider
-from astrapy.exceptions import DataAPIResponseException, InsertManyException
-from astrapy.info import CollectionVectorServiceOptions
+from astrapy.exceptions import CollectionInsertManyException, DataAPIResponseException
+from astrapy.info import CollectionDefinition, VectorServiceOptions
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -33,7 +33,7 @@ from ..vectorize_models import live_test_models
 
 def enabled_vectorize_models(auth_type: str) -> list[Any]:
     """
-    This actually returns a List of `_pytest.mark.structures.ParameterSet` instances,
+    This actually returns a list of `_pytest.mark.structures.ParameterSet` instances,
     each wrapping a dict with the needed info to test the model
 
     The tested models can also be further restricted by:
@@ -125,13 +125,17 @@ class TestVectorizeProviders:
         try:
             collection = db.create_collection(
                 collection_name,
-                dimension=dimension,
-                metric="cosine",
-                service=service_options,
+                definition=(
+                    CollectionDefinition.builder()
+                    .set_vector_dimension(dimension)
+                    .set_vector_metric("cosine")
+                    .set_vector_service(service_options)
+                    .build()
+                ),
                 embedding_api_key=embedding_api_key,
             )
             # this is to cope with the Data API normalizing options
-            expected_service_options = CollectionVectorServiceOptions(
+            expected_service_options = VectorServiceOptions(
                 provider=service_options.provider,
                 model_name=testable_vectorize_model.get(
                     "expected_model_name", service_options.model_name
@@ -144,9 +148,9 @@ class TestVectorizeProviders:
             ]
             assert len(c_descriptors) == 1
             c_descriptor = c_descriptors[0]
-            assert c_descriptor.options is not None
-            assert c_descriptor.options.vector is not None
-            assert c_descriptor.options.vector.service == expected_service_options
+            assert c_descriptor.definition is not None
+            assert c_descriptor.definition.vector is not None
+            assert c_descriptor.definition.vector.service == expected_service_options
             # put entries
             test_assets = testable_vectorize_model["test_assets"]
             if testable_vectorize_model["use_insert_one"]:
@@ -155,7 +159,7 @@ class TestVectorizeProviders:
                         {"tag": test_sample_tag, "$vectorize": test_sample_text},
                     )
                 # also test for an error if inserting many
-                with pytest.raises(InsertManyException):
+                with pytest.raises(CollectionInsertManyException):
                     collection.insert_many(
                         [
                             {"tag": tag, "$vectorize": text}
@@ -213,12 +217,16 @@ class TestVectorizeProviders:
         try:
             collection = db.create_collection(
                 collection_name,
-                dimension=dimension,
-                metric="cosine",
-                service=service_options,
+                definition=(
+                    CollectionDefinition.builder()
+                    .set_vector_dimension(dimension)
+                    .set_vector_metric("cosine")
+                    .set_vector_service(service_options)
+                    .build()
+                ),
             )
             # this is to cope with the Data API normalizing options
-            expected_service_options = CollectionVectorServiceOptions(
+            expected_service_options = VectorServiceOptions(
                 provider=service_options.provider,
                 model_name=testable_vectorize_model.get(
                     "expected_model_name", service_options.model_name
@@ -231,9 +239,9 @@ class TestVectorizeProviders:
             ]
             assert len(c_descriptors) == 1
             c_descriptor = c_descriptors[0]
-            assert c_descriptor.options is not None
-            assert c_descriptor.options.vector is not None
-            assert c_descriptor.options.vector.service == expected_service_options
+            assert c_descriptor.definition is not None
+            assert c_descriptor.definition.vector is not None
+            assert c_descriptor.definition.vector.service == expected_service_options
             # put entries
             test_assets = testable_vectorize_model["test_assets"]
             if testable_vectorize_model["use_insert_one"]:
@@ -291,7 +299,7 @@ class TestVectorizeProviders:
         db = sync_database
         collection_name = f"vec_s_{simple_tag}"
         # to create the collection, prepare a service_options with the auth info
-        service_options = CollectionVectorServiceOptions(
+        service_options = VectorServiceOptions(
             provider=base_service_options.provider,
             model_name=base_service_options.model_name,
             authentication={
@@ -300,7 +308,7 @@ class TestVectorizeProviders:
             parameters=base_service_options.parameters,
         )
         # this is to cope with the Data API normalizing options
-        expected_service_options = CollectionVectorServiceOptions(
+        expected_service_options = VectorServiceOptions(
             provider=base_service_options.provider,
             model_name=testable_vectorize_model.get(
                 "expected_model_name", service_options.model_name
@@ -313,9 +321,13 @@ class TestVectorizeProviders:
         try:
             collection = db.create_collection(
                 collection_name,
-                dimension=dimension,
-                metric="cosine",
-                service=service_options,
+                definition=(
+                    CollectionDefinition.builder()
+                    .set_vector_dimension(dimension)
+                    .set_vector_metric("cosine")
+                    .set_vector_service(service_options)
+                    .build()
+                ),
             )
             # test service back from collection info
             c_descriptors = [
@@ -323,9 +335,9 @@ class TestVectorizeProviders:
             ]
             assert len(c_descriptors) == 1
             c_descriptor = c_descriptors[0]
-            assert c_descriptor.options is not None
-            assert c_descriptor.options.vector is not None
-            assert c_descriptor.options.vector.service == expected_service_options
+            assert c_descriptor.definition is not None
+            assert c_descriptor.definition.vector is not None
+            assert c_descriptor.definition.vector.service == expected_service_options
             # put entries
             test_assets = testable_vectorize_model["test_assets"]
             if testable_vectorize_model["use_insert_one"]:

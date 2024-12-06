@@ -16,26 +16,23 @@ from __future__ import annotations
 
 import pytest
 
-from astrapy import Collection, Database
-from astrapy.cursors import CursorState
+from astrapy import Database
+from astrapy.cursors import FindCursorState
 from astrapy.exceptions import (
-    CollectionAlreadyExistsException,
-    CollectionNotFoundException,
-    CursorIsStartedException,
+    CollectionInsertManyException,
+    CursorException,
     DataAPIResponseException,
-    DevOpsAPIException,
-    InsertManyException,
     TooManyDocumentsToCountException,
 )
 
-from ..conftest import IS_ASTRA_DB, DataAPICredentials
+from ..conftest import IS_ASTRA_DB, DefaultCollection
 
 
 class TestExceptionsSync:
     @pytest.mark.describe("test of collection insert_many type-failure modes, sync")
     def test_collection_insert_many_type_failures_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
         bad_docs = [{"_id": tid} for tid in ["a", "b", "c", ValueError, "e", "f"]]
@@ -55,7 +52,7 @@ class TestExceptionsSync:
     @pytest.mark.describe("test of collection insert_many insert-failure modes, sync")
     def test_collection_insert_many_insert_failures_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
         dup_docs = [{"_id": tid} for tid in ["a", "b", "b", "d", "a", "b", "e", "f"]]
@@ -80,7 +77,7 @@ class TestExceptionsSync:
         assert len(list(col.find({}))) == 6
 
         col.delete_many({})
-        with pytest.raises(InsertManyException) as exc:
+        with pytest.raises(CollectionInsertManyException) as exc:
             col.insert_many(dup_docs, ordered=True, chunk_size=2, concurrency=1)
         assert len(exc.value.error_descriptors) == 1
         assert len(exc.value.detailed_error_descriptors) == 1
@@ -90,7 +87,7 @@ class TestExceptionsSync:
         assert {doc["_id"] for doc in col.find()} == {"a", "b"}
 
         col.delete_many({})
-        with pytest.raises(InsertManyException) as exc:
+        with pytest.raises(CollectionInsertManyException) as exc:
             col.insert_many(dup_docs, ordered=False, chunk_size=2, concurrency=1)
         assert len(exc.value.error_descriptors) == 3
         assert len(exc.value.detailed_error_descriptors) == 2
@@ -101,7 +98,7 @@ class TestExceptionsSync:
         assert {doc["_id"] for doc in col.find()} == {"a", "b", "d", "e", "f"}
 
         col.delete_many({})
-        with pytest.raises(InsertManyException) as exc:
+        with pytest.raises(CollectionInsertManyException) as exc:
             im_result3 = col.insert_many(
                 dup_docs, ordered=False, chunk_size=2, concurrency=2
             )
@@ -116,7 +113,7 @@ class TestExceptionsSync:
     @pytest.mark.describe("test of collection insert_one failure modes, sync")
     def test_collection_insert_one_failures_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
         with pytest.raises(TypeError):
@@ -133,19 +130,17 @@ class TestExceptionsSync:
     @pytest.mark.describe("test of collection options failure modes, sync")
     def test_collection_options_failures_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection._copy()
         col._name += "_hacked"
-        with pytest.raises(CollectionNotFoundException) as exc:
+        with pytest.raises(ValueError, match="not found"):
             col.options()
-        assert exc.value.collection_name == col._name
-        assert exc.value.keyspace == sync_empty_collection.keyspace
 
     @pytest.mark.describe("test of collection count_documents failure modes, sync")
     def test_collection_count_documents_failures_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection._copy()
         col._name += "_hacked"
@@ -162,7 +157,7 @@ class TestExceptionsSync:
     @pytest.mark.describe("test of collection one-doc DML failure modes, sync")
     def test_collection_monodoc_dml_failures_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection._copy()
         col._name += "_hacked"
@@ -182,41 +177,6 @@ class TestExceptionsSync:
         with pytest.raises(DataAPIResponseException):
             col.update_one({"a": 1}, {"$set": {"a": -1}})
 
-    @pytest.mark.describe("test of check_exists for database create_collection, sync")
-    def test_database_create_collection_check_exists_sync(
-        self,
-        sync_database: Database,
-    ) -> None:
-        TEST_LOCAL_COLLECTION_NAME = "test_check_exists"
-        sync_database.create_collection(
-            TEST_LOCAL_COLLECTION_NAME,
-            dimension=3,
-        )
-
-        with pytest.raises(CollectionAlreadyExistsException):
-            sync_database.create_collection(
-                TEST_LOCAL_COLLECTION_NAME,
-                dimension=3,
-            )
-        with pytest.raises(CollectionAlreadyExistsException):
-            sync_database.create_collection(
-                TEST_LOCAL_COLLECTION_NAME,
-                indexing={"deny": ["a"]},
-            )
-        sync_database.create_collection(
-            TEST_LOCAL_COLLECTION_NAME,
-            dimension=3,
-            check_exists=False,
-        )
-        with pytest.raises(DataAPIResponseException):
-            sync_database.create_collection(
-                TEST_LOCAL_COLLECTION_NAME,
-                indexing={"deny": ["a"]},
-                check_exists=False,
-            )
-
-        sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
-
     @pytest.mark.describe("test of database one-request method failures, sync")
     def test_database_method_failures_sync(
         self,
@@ -232,69 +192,50 @@ class TestExceptionsSync:
             sync_database.command(body={"myCommand": {"k": "v"}}, keyspace="ns")
         with pytest.raises(DataAPIResponseException):
             sync_database.command(
-                body={"myCommand": {"k": "v"}}, keyspace="ns", collection_name="coll"
+                body={"myCommand": {"k": "v"}},
+                keyspace="ns",
+                collection_or_table_name="coll",
             )
         with pytest.raises(DataAPIResponseException):
             list(sync_database.list_collections(keyspace="nonexisting"))
         with pytest.raises(DataAPIResponseException):
             sync_database.list_collection_names(keyspace="nonexisting")
 
-    @pytest.mark.describe("test of database info failures, sync")
-    def test_get_database_info_failures_sync(
-        self,
-        sync_database: Database,
-        data_api_credentials_kwargs: DataAPICredentials,
-    ) -> None:
-        hacked_ks = (data_api_credentials_kwargs["keyspace"] or "") + "_hacked"
-        with pytest.raises(DevOpsAPIException):
-            sync_database._copy(keyspace=hacked_ks).info()
-
     @pytest.mark.describe("test of hard exceptions in cursors, sync")
     def test_cursor_hard_exceptions_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         with pytest.raises(TypeError):
-            sync_empty_collection.find(
-                {},
-                sort={"f": ValueError("nonserializable")},
-            ).distinct("a")
-        # # Note: this, i.e. cursor[i]/cursor[i:j], is disabled
-        # # pending full skip/limit support by the Data API.
-        # with pytest.raises(IndexError):
-        #     sync_empty_collection.find(
-        #         {},
-        #         sort={"f": SortDocuments.ASCENDING},
-        #     )[100]
+            sync_empty_collection.distinct(
+                "a",
+                filter={"f": ValueError("nonserializable")},
+            )
 
     @pytest.mark.describe("test of custom exceptions in cursors, sync")
     def test_cursor_custom_exceptions_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         sync_empty_collection.insert_many([{"a": 1}] * 4)
         cur1 = sync_empty_collection.find({})
         cur1.limit(10)
 
         cur1.__next__()
-        with pytest.raises(CursorIsStartedException) as exc:
+        with pytest.raises(CursorException) as exc:
             cur1.limit(1)
-        assert exc.value.cursor_state == CursorState.STARTED.value
+        assert exc.value.cursor_state == FindCursorState.STARTED.value
 
         list(cur1)
-        with pytest.raises(CursorIsStartedException) as exc:
+        with pytest.raises(CursorException) as exc:
             cur1.limit(1)
-        assert exc.value.cursor_state == CursorState.CLOSED.value
+        assert exc.value.cursor_state == FindCursorState.CLOSED.value
 
     @pytest.mark.describe("test of standard exceptions in cursors, sync")
-    def test_cursor_standard_exceptions_sync(
-        self,
-        sync_empty_collection: Collection,
-    ) -> None:
-        wcol = sync_empty_collection._copy(keyspace="nonexisting")
+    def test_cursor_standard_exceptions_sync(self, sync_database: Database) -> None:
+        wcol = sync_database.get_collection("nonexisting")
         cur1 = wcol.find({})
         cur2 = wcol.find({})
-        cur3 = wcol.find({})
 
         with pytest.raises(DataAPIResponseException):
             for item in cur1:
@@ -304,25 +245,15 @@ class TestExceptionsSync:
             cur2.__next__()
 
         with pytest.raises(DataAPIResponseException):
-            cur3.distinct("f")
-
-        with pytest.raises(DataAPIResponseException):
             wcol.distinct("f")
 
         with pytest.raises(DataAPIResponseException):
             wcol.find_one({})
 
-    @pytest.mark.describe("test of exceptions in command-cursors, sync")
-    def test_commandcursor_hard_exceptions_sync(
+    @pytest.mark.describe("test of exceptions in list_collections, sync")
+    def test_list_collections_hard_exceptions_sync(
         self,
         sync_database: Database,
     ) -> None:
         with pytest.raises(DataAPIResponseException):
             sync_database.list_collections(keyspace="nonexisting")
-
-        cur1 = sync_database.list_collections()
-        list(cur1)
-        with pytest.raises(CursorIsStartedException) as exc:
-            for col in cur1:
-                pass
-        assert exc.value.cursor_state == "exhausted"

@@ -18,10 +18,16 @@ import time
 
 import pytest
 
-from astrapy import AsyncCollection, AsyncDatabase, DataAPIClient
+from astrapy import AsyncDatabase, DataAPIClient
 from astrapy.constants import DefaultIdType, VectorMetric
 from astrapy.ids import UUID, ObjectId
-from astrapy.info import CollectionDescriptor, DatabaseInfo
+from astrapy.info import (
+    AstraDBDatabaseInfo,
+    CollectionDefaultIDOptions,
+    CollectionDefinition,
+    CollectionDescriptor,
+    CollectionVectorOptions,
+)
 
 from ..conftest import (
     IS_ASTRA_DB,
@@ -29,6 +35,7 @@ from ..conftest import (
     TEST_COLLECTION_NAME,
     DataAPICredentials,
     DataAPICredentialsInfo,
+    DefaultAsyncCollection,
 )
 
 
@@ -42,29 +49,61 @@ class TestDDLAsync:
         TEST_LOCAL_COLLECTION_NAME_B = "test_local_coll_b"
         col1 = await async_database.create_collection(
             TEST_LOCAL_COLLECTION_NAME,
-            dimension=123,
-            metric=VectorMetric.EUCLIDEAN,
-            indexing={"deny": ["a", "b", "c"]},
+            definition=CollectionDefinition(
+                vector=CollectionVectorOptions(
+                    dimension=123,
+                    metric=VectorMetric.EUCLIDEAN,
+                ),
+                indexing={"deny": ["a", "b", "c"]},
+            ),
         )
+        # test other creation methods (no-op since just created)
+        col1_dict = await async_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME,
+            definition={
+                "vector": {
+                    "dimension": 123,
+                    "metric": VectorMetric.EUCLIDEAN,
+                },
+                "indexing": {"deny": ["a", "b", "c"]},
+            },
+        )
+        assert col1_dict == col1
+        fluent_definition1 = (
+            CollectionDefinition.builder()
+            .set_vector_dimension(123)
+            .set_vector_metric(VectorMetric.EUCLIDEAN)
+            .set_indexing("deny", ["a", "b", "c"])
+            .build()
+        )
+        col1_fluent = await async_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME,
+            definition=fluent_definition1,
+        )
+        assert col1_fluent == col1
+
         await async_database.create_collection(
             TEST_LOCAL_COLLECTION_NAME_B,
-            indexing={"allow": ["z"]},
+            definition=CollectionDefinition(
+                indexing={"allow": ["z"]},
+            ),
         )
-        lc_response = [col async for col in async_database.list_collections()]
+        lc_response = await async_database.list_collections()
         #
-        expected_coll_descriptor = CollectionDescriptor.from_dict(
+        expected_coll_descriptor = CollectionDescriptor._from_dict(
             {
                 "name": TEST_LOCAL_COLLECTION_NAME,
                 "options": {
                     "vector": {
                         "dimension": 123,
                         "metric": "euclidean",
+                        "sourceModel": "other",
                     },
                     "indexing": {"deny": ["a", "b", "c"]},
                 },
             },
         )
-        expected_coll_descriptor_b = CollectionDescriptor.from_dict(
+        expected_coll_descriptor_b = CollectionDescriptor._from_dict(
             {
                 "name": TEST_LOCAL_COLLECTION_NAME_B,
                 "options": {
@@ -75,12 +114,10 @@ class TestDDLAsync:
         assert expected_coll_descriptor in lc_response
         assert expected_coll_descriptor_b in lc_response
         #
-        col2 = await async_database.get_collection(TEST_LOCAL_COLLECTION_NAME)
+        col2 = async_database.get_collection(TEST_LOCAL_COLLECTION_NAME)
         assert col1 == col2
-        dc_response = await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
-        assert dc_response == {"ok": 1}
-        dc_response2 = await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
-        assert dc_response2 == {"ok": 1}
+        await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
+        await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
         await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME_B)
 
     @pytest.mark.describe("test of default_id_type in creating collections, async")
@@ -92,7 +129,11 @@ class TestDDLAsync:
 
         acol = await async_database.create_collection(
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUID,
-            default_id_type=DefaultIdType.UUID,
+            definition=CollectionDefinition(
+                default_id=CollectionDefaultIDOptions(
+                    default_id_type=DefaultIdType.UUID,
+                ),
+            ),
         )
         acol_options = await acol.options()
         assert acol_options is not None
@@ -108,7 +149,11 @@ class TestDDLAsync:
         time.sleep(2)
         acol = await async_database.create_collection(
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV6,
-            default_id_type=DefaultIdType.UUIDV6,
+            definition=CollectionDefinition(
+                default_id=CollectionDefaultIDOptions(
+                    default_id_type=DefaultIdType.UUIDV6,
+                ),
+            ),
         )
         acol_options = await acol.options()
         assert acol_options is not None
@@ -126,7 +171,11 @@ class TestDDLAsync:
         time.sleep(2)
         acol = await async_database.create_collection(
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV7,
-            default_id_type=DefaultIdType.UUIDV7,
+            definition=CollectionDefinition(
+                default_id=CollectionDefaultIDOptions(
+                    default_id_type=DefaultIdType.UUIDV7,
+                ),
+            ),
         )
         acol_options = await acol.options()
         assert acol_options is not None
@@ -144,7 +193,11 @@ class TestDDLAsync:
         time.sleep(2)
         acol = await async_database.create_collection(
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.DEFAULT,
-            default_id_type=DefaultIdType.DEFAULT,
+            definition=CollectionDefinition(
+                default_id=CollectionDefaultIDOptions(
+                    default_id_type=DefaultIdType.DEFAULT,
+                ),
+            ),
         )
         acol_options = await acol.options()
         assert acol_options is not None
@@ -155,7 +208,11 @@ class TestDDLAsync:
         time.sleep(2)
         acol = await async_database.create_collection(
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.OBJECTID,
-            default_id_type=DefaultIdType.OBJECTID,
+            definition=CollectionDefinition(
+                default_id=CollectionDefaultIDOptions(
+                    default_id_type=DefaultIdType.OBJECTID,
+                ),
+            ),
         )
         acol_options = await acol.options()
         assert acol_options is not None
@@ -171,10 +228,14 @@ class TestDDLAsync:
     @pytest.mark.describe("test of collection drop, async")
     async def test_collection_drop_async(self, async_database: AsyncDatabase) -> None:
         col = await async_database.create_collection(
-            name="async_collection_to_drop", dimension=2
+            name="async_collection_to_drop",
+            definition=CollectionDefinition(
+                vector=CollectionVectorOptions(
+                    dimension=2,
+                ),
+            ),
         )
-        del_res = await col.drop()
-        assert del_res["ok"] == 1
+        await col.drop()
         assert "async_collection_to_drop" not in (
             await async_database.list_collection_names()
         )
@@ -187,18 +248,18 @@ class TestDDLAsync:
         data_api_credentials_kwargs: DataAPICredentials,
     ) -> None:
         assert isinstance(async_database.id, str)
-        assert isinstance(async_database.name(), str)
+        assert isinstance(await async_database.name(), str)
         assert async_database.keyspace == data_api_credentials_kwargs["keyspace"]
-        assert isinstance(async_database.info(), DatabaseInfo)
-        assert isinstance(async_database.info().raw_info, dict)
+        assert isinstance(await async_database.info(), AstraDBDatabaseInfo)
+        assert isinstance((await async_database.info()).raw, dict)
 
     @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
     @pytest.mark.describe("test of collection metainformation, async")
     async def test_get_collection_info_async(
         self,
-        async_collection: AsyncCollection,
+        async_collection: DefaultAsyncCollection,
     ) -> None:
-        info = async_collection.info()
+        info = await async_collection.info()
         assert info.keyspace == async_collection.keyspace
         assert info.keyspace == async_collection.database.keyspace
 
@@ -206,14 +267,14 @@ class TestDDLAsync:
     async def test_database_list_collections_async(
         self,
         async_database: AsyncDatabase,
-        async_collection: AsyncCollection,
+        async_collection: DefaultAsyncCollection,
     ) -> None:
         assert TEST_COLLECTION_NAME in await async_database.list_collection_names()
 
     @pytest.mark.describe("test of Collection options, async")
     async def test_collection_options_async(
         self,
-        async_collection: AsyncCollection,
+        async_collection: DefaultAsyncCollection,
     ) -> None:
         options = await async_collection.options()
         assert options.vector is not None
@@ -226,7 +287,7 @@ class TestDDLAsync:
     async def test_database_list_collections_cross_keyspace_async(
         self,
         async_database: AsyncDatabase,
-        async_collection: AsyncCollection,
+        async_collection: DefaultAsyncCollection,
         data_api_credentials_info: DataAPICredentialsInfo,
     ) -> None:
         assert TEST_COLLECTION_NAME not in await async_database.list_collection_names(
@@ -240,7 +301,7 @@ class TestDDLAsync:
     async def test_database_use_keyspace_async(
         self,
         async_database: AsyncDatabase,
-        async_collection: AsyncCollection,
+        async_collection: DefaultAsyncCollection,
         data_api_credentials_kwargs: DataAPICredentials,
         data_api_credentials_info: DataAPICredentialsInfo,
     ) -> None:
@@ -286,7 +347,10 @@ class TestDDLAsync:
             in await database_on_secondary.list_collection_names()
         )
         await database_on_secondary.drop_collection(TEST_LOCAL_COLLECTION_NAME1)
-        await async_database.drop_collection(col2_on_secondary)
+        await async_database.drop_collection(
+            col2_on_secondary.name,
+            keyspace=data_api_credentials_info["secondary_keyspace"],
+        )
         assert (
             TEST_LOCAL_COLLECTION_NAME1
             not in await database_on_secondary.list_collection_names()
@@ -300,19 +364,20 @@ class TestDDLAsync:
     async def test_database_command_on_collection_async(
         self,
         async_database: AsyncDatabase,
-        async_collection: AsyncCollection,
+        async_collection: DefaultAsyncCollection,
     ) -> None:
         cmd1 = await async_database.command(
-            {"countDocuments": {}}, collection_name=async_collection.name
+            {"countDocuments": {}}, collection_or_table_name=async_collection.name
         )
         assert isinstance(cmd1, dict)
         assert isinstance(cmd1["status"]["count"], int)
         cmd2 = await async_database._copy(keyspace="...").command(
             {"countDocuments": {}},
             keyspace=async_collection.keyspace,
-            collection_name=async_collection.name,
+            collection_or_table_name=async_collection.name,
         )
         assert cmd2 == cmd1
+        assert "count" in (cmd2.get("status") or {})
 
     @pytest.mark.describe("test of database command, async")
     async def test_database_command_async(
@@ -326,11 +391,18 @@ class TestDDLAsync:
             {"findCollections": {}}, keyspace=async_database.keyspace
         )
         assert cmd2 == cmd1
+        assert "collections" in (cmd2.get("status") or {})
+
+        cmd_feps = await async_database.command(
+            {"findEmbeddingProviders": {}},
+            keyspace=None,
+        )
+        assert "embeddingProviders" in (cmd_feps.get("status") or {})
 
     @pytest.mark.describe("test of database command, async")
     async def test_collection_command_async(
         self,
-        async_collection: AsyncCollection,
+        async_collection: DefaultAsyncCollection,
     ) -> None:
         cmd1 = await async_collection.command({"countDocuments": {}})
         assert isinstance(cmd1, dict)

@@ -15,21 +15,25 @@
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 
 import pytest
 from httpx import HTTPStatusError, Response
 from pytest_httpserver import HTTPServer
 
 from astrapy import DataAPIClient
+from astrapy.api_options import APIOptions, SerdesOptions
+from astrapy.constants import Environment
 from astrapy.exceptions import (
+    CollectionDeleteManyException,
+    CollectionInsertManyException,
     DataAPIDetailedErrorDescriptor,
     DataAPIErrorDescriptor,
     DataAPIHttpException,
     DataAPIResponseException,
-    DeleteManyException,
-    InsertManyException,
+    InvalidEnvironmentException,
 )
-from astrapy.results import DeleteResult, InsertManyResult
+from astrapy.results import CollectionDeleteResult, CollectionInsertManyResult
 
 SAMPLE_API_MESSAGE = "da_message"
 SAMPLE_API_ERROR_OBJECT = {
@@ -120,7 +124,7 @@ def test_dataapihttpexception_raising_500_sync(httpserver: HTTPServer) -> None:
 
     assert isinstance(exc, DataAPIHttpException)
     httpx_payload = json.loads(exc.request.content.decode())
-    assert "find" in httpx_payload
+    assert "findOne" in httpx_payload
     assert SAMPLE_API_MESSAGE in exc.response.text
     assert exc.error_descriptors == [DataAPIErrorDescriptor(SAMPLE_API_ERROR_OBJECT)]
     assert SAMPLE_API_MESSAGE in str(exc)
@@ -156,7 +160,7 @@ def test_dataapihttpexception_raising_404_sync(httpserver: HTTPServer) -> None:
 
     assert isinstance(exc, DataAPIHttpException)
     httpx_payload = json.loads(exc.request.content.decode())
-    assert "find" in httpx_payload
+    assert "findOne" in httpx_payload
     assert "blah" in exc.response.text
     assert exc.error_descriptors == []
     # not parsable into a DataAPIErrorDescriptor -> not in the error str repr
@@ -176,7 +180,7 @@ async def test_dataapihttpexception_raising_500_async(httpserver: HTTPServer) ->
     root_endpoint = httpserver.url_for("/")
     client = DataAPIClient(environment="other")
     adatabase = client.get_async_database(root_endpoint, keyspace="xkeyspace")
-    acollection = await adatabase.get_collection("xcoll")
+    acollection = adatabase.get_collection("xcoll")
     expected_url = "/v1/xkeyspace/xcoll"
     httpserver.expect_oneshot_request(
         expected_url,
@@ -193,7 +197,7 @@ async def test_dataapihttpexception_raising_500_async(httpserver: HTTPServer) ->
 
     assert isinstance(exc, DataAPIHttpException)
     httpx_payload = json.loads(exc.request.content.decode())
-    assert "find" in httpx_payload
+    assert "findOne" in httpx_payload
     assert SAMPLE_API_MESSAGE in exc.response.text
     assert exc.error_descriptors == [DataAPIErrorDescriptor(SAMPLE_API_ERROR_OBJECT)]
     assert SAMPLE_API_MESSAGE in str(exc)
@@ -212,7 +216,7 @@ async def test_dataapihttpexception_raising_404_async(httpserver: HTTPServer) ->
     root_endpoint = httpserver.url_for("/")
     client = DataAPIClient(environment="other")
     adatabase = client.get_async_database(root_endpoint, keyspace="xkeyspace")
-    acollection = await adatabase.get_collection("xcoll")
+    acollection = adatabase.get_collection("xcoll")
     expected_url = "/v1/xkeyspace/xcoll"
     httpserver.expect_oneshot_request(
         expected_url,
@@ -229,7 +233,7 @@ async def test_dataapihttpexception_raising_404_async(httpserver: HTTPServer) ->
 
     assert isinstance(exc, DataAPIHttpException)
     httpx_payload = json.loads(exc.request.content.decode())
-    assert "find" in httpx_payload
+    assert "findOne" in httpx_payload
     assert "blah" in exc.response.text
     assert exc.error_descriptors == []
     # not parsable into a DataAPIErrorDescriptor -> not in the error str repr
@@ -252,8 +256,8 @@ def test_dataapiresponseexception() -> None:
     assert the_daed.message == "Aaa"
     assert the_daed.attributes == {"field": "value"}
 
-    assert da_e1.text == "Aaa"
-    assert str(da_e1) == "Aaa"
+    assert da_e1.text == "Aaa (C)"
+    assert str(da_e1) == "Aaa (C)"
     assert da_e1.error_descriptors == [the_daed]
     assert da_e1.detailed_error_descriptors == [
         DataAPIDetailedErrorDescriptor(
@@ -266,11 +270,13 @@ def test_dataapiresponseexception() -> None:
     ]
 
 
-@pytest.mark.describe("test InsertManyException")
-def test_insertmanyexception() -> None:
-    im_result = InsertManyResult(raw_results=[{"a": 1}], inserted_ids=["a", "b"])
+@pytest.mark.describe("test CollectionInsertManyException")
+def test_collection_insert_many_exception() -> None:
+    im_result = CollectionInsertManyResult(
+        raw_results=[{"a": 1}], inserted_ids=["a", "b"]
+    )
     # mypy thinks im_e1 is a DataAPIException for some reason...
-    im_e1: InsertManyException = InsertManyException.from_responses(  # type: ignore[assignment]
+    im_e1: CollectionInsertManyException = CollectionInsertManyException.from_responses(  # type: ignore[assignment]
         commands=[{"cmd": "C1"}],
         raw_responses=[{"errors": [{"errorCode": "C", "message": "Aaa"}]}],
         partial_result=im_result,
@@ -278,7 +284,7 @@ def test_insertmanyexception() -> None:
     the_daed = DataAPIErrorDescriptor({"errorCode": "C", "message": "Aaa"})
 
     assert im_e1.partial_result == im_result
-    assert im_e1.text == "Aaa"
+    assert im_e1.text == "Aaa (C)"
     assert im_e1.error_descriptors == [the_daed]
     assert im_e1.detailed_error_descriptors == [
         DataAPIDetailedErrorDescriptor(
@@ -289,11 +295,11 @@ def test_insertmanyexception() -> None:
     ]
 
 
-@pytest.mark.describe("test DeleteManyException")
-def test_deletemanyexception() -> None:
-    dm_result = DeleteResult(deleted_count=123, raw_results=[{"a": 1}])
+@pytest.mark.describe("test CollectionDeleteManyException")
+def test_collection_delete_many_exception() -> None:
+    dm_result = CollectionDeleteResult(deleted_count=123, raw_results=[{"a": 1}])
     # mypy thinks dm_e1 is a DataAPIException for some reason...
-    dm_e1: DeleteManyException = DeleteManyException.from_responses(  # type: ignore[assignment]
+    dm_e1: CollectionDeleteManyException = CollectionDeleteManyException.from_responses(  # type: ignore[assignment]
         commands=[{"cmd": "C1"}],
         raw_responses=[{"errors": [{"errorCode": "C", "message": "Aaa"}]}],
         partial_result=dm_result,
@@ -301,7 +307,7 @@ def test_deletemanyexception() -> None:
     the_daed = DataAPIErrorDescriptor({"errorCode": "C", "message": "Aaa"})
 
     assert dm_e1.partial_result == dm_result
-    assert dm_e1.text == "Aaa"
+    assert dm_e1.text == "Aaa (C)"
     assert dm_e1.error_descriptors == [the_daed]
     assert dm_e1.detailed_error_descriptors == [
         DataAPIDetailedErrorDescriptor(
@@ -310,3 +316,65 @@ def test_deletemanyexception() -> None:
             raw_response={"errors": [{"errorCode": "C", "message": "Aaa"}]},
         )
     ]
+
+
+@pytest.mark.describe("test of database info failures, sync")
+def test_get_database_info_failures_sync() -> None:
+    client = DataAPIClient(environment=Environment.OTHER)
+    db = client.get_database("http://not.a.real.thing", keyspace="ks")
+    with pytest.raises(InvalidEnvironmentException):
+        db.info()
+
+
+@pytest.mark.describe("test of database info failures, async")
+async def test_get_database_info_failures_async() -> None:
+    client = DataAPIClient(environment=Environment.OTHER)
+    adb = client.get_async_database("http://not.a.real.thing", keyspace="ks")
+    with pytest.raises(InvalidEnvironmentException):
+        await adb.info()
+
+
+@pytest.mark.describe("test of collections not inserting Decimals, sync")
+def test_collections_error_on_decimal_sync(httpserver: HTTPServer) -> None:
+    root_endpoint = httpserver.url_for("/")
+    client = DataAPIClient(environment="other")
+    database = client.get_database(root_endpoint, keyspace="xkeyspace")
+    collection = database.get_collection("xcoll")
+    expected_url = "/v1/xkeyspace/xcoll"
+    httpserver.expect_request(
+        expected_url,
+        method="POST",
+    ).respond_with_json({"status": {"insertedIds": ["x"]}})
+    collection.insert_one({"a": 1.23})
+    with pytest.raises(TypeError):
+        collection.insert_one({"a": Decimal("1.23")})
+    hd_collection = collection.with_options(
+        api_options=APIOptions(
+            serdes_options=SerdesOptions(use_decimals_in_collections=True)
+        )
+    )
+    hd_collection.insert_one({"a": 1.23})
+    hd_collection.insert_one({"a": Decimal("1.23")})
+
+
+@pytest.mark.describe("test of collections not inserting Decimals, async")
+async def test_collections_error_on_decimal_async(httpserver: HTTPServer) -> None:
+    root_endpoint = httpserver.url_for("/")
+    client = DataAPIClient(environment="other")
+    adatabase = client.get_async_database(root_endpoint, keyspace="xkeyspace")
+    acollection = adatabase.get_collection("xcoll")
+    expected_url = "/v1/xkeyspace/xcoll"
+    httpserver.expect_request(
+        expected_url,
+        method="POST",
+    ).respond_with_json({"status": {"insertedIds": ["x"]}})
+    await acollection.insert_one({"a": 1.23})
+    with pytest.raises(TypeError):
+        await acollection.insert_one({"a": Decimal("1.23")})
+    hd_acollection = acollection.with_options(
+        api_options=APIOptions(
+            serdes_options=SerdesOptions(use_decimals_in_collections=True)
+        )
+    )
+    await hd_acollection.insert_one({"a": 1.23})
+    await hd_acollection.insert_one({"a": Decimal("1.23")})

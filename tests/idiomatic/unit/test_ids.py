@@ -22,8 +22,12 @@ import json
 
 import pytest
 
+from astrapy.data.utils.collection_converters import (
+    postprocess_collection_response,
+    preprocess_collection_payload,
+)
 from astrapy.ids import UUID, ObjectId
-from astrapy.utils.transform_payload import normalize_for_api, restore_from_api
+from astrapy.utils.api_options import FullSerdesOptions
 
 
 @pytest.mark.describe("test of serdes for ids")
@@ -48,8 +52,28 @@ def test_ids_serdes() -> None:
         "f_oi": f_oi,
     }
 
-    normalized = normalize_for_api(full_structure)
+    normalized = preprocess_collection_payload(
+        full_structure,
+        options=FullSerdesOptions(
+            binary_encode_vectors=True,
+            custom_datatypes_in_reading=True,
+            unroll_iterables_to_lists=True,
+            use_decimals_in_collections=False,
+            accept_naive_datetimes=False,
+            datetime_tzinfo=None,
+        ),
+    )
     json.dumps(normalized)
     assert normalized is not None
-    restored = restore_from_api(normalized)
+    restored = postprocess_collection_response(
+        normalized,
+        options=FullSerdesOptions(
+            binary_encode_vectors=True,
+            custom_datatypes_in_reading=True,
+            unroll_iterables_to_lists=True,
+            use_decimals_in_collections=False,
+            accept_naive_datetimes=False,
+            datetime_tzinfo=None,
+        ),
+    )
     assert restored == full_structure

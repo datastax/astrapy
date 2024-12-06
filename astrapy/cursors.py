@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.data.cursors import (
-    AsyncCommandCursor,
-    AsyncCursor,
-    CommandCursor,
-    Cursor,
-    CursorState,
+from astrapy.data.cursor import (
+    AsyncCollectionFindCursor,
+    AsyncTableFindCursor,
+    CollectionFindCursor,
+    FindCursor,
+    FindCursorState,
+    TableFindCursor,
 )
 
 __all__ = [
-    "AsyncCommandCursor",
-    "AsyncCursor",
-    "CommandCursor",
-    "Cursor",
-    "CursorState",
+    "AsyncCollectionFindCursor",
+    "AsyncTableFindCursor",
+    "CollectionFindCursor",
+    "FindCursorState",
+    "FindCursor",
+    "TableFindCursor",
 ]

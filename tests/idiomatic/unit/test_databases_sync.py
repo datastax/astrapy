@@ -17,7 +17,7 @@ from __future__ import annotations
 import pytest
 
 from astrapy import Collection, DataAPIClient, Database
-from astrapy.authentication import StaticTokenProvider, coerce_token_provider
+from astrapy.authentication import StaticTokenProvider
 from astrapy.constants import Environment
 from astrapy.exceptions import DevOpsAPIException
 from astrapy.settings.defaults import DEFAULT_ASTRA_DB_KEYSPACE
@@ -31,6 +31,7 @@ from ..conftest import (
     TEST_COLLECTION_INSTANCE_NAME,
     DataAPICredentials,
     DataAPICredentialsInfo,
+    DefaultCollection,
 )
 
 api_ep5643_prod = (
@@ -48,7 +49,7 @@ class TestDatabasesSync:
         opts0 = defaultAPIOptions(environment=data_api_credentials_info["environment"])
         opts = opts0.with_override(
             APIOptions(
-                token=coerce_token_provider(data_api_credentials_kwargs["token"]),
+                token=data_api_credentials_kwargs["token"],
             )
         )
 
@@ -73,7 +74,7 @@ class TestDatabasesSync:
         opts0 = defaultAPIOptions(environment=data_api_credentials_info["environment"])
         opts = opts0.with_override(
             APIOptions(
-                token=coerce_token_provider(data_api_credentials_kwargs["token"]),
+                token=data_api_credentials_kwargs["token"],
             )
         )
 
@@ -91,7 +92,6 @@ class TestDatabasesSync:
         self,
     ) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
-        callers1 = [("x", "y")]
         db1 = Database(
             api_endpoint="api_endpoint",
             keyspace="keyspace",
@@ -106,35 +106,24 @@ class TestDatabasesSync:
                 ),
             ),
         )
-        assert db1 != db1._copy(api_endpoint="x")
         assert db1 != db1._copy(token="x")
         assert db1 != db1._copy(keyspace="x")
-        assert db1 != db1._copy(callers=callers1)
-        assert db1 != db1._copy(api_path="x")
-        assert db1 != db1._copy(api_version="x")
 
         db2 = db1._copy(
-            api_endpoint="x",
             token="x",
             keyspace="x",
-            callers=callers1,
-            api_path="x",
-            api_version="x",
         )
         assert db2 != db1
 
         assert db1.with_options(keyspace="x") != db1
-        assert db1.with_options(callers=callers1) != db1
 
         assert db1.with_options(keyspace="x").with_options(keyspace="keyspace") == db1
-        assert db1.with_options(callers=callers1).with_options(callers=callers0) == db1
 
     @pytest.mark.describe("test of Database rich conversions, sync")
     def test_rich_convert_database_sync(
         self,
     ) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
-        callers1 = [("x", "y")]
         db1 = Database(
             api_endpoint="api_endpoint",
             keyspace="keyspace",
@@ -149,30 +138,18 @@ class TestDatabasesSync:
                 ),
             ),
         )
-        assert db1 != db1.to_async(api_endpoint="o").to_sync()
         assert db1 != db1.to_async(token="o").to_sync()
         assert db1 != db1.to_async(keyspace="o").to_sync()
-        assert db1 != db1.to_async(callers=callers1).to_sync()
-        assert db1 != db1.to_async(api_path="o").to_sync()
-        assert db1 != db1.to_async(api_version="o").to_sync()
 
         db2a = db1.to_async(
-            api_endpoint="x",
             token="x",
             keyspace="x",
-            callers=callers1,
-            api_path="x",
-            api_version="x",
         )
         assert db2a.to_sync() != db1
 
         db3 = db2a.to_sync(
-            api_endpoint="api_endpoint",
             token="token",
             keyspace="keyspace",
-            callers=callers0,
-            api_path="api_path",
-            api_version="api_version",
         )
         assert db3 == db1
 
@@ -180,7 +157,7 @@ class TestDatabasesSync:
     def test_database_get_collection_sync(
         self,
         sync_database: Database,
-        sync_collection_instance: Collection,
+        sync_collection_instance: DefaultCollection,
         data_api_credentials_kwargs: DataAPICredentials,
     ) -> None:
         collection = sync_database.get_collection(TEST_COLLECTION_INSTANCE_NAME)
@@ -201,14 +178,15 @@ class TestDatabasesSync:
         )
         assert collection_ks2.database.keyspace == KEYSPACE_2
 
-    @pytest.mark.describe("test database id, sync")
-    def test_database_id_sync(self) -> None:
+    @pytest.mark.describe("test database id and region, sync")
+    def test_database_id_region_sync(self) -> None:
         db1 = Database(
             api_endpoint="https://a1234567-89ab-cdef-0123-456789abcdef-us-central1.apps.astra-dev.datastax.com",
             keyspace="k",
             api_options=defaultAPIOptions(environment="dev"),
         )
         assert db1.id == "a1234567-89ab-cdef-0123-456789abcdef"
+        assert db1.region == "us-central1"
 
         db2 = Database(
             api_endpoint="http://localhost:12345",
@@ -217,6 +195,8 @@ class TestDatabasesSync:
         )
         with pytest.raises(DevOpsAPIException):
             db2.id
+        with pytest.raises(DevOpsAPIException):
+            db2.region
 
     @pytest.mark.describe("test database default keyspace per environment, sync")
     def test_database_default_keyspace_per_environment_sync(self) -> None:

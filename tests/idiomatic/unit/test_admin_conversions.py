@@ -27,7 +27,6 @@ from astrapy import (
 from astrapy.authentication import (
     StaticTokenProvider,
     UsernamePasswordTokenProvider,
-    coerce_possible_token_provider,
 )
 from astrapy.constants import Environment
 from astrapy.utils.api_options import (
@@ -66,16 +65,12 @@ class TestAdminConversions:
 
         assert dac1 == dac2
         assert dac1 != dac1._copy(token="x")
-        assert dac1 != dac1._copy(environment="test")
-        assert dac1 != dac1._copy(callers=callers1)
         assert dac1 == dac1._copy(token="x")._copy(token="t1")
-        assert dac1 == dac1._copy(environment="test")._copy(environment="dev")
-        assert dac1 == dac1._copy(callers=callers1)._copy(callers=callers0)
-        assert dac1 != dac1.with_options(token="x")
-        assert dac1 != dac1.with_options(callers=callers1)
-        assert dac1 == dac1.with_options(token="x").with_options(token="t1")
-        assert dac1 == dac1.with_options(callers=callers1).with_options(
-            callers=callers0
+        assert dac1 == dac1.with_options(token="x").with_options(
+            api_options=APIOptions(token="t1")
+        )
+        assert dac1 == dac1.with_options(token="x").with_options(
+            token="t1", api_options=APIOptions(token="t_another")
         )
 
         a_e_string = (
@@ -85,7 +80,7 @@ class TestAdminConversions:
         db1 = dac1[a_e_string]
         opts0 = defaultAPIOptions(environment="dev").with_override(
             APIOptions(
-                token=coerce_possible_token_provider("t1"),
+                token="t1",
                 callers=callers0,
             )
         )
@@ -98,6 +93,26 @@ class TestAdminConversions:
         assert db1 == expected_db_1
         with pytest.raises(ValueError):
             dac1["abc"]
+
+        # equivalence between passing api_options and named parameters; option override
+        dac1_opt = DataAPIClient(
+            environment="dev",
+            api_options=APIOptions(
+                token="t1",
+                callers=callers0,
+            ),
+        )
+        dac1_opt_ovr = DataAPIClient(
+            "t1",
+            environment="dev",
+            callers=callers0,
+            api_options=APIOptions(
+                token="t_another",
+                callers=callers1,
+            ),
+        )
+        assert dac1 == dac1_opt
+        assert dac1 == dac1_opt_ovr
 
     @pytest.mark.describe("test of spawning databases from a DataAPIClient")
     def test_dataapiclient_spawning_databases(self) -> None:
@@ -114,14 +129,30 @@ class TestAdminConversions:
         db2 = client.get_database(endpoint)
         assert db1 == db2
 
+        # api_options and override check
+        db2_param = client.get_database(endpoint, token="t1")
+        db2_opt = client.get_database(
+            endpoint,
+            spawn_api_options=APIOptions(
+                token="t1",
+            ),
+        )
+        db2_opt_override = client.get_database(
+            endpoint,
+            token="t1",
+            spawn_api_options=APIOptions(
+                token="t_another",
+            ),
+        )
+        assert db2_param == db2_opt
+        assert db2_param == db2_opt_override
+
     @pytest.mark.describe("test of AstraDBAdmin conversions and comparison functions")
     def test_astradbadmin_conversions(self) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
-        callers1 = [("x", "y")]
         opts0 = defaultAPIOptions(environment="dev").with_override(
             APIOptions(
-                token=coerce_possible_token_provider("t1"),
-                environment="dev",
+                token="t1",
                 callers=callers0,
                 dev_ops_api_url_options=DevOpsAPIURLOptions(
                     dev_ops_url="dou",
@@ -134,23 +165,17 @@ class TestAdminConversions:
 
         assert adm0 == adm1
         assert adm0 != adm0._copy(token="x")
-        assert adm0 != adm0._copy(environment="test")
-        assert adm0 != adm0._copy(callers=callers1)
-        assert adm0 != adm0._copy(dev_ops_url="x")
-        assert adm0 != adm0._copy(dev_ops_api_version="x")
 
         assert adm0 == adm0._copy(token="x")._copy(token="t1")
-        assert adm0 == adm0._copy(environment="test")._copy(environment="dev")
-        assert adm0 == adm0._copy(callers=callers1)._copy(callers=callers0)
-        assert adm0 == adm0._copy(dev_ops_url="x")._copy(dev_ops_url="dou")
-        assert adm0 == adm0._copy(dev_ops_api_version="x")._copy(
-            dev_ops_api_version="dvv"
-        )
+
         assert adm0 != adm0.with_options(token="x")
-        assert adm0 != adm0.with_options(callers=callers1)
         assert adm0 == adm0.with_options(token="x").with_options(token="t1")
-        assert adm0 == adm0.with_options(callers=callers1).with_options(
-            callers=callers0
+
+        assert adm0 == adm0.with_options(token="x").with_options(
+            api_options=APIOptions(token="t1")
+        )
+        assert adm0 == adm0.with_options(token="x").with_options(
+            token="t1", api_options=APIOptions(token="t_another")
         )
 
     @pytest.mark.describe(
@@ -158,11 +183,9 @@ class TestAdminConversions:
     )
     def test_astradbdatabaseadmin_conversions(self) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
-        callers1 = [("x", "y")]
         opts0 = defaultAPIOptions(environment="dev").with_override(
             APIOptions(
-                token=coerce_possible_token_provider("t1"),
-                environment="dev",
+                token="t1",
                 callers=callers0,
                 dev_ops_api_url_options=DevOpsAPIURLOptions(
                     dev_ops_url="dou",
@@ -184,36 +207,18 @@ class TestAdminConversions:
         )
 
         assert adda1 == adda2
-        assert adda1 != adda1._copy(api_ep9999_test, environment="test")
         assert adda1 != adda1._copy(token="x")
-        assert adda1 != adda1._copy(callers=callers1)
-        assert adda1 != adda1._copy(dev_ops_url="x")
-        assert adda1 != adda1._copy(dev_ops_api_version="x")
-        assert adda1 != adda1._copy(api_path="x")
-        assert adda1 != adda1._copy(api_version="x")
 
         assert adda1 == adda1._copy(token="x")._copy(token="t1")
-        assert adda1 == adda1._copy(api_ep9999_test, environment="test")._copy(
-            api_ep0123_dev, environment="dev"
-        )
-        assert adda1 == adda1._copy(callers=callers1)._copy(callers=callers0)
-        assert adda1 == adda1._copy(dev_ops_url="x")._copy(dev_ops_url="dou")
-        assert adda1 == adda1._copy(dev_ops_api_version="x")._copy(
-            dev_ops_api_version="dvv"
-        )
-        assert adda1 == adda1._copy(api_path="x")._copy(api_path="appi")
-        assert adda1 == adda1._copy(api_version="x")._copy(api_version="vX")
-
-        assert adda1 != adda1.with_options(api_endpoint=api_ep7777_dev)
         assert adda1 != adda1.with_options(token="x")
-        assert adda1 != adda1.with_options(callers=callers1)
 
-        assert adda1 == adda1.with_options(api_endpoint=api_ep7777_dev).with_options(
-            api_endpoint=api_ep0123_dev
-        )
         assert adda1 == adda1.with_options(token="x").with_options(token="t1")
-        assert adda1 == adda1.with_options(callers=callers1).with_options(
-            callers=callers0
+
+        assert adda1 == adda1.with_options(token="x").with_options(
+            api_options=APIOptions(token="t1")
+        )
+        assert adda1 == adda1.with_options(token="x").with_options(
+            token="t1", api_options=APIOptions(token="t1_another")
         )
 
     @pytest.mark.describe(
@@ -221,11 +226,9 @@ class TestAdminConversions:
     )
     def test_dataapidatabaseadmin_conversions(self) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
-        callers1 = [("x", "y")]
         opts0 = defaultAPIOptions(environment="hcd").with_override(
             APIOptions(
-                token=coerce_possible_token_provider("t1"),
-                environment="hcd",
+                token="t1",
                 callers=callers0,
                 data_api_url_options=DataAPIURLOptions(
                     api_path="appi",
@@ -243,32 +246,19 @@ class TestAdminConversions:
         )
         assert dada1 == dada2
 
-        assert dada1 != dada1._copy(api_endpoint="https://x.y.z:9876")
         assert dada1 != dada1._copy(token="tx")
-        assert dada1 != dada1._copy(environment="en")
-        assert dada1 != dada1._copy(api_path="ap")
-        assert dada1 != dada1._copy(api_version="av")
-        assert dada1 != dada1._copy(callers=callers1)
 
-        assert dada1 == dada1._copy(api_endpoint="x")._copy(
-            api_endpoint="http://a.b.c:1234"
-        )
         assert dada1 == dada1._copy(token="x")._copy(token="t1")
-        assert dada1 == dada1._copy(environment="x")._copy(environment="hcd")
-        assert dada1 == dada1._copy(api_path="x")._copy(api_path="appi")
-        assert dada1 == dada1._copy(api_version="x")._copy(api_version="v9")
-        assert dada1 == dada1._copy(callers=callers1)._copy(callers=callers0)
 
-        assert dada1 != dada1.with_options(api_endpoint="https://x.y.z:9876")
         assert dada1 != dada1.with_options(token="x")
-        assert dada1 != dada1.with_options(callers=callers1)
 
-        assert dada1 == dada1.with_options(
-            api_endpoint="https://x.y.z:9876"
-        ).with_options(api_endpoint="http://a.b.c:1234")
         assert dada1 == dada1.with_options(token="x").with_options(token="t1")
-        assert dada1 == dada1.with_options(callers=callers1).with_options(
-            callers=callers0
+
+        assert dada1 == dada1.with_options(token="x").with_options(
+            api_options=APIOptions(token="t1")
+        )
+        assert dada1 == dada1.with_options(token="x").with_options(
+            token="t1", api_options=APIOptions(token="t1_another")
         )
 
     @pytest.mark.describe("test of token inheritance in spawning from DataAPIClient")
@@ -298,6 +288,25 @@ class TestAdminConversions:
 
         assert client_t.get_admin(token=token_f) == client_f.get_admin()
         assert client_0.get_admin(token=token_f) == client_f.get_admin()
+
+    @pytest.mark.describe("test of client.get_admin option passing")
+    def test_client_get_admin_option_passing(self) -> None:
+        client_0 = DataAPIClient()
+        admin_opt = client_0.get_admin(
+            spawn_api_options=APIOptions(
+                token="tx",
+            ),
+        )
+        admin_param = client_0.get_admin(token="tx")
+        admin_opt_param = client_0.get_admin(
+            token="tx",
+            spawn_api_options=APIOptions(
+                token="t_another",
+            ),
+        )
+
+        assert admin_opt == admin_param
+        assert admin_opt == admin_opt_param
 
     @pytest.mark.describe("test of token inheritance in spawning from AstraDBAdmin")
     def test_astradbadmin_token_inheritance(self) -> None:
@@ -418,6 +427,39 @@ class TestAdminConversions:
             a_database_0.get_database_admin(token=token_f)
             == a_database_f.get_database_admin()
         )
+
+    @pytest.mark.describe("test of option override in getting a DB admin from a DB")
+    def test_database_get_database_admin_options(self) -> None:
+        opts_0 = defaultAPIOptions(environment=Environment.TEST)
+        database_0 = Database(
+            api_endpoint=api_ep9999_test, keyspace="k", api_options=opts_0
+        )
+
+        db_admin_param = database_0.get_database_admin(token="tx")
+        db_admin_opt = database_0.get_database_admin(
+            spawn_api_options=APIOptions(token="tx"),
+        )
+        db_admin_opt_param = database_0.get_database_admin(
+            token="tx",
+            spawn_api_options=APIOptions(token="t_another"),
+        )
+        assert db_admin_param == db_admin_opt
+        assert db_admin_param == db_admin_opt_param
+
+        adatabase_0 = database_0.to_async()
+
+        adb_admin_param = adatabase_0.get_database_admin(token="tx")
+        adb_admin_opt = adatabase_0.get_database_admin(
+            spawn_api_options=APIOptions(token="tx"),
+        )
+        adb_admin_opt_param = adatabase_0.get_database_admin(
+            token="tx",
+            spawn_api_options=APIOptions(token="t_another"),
+        )
+        assert adb_admin_param == adb_admin_opt
+        assert adb_admin_param == adb_admin_opt_param
+
+        assert adb_admin_param == db_admin_param
 
     @pytest.mark.describe(
         "test of token inheritance in spawning from Database, non-Astra"

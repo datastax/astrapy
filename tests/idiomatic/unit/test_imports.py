@@ -27,7 +27,6 @@ def test_namespace() -> None:
     assert str(astrapy.client) != ""
     assert str(astrapy.collection) != ""
     assert str(astrapy.constants) != ""
-    assert str(astrapy.cursors) != ""
     assert str(astrapy.data) != ""
     assert str(astrapy.database) != ""
     assert str(astrapy.exceptions) != ""
@@ -43,13 +42,12 @@ def test_namespace() -> None:
     assert str(astrapy.client.DataAPIClient) != ""
     assert str(astrapy.collection.Collection) != ""
     assert str(astrapy.constants.VectorMetric.DOT_PRODUCT) != ""
-    assert str(astrapy.cursors.Cursor) != ""
     assert str(astrapy.data.collection) != ""
     assert str(astrapy.database.Database) != ""
     assert str(astrapy.exceptions.DevOpsAPIException) != ""
     assert str(astrapy.ids.uuid6) != ""
-    assert str(astrapy.info.DatabaseInfo) != ""
-    assert str(astrapy.results.DeleteResult) != ""
+    assert str(astrapy.info.AstraDBDatabaseInfo) != ""
+    assert str(astrapy.results.CollectionDeleteResult) != ""
     assert str(astrapy.settings.defaults) != ""
     assert str(astrapy.utils.request_tools) != ""
 
@@ -67,51 +65,51 @@ def test_imports() -> None:
         Database,
     )
     from astrapy.admin import (  # noqa: F401
-        AstraDBAdmin as AstraDBAdmin2,
+        ParsedAPIEndpoint,
+        parse_api_endpoint,
     )
     from astrapy.api_options import (  # noqa: F401
         APIOptions,
         DataAPIURLOptions,
         DevOpsAPIURLOptions,
-        PayloadTransformOptions,
+        SerdesOptions,
         TimeoutOptions,
     )
     from astrapy.constants import (  # noqa: F401
         DefaultIdType,
         Environment,
         ReturnDocument,
-        SortDocuments,
+        SortMode,
         VectorMetric,
     )
     from astrapy.cursors import (  # noqa: F401
-        AsyncCommandCursor,
-        AsyncCursor,
-        CommandCursor,
-        Cursor,
-        CursorState,
+        AsyncCollectionFindCursor,
+        CollectionFindCursor,
+        FindCursorState,
     )
     from astrapy.exceptions import (  # noqa: F401
-        CollectionAlreadyExistsException,
-        CollectionNotFoundException,
+        CollectionDeleteManyException,
+        CollectionInsertManyException,
+        CollectionUpdateManyException,
         CumulativeOperationException,
-        CursorIsStartedException,
+        CursorException,
         DataAPIDetailedErrorDescriptor,
         DataAPIErrorDescriptor,
         DataAPIException,
-        DataAPIFaultyResponseException,
         DataAPIHttpException,
         DataAPIResponseException,
         DataAPITimeoutException,
-        DeleteManyException,
         DevOpsAPIErrorDescriptor,
         DevOpsAPIException,
-        DevOpsAPIFaultyResponseException,
         DevOpsAPIHttpException,
         DevOpsAPIResponseException,
         DevOpsAPITimeoutException,
-        InsertManyException,
+        MultiCallTimeoutManager,
+        TableInsertManyException,
         TooManyDocumentsToCountException,
-        UpdateManyException,
+        TooManyRowsToCountException,
+        UnexpectedDataAPIResponseException,
+        UnexpectedDevOpsAPIResponseException,
     )
     from astrapy.ids import (  # noqa: F401
         UUID,
@@ -125,25 +123,27 @@ def test_imports() -> None:
         uuid8,
     )
     from astrapy.info import (  # noqa: F401
-        AdminDatabaseInfo,
+        AstraDBAdminDatabaseInfo,
+        AstraDBDatabaseInfo,
         CollectionDefaultIDOptions,
+        CollectionDefinition,
         CollectionDescriptor,
         CollectionInfo,
-        CollectionOptions,
         CollectionVectorOptions,
-        CollectionVectorServiceOptions,
-        DatabaseInfo,
         EmbeddingProvider,
         EmbeddingProviderAuthentication,
         EmbeddingProviderModel,
         EmbeddingProviderParameter,
         EmbeddingProviderToken,
         FindEmbeddingProvidersResult,
+        VectorServiceOptions,
     )
     from astrapy.results import (  # noqa: F401
-        DeleteResult,
-        InsertManyResult,
-        InsertOneResult,
+        CollectionDeleteResult,
+        CollectionInsertManyResult,
+        CollectionInsertOneResult,
+        CollectionUpdateResult,
         OperationResult,
-        UpdateResult,
+        TableInsertManyResult,
+        TableInsertOneResult,
     )

@@ -52,8 +52,7 @@ class TestNonAstraAdmin:
         keyspaces1 = set(database_admin.list_keyspaces())
         assert NEW_KS_NAME not in keyspaces1
 
-        create_response = database_admin.create_keyspace(NEW_KS_NAME)
-        assert create_response == {"ok": 1}
+        database_admin.create_keyspace(NEW_KS_NAME)
 
         keyspaces2 = set(database_admin.list_keyspaces())
         assert NEW_KS_NAME in keyspaces2
@@ -62,8 +61,7 @@ class TestNonAstraAdmin:
         sync_database_ks.create_collection(NEW_COLL_NAME)
         assert NEW_COLL_NAME in sync_database_ks.list_collection_names()
 
-        drop_response = database_admin.drop_keyspace(NEW_KS_NAME)
-        assert drop_response == {"ok": 1}
+        database_admin.drop_keyspace(NEW_KS_NAME)
 
         keyspaces3 = set(database_admin.list_keyspaces())
         assert keyspaces3 == keyspaces1
@@ -110,8 +108,7 @@ class TestNonAstraAdmin:
         keyspaces1 = set(await database_admin.async_list_keyspaces())
         assert NEW_KS_NAME not in keyspaces1
 
-        create_response = await database_admin.async_create_keyspace(NEW_KS_NAME)
-        assert create_response == {"ok": 1}
+        await database_admin.async_create_keyspace(NEW_KS_NAME)
 
         keyspaces2 = set(await database_admin.async_list_keyspaces())
         assert NEW_KS_NAME in keyspaces2
@@ -120,8 +117,7 @@ class TestNonAstraAdmin:
         await async_database_ks.create_collection(NEW_COLL_NAME)
         assert NEW_COLL_NAME in (await async_database_ks.list_collection_names())
 
-        drop_response = await database_admin.async_drop_keyspace(NEW_KS_NAME)
-        assert drop_response == {"ok": 1}
+        await database_admin.async_drop_keyspace(NEW_KS_NAME)
 
         keyspaces3 = set(await database_admin.async_list_keyspaces())
         assert keyspaces3 == keyspaces1

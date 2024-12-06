@@ -15,11 +15,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, TypedDict, Union
+from typing import Any
 
 import httpx
 
-from astrapy.settings.defaults import DEFAULT_REQUEST_TIMEOUT_MS
+from astrapy.exceptions import _TimeoutContext
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +29,8 @@ def log_httpx_request(
     full_url: str,
     request_params: dict[str, Any] | None,
     redacted_request_headers: dict[str, str],
-    payload: dict[str, Any] | None,
-    timeout_info: TimeoutInfoWideType,
+    encoded_payload: str | None,
+    timeout_context: _TimeoutContext,
 ) -> None:
     """
     Log the details of an HTTP request for debugging purposes.
@@ -40,17 +40,21 @@ def log_httpx_request(
         full_url: the URL of the request (e.g. "https://domain.com/full/path").
         request_params: parameters of the request.
         redacted_request_headers: caution, as these will be logged as they are.
-        payload: The payload sent with the request, if any.
+        encoded_payload: the payload (in bytes) sent with the request, if any.
+        timeout_ms: the timeout in milliseconds, if any is set.
     """
     logger.debug(f"Request URL: {http_method} {full_url}")
     if request_params:
-        logger.debug(f"Request params: {request_params}")
+        logger.debug(f"Request params: '{request_params}'")
     if redacted_request_headers:
-        logger.debug(f"Request headers: {redacted_request_headers}")
-    if payload:
-        logger.debug(f"Request payload: {payload}")
-    if timeout_info:
-        logger.debug(f"Timeout info: {timeout_info}")
+        logger.debug(f"Request headers: '{redacted_request_headers}'")
+    if encoded_payload is not None:
+        logger.debug(f"Request payload: '{encoded_payload}'")
+    if timeout_context:
+        logger.debug(
+            f"Timeout (ms): for request {timeout_context.request_ms or '(unset)'} ms"
+            f", overall operation {timeout_context.nominal_ms or '(unset)'} ms"
+        )
 
 
 def log_httpx_response(response: httpx.Response) -> None:
@@ -61,8 +65,8 @@ def log_httpx_response(response: httpx.Response) -> None:
         response: the httpx.Response object to log.
     """
     logger.debug(f"Response status code: {response.status_code}")
-    logger.debug(f"Response headers: {response.headers}")
-    logger.debug(f"Response text: {response.text}")
+    logger.debug(f"Response headers: '{response.headers}'")
+    logger.debug(f"Response text: '{response.text}'")
 
 
 class HttpMethod:
@@ -73,24 +77,8 @@ class HttpMethod:
     DELETE = "DELETE"
 
 
-class TimeoutInfo(TypedDict, total=False):
-    read: float
-    write: float
-    base: float
-
-
-TimeoutInfoWideType = Union[TimeoutInfo, float, None]
-
-
-def to_httpx_timeout(timeout_info: TimeoutInfoWideType) -> httpx.Timeout | None:
-    if timeout_info is None:
+def to_httpx_timeout(timeout_context: _TimeoutContext) -> httpx.Timeout | None:
+    if timeout_context.request_ms is None or timeout_context.request_ms == 0:
         return None
-    if isinstance(timeout_info, float) or isinstance(timeout_info, int):
-        return httpx.Timeout(timeout_info)
-    elif isinstance(timeout_info, dict):
-        _base = timeout_info.get("base") or DEFAULT_REQUEST_TIMEOUT_MS
-        _read = timeout_info.get("read") or _base
-        _write = timeout_info.get("write") or _base
-        return httpx.Timeout(_base, read=_read, write=_write)
     else:
-        raise ValueError("Invalid timeout info provided.")
+        return httpx.Timeout(timeout_context.request_ms / 1000)

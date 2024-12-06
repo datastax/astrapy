@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Tuple, Union
+from typing import Any, Iterable, TypeVar
 
 from astrapy.settings.defaults import (
     DATA_API_ENVIRONMENT_CASSANDRA,
@@ -26,17 +26,18 @@ from astrapy.settings.defaults import (
     DATA_API_ENVIRONMENT_TEST,
 )
 
-DocumentType = Dict[str, Any]
-# ["field1", "field2"] allowed, but also:
-# {"field": True/False}
-# {"array_field": {"$slice": n}
-# {"array_field": {"$slice": [n, m]}
-ProjectionType = Union[
-    Iterable[str], Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]
-]
-SortType = Dict[str, Any]
-FilterType = Dict[str, Any]
-CallerType = Tuple[Union[str, None], Union[str, None]]
+DefaultDocumentType = dict[str, Any]
+DefaultRowType = dict[str, Any]
+ProjectionType = Iterable[str] | dict[str, bool | dict[str, int | Iterable[int]]]
+SortType = dict[str, Any]
+FilterType = dict[str, Any]
+CallerType = tuple[str | None, str | None]
+
+
+ROW = TypeVar("ROW")
+ROW2 = TypeVar("ROW2")
+DOC = TypeVar("DOC")
+DOC2 = TypeVar("DOC2")
 
 
 def normalize_optional_projection(
@@ -67,10 +68,10 @@ class ReturnDocument:
     AFTER = "after"
 
 
-class SortDocuments:
+class SortMode:
     """
     Admitted values for the `sort` parameter in the find collection methods,
-    e.g. `sort={"field": SortDocuments.ASCENDING}`.
+    e.g. `sort={"field": SortMode.ASCENDING}`.
     """
 
     def __init__(self) -> None:
@@ -82,8 +83,9 @@ class SortDocuments:
 
 class VectorMetric:
     """
-    Admitted values for the "metric" parameter when creating vector collections
-    through the database `create_collection` method.
+    Admitted values for the "metric" parameter to use in CollectionVectorOptions
+    object, needed when creating vector collections through the database
+    `create_collection` method.
     """
 
     def __init__(self) -> None:
@@ -96,7 +98,8 @@ class VectorMetric:
 
 class DefaultIdType:
     """
-    Admitted values for the "default_id_type" parameter when creating collections
+    Admitted values for the "default_id_type" parameter to use in
+    CollectionDefaultIDOptions object, needed when creating collections
     through the database `create_collection` method.
     """
 
@@ -130,6 +133,14 @@ class Environment:
     values = {PROD, DEV, TEST, DSE, HCD, CASSANDRA, OTHER}
     astra_db_values = {PROD, DEV, TEST}
 
+
+__all__ = [
+    "DefaultIdType",
+    "Environment",
+    "ReturnDocument",
+    "SortMode",
+    "VectorMetric",
+]
 
 __pdoc__ = {
     "normalize_optional_projection": False,

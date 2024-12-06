@@ -22,6 +22,7 @@ from astrapy.settings.defaults import (
     EMBEDDING_HEADER_API_KEY,
     EMBEDDING_HEADER_AWS_ACCESS_ID,
     EMBEDDING_HEADER_AWS_SECRET_ID,
+    FIXED_SECRET_PLACEHOLDER,
     SECRETS_REDACT_CHAR,
     SECRETS_REDACT_ENDING,
     SECRETS_REDACT_ENDING_LENGTH,
@@ -65,7 +66,7 @@ def coerce_possible_embedding_headers_provider(
         return coerce_embedding_headers_provider(embedding_api_key)
 
 
-def redact_secret(secret: str, max_length: int, hide_if_short: bool = True) -> str:
+def _redact_secret(secret: str, max_length: int, hide_if_short: bool = True) -> str:
     """
     Return a shortened-if-necessary version of a 'secret' string (with ellipsis).
 
@@ -174,7 +175,7 @@ class StaticTokenProvider(TokenProvider):
         if self.token is None:
             return "(none)"
         else:
-            return self.token
+            return f"{self.__class__.__name__}({_redact_secret(self.token, 15)})"
 
     def get_token(self) -> str | None:
         return self.token
@@ -212,7 +213,9 @@ class UsernamePasswordTokenProvider(TokenProvider):
         )
 
     def __repr__(self) -> str:
-        return self.token
+        _r_username = _redact_secret(self.username, 6)
+        _r_password = FIXED_SECRET_PLACEHOLDER
+        return f'{self.__class__.__name__}("username={_r_username}, password={_r_password}")'
 
     @staticmethod
     def _b64(cleartext: str) -> str:
@@ -272,12 +275,10 @@ class EmbeddingAPIKeyHeaderProvider(EmbeddingHeadersProvider):
 
     Example:
         >>> from astrapy import DataAPIClient
-        >>> from astrapy.authentication import (
-            CollectionVectorServiceOptions,
-            EmbeddingAPIKeyHeaderProvider,
-        )
+        >>> from astrapy.authentication import EmbeddingAPIKeyHeaderProvider
+        >>> from astrapy.info import CollectionDefinition, VectorServiceOptions
         >>> my_emb_api_key = EmbeddingAPIKeyHeaderProvider("abc012...")
-        >>> service_options = CollectionVectorServiceOptions(
+        >>> service_options = VectorServiceOptions(
         ...     provider="a-certain-provider",
         ...     model_name="some-embedding-model",
         ... )
@@ -287,8 +288,12 @@ class EmbeddingAPIKeyHeaderProvider(EmbeddingHeadersProvider):
         ...     token="AstraCS:...",
         ... )
         >>> collection = database.create_collection(
-        ...     "vectorize_collection",
-        ...     service=service_options,
+        ...     "vectorize_aws_collection",
+        ...     definition=(
+        ...         CollectionDefinition.builder()
+        ...         .set_vector_service(service_options)
+        ...         .build()
+        ...     ),
         ...     embedding_api_key=my_emb_api_key,
         ... )
         >>> # likewise:
@@ -305,7 +310,7 @@ class EmbeddingAPIKeyHeaderProvider(EmbeddingHeadersProvider):
         if self.embedding_api_key is None:
             return f"{self.__class__.__name__}(empty)"
         else:
-            return f'{self.__class__.__name__}("{redact_secret(self.embedding_api_key, 8)}")'
+            return f'{self.__class__.__name__}("{_redact_secret(self.embedding_api_key, 8)}")'
 
     def get_headers(self) -> dict[str, str]:
         if self.embedding_api_key is not None:
@@ -328,15 +333,13 @@ class AWSEmbeddingHeadersProvider(EmbeddingHeadersProvider):
 
     Example:
         >>> from astrapy import DataAPIClient
-        >>> from astrapy.authentication import (
-            CollectionVectorServiceOptions,
-            AWSEmbeddingHeadersProvider,
-        )
+        >>> from astrapy.authentication import AWSEmbeddingHeadersProvider
+        >>> from astrapy.info import CollectionDefinition, VectorServiceOptions
         >>> my_aws_emb_api_key = AWSEmbeddingHeadersProvider(
             embedding_access_id="my-access-id-012...",
             embedding_secret_id="my-secret-id-abc...",
         )
-        >>> service_options = CollectionVectorServiceOptions(
+        >>> service_options = VectorServiceOptions(
         ...     provider="bedrock",
         ...     model_name="some-aws-bedrock-model",
         ... )
@@ -347,7 +350,11 @@ class AWSEmbeddingHeadersProvider(EmbeddingHeadersProvider):
         ... )
         >>> collection = database.create_collection(
         ...     "vectorize_aws_collection",
-        ...     service=service_options,
+        ...     definition=(
+        ...         CollectionDefinition.builder()
+        ...         .set_vector_service(service_options)
+        ...         .build()
+        ...     ),
         ...     embedding_api_key=my_aws_emb_api_key,
         ... )
         >>> # likewise:
@@ -364,8 +371,8 @@ class AWSEmbeddingHeadersProvider(EmbeddingHeadersProvider):
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}(embedding_access_id="
-            f'"{redact_secret(self.embedding_access_id, 6)}", '
-            f'embedding_secret_id="{redact_secret(self.embedding_secret_id, 6)}")'
+            f'"{_redact_secret(self.embedding_access_id, 6)}", '
+            f'embedding_secret_id="{_redact_secret(self.embedding_secret_id, 6)}")'
         )
 
     def get_headers(self) -> dict[str, str]:

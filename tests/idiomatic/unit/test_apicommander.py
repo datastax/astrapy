@@ -21,12 +21,12 @@ import pytest
 from pytest_httpserver import HTTPServer
 
 from astrapy.exceptions import (
-    DataAPIFaultyResponseException,
     DataAPIHttpException,
     DataAPIResponseException,
-    DevOpsAPIFaultyResponseException,
     DevOpsAPIHttpException,
     DevOpsAPIResponseException,
+    UnexpectedDataAPIResponseException,
+    UnexpectedDevOpsAPIResponseException,
 )
 from astrapy.utils.api_commander import APICommander
 from astrapy.utils.request_tools import HttpMethod
@@ -178,7 +178,7 @@ class TestAPICommander:
         httpserver.expect_oneshot_request(
             base_path,
         ).respond_with_data("{unparseable")
-        with pytest.raises(DataAPIFaultyResponseException):
+        with pytest.raises(UnexpectedDataAPIResponseException):
             cmd.request()
 
         httpserver.expect_oneshot_request(
@@ -236,7 +236,7 @@ class TestAPICommander:
         httpserver.expect_oneshot_request(
             base_path,
         ).respond_with_data("{unparseable")
-        with pytest.raises(DataAPIFaultyResponseException):
+        with pytest.raises(UnexpectedDataAPIResponseException):
             await cmd.async_request()
 
         httpserver.expect_oneshot_request(
@@ -294,7 +294,7 @@ class TestAPICommander:
         httpserver.expect_oneshot_request(
             base_path,
         ).respond_with_data("{unparseable")
-        with pytest.raises(DevOpsAPIFaultyResponseException):
+        with pytest.raises(UnexpectedDevOpsAPIResponseException):
             cmd.request()
 
         httpserver.expect_oneshot_request(
@@ -354,7 +354,7 @@ class TestAPICommander:
         httpserver.expect_oneshot_request(
             base_path,
         ).respond_with_data("{unparseable")
-        with pytest.raises(DevOpsAPIFaultyResponseException):
+        with pytest.raises(UnexpectedDevOpsAPIResponseException):
             await cmd.async_request()
 
         httpserver.expect_oneshot_request(

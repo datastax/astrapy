@@ -37,9 +37,9 @@ class OperationResult(ABC):
 
 
 @dataclass
-class DeleteResult(OperationResult):
+class CollectionDeleteResult(OperationResult):
     """
-    Class that represents the result of delete operations.
+    Class that represents the result of delete operations on a collection.
 
     Attributes:
         deleted_count: number of deleted documents
@@ -60,9 +60,9 @@ class DeleteResult(OperationResult):
 
 
 @dataclass
-class InsertOneResult(OperationResult):
+class CollectionInsertOneResult(OperationResult):
     """
-    Class that represents the result of insert_one operations.
+    Class that represents the result of insert_one operations on a collection.
 
     Attributes:
         raw_results: one-item list with the response from the Data API call
@@ -81,9 +81,9 @@ class InsertOneResult(OperationResult):
 
 
 @dataclass
-class InsertManyResult(OperationResult):
+class CollectionInsertManyResult(OperationResult):
     """
-    Class that represents the result of insert_many operations.
+    Class that represents the result of insert_many operations on a collection.
 
     Attributes:
         raw_results: responses from the Data API calls
@@ -93,18 +93,26 @@ class InsertManyResult(OperationResult):
     inserted_ids: list[Any]
 
     def __repr__(self) -> str:
+        _ins_ids_str: str
+        if len(self.inserted_ids) > 5:
+            _ins_ids_str = (
+                f"[{', '.join(str(_iid) for _iid in self.inserted_ids[:5])} "
+                f"... ({len(self.inserted_ids)} total)]"
+            )
+        else:
+            _ins_ids_str = str(self.inserted_ids)
         return self._piecewise_repr(
             [
-                f"inserted_ids={self.inserted_ids}",
+                f"inserted_ids={_ins_ids_str}",
                 "raw_results=..." if self.raw_results is not None else None,
             ]
         )
 
 
 @dataclass
-class UpdateResult(OperationResult):
+class CollectionUpdateResult(OperationResult):
     """
-    Class that represents the result of any update operation.
+    Class that represents the result of any update operation on a collection.
 
     Attributes:
         raw_results: responses from the Data API calls
@@ -114,7 +122,6 @@ class UpdateResult(OperationResult):
         the "update_info" field has the following fields: "n" (int),
         "updatedExisting" (bool), "ok" (float), "nModified" (int)
         and optionally "upserted" containing the ID of an upserted document.
-
     """
 
     update_info: dict[str, Any]
@@ -123,6 +130,70 @@ class UpdateResult(OperationResult):
         return self._piecewise_repr(
             [
                 f"update_info={self.update_info}",
+                "raw_results=..." if self.raw_results is not None else None,
+            ]
+        )
+
+
+@dataclass
+class TableInsertOneResult(OperationResult):
+    """
+    Class that represents the result of insert_one operations on a table.
+
+    Attributes:
+        raw_results: one-item list with the response from the Data API call
+        inserted_id: the ID of the inserted document in the form of a dict
+        inserted_id_tuple: an ordered-tuple version of the same ID
+    """
+
+    inserted_id: Any
+    inserted_id_tuple: tuple[Any, ...]
+
+    def __repr__(self) -> str:
+        return self._piecewise_repr(
+            [
+                f"inserted_id={self.inserted_id}",
+                f"inserted_id_tuple={self.inserted_id_tuple}",
+                "raw_results=..." if self.raw_results is not None else None,
+            ]
+        )
+
+
+@dataclass
+class TableInsertManyResult(OperationResult):
+    """
+    Class that represents the result of insert_many operations on a collection.
+
+    Attributes:
+        raw_results: responses from the Data API calls
+        inserted_ids: list of the IDs of the inserted documents in the form of dictionaries
+        inserted_id_tuple: an ordered-tuple version of the same inserted IDs
+    """
+
+    inserted_ids: list[Any]
+    inserted_id_tuples: list[tuple[Any, ...]]
+
+    def __repr__(self) -> str:
+        _ins_ids_str: str
+        if len(self.inserted_ids) > 5:
+            _ins_ids_str = (
+                f"[{', '.join(str(_iid) for _iid in self.inserted_ids[:5])} "
+                f"... ({len(self.inserted_ids)} total)]"
+            )
+        else:
+            _ins_ids_str = str(self.inserted_ids)
+        _ins_idts_str: str
+        if len(self.inserted_id_tuples) > 5:
+            _ins_idts_str = (
+                f"[{', '.join(str(_iidt) for _iidt in self.inserted_id_tuples[:5])} "
+                f"... ({len(self.inserted_id_tuples)} total)]"
+            )
+        else:
+            _ins_idts_str = str(self.inserted_id_tuples)
+        return self._piecewise_repr(
+            [
+                f"inserted_ids={_ins_ids_str}",
+                f"inserted_id_tuples={_ins_idts_str}",
                 "raw_results=..." if self.raw_results is not None else None,
             ]
         )

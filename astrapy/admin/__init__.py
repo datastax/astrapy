@@ -20,6 +20,7 @@ from astrapy.admin.admin import (
     DataAPIDatabaseAdmin,
     DatabaseAdmin,
     ParsedAPIEndpoint,
+    async_fetch_database_info,
     fetch_database_info,
     parse_api_endpoint,
 )
@@ -30,6 +31,7 @@ __all__ = [
     "DataAPIDatabaseAdmin",
     "DatabaseAdmin",
     "ParsedAPIEndpoint",
+    "async_fetch_database_info",
     "fetch_database_info",
     "parse_api_endpoint",
 ]

@@ -18,11 +18,17 @@ import time
 
 import pytest
 
-from astrapy import Collection, DataAPIClient, Database
+from astrapy import DataAPIClient, Database
 from astrapy.admin import parse_api_endpoint
 from astrapy.constants import DefaultIdType, VectorMetric
 from astrapy.ids import UUID, ObjectId
-from astrapy.info import CollectionDescriptor, DatabaseInfo
+from astrapy.info import (
+    AstraDBDatabaseInfo,
+    CollectionDefaultIDOptions,
+    CollectionDefinition,
+    CollectionDescriptor,
+    CollectionVectorOptions,
+)
 
 from ..conftest import (
     IS_ASTRA_DB,
@@ -30,6 +36,7 @@ from ..conftest import (
     TEST_COLLECTION_NAME,
     DataAPICredentials,
     DataAPICredentialsInfo,
+    DefaultCollection,
 )
 
 
@@ -43,29 +50,61 @@ class TestDDLSync:
         TEST_LOCAL_COLLECTION_NAME_B = "test_local_coll_b"
         col1 = sync_database.create_collection(
             TEST_LOCAL_COLLECTION_NAME,
-            dimension=123,
-            metric=VectorMetric.EUCLIDEAN,
-            indexing={"deny": ["a", "b", "c"]},
+            definition=CollectionDefinition(
+                vector=CollectionVectorOptions(
+                    dimension=123,
+                    metric=VectorMetric.EUCLIDEAN,
+                ),
+                indexing={"deny": ["a", "b", "c"]},
+            ),
         )
+        # test other creation methods (no-op since just created)
+        col1_dict = sync_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME,
+            definition={
+                "vector": {
+                    "dimension": 123,
+                    "metric": VectorMetric.EUCLIDEAN,
+                },
+                "indexing": {"deny": ["a", "b", "c"]},
+            },
+        )
+        assert col1_dict == col1
+        fluent_definition1 = (
+            CollectionDefinition.builder()
+            .set_vector_dimension(123)
+            .set_vector_metric(VectorMetric.EUCLIDEAN)
+            .set_indexing("deny", ["a", "b", "c"])
+            .build()
+        )
+        col1_fluent = sync_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME,
+            definition=fluent_definition1,
+        )
+        assert col1_fluent == col1
+
         sync_database.create_collection(
             TEST_LOCAL_COLLECTION_NAME_B,
-            indexing={"allow": ["z"]},
+            definition=CollectionDefinition(
+                indexing={"allow": ["z"]},
+            ),
         )
         lc_response = list(sync_database.list_collections())
         #
-        expected_coll_descriptor = CollectionDescriptor.from_dict(
+        expected_coll_descriptor = CollectionDescriptor._from_dict(
             {
                 "name": TEST_LOCAL_COLLECTION_NAME,
                 "options": {
                     "vector": {
                         "dimension": 123,
                         "metric": "euclidean",
+                        "sourceModel": "other",
                     },
                     "indexing": {"deny": ["a", "b", "c"]},
                 },
             },
         )
-        expected_coll_descriptor_b = CollectionDescriptor.from_dict(
+        expected_coll_descriptor_b = CollectionDescriptor._from_dict(
             {
                 "name": TEST_LOCAL_COLLECTION_NAME_B,
                 "options": {
@@ -78,10 +117,8 @@ class TestDDLSync:
         #
         col2 = sync_database.get_collection(TEST_LOCAL_COLLECTION_NAME)
         assert col1 == col2
-        dc_response = sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
-        assert dc_response == {"ok": 1}
-        dc_response2 = sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
-        assert dc_response2 == {"ok": 1}
+        sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
+        sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
         sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME_B)
 
     @pytest.mark.describe("test of default_id_type in creating collections, sync")
@@ -93,7 +130,11 @@ class TestDDLSync:
 
         col = sync_database.create_collection(
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUID,
-            default_id_type=DefaultIdType.UUID,
+            definition=CollectionDefinition(
+                default_id=CollectionDefaultIDOptions(
+                    default_id_type=DefaultIdType.UUID,
+                ),
+            ),
         )
         col_options = col.options()
         assert col_options is not None
@@ -109,7 +150,11 @@ class TestDDLSync:
         time.sleep(2)
         col = sync_database.create_collection(
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV6,
-            default_id_type=DefaultIdType.UUIDV6,
+            definition=CollectionDefinition(
+                default_id=CollectionDefaultIDOptions(
+                    default_id_type=DefaultIdType.UUIDV6,
+                ),
+            ),
         )
         col_options = col.options()
         assert col_options is not None
@@ -127,7 +172,11 @@ class TestDDLSync:
         time.sleep(2)
         col = sync_database.create_collection(
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV7,
-            default_id_type=DefaultIdType.UUIDV7,
+            definition=CollectionDefinition(
+                default_id=CollectionDefaultIDOptions(
+                    default_id_type=DefaultIdType.UUIDV7,
+                ),
+            ),
         )
         col_options = col.options()
         assert col_options is not None
@@ -145,7 +194,11 @@ class TestDDLSync:
         time.sleep(2)
         col = sync_database.create_collection(
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.DEFAULT,
-            default_id_type=DefaultIdType.DEFAULT,
+            definition=CollectionDefinition(
+                default_id=CollectionDefaultIDOptions(
+                    default_id_type=DefaultIdType.DEFAULT,
+                ),
+            ),
         )
         col_options = col.options()
         assert col_options is not None
@@ -156,7 +209,11 @@ class TestDDLSync:
         time.sleep(2)
         col = sync_database.create_collection(
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.OBJECTID,
-            default_id_type=DefaultIdType.OBJECTID,
+            definition=CollectionDefinition(
+                default_id=CollectionDefaultIDOptions(
+                    default_id_type=DefaultIdType.OBJECTID,
+                ),
+            ),
         )
         col_options = col.options()
         assert col_options is not None
@@ -172,10 +229,14 @@ class TestDDLSync:
     @pytest.mark.describe("test of collection drop, sync")
     def test_collection_drop_sync(self, sync_database: Database) -> None:
         col = sync_database.create_collection(
-            name="sync_collection_to_drop", dimension=2
+            name="sync_collection_to_drop",
+            definition=CollectionDefinition(
+                vector=CollectionVectorOptions(
+                    dimension=2,
+                ),
+            ),
         )
-        del_res = col.drop()
-        assert del_res["ok"] == 1
+        col.drop()
         assert "sync_collection_to_drop" not in sync_database.list_collection_names()
 
     @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
@@ -188,14 +249,14 @@ class TestDDLSync:
         assert isinstance(sync_database.id, str)
         assert isinstance(sync_database.name(), str)
         assert sync_database.keyspace == data_api_credentials_kwargs["keyspace"]
-        assert isinstance(sync_database.info(), DatabaseInfo)
-        assert isinstance(sync_database.info().raw_info, dict)
+        assert isinstance(sync_database.info(), AstraDBDatabaseInfo)
+        assert isinstance(sync_database.info().raw, dict)
 
     @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
     @pytest.mark.describe("test of collection metainformation, sync")
     def test_get_collection_info_sync(
         self,
-        sync_collection: Collection,
+        sync_collection: DefaultCollection,
     ) -> None:
         info = sync_collection.info()
         assert info.keyspace == sync_collection.keyspace
@@ -205,14 +266,14 @@ class TestDDLSync:
     def test_database_list_collections_sync(
         self,
         sync_database: Database,
-        sync_collection: Collection,
+        sync_collection: DefaultCollection,
     ) -> None:
         assert TEST_COLLECTION_NAME in sync_database.list_collection_names()
 
     @pytest.mark.describe("test of Collection options, sync")
     def test_collection_options_sync(
         self,
-        sync_collection: Collection,
+        sync_collection: DefaultCollection,
     ) -> None:
         options = sync_collection.options()
         assert options.vector is not None
@@ -225,7 +286,7 @@ class TestDDLSync:
     def test_database_list_collections_cross_keyspace_sync(
         self,
         sync_database: Database,
-        sync_collection: Collection,
+        sync_collection: DefaultCollection,
         data_api_credentials_info: DataAPICredentialsInfo,
     ) -> None:
         assert TEST_COLLECTION_NAME not in sync_database.list_collection_names(
@@ -239,7 +300,7 @@ class TestDDLSync:
     def test_database_use_keyspace_sync(
         self,
         sync_database: Database,
-        sync_collection: Collection,
+        sync_collection: DefaultCollection,
         data_api_credentials_kwargs: DataAPICredentials,
         data_api_credentials_info: DataAPICredentialsInfo,
     ) -> None:
@@ -284,7 +345,10 @@ class TestDDLSync:
             TEST_LOCAL_COLLECTION_NAME1 in database_on_secondary.list_collection_names()
         )
         database_on_secondary.drop_collection(TEST_LOCAL_COLLECTION_NAME1)
-        sync_database.drop_collection(col2_on_secondary)
+        sync_database.drop_collection(
+            col2_on_secondary.name,
+            keyspace=data_api_credentials_info["secondary_keyspace"],
+        )
         assert (
             TEST_LOCAL_COLLECTION_NAME1
             not in database_on_secondary.list_collection_names()
@@ -298,19 +362,20 @@ class TestDDLSync:
     def test_database_command_on_collection_sync(
         self,
         sync_database: Database,
-        sync_collection: Collection,
+        sync_collection: DefaultCollection,
     ) -> None:
         cmd1 = sync_database.command(
-            {"countDocuments": {}}, collection_name=sync_collection.name
+            {"countDocuments": {}}, collection_or_table_name=sync_collection.name
         )
         assert isinstance(cmd1, dict)
         assert isinstance(cmd1["status"]["count"], int)
         cmd2 = sync_database._copy(keyspace="...").command(
             {"countDocuments": {}},
             keyspace=sync_collection.keyspace,
-            collection_name=sync_collection.name,
+            collection_or_table_name=sync_collection.name,
         )
         assert cmd2 == cmd1
+        assert "count" in (cmd2.get("status") or {})
 
     @pytest.mark.describe("test of database command, sync")
     def test_database_command_sync(
@@ -324,11 +389,18 @@ class TestDDLSync:
             {"findCollections": {}}, keyspace=sync_database.keyspace
         )
         assert cmd2 == cmd1
+        assert "collections" in (cmd2.get("status") or {})
+
+        cmd_feps = sync_database.command(
+            {"findEmbeddingProviders": {}},
+            keyspace=None,
+        )
+        assert "embeddingProviders" in (cmd_feps.get("status") or {})
 
     @pytest.mark.describe("test of database command, sync")
     def test_collection_command_sync(
         self,
-        sync_collection: Collection,
+        sync_collection: DefaultCollection,
     ) -> None:
         cmd1 = sync_collection.command({"countDocuments": {}})
         assert isinstance(cmd1, dict)

@@ -17,18 +17,16 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, Sequence
 
-from astrapy.admin.admin import (
+from astrapy.admin.endpoints import (
     api_endpoint_parsing_error_message,
     generic_api_url_parsing_error_message,
     parse_api_endpoint,
     parse_generic_api_url,
 )
-from astrapy.authentication import coerce_possible_token_provider, redact_secret
 from astrapy.constants import CallerType, Environment
+from astrapy.exceptions import InvalidEnvironmentException
 from astrapy.utils.api_options import (
     APIOptions,
-    DataAPIURLOptions,
-    DevOpsAPIURLOptions,
     defaultAPIOptions,
 )
 from astrapy.utils.unset import _UNSET, UnsetType
@@ -57,6 +55,13 @@ class DataAPIClient:
         token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
             This can be either a literal token string or a subclass of
             `astrapy.authentication.TokenProvider`.
+            Note that generally one should pass the token later, when spawning
+            Database instances from the client (with the `get_database`) method
+            of DataAPIClient; the reason is that the typical tokens are scoped
+            to a single database. However, when performing administrative tasks
+            at the AstraDBAdmin level (such as creating databases), an org-wide
+            token is required -- then it makes sense to provide it when creating
+            the DataAPIClient instance.
         environment: a string representing the target Data API environment.
             It can be left unspecified for the default value of `Environment.PROD`;
             other values include `Environment.OTHER`, `Environment.DSE`.
@@ -72,11 +77,20 @@ class DataAPIClient:
 
     Example:
         >>> from astrapy import DataAPIClient
-        >>> my_client = DataAPIClient("AstraCS:...")
+        >>> from astrapy.info import CollectionDefinition
+        >>> my_client = DataAPIClient()
         >>> my_db0 = my_client.get_database(
-        ...     "https://01234567-....apps.astra.datastax.com"
+        ...     "https://01234567-....apps.astra.datastax.com",
+        ...     token="AstraCS:...",
         ... )
-        >>> my_coll = my_db0.create_collection("movies", dimension=2)
+        >>> my_coll = my_db0.create_collection(
+        ...     "movies",
+        ...     definition=(
+        ...         CollectionDefinition.builder()
+        ...         .set_vector_dimension(2)
+        ...         .build()
+        ...     ),
+        ... )
         >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.3]})
         >>> my_db1 = my_client.get_database("01234567-...")
         >>> my_db2 = my_client.get_database("01234567-...", region="us-east1")
@@ -100,33 +114,21 @@ class DataAPIClient:
         else:
             _environment = environment.lower()
         if _environment not in Environment.values:
-            raise ValueError(f"Unsupported `environment` value: '{_environment}'.")
+            raise InvalidEnvironmentException(
+                f"Unsupported `environment` value: '{_environment}'."
+            )
         arg_api_options = APIOptions(
-            environment=_environment,
             callers=callers,
-            token=coerce_possible_token_provider(token),
+            token=token,
         )
         self.api_options = (
             defaultAPIOptions(_environment)
             .with_override(api_options)
-            .with_override(
-                arg_api_options,
-            )
+            .with_override(arg_api_options)
         )
 
     def __repr__(self) -> str:
-        token_desc: str | None
-        if self.api_options.token:
-            token_desc = f'"{redact_secret(str(self.api_options.token), 15)}"'
-        else:
-            token_desc = None
-        env_desc: str | None
-        if self.api_options.environment == Environment.PROD:
-            env_desc = None
-        else:
-            env_desc = f'environment="{self.api_options.environment}"'
-        parts = [pt for pt in [token_desc, env_desc] if pt is not None]
-        return f"{self.__class__.__name__}({', '.join(parts)})"
+        return f"{self.__class__.__name__}({self.api_options})"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, DataAPIClient):
@@ -147,27 +149,23 @@ class DataAPIClient:
         self,
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
-        environment: str | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> DataAPIClient:
-        _environment: str
-        # this parameter bootstraps the defaults, has a special treatment:
-        if isinstance(environment, UnsetType):
-            _environment = self.api_options.environment
-        else:
-            _environment = environment
+        arg_api_options = APIOptions(token=token)
+        final_api_options = self.api_options.with_override(api_options).with_override(
+            arg_api_options
+        )
         return DataAPIClient(
             token=token,
-            environment=_environment,
-            callers=callers,
-            api_options=self.api_options,
+            environment=final_api_options.environment,
+            api_options=final_api_options,
         )
 
     def with_options(
         self,
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> DataAPIClient:
         """
         Create a clone of this DataAPIClient with some changed attributes.
@@ -176,23 +174,23 @@ class DataAPIClient:
             token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            callers: a list of caller identities, i.e. applications, or frameworks,
-                on behalf of which Data API and DevOps API calls are performed.
-                These end up in the request user-agent.
-                Each caller identity is a ("caller_name", "caller_version") pair.
+            api_options: any additional options to set for the clone, in the form of
+                an APIOptions instance (where one can set just the needed attributes).
+                In case the same setting is also provided as named parameter,
+                the latter takes precedence.
 
         Returns:
             a new DataAPIClient instance.
 
         Example:
-            >>> another_client = my_client.with_options(
-            ...     callers=[("caller_identity", "1.2.0")],
+            >>> other_auth_client = my_client.with_options(
+            ...     token="AstraCS:xyz...",
             ... )
         """
 
         return self._copy(
             token=token,
-            callers=callers,
+            api_options=api_options,
         )
 
     def get_database(
@@ -201,8 +199,7 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | None | UnsetType = _UNSET,
-        api_version: str | None | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         """
         Get a Database object from this client, for doing data-related work.
@@ -219,10 +216,12 @@ class DataAPIClient:
                 `astrapy.authentication.TokenProvider`.
             keyspace: if provided, it is passed to the Database; otherwise
                 the Database class will apply an environment-specific default.
-            api_path: path to append to the API Endpoint. In typical usage, this
-                should be left to its default of "/api/json".
-            api_version: version specifier to append to the API path. In typical
-                usage, this should be left to its default of "v1".
+            spawn_api_options: a specification - complete or partial - of the
+                API Options to override the defaults.
+                This allows for a deeper configuration of the database, e.g.
+                concerning timeouts; if this is passed together with
+                the equivalent named parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             a Database object with which to work on Data API collections.
@@ -236,7 +235,14 @@ class DataAPIClient:
             ...     token="AstraCS:...",
             ...     keyspace="prod_keyspace",
             ... )
-            >>> my_coll = my_db1.create_collection("movies", dimension=2)
+            >>> my_coll = my_db0.create_collection(
+            ...     "movies",
+            ...     definition=(
+            ...         CollectionDefinition.builder()
+            ...         .set_vector_dimension(2)
+            ...         .build()
+            ...     ),
+            ... )
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
 
         Note:
@@ -248,20 +254,16 @@ class DataAPIClient:
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
-        arg_api_options = APIOptions(
-            token=coerce_possible_token_provider(token),
-            data_api_url_options=DataAPIURLOptions(
-                api_path=api_path,
-                api_version=api_version,
-            ),
-        )
-        api_options = self.api_options.with_override(arg_api_options)
+        arg_api_options = APIOptions(token=token)
+        resulting_api_options = self.api_options.with_override(
+            spawn_api_options
+        ).with_override(arg_api_options)
 
-        if api_options.environment in Environment.astra_db_values:
+        if resulting_api_options.environment in Environment.astra_db_values:
             parsed_api_endpoint = parse_api_endpoint(api_endpoint)
             if parsed_api_endpoint is not None:
-                if parsed_api_endpoint.environment != api_options.environment:
-                    raise ValueError(
+                if parsed_api_endpoint.environment != resulting_api_options.environment:
+                    raise InvalidEnvironmentException(
                         "Environment mismatch between client and provided "
                         "API endpoint. You can try adding "
                         f'`environment="{parsed_api_endpoint.environment}"` '
@@ -270,7 +272,7 @@ class DataAPIClient:
                 return Database(
                     api_endpoint=api_endpoint,
                     keyspace=keyspace,
-                    api_options=api_options,
+                    api_options=resulting_api_options,
                 )
             else:
                 msg = api_endpoint_parsing_error_message(api_endpoint)
@@ -281,7 +283,7 @@ class DataAPIClient:
                 return Database(
                     api_endpoint=parsed_generic_api_endpoint,
                     keyspace=keyspace,
-                    api_options=api_options,
+                    api_options=resulting_api_options,
                 )
             else:
                 msg = generic_api_url_parsing_error_message(api_endpoint)
@@ -293,8 +295,7 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | None | UnsetType = _UNSET,
-        api_version: str | None | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
         Get an AsyncDatabase object from this client, for doing data-related work.
@@ -311,10 +312,12 @@ class DataAPIClient:
                 `astrapy.authentication.TokenProvider`.
             keyspace: if provided, it is passed to the Database; otherwise
                 the Database class will apply an environment-specific default.
-            api_path: path to append to the API Endpoint. In typical usage, this
-                should be left to its default of "/api/json".
-            api_version: version specifier to append to the API path. In typical
-                usage, this should be left to its default of "v1".
+            spawn_api_options: a specification - complete or partial - of the
+                API Options to override the defaults.
+                This allows for a deeper configuration of the database, e.g.
+                concerning timeouts; if this is passed together with
+                the equivalent named parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             an AsyncDatabase object with which to work on Data API collections.
@@ -322,7 +325,14 @@ class DataAPIClient:
         Example:
             >>> async def create_use_db(cl: DataAPIClient, api_ep: str) -> None:
             ...     async_db = cl.get_async_database(api_ep)
-            ...     my_a_coll = await async_db.create_collection("movies", dimension=2)
+            ...     my_a_coll = await async_db.create_collection(
+            ...         "movies",
+            ...         definition=(
+            ...             CollectionDefinition.builder()
+            ...             .set_vector_dimension(2)
+            ...         .build()
+            ...         )
+            ...     )
             ...     await my_a_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
             ...
             >>> asyncio.run(
@@ -342,8 +352,7 @@ class DataAPIClient:
             api_endpoint=api_endpoint,
             token=token,
             keyspace=keyspace,
-            api_path=api_path,
-            api_version=api_version,
+            spawn_api_options=spawn_api_options,
         ).to_async()
 
     def get_database_by_api_endpoint(
@@ -352,8 +361,7 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | None | UnsetType = _UNSET,
-        api_version: str | None | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         """
         Get a Database object from this client, for doing data-related work.
@@ -372,10 +380,12 @@ class DataAPIClient:
                 `astrapy.authentication.TokenProvider`.
             keyspace: if provided, it is passed to the Database; otherwise
                 the Database class will apply an environment-specific default.
-            api_path: path to append to the API Endpoint. In typical usage, this
-                should be left to its default of "/api/json".
-            api_version: version specifier to append to the API path. In typical
-                usage, this should be left to its default of "v1".
+            spawn_api_options: a specification - complete or partial - of the
+                API Options to override the defaults.
+                This allows for a deeper configuration of the database, e.g.
+                concerning timeouts; if this is passed together with
+                the equivalent named parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             a Database object with which to work on Data API collections.
@@ -385,8 +395,7 @@ class DataAPIClient:
             api_endpoint=api_endpoint,
             token=token,
             keyspace=keyspace,
-            api_path=api_path,
-            api_version=api_version,
+            spawn_api_options=spawn_api_options,
         )
 
     def get_async_database_by_api_endpoint(
@@ -395,8 +404,7 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | None | UnsetType = _UNSET,
-        api_version: str | None | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
         Get an AsyncDatabase object from this client, for doing data-related work.
@@ -415,10 +423,12 @@ class DataAPIClient:
                 `astrapy.authentication.TokenProvider`.
             keyspace: if provided, it is passed to the Database; otherwise
                 the Database class will apply an environment-specific default.
-            api_path: path to append to the API Endpoint. In typical usage, this
-                should be left to its default of "/api/json".
-            api_version: version specifier to append to the API path. In typical
-                usage, this should be left to its default of "v1".
+            spawn_api_options: a specification - complete or partial - of the
+                API Options to override the defaults.
+                This allows for a deeper configuration of the database, e.g.
+                concerning timeouts; if this is passed together with
+                the equivalent named parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             an AsyncDatabase object with which to work on Data API collections.
@@ -428,16 +438,14 @@ class DataAPIClient:
             api_endpoint=api_endpoint,
             token=token,
             keyspace=keyspace,
-            api_path=api_path,
-            api_version=api_version,
+            spawn_api_options=spawn_api_options,
         )
 
     def get_admin(
         self,
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
-        dev_ops_url: str | UnsetType = _UNSET,
-        dev_ops_api_version: str | None | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBAdmin:
         """
         Get an AstraDBAdmin instance corresponding to this client, for
@@ -449,12 +457,12 @@ class DataAPIClient:
                 admin-capable permission set.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            dev_ops_url: in case of custom deployments, this can be used to specify
-                the URL to the DevOps API, such as "https://api.astra.datastax.com".
-                Generally it can be omitted. The environment (prod/dev/...) is
-                determined from the API Endpoint.
-            dev_ops_api_version: this can specify a custom version of the DevOps API
-                (such as "v2"). Generally not needed.
+            spawn_api_options: a specification - complete or partial - of the
+                API Options to override the defaults.
+                This allows for a deeper configuration of the admin, e.g.
+                concerning timeouts; if this is passed together with
+                the equivalent named parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             An AstraDBAdmin instance, wich which to perform management at the
@@ -476,16 +484,14 @@ class DataAPIClient:
         # lazy importing here to avoid circular dependency
         from astrapy.admin import AstraDBAdmin
 
-        arg_api_options = APIOptions(
-            token=coerce_possible_token_provider(token),
-            dev_ops_api_url_options=DevOpsAPIURLOptions(
-                dev_ops_url=dev_ops_url,
-                dev_ops_api_version=dev_ops_api_version,
-            ),
-        )
-        api_options = self.api_options.with_override(arg_api_options)
+        arg_api_options = APIOptions(token=token)
+        resulting_api_options = self.api_options.with_override(
+            spawn_api_options
+        ).with_override(arg_api_options)
 
-        if api_options.environment not in Environment.astra_db_values:
-            raise ValueError("Method not supported outside of Astra DB.")
+        if resulting_api_options.environment not in Environment.astra_db_values:
+            raise InvalidEnvironmentException(
+                "Method not supported outside of Astra DB."
+            )
 
-        return AstraDBAdmin(api_options=api_options)
+        return AstraDBAdmin(api_options=resulting_api_options)

@@ -18,7 +18,7 @@ from astrapy.utils.api_options import (
     APIOptions,
     DataAPIURLOptions,
     DevOpsAPIURLOptions,
-    PayloadTransformOptions,
+    SerdesOptions,
     TimeoutOptions,
 )
 
@@ -26,6 +26,6 @@ __all__ = [
     "APIOptions",
     "DataAPIURLOptions",
     "DevOpsAPIURLOptions",
-    "PayloadTransformOptions",
+    "SerdesOptions",
     "TimeoutOptions",
 ]
