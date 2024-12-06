@@ -29,7 +29,7 @@ from astrapy.constants import (
     SortType,
     normalize_optional_projection,
 )
-from astrapy.data.info.table_descriptor import AlterTableOperation
+from astrapy.data.info.table_descriptor.table_altering import AlterTableOperation
 from astrapy.data.utils.distinct_extractors import (
     _create_document_key_extractor,
     _hash_document,
@@ -68,7 +68,6 @@ from astrapy.utils.unset import _UNSET, UnsetType
 if TYPE_CHECKING:
     from astrapy.authentication import EmbeddingHeadersProvider
     from astrapy.cursors import AsyncTableFindCursor, TableFindCursor
-    from astrapy.data.info.table_descriptor import AlterTableOperation
     from astrapy.info import ListTableDefinition
 
 

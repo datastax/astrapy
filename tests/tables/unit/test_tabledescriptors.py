@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import pytest
 
-from astrapy.data.info.table_descriptor import AlterTableOperation
+from astrapy.data.info.table_descriptor.table_altering import AlterTableOperation
 from astrapy.data.utils.table_types import ColumnType
 from astrapy.info import (
     AlterTableAddColumns,

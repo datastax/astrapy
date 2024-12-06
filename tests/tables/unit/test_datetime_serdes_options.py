@@ -18,7 +18,7 @@ import datetime
 
 import pytest
 
-from astrapy.data.info.table_descriptor import TableColumnTypeDescriptor
+from astrapy.data.info.table_descriptor.table_columns import TableColumnTypeDescriptor
 from astrapy.data.utils.table_converters import (
     create_row_tpostprocessor,
     preprocess_table_payload,

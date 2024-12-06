@@ -24,7 +24,7 @@ import math
 from typing import Any, Callable, Generic, cast
 
 from astrapy.constants import ROW
-from astrapy.data.info.table_descriptor import (
+from astrapy.data.info.table_descriptor.table_columns import (
     TableColumnTypeDescriptor,
     TableKeyValuedColumnTypeDescriptor,
     TableScalarColumnTypeDescriptor,

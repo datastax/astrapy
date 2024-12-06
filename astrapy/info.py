@@ -25,31 +25,39 @@ from astrapy.data.info.database_info import (
     AstraDBAdminDatabaseInfo,
     AstraDBDatabaseInfo,
 )
-from astrapy.data.info.table_descriptor import (
+from astrapy.data.info.table_descriptor.table_altering import (
     AlterTableAddColumns,
     AlterTableAddVectorize,
     AlterTableDropColumns,
     AlterTableDropVectorize,
-    CreateTableDefinition,
-    CreateTableDescriptor,
-    ListTableDefinition,
-    ListTableDescriptor,
-    TableAPIIndexSupportDescriptor,
+)
+from astrapy.data.info.table_descriptor.table_columns import (
     TableAPISupportDescriptor,
-    TableBaseIndexDefinition,
-    TableIndexDefinition,
-    TableIndexDescriptor,
-    TableIndexOptions,
-    TableInfo,
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
     TableUnsupportedColumnTypeDescriptor,
-    TableUnsupportedIndexDefinition,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
+)
+from astrapy.data.info.table_descriptor.table_creation import (
+    CreateTableDefinition,
+    CreateTableDescriptor,
+)
+from astrapy.data.info.table_descriptor.table_indexes import (
+    TableAPIIndexSupportDescriptor,
+    TableBaseIndexDefinition,
+    TableIndexDefinition,
+    TableIndexDescriptor,
+    TableIndexOptions,
+    TableUnsupportedIndexDefinition,
     TableVectorIndexDefinition,
     TableVectorIndexOptions,
+)
+from astrapy.data.info.table_descriptor.table_listing import (
+    ListTableDefinition,
+    ListTableDescriptor,
+    TableInfo,
 )
 from astrapy.data.info.vectorize import (
     EmbeddingProvider,
