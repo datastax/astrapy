@@ -19,7 +19,7 @@ Fixtures specific to testing on vectorize-ready Data API.
 from __future__ import annotations
 
 import os
-from typing import Any, Iterable
+from typing import Any, Dict, Iterable
 
 import pytest
 
@@ -34,8 +34,8 @@ from ..conftest import (
     clean_nulls_from_dict,
 )
 
-DefaultCollection = Collection[dict[str, Any]]
-DefaultAsyncCollection = AsyncCollection[dict[str, Any]]
+DefaultCollection = Collection[Dict[str, Any]]
+DefaultAsyncCollection = AsyncCollection[Dict[str, Any]]
 
 TEST_SERVICE_COLLECTION_NAME = "test_indepth_vectorize_collection"
 

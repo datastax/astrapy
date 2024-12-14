@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -22,7 +23,10 @@ from astrapy import AsyncDatabase
 from astrapy.admin.admin import async_fetch_database_info
 from astrapy.exceptions import DataAPITimeoutException, DevOpsAPITimeoutException
 
-from ..conftest import IS_ASTRA_DB, DefaultAsyncCollection
+from ..conftest import IS_ASTRA_DB
+
+if TYPE_CHECKING:
+    from ..conftest import DefaultAsyncCollection
 
 
 class TestTimeoutAsync:
