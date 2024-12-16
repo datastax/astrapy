@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable
+from typing import Any, Dict, Iterable
 
 import pytest
 
@@ -37,8 +37,8 @@ from ..conftest import (
     sync_fail_if_not_removed,
 )
 
-DefaultCollection = Collection[dict[str, Any]]
-DefaultAsyncCollection = AsyncCollection[dict[str, Any]]
+DefaultCollection = Collection[Dict[str, Any]]
+DefaultAsyncCollection = AsyncCollection[Dict[str, Any]]
 
 TEST_COLLECTION_INSTANCE_NAME = "test_coll_instance"
 TEST_COLLECTION_NAME = "id_test_collection"

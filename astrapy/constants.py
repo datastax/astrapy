@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable, TypeVar
+from typing import Any, Dict, Iterable, Optional, Tuple, TypeVar, Union
 
 from astrapy.settings.defaults import (
     DATA_API_ENVIRONMENT_CASSANDRA,
@@ -26,12 +26,14 @@ from astrapy.settings.defaults import (
     DATA_API_ENVIRONMENT_TEST,
 )
 
-DefaultDocumentType = dict[str, Any]
-DefaultRowType = dict[str, Any]
-ProjectionType = Iterable[str] | dict[str, bool | dict[str, int | Iterable[int]]]
-SortType = dict[str, Any]
-FilterType = dict[str, Any]
-CallerType = tuple[str | None, str | None]
+DefaultDocumentType = Dict[str, Any]
+DefaultRowType = Dict[str, Any]
+ProjectionType = Union[
+    Iterable[str], Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]
+]
+SortType = Dict[str, Any]
+FilterType = Dict[str, Any]
+CallerType = Tuple[Optional[str], Optional[str]]
 
 
 ROW = TypeVar("ROW")

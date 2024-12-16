@@ -19,7 +19,7 @@ import logging
 import re
 from decimal import Decimal
 from types import TracebackType
-from typing import Any, Iterable, Sequence, cast
+from typing import Any, Dict, Iterable, Sequence, cast
 
 import httpx
 
@@ -291,14 +291,14 @@ class APICommander:
     @staticmethod
     def _decimal_unaware_parse_json_response(response_text: str) -> dict[str, Any]:
         return cast(
-            dict[str, Any],
+            Dict[str, Any],
             json.loads(response_text),
         )
 
     @staticmethod
     def _decimal_aware_parse_json_response(response_text: str) -> dict[str, Any]:
         return cast(
-            dict[str, Any],
+            Dict[str, Any],
             json.loads(
                 response_text,
                 parse_float=Decimal,
