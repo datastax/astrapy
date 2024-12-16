@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import math
 from decimal import Decimal
-from typing import Any, Iterable
+from typing import Any, Dict, Iterable
 
 import pytest
 
@@ -44,8 +44,8 @@ from ..conftest import (
     DataAPICredentialsInfo,
 )
 
-DefaultTable = Table[dict[str, Any]]
-DefaultAsyncTable = AsyncTable[dict[str, Any]]
+DefaultTable = Table[Dict[str, Any]]
+DefaultAsyncTable = AsyncTable[Dict[str, Any]]
 
 TEST_ALL_RETURNS_TABLE_NAME = "test_table_all_returns"
 TEST_ALL_RETURNS_TABLE_DEFINITION = CreateTableDefinition(

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any, Dict, cast
 
 from astrapy.data.info.table_descriptor.table_columns import (
     TableColumnTypeDescriptor,
@@ -251,7 +251,7 @@ class AlterTableAddVectorize(AlterTableOperation):
             )
         return AlterTableAddVectorize(
             columns=cast(
-                dict[str, VectorServiceOptions],
+                Dict[str, VectorServiceOptions],
                 _columns,
             )
         )

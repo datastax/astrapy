@@ -20,13 +20,15 @@ from typing import (
     Any,
     Callable,
     Iterable,
+    Optional,
+    Tuple,
 )
 
 from astrapy.data.utils.collection_converters import preprocess_collection_payload_value
 from astrapy.data_types import DataAPIMap, DataAPISet
 from astrapy.utils.api_options import FullSerdesOptions
 
-IndexPairType = tuple[str, int | None]
+IndexPairType = Tuple[str, Optional[int]]
 
 
 def _maybe_valid_list_index(key_block: str) -> int | None:

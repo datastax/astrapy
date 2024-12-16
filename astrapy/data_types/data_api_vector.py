@@ -17,7 +17,12 @@ from __future__ import annotations
 import struct
 from collections import UserList
 from dataclasses import dataclass
-from typing import Iterator
+from typing import TYPE_CHECKING, Iterator
+
+if TYPE_CHECKING:
+    FloatList = UserList[float]
+else:
+    FloatList = UserList
 
 # Floats are always encoded big-endian with 4 bytes per float.
 ENDIANNESS_CHAR = ">"
@@ -61,7 +66,7 @@ def bytes_to_floats(byte_blob: bytes, n: int | None = None) -> list[float]:
 
 
 @dataclass
-class DataAPIVector(UserList[float]):
+class DataAPIVector(FloatList):
     r"""
     A class wrapping a list of float numbers to be treated as a "vector" within the
     Data API. This class has the same functionalities as the underlying `list[float]`,

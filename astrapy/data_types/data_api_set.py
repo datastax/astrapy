@@ -14,8 +14,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Set
-from typing import Any, Generic, Iterable, Iterator, TypeVar
+from typing import AbstractSet, Any, Generic, Iterable, Iterator, TypeVar
 
 T = TypeVar("T")
 
@@ -28,7 +27,7 @@ def _accumulate(destination: list[T], source: Iterable[T]) -> list[T]:
     return _new_destination
 
 
-class DataAPISet(Generic[T], Set[T]):
+class DataAPISet(Generic[T], AbstractSet[T]):
     """
     An immutable 'set-like' class that preserves the order and can store
     non-hashable entries (entries must support __eq__). Not designed for performance.
