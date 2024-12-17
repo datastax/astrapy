@@ -14,14 +14,18 @@
 
 from __future__ import annotations
 
-from ..conftest import (
-    ADMIN_ENV_LIST,
-    ADMIN_ENV_VARIABLE_MAP,
-    IS_ASTRA_DB,
+from ..collection_decimal_support_assets import (
+    BASELINE_OBJ,
+    S_OPTS_NO_DECS,
+    S_OPTS_OK_DECS,
+    WDECS_OBJ,
+    is_decimal_super,
 )
 
 __all__ = [
-    "ADMIN_ENV_LIST",
-    "ADMIN_ENV_VARIABLE_MAP",
-    "IS_ASTRA_DB",
+    "BASELINE_OBJ",
+    "S_OPTS_NO_DECS",
+    "S_OPTS_OK_DECS",
+    "WDECS_OBJ",
+    "is_decimal_super",
 ]

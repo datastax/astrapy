@@ -20,56 +20,24 @@ from typing import Any, Dict, Iterable
 
 import pytest
 
-from astrapy import AsyncCollection, AsyncDatabase, AsyncTable, Collection, DataAPIClient, Database, Table
+from astrapy import (
+    AsyncCollection,
+    AsyncTable,
+    Collection,
+    Database,
+    Table,
+)
 from astrapy.api_options import APIOptions, SerdesOptions
-from astrapy.constants import SortMode, VectorMetric
+from astrapy.constants import VectorMetric
 from astrapy.data_types import DataAPIMap, DataAPISet
 from astrapy.info import (
     CollectionDefinition,
     CollectionVectorOptions,
-    CreateTableDefinition,
-    TableKeyValuedColumnTypeDescriptor,
-    TablePrimaryKeyDescriptor,
-    TableScalarColumnTypeDescriptor,
-    TableValuedColumnTypeDescriptor,
-    TableVectorColumnTypeDescriptor,
-    TableVectorIndexOptions,
-    VectorServiceOptions,
-)
-
-from .table_structure_assets import (
-    TEST_ALL_RETURNS_TABLE_NAME,
-    TEST_ALL_RETURNS_TABLE_DEFINITION,
-    TEST_SIMPLE_TABLE_NAME,
-    TEST_SIMPLE_TABLE_DEFINITION,
-    TEST_SIMPLE_TABLE_VECTOR_INDEX_NAME,
-    TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN,
-    TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS,
-    TEST_COMPOSITE_TABLE_NAME,
-    TEST_COMPOSITE_TABLE_DEFINITION,
-    TEST_COMPOSITE_TABLE_VECTOR_INDEX_NAME,
-    TEST_COMPOSITE_TABLE_VECTOR_INDEX_COLUMN,
-    TEST_COMPOSITE_TABLE_VECTOR_INDEX_OPTIONS,
-    TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_NAME,
-    TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_COLUMN,
-    TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_OPTIONS,
-    TEST_VECTORIZE_TABLE_NAME,
-    TEST_VECTORIZE_TABLE_DEFINITION,
-    TEST_VECTORIZE_TABLE_VECTOR_INDEX_NAME,
-    TEST_VECTORIZE_TABLE_VECTOR_INDEX_COLUMN,
-    TEST_VECTORIZE_TABLE_VECTOR_INDEX_OPTIONS,
-    TEST_KMS_VECTORIZE_TABLE_NAME,
-    TEST_KMS_VECTORIZE_TABLE_DEFINITION,
-    TEST_KMS_VECTORIZE_TABLE_VECTOR_INDEX_NAME,
-    TEST_KMS_VECTORIZE_TABLE_VECTOR_INDEX_COLUMN,
-    TEST_KMS_VECTORIZE_TABLE_VECTOR_INDEX_DEFINITION,
-    VECTORIZE_TEXTS,
 )
 
 from ..conftest import (
     ADMIN_ENV_LIST,
     ADMIN_ENV_VARIABLE_MAP,
-    DO_IDIOMATIC_ADMIN_TESTS,
     HEADER_EMBEDDING_API_KEY_OPENAI,
     IS_ASTRA_DB,
     SECONDARY_KEYSPACE,
@@ -78,6 +46,30 @@ from ..conftest import (
     async_fail_if_not_removed,
     clean_nulls_from_dict,
     sync_fail_if_not_removed,
+)
+from .table_structure_assets import (
+    TEST_ALL_RETURNS_TABLE_DEFINITION,
+    TEST_ALL_RETURNS_TABLE_NAME,
+    TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_COLUMN,
+    TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_NAME,
+    TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_OPTIONS,
+    TEST_COMPOSITE_TABLE_DEFINITION,
+    TEST_COMPOSITE_TABLE_NAME,
+    TEST_COMPOSITE_TABLE_VECTOR_INDEX_COLUMN,
+    TEST_COMPOSITE_TABLE_VECTOR_INDEX_NAME,
+    TEST_COMPOSITE_TABLE_VECTOR_INDEX_OPTIONS,
+    TEST_KMS_VECTORIZE_TABLE_DEFINITION,
+    TEST_KMS_VECTORIZE_TABLE_NAME,
+    TEST_KMS_VECTORIZE_TABLE_VECTOR_INDEX_NAME,
+    TEST_SIMPLE_TABLE_DEFINITION,
+    TEST_SIMPLE_TABLE_NAME,
+    TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN,
+    TEST_SIMPLE_TABLE_VECTOR_INDEX_NAME,
+    TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS,
+    TEST_VECTORIZE_TABLE_DEFINITION,
+    TEST_VECTORIZE_TABLE_NAME,
+    TEST_VECTORIZE_TABLE_VECTOR_INDEX_NAME,
+    VECTORIZE_TEXTS,
 )
 
 DefaultCollection = Collection[Dict[str, Any]]
@@ -472,16 +464,15 @@ def async_empty_table_kms_vectorize(
 __all__ = [
     "DataAPICredentials",
     "DataAPICredentialsInfo",
-    # "async_database",
     "async_fail_if_not_removed",
     "clean_nulls_from_dict",
     "sync_fail_if_not_removed",
-    # "sync_database",
+    "HEADER_EMBEDDING_API_KEY_OPENAI",
     "IS_ASTRA_DB",
     "ADMIN_ENV_LIST",
     "ADMIN_ENV_VARIABLE_MAP",
-    "DO_IDIOMATIC_ADMIN_TESTS",
     "SECONDARY_KEYSPACE",
+    "VECTORIZE_TEXTS",
     "_repaint_NaNs",
     "_typify_tuple",
 ]

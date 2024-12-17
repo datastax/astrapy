@@ -25,7 +25,6 @@ from astrapy.settings.defaults import API_ENDPOINT_TEMPLATE_ENV_MAP
 from ..conftest import (
     ADMIN_ENV_LIST,
     ADMIN_ENV_VARIABLE_MAP,
-    DO_IDIOMATIC_ADMIN_TESTS,
     IS_ASTRA_DB,
 )
 
@@ -77,7 +76,6 @@ async def await_until_true(
 
 
 @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
-@pytest.mark.skipif(not DO_IDIOMATIC_ADMIN_TESTS, reason="Admin tests are suppressed")
 class TestAdmin:
     @pytest.mark.parametrize(
         "admin_env_token", admin_test_envs_tokens(), ids=ADMIN_ENV_LIST

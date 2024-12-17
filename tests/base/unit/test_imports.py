@@ -59,10 +59,12 @@ def test_imports() -> None:
         AstraDBDatabaseAdmin,
         AsyncCollection,
         AsyncDatabase,
+        AsyncTable,
         Collection,
         DataAPIClient,
         DataAPIDatabaseAdmin,
         Database,
+        Table,
     )
     from astrapy.admin import (  # noqa: F401
         ParsedAPIEndpoint,
@@ -75,6 +77,13 @@ def test_imports() -> None:
         SerdesOptions,
         TimeoutOptions,
     )
+    from astrapy.authentication import (  # noqa: F401
+        AWSEmbeddingHeadersProvider,
+        EmbeddingAPIKeyHeaderProvider,
+        EmbeddingHeadersProvider,
+        StaticTokenProvider,
+        UsernamePasswordTokenProvider,
+    )
     from astrapy.constants import (  # noqa: F401
         DefaultIdType,
         Environment,
@@ -86,6 +95,15 @@ def test_imports() -> None:
         AsyncCollectionFindCursor,
         CollectionFindCursor,
         FindCursorState,
+    )
+    from astrapy.data_types import (  # noqa: F401
+        DataAPIDate,
+        DataAPIDuration,
+        DataAPIMap,
+        DataAPISet,
+        DataAPITime,
+        DataAPITimestamp,
+        DataAPIVector,
     )
     from astrapy.exceptions import (  # noqa: F401
         CollectionDeleteManyException,
@@ -123,6 +141,10 @@ def test_imports() -> None:
         uuid8,
     )
     from astrapy.info import (  # noqa: F401
+        AlterTableAddColumns,
+        AlterTableAddVectorize,
+        AlterTableDropColumns,
+        AlterTableDropVectorize,
         AstraDBAdminDatabaseInfo,
         AstraDBDatabaseInfo,
         CollectionDefaultIDOptions,
@@ -130,12 +152,34 @@ def test_imports() -> None:
         CollectionDescriptor,
         CollectionInfo,
         CollectionVectorOptions,
+        ColumnType,
+        CreateTableDefinition,
         EmbeddingProvider,
         EmbeddingProviderAuthentication,
         EmbeddingProviderModel,
         EmbeddingProviderParameter,
         EmbeddingProviderToken,
         FindEmbeddingProvidersResult,
+        ListTableDefinition,
+        ListTableDescriptor,
+        TableAPIIndexSupportDescriptor,
+        TableAPISupportDescriptor,
+        TableBaseIndexDefinition,
+        TableIndexDefinition,
+        TableIndexDescriptor,
+        TableIndexOptions,
+        TableInfo,
+        TableKeyValuedColumnType,
+        TableKeyValuedColumnTypeDescriptor,
+        TablePrimaryKeyDescriptor,
+        TableScalarColumnTypeDescriptor,
+        TableUnsupportedColumnTypeDescriptor,
+        TableUnsupportedIndexDefinition,
+        TableValuedColumnType,
+        TableValuedColumnTypeDescriptor,
+        TableVectorColumnTypeDescriptor,
+        TableVectorIndexDefinition,
+        TableVectorIndexOptions,
         VectorServiceOptions,
     )
     from astrapy.results import (  # noqa: F401

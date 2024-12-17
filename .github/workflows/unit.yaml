@@ -1,4 +1,4 @@
-name: Run base integration tests on Astra DB
+name: Run unit tests
 
 on:
   push:
@@ -17,7 +17,14 @@ jobs:
       ASTRA_DB_KEYSPACE: ${{ secrets.ASTRA_DB_KEYSPACE }}
       ASTRA_DB_SECONDARY_KEYSPACE: ${{ secrets.ASTRA_DB_SECONDARY_KEYSPACE }}
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        python-version:
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
+    name: "unit test on #${{ matrix.python-version }}"
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -25,7 +32,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: 3.11
+        python-version: ${{ matrix.python-version }}
 
     - name: Install dependencies
       run: |
@@ -35,4 +42,4 @@ jobs:
 
     - name: Run pytest
       run: |
-        poetry run pytest tests/base/integration
+        poetry run pytest tests/base/unit

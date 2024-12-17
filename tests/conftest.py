@@ -20,14 +20,13 @@ from __future__ import annotations
 
 import functools
 import warnings
-from typing import Any, Awaitable, Callable, TypedDict
+from typing import Any, Awaitable, Callable, Iterable, TypedDict
 
 import pytest
 from deprecation import UnsupportedWarning
 
-from astrapy import DataAPIClient
+from astrapy import AsyncDatabase, DataAPIClient, Database
 from astrapy.admin import parse_api_endpoint
-from astrapy.api_options import APIOptions
 from astrapy.authentication import TokenProvider
 from astrapy.constants import Environment
 from astrapy.settings.defaults import DEFAULT_ASTRA_DB_KEYSPACE
@@ -39,7 +38,6 @@ from .preprocess_env import (
     ASTRA_DB_APPLICATION_TOKEN,
     ASTRA_DB_KEYSPACE,
     ASTRA_DB_TOKEN_PROVIDER,
-    DO_IDIOMATIC_ADMIN_TESTS,
     DOCKER_COMPOSE_LOCAL_DATA_API,
     HEADER_EMBEDDING_API_KEY_OPENAI,
     IS_ASTRA_DB,
@@ -197,12 +195,7 @@ def client(
     data_api_credentials_info: DataAPICredentialsInfo,
 ) -> Iterable[DataAPIClient]:
     env = data_api_credentials_info["environment"]
-    client = DataAPIClient(
-        environment=env,
-        api_options=APIOptions(
-            database_additional_headers={"Feature-Flag-Tables": "true"},
-        ),
-    )
+    client = DataAPIClient(environment=env)
     yield client
 
 
@@ -243,7 +236,6 @@ __all__ = [
     "SECONDARY_KEYSPACE",
     "ADMIN_ENV_LIST",
     "ADMIN_ENV_VARIABLE_MAP",
-    "DO_IDIOMATIC_ADMIN_TESTS",
     "ASTRA_DB_TOKEN_PROVIDER",
     "LOCAL_DATA_API_TOKEN_PROVIDER",
 ]

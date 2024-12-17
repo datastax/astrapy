@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 from astrapy.constants import SortMode
-
 from astrapy.info import (
     CreateTableDefinition,
     TableKeyValuedColumnTypeDescriptor,

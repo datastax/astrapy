@@ -14,7 +14,10 @@
 
 from __future__ import annotations
 
-
 from ..conftest import (
     IS_ASTRA_DB,
 )
+
+__all__ = [
+    "IS_ASTRA_DB",
+]

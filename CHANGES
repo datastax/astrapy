@@ -1,7 +1,7 @@
 main
 ====
 restore support for Python 3.8, 3.9
-(reinstated some Data API functionalities being tested after the API got patched re: sorting on PK and pagination with that sorting)
+maintenance: full restructuring of tests and CI (tables+collections on same footing+other)
 
 v 2.0.0-preview
 ===============

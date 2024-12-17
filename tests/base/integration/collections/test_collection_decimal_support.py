@@ -18,14 +18,14 @@ import pytest
 
 from astrapy.api_options import APIOptions
 
-from ..conftest import DefaultAsyncCollection, DefaultCollection
-from ..decimal_support_assets import (
+from ..collection_decimal_support_assets import (
     BASELINE_OBJ,
     S_OPTS_NO_DECS,
     S_OPTS_OK_DECS,
     WDECS_OBJ,
     is_decimal_super,
 )
+from ..conftest import DefaultAsyncCollection, DefaultCollection
 
 
 class TestCollectionDecimalSupportIntegration:

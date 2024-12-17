@@ -1,4 +1,4 @@
-name: Run idiomatic pytest on HCD
+name: Run base integration tests on HCD
 
 on:
   push:
@@ -11,8 +11,6 @@ on:
 jobs:
   test:
     env:
-      # for admin-related testing if enabled
-      DO_IDIOMATIC_ADMIN_TESTS: ${{ secrets.DO_IDIOMATIC_ADMIN_TESTS }}
       # hardcoding the target DB
       DOCKER_COMPOSE_LOCAL_DATA_API: "yes"
     runs-on: ubuntu-latest
@@ -34,4 +32,4 @@ jobs:
 
     - name: Run pytest
       run: |
-        poetry run pytest tests/idiomatic
+        poetry run pytest tests/base/integration
