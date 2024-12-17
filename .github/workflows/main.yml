@@ -16,6 +16,7 @@ jobs:
       ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
       ASTRA_DB_KEYSPACE: ${{ secrets.ASTRA_DB_KEYSPACE }}
       ASTRA_DB_SECONDARY_KEYSPACE: ${{ secrets.ASTRA_DB_SECONDARY_KEYSPACE }}
+      HEADER_EMBEDDING_API_KEY_OPENAI: ${{ secrets.ASTRA_DB_SECONDARY_KEYSPACE }}
     runs-on: ubuntu-latest
 
     steps:

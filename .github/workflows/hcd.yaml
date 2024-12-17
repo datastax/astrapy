@@ -11,6 +11,7 @@ on:
 jobs:
   test:
     env:
+      HEADER_EMBEDDING_API_KEY_OPENAI: ${{ secrets.ASTRA_DB_SECONDARY_KEYSPACE }}
       # hardcoding the target DB
       DOCKER_COMPOSE_LOCAL_DATA_API: "yes"
     runs-on: ubuntu-latest
