@@ -22,7 +22,7 @@ from astrapy.data.utils.collection_converters import (
 )
 from astrapy.utils.api_commander import APICommander
 
-from ..decimal_support_assets import (
+from ..collection_decimal_support_assets import (
     BASELINE_OBJ,
     S_OPTS_NO_DECS,
     S_OPTS_OK_DECS,

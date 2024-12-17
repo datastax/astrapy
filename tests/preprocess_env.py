@@ -167,3 +167,6 @@ ADMIN_ENV_VARIABLE_MAP = {
     }
     for admin_env in ADMIN_ENV_LIST
 }
+
+# misc variables
+HEADER_EMBEDDING_API_KEY_OPENAI = os.environ.get("HEADER_EMBEDDING_API_KEY_OPENAI")

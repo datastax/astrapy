@@ -24,7 +24,7 @@ from astrapy.utils.api_commander import APICommander
 from astrapy.utils.api_options import FullSerdesOptions, defaultAPIOptions
 
 from ..conftest import _repaint_NaNs
-from ..decimal_support_assets import (
+from ..table_decimal_support_assets import (
     BASELINE_COLUMNS,
     BASELINE_KEY_STR,
     BASELINE_OBJ,

@@ -23,10 +23,11 @@ from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import DataAPIResponseException
 from astrapy.info import CollectionDefinition
 
-from ..conftest import DefaultCollection
+from ..conftest import DefaultCollection, HEADER_EMBEDDING_API_KEY_OPENAI
 
 
-class TestVectorizeMethodsSync:
+@pytest.mark.skipif(HEADER_EMBEDDING_API_KEY_OPENAI is None, reason="No HEADER_EMBEDDING_API_KEY_OPENAI credential")
+class TestCollectionVectorizeMethodsSync:
     @pytest.mark.describe("test of vectorize in collection methods, sync")
     def test_collection_methods_vectorize_sync(
         self,

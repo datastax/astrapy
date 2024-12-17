@@ -27,6 +27,7 @@ from deprecation import UnsupportedWarning
 
 from astrapy import DataAPIClient
 from astrapy.admin import parse_api_endpoint
+from astrapy.api_options import APIOptions
 from astrapy.authentication import TokenProvider
 from astrapy.constants import Environment
 from astrapy.settings.defaults import DEFAULT_ASTRA_DB_KEYSPACE
@@ -40,6 +41,7 @@ from .preprocess_env import (
     ASTRA_DB_TOKEN_PROVIDER,
     DO_IDIOMATIC_ADMIN_TESTS,
     DOCKER_COMPOSE_LOCAL_DATA_API,
+    HEADER_EMBEDDING_API_KEY_OPENAI,
     IS_ASTRA_DB,
     LOCAL_DATA_API_APPLICATION_TOKEN,
     LOCAL_DATA_API_ENDPOINT,
@@ -190,11 +192,48 @@ def data_api_credentials_info(
     return astra_db_cred_info
 
 
+@pytest.fixture(scope="session")
+def client(
+    data_api_credentials_info: DataAPICredentialsInfo,
+) -> Iterable[DataAPIClient]:
+    env = data_api_credentials_info["environment"]
+    client = DataAPIClient(
+        environment=env,
+        api_options=APIOptions(
+            database_additional_headers={"Feature-Flag-Tables": "true"},
+        ),
+    )
+    yield client
+
+
+@pytest.fixture(scope="session")
+def sync_database(
+    data_api_credentials_kwargs: DataAPICredentials,
+    data_api_credentials_info: DataAPICredentialsInfo,
+    client: DataAPIClient,
+) -> Iterable[Database]:
+    database = client.get_database(
+        data_api_credentials_kwargs["api_endpoint"],
+        token=data_api_credentials_kwargs["token"],
+        keyspace=data_api_credentials_kwargs["keyspace"],
+    )
+
+    yield database
+
+
+@pytest.fixture(scope="function")
+def async_database(
+    sync_database: Database,
+) -> Iterable[AsyncDatabase]:
+    yield sync_database.to_async()
+
+
 __all__ = [
     "ASTRA_DB_API_ENDPOINT",
     "ASTRA_DB_APPLICATION_TOKEN",
     "ASTRA_DB_KEYSPACE",
     "DOCKER_COMPOSE_LOCAL_DATA_API",
+    "HEADER_EMBEDDING_API_KEY_OPENAI",
     "IS_ASTRA_DB",
     "LOCAL_DATA_API_APPLICATION_TOKEN",
     "LOCAL_DATA_API_ENDPOINT",

@@ -28,7 +28,7 @@ services:
       retries: 10
 
   data-api:
-    image: stargateio/data-api:v1.0.18
+    image: stargateio/data-api:v1.0.20
     depends_on:
       coordinator:
         condition: service_healthy

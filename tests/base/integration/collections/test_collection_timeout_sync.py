@@ -25,7 +25,7 @@ from astrapy.exceptions import DataAPITimeoutException, DevOpsAPITimeoutExceptio
 from ..conftest import IS_ASTRA_DB, DefaultCollection
 
 
-class TestTimeoutSync:
+class TestCollectionTimeoutSync:
     @pytest.mark.describe("test of collection count_documents timeout, sync")
     def test_collection_count_documents_timeout_sync(
         self,

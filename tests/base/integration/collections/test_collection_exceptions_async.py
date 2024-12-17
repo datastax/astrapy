@@ -29,7 +29,7 @@ from astrapy.exceptions import (
 from ..conftest import IS_ASTRA_DB, DefaultAsyncCollection
 
 
-class TestExceptionsAsync:
+class TestCollectionExceptionsAsync:
     @pytest.mark.describe("test of collection insert_many type-failure modes, async")
     async def test_collection_insert_many_type_failures_async(
         self,

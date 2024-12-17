@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from ..conftest import DefaultAsyncCollection
 
 
-class TestTimeoutAsync:
+class TestCollectionTimeoutAsync:
     @pytest.mark.describe("test of collection count_documents timeout, async")
     async def test_collection_count_documents_timeout_async(
         self,

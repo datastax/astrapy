@@ -40,7 +40,7 @@ from ..conftest import (
 )
 
 
-class TestDDLSync:
+class TestCollectionDDLSync:
     @pytest.mark.describe("test of collection creation, get, and then drop, sync")
     def test_collection_lifecycle_sync(
         self,

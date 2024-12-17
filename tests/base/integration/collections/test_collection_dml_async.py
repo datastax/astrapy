@@ -36,7 +36,7 @@ async def _alist(
     return [doc async for doc in acursor]
 
 
-class TestDMLAsync:
+class TestCollectionDMLAsync:
     @pytest.mark.describe("test of collection count_documents, async")
     async def test_collection_count_documents_async(
         self,

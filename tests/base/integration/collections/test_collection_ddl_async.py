@@ -39,7 +39,7 @@ from ..conftest import (
 )
 
 
-class TestDDLAsync:
+class TestCollectionDDLAsync:
     @pytest.mark.describe("test of collection creation, get, and then drop, async")
     async def test_collection_lifecycle_async(
         self,

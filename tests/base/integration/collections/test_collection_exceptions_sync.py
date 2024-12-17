@@ -28,7 +28,7 @@ from astrapy.exceptions import (
 from ..conftest import IS_ASTRA_DB, DefaultCollection
 
 
-class TestExceptionsSync:
+class TestCollectionExceptionsSync:
     @pytest.mark.describe("test of collection insert_many type-failure modes, sync")
     def test_collection_insert_many_type_failures_sync(
         self,

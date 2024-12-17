@@ -29,7 +29,7 @@ from astrapy.utils.api_options import APIOptions, SerdesOptions
 from ..conftest import DefaultCollection
 
 
-class TestDMLSync:
+class TestCollectionDMLSync:
     @pytest.mark.describe("test of collection count_documents, sync")
     def test_collection_count_documents_sync(
         self,
