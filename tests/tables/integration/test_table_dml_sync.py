@@ -25,7 +25,6 @@ from astrapy.exceptions import DataAPIException, TableInsertManyException
 from astrapy.results import TableInsertManyResult
 
 from ..conftest import (
-    IS_ASTRA_DB,
     DefaultTable,
     _repaint_NaNs,
     _typify_tuple,
@@ -98,7 +97,6 @@ class TestTableDMLSync:
                 {
                     "p_text": "pA",
                     "p_int": i,
-                    "p_int_regular": i,
                     "p_vector": DataAPIVector([i, 1, 0]),
                 }
                 for i in range(3)
@@ -109,7 +107,6 @@ class TestTableDMLSync:
                 {
                     "p_text": "pB",
                     "p_int": 100 - i,
-                    "p_int_regular": 100 - i,
                     "p_vector": DataAPIVector([i + 0.1, 1, 0]),
                 }
                 for i in range(3)
@@ -129,18 +126,14 @@ class TestTableDMLSync:
         assert (fo_fil_ann_row["p_text"], fo_fil_ann_row["p_int"]) == ("pB", 100)
         # just regular sort
         fo_unf_srt_row = sync_empty_table_composite.find_one(
-            sort={
-                "p_int_regular": SortMode.DESCENDING
-            }  # TODO: replace with p_int when ok
+            sort={"p_int": SortMode.DESCENDING}
         )
         assert fo_unf_srt_row is not None
         assert (fo_unf_srt_row["p_text"], fo_unf_srt_row["p_int"]) == ("pB", 100)
         # regular sort, filtered
         fo_fil_srt_row = sync_empty_table_composite.find_one(
             filter={"p_text": "pA"},
-            sort={
-                "p_int_regular": SortMode.DESCENDING
-            },  # TODO: replace with p_int when ok
+            sort={"p_int": SortMode.DESCENDING},
         )
         assert fo_fil_srt_row is not None
         assert (fo_fil_srt_row["p_text"], fo_fil_srt_row["p_int"]) == ("pA", 2)
@@ -622,26 +615,14 @@ class TestTableDMLSync:
         # (nonvector) sorting
         sync_empty_table_all_returns.insert_many(INSMANY_AR_ROWS)
         # sorting as per clustering column
-        if IS_ASTRA_DB:  # TODO, reinstate full find once fix deployed
-            # (i.e. remove this branching point in favour of local)
-            srows_in_part = sync_empty_table_all_returns.find(
-                filter={"p_ascii": "A", "p_bigint": 100},
-                sort={"p_int": SortMode.DESCENDING},
-                limit=20,
-            ).to_list()
-            assert len(srows_in_part) == 20
-            srows_in_part_pints = [row["p_int"] for row in srows_in_part]
-            assert sorted(srows_in_part_pints) == srows_in_part_pints[::-1]
-        else:
-            # Latest Data API:
-            srows_in_part = sync_empty_table_all_returns.find(
-                filter={"p_ascii": "A", "p_bigint": 100},
-                sort={"p_int": SortMode.DESCENDING},
-                limit=INSMANY_AR_ROW_HALFN + 1,
-            ).to_list()
-            assert len(srows_in_part) == INSMANY_AR_ROW_HALFN
-            srows_in_part_pints = [row["p_int"] for row in srows_in_part]
-            assert sorted(srows_in_part_pints) == srows_in_part_pints[::-1]
+        srows_in_part = sync_empty_table_all_returns.find(
+            filter={"p_ascii": "A", "p_bigint": 100},
+            sort={"p_int": SortMode.DESCENDING},
+            limit=INSMANY_AR_ROW_HALFN + 1,
+        ).to_list()
+        assert len(srows_in_part) == INSMANY_AR_ROW_HALFN
+        srows_in_part_pints = [row["p_int"] for row in srows_in_part]
+        assert sorted(srows_in_part_pints) == srows_in_part_pints[::-1]
         # sorting by any regular column
         srows_anycol = sync_empty_table_all_returns.find(
             filter={"p_ascii": "A", "p_bigint": 100},
