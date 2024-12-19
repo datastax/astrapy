@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ruff: noqa: F401
+
 from __future__ import annotations
 
 import pytest
@@ -54,7 +56,7 @@ def test_namespace() -> None:
 
 @pytest.mark.describe("test imports")
 def test_imports() -> None:
-    from astrapy import (  # noqa: F401
+    from astrapy import (
         AstraDBAdmin,
         AstraDBDatabaseAdmin,
         AsyncCollection,
@@ -66,37 +68,37 @@ def test_imports() -> None:
         Database,
         Table,
     )
-    from astrapy.admin import (  # noqa: F401
+    from astrapy.admin import (
         ParsedAPIEndpoint,
         parse_api_endpoint,
     )
-    from astrapy.api_options import (  # noqa: F401
+    from astrapy.api_options import (
         APIOptions,
         DataAPIURLOptions,
         DevOpsAPIURLOptions,
         SerdesOptions,
         TimeoutOptions,
     )
-    from astrapy.authentication import (  # noqa: F401
+    from astrapy.authentication import (
         AWSEmbeddingHeadersProvider,
         EmbeddingAPIKeyHeaderProvider,
         EmbeddingHeadersProvider,
         StaticTokenProvider,
         UsernamePasswordTokenProvider,
     )
-    from astrapy.constants import (  # noqa: F401
+    from astrapy.constants import (
         DefaultIdType,
         Environment,
         ReturnDocument,
         SortMode,
         VectorMetric,
     )
-    from astrapy.cursors import (  # noqa: F401
+    from astrapy.cursors import (
         AsyncCollectionFindCursor,
         CollectionFindCursor,
         FindCursorState,
     )
-    from astrapy.data_types import (  # noqa: F401
+    from astrapy.data_types import (
         DataAPIDate,
         DataAPIDuration,
         DataAPIMap,
@@ -105,7 +107,7 @@ def test_imports() -> None:
         DataAPITimestamp,
         DataAPIVector,
     )
-    from astrapy.exceptions import (  # noqa: F401
+    from astrapy.exceptions import (
         CollectionDeleteManyException,
         CollectionInsertManyException,
         CollectionUpdateManyException,
@@ -129,7 +131,7 @@ def test_imports() -> None:
         UnexpectedDataAPIResponseException,
         UnexpectedDevOpsAPIResponseException,
     )
-    from astrapy.ids import (  # noqa: F401
+    from astrapy.ids import (
         UUID,
         ObjectId,
         uuid1,
@@ -140,7 +142,7 @@ def test_imports() -> None:
         uuid7,
         uuid8,
     )
-    from astrapy.info import (  # noqa: F401
+    from astrapy.info import (
         AlterTableAddColumns,
         AlterTableAddVectorize,
         AlterTableDropColumns,
@@ -182,7 +184,7 @@ def test_imports() -> None:
         TableVectorIndexOptions,
         VectorServiceOptions,
     )
-    from astrapy.results import (  # noqa: F401
+    from astrapy.results import (
         CollectionDeleteResult,
         CollectionInsertManyResult,
         CollectionInsertOneResult,
