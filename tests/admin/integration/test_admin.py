@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Any, Awaitable, Callable
 
@@ -72,7 +73,7 @@ async def await_until_true(
     while not (await acondition()):
         if time.time() - ini_time > max_seconds:
             raise ValueError("Timed out on condition.")
-        time.sleep(poll_interval)
+        await asyncio.sleep(poll_interval)
 
 
 @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")

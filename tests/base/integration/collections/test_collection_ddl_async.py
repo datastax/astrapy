@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-import time
+import asyncio
 
 import pytest
 
@@ -146,7 +146,7 @@ class TestCollectionDDLAsync:
         assert isinstance(doc["_id"], UUID)
         await acol.drop()
 
-        time.sleep(2)
+        await asyncio.sleep(2)
         acol = await async_database.create_collection(
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV6,
             definition=CollectionDefinition(
@@ -168,7 +168,7 @@ class TestCollectionDDLAsync:
         assert doc["_id"].version == 6
         await acol.drop()
 
-        time.sleep(2)
+        await asyncio.sleep(2)
         acol = await async_database.create_collection(
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV7,
             definition=CollectionDefinition(
@@ -190,7 +190,7 @@ class TestCollectionDDLAsync:
         assert doc["_id"].version == 7
         await acol.drop()
 
-        time.sleep(2)
+        await asyncio.sleep(2)
         acol = await async_database.create_collection(
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.DEFAULT,
             definition=CollectionDefinition(
@@ -205,7 +205,7 @@ class TestCollectionDDLAsync:
         assert acol_options.default_id.default_id_type == DefaultIdType.DEFAULT
         await acol.drop()
 
-        time.sleep(2)
+        await asyncio.sleep(2)
         acol = await async_database.create_collection(
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.OBJECTID,
             definition=CollectionDefinition(
@@ -429,7 +429,7 @@ class TestCollectionDDLAsync:
     @pytest.mark.describe(
         "test database-from-admin default keyspace per environment, async"
     )
-    async def test_database_from_admin_default_keyspace_per_environment_async(
+    def test_async_database_from_admin_default_keyspace_per_environment(
         self,
         data_api_credentials_kwargs: DataAPICredentials,
         data_api_credentials_info: DataAPICredentialsInfo,
@@ -448,7 +448,7 @@ class TestCollectionDDLAsync:
     @pytest.mark.describe(
         "test database-from-astradbadmin default keyspace per environment, async"
     )
-    async def test_database_from_astradbadmin_default_keyspace_per_environment_async(
+    def test_async_database_from_astradbadmin_default_keyspace_per_environment(
         self,
         data_api_credentials_kwargs: DataAPICredentials,
         data_api_credentials_info: DataAPICredentialsInfo,
