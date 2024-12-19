@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -41,6 +41,21 @@ from ..conftest import IS_ASTRA_DB
 
 if TYPE_CHECKING:
     from astrapy import Database
+
+
+def _remove_apisupport(def_dict: dict[str, Any]) -> dict[str, Any]:
+    """
+    Strip apiSupport keys from columns since its presence
+    is != between sending and receiving.
+    """
+
+    def _clean_col(col_dict: dict[str, Any]) -> dict[str, Any]:
+        return {k: v for k, v in col_dict.items() if k != "apiSupport"}
+
+    return {
+        k: v if k != "columns" else {colk: _clean_col(colv) for colk, colv in v.items()}
+        for k, v in def_dict.items()
+    }
 
 
 class TestTableLifecycle:
@@ -185,7 +200,8 @@ class TestTableLifecycle:
 
         # definition and info
         assert (
-            table_fluent.definition().as_dict() == table_whole_obj_definition.as_dict()
+            _remove_apisupport(table_fluent.definition().as_dict())
+            == table_whole_obj_definition.as_dict()
         )
         if IS_ASTRA_DB:
             fl_info = table_fluent.info()
@@ -382,6 +398,9 @@ class TestTableLifecycle:
                 operation=AlterTableDropVectorize.coerce({"columns": ["p_vector"]})
             )
             # back to the original table:
-            assert table.definition().as_dict() == orig_table_def.as_dict()
+            assert (
+                _remove_apisupport(table.definition().as_dict())
+                == orig_table_def.as_dict()
+            )
         finally:
             table.drop()
