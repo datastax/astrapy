@@ -52,7 +52,7 @@ LOCAL_DATA_API_KEYSPACE: str | None = None
 ASTRA_DB_TOKEN_PROVIDER: TokenProvider | None = None
 LOCAL_DATA_API_TOKEN_PROVIDER: TokenProvider | None = None
 
-# idiomatic-related settings
+# basic settings about which DB/API to use
 if "LOCAL_DATA_API_ENDPOINT" in os.environ:
     IS_ASTRA_DB = False
     DOCKER_COMPOSE_LOCAL_DATA_API = False
@@ -145,17 +145,7 @@ if DOCKER_COMPOSE_LOCAL_DATA_API:
         is_docker_compose_started = True
 
 
-# Idomatic admin test flag
-DO_IDIOMATIC_ADMIN_TESTS: bool
-if "DO_IDIOMATIC_ADMIN_TESTS" in os.environ:
-    _do_idiomatic_admin_tests = os.environ["DO_IDIOMATIC_ADMIN_TESTS"]
-    if _do_idiomatic_admin_tests.strip():
-        DO_IDIOMATIC_ADMIN_TESTS = int(_do_idiomatic_admin_tests) != 0
-    else:
-        DO_IDIOMATIC_ADMIN_TESTS = False
-else:
-    DO_IDIOMATIC_ADMIN_TESTS = False
-
+# admin-test values for Astra DB
 ADMIN_ENV_LIST = ["prod", "dev", "test"]
 ADMIN_ENV_VARIABLE_MAP = {
     admin_env: {
@@ -167,3 +157,6 @@ ADMIN_ENV_VARIABLE_MAP = {
     }
     for admin_env in ADMIN_ENV_LIST
 }
+
+# misc variables
+HEADER_EMBEDDING_API_KEY_OPENAI = os.environ.get("HEADER_EMBEDDING_API_KEY_OPENAI")

@@ -20,12 +20,12 @@ from __future__ import annotations
 
 import functools
 import warnings
-from typing import Any, Awaitable, Callable, TypedDict
+from typing import Any, Awaitable, Callable, Iterable, TypedDict
 
 import pytest
 from deprecation import UnsupportedWarning
 
-from astrapy import DataAPIClient
+from astrapy import AsyncDatabase, DataAPIClient, Database
 from astrapy.admin import parse_api_endpoint
 from astrapy.authentication import TokenProvider
 from astrapy.constants import Environment
@@ -38,8 +38,8 @@ from .preprocess_env import (
     ASTRA_DB_APPLICATION_TOKEN,
     ASTRA_DB_KEYSPACE,
     ASTRA_DB_TOKEN_PROVIDER,
-    DO_IDIOMATIC_ADMIN_TESTS,
     DOCKER_COMPOSE_LOCAL_DATA_API,
+    HEADER_EMBEDDING_API_KEY_OPENAI,
     IS_ASTRA_DB,
     LOCAL_DATA_API_APPLICATION_TOKEN,
     LOCAL_DATA_API_ENDPOINT,
@@ -190,11 +190,43 @@ def data_api_credentials_info(
     return astra_db_cred_info
 
 
+@pytest.fixture(scope="session")
+def client(
+    data_api_credentials_info: DataAPICredentialsInfo,
+) -> Iterable[DataAPIClient]:
+    env = data_api_credentials_info["environment"]
+    client = DataAPIClient(environment=env)
+    yield client
+
+
+@pytest.fixture(scope="session")
+def sync_database(
+    data_api_credentials_kwargs: DataAPICredentials,
+    data_api_credentials_info: DataAPICredentialsInfo,
+    client: DataAPIClient,
+) -> Iterable[Database]:
+    database = client.get_database(
+        data_api_credentials_kwargs["api_endpoint"],
+        token=data_api_credentials_kwargs["token"],
+        keyspace=data_api_credentials_kwargs["keyspace"],
+    )
+
+    yield database
+
+
+@pytest.fixture(scope="function")
+def async_database(
+    sync_database: Database,
+) -> Iterable[AsyncDatabase]:
+    yield sync_database.to_async()
+
+
 __all__ = [
     "ASTRA_DB_API_ENDPOINT",
     "ASTRA_DB_APPLICATION_TOKEN",
     "ASTRA_DB_KEYSPACE",
     "DOCKER_COMPOSE_LOCAL_DATA_API",
+    "HEADER_EMBEDDING_API_KEY_OPENAI",
     "IS_ASTRA_DB",
     "LOCAL_DATA_API_APPLICATION_TOKEN",
     "LOCAL_DATA_API_ENDPOINT",
@@ -204,7 +236,6 @@ __all__ = [
     "SECONDARY_KEYSPACE",
     "ADMIN_ENV_LIST",
     "ADMIN_ENV_VARIABLE_MAP",
-    "DO_IDIOMATIC_ADMIN_TESTS",
     "ASTRA_DB_TOKEN_PROVIDER",
     "LOCAL_DATA_API_TOKEN_PROVIDER",
 ]

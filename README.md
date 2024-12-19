@@ -405,25 +405,17 @@ make format
 
 With `make format-fix` the style and imports are autofixed (by `ruff`)
 
-Features must be thoroughly covered in tests (see `tests/idiomatic/*` for
+Features must be thoroughly covered in tests (have a look at `tests/*` to infer
 naming convention and module structure).
 
 ### Running tests
 
-Tests are grouped in three _blocks_ (in as many subdirs of `tests/`):
+Tests are grouped in:
+- "base", covering general-purpose astrapy functionality. Divided in unit/integration;
+- "vectorize", extensively running a base workload on all provider/integration choices;
+- "admin", doing a whole sweep of admin operations. Very slow on Astra DB.
 
-- **idiomatic**: all 2.0+ classes and APIs, except...
-- **tables**: the "tables" part only; and,
-- **vectorize**: ... everything making use of `$vectorize` (within the idiomatic classes)
-
-Actually, for convenience, _sub-blocks_ of tests are considered:
-
-- **idiomatic regular**: everything except the admin parts
-- **idiomatic admin Astra**: the Astra-specific admin operations
-- **idiomatic admin nonAstra**: the nonAstra-specific admin operations
-- **tables**: everything around just tables
-- **vectorize in-depth**: many Data API interactions for a single choice of provider/model. This is mostly test the client
-- **vectorize all-providers**: a slightly more shallow test repeated for all providers, models, auth methods etc. This is mostly testing the API
+Astrapy's CI only runs "base". The others are to be checked manually when it's needed.
 
 Tests can be run on three types of Data API _targets_ (with slight differences in what is applicable):
 
@@ -431,105 +423,58 @@ Tests can be run on three types of Data API _targets_ (with slight differences i
 - **nonAstra**: a ready-to-use (user-supplied) local Data API
 - **Astra**: an Astra DB target account (or two, as some tests are specific to dev environment)
 
-Depending on the (sub-block, target) combination, some environment variables may be needed.
-Templates for the environment variables are to be found in `tests/env_templates`.
-
-The general expectation is that idiomatic non-Admin tests, and vectorize in-depth tests, are
-part of the main CI flow; conversely, admin and vectorize all-providers are kept as a
-manual task to run (locally in most cases) when circumstances require it (use your judgement).
-
-#### Required environment variables
-
-Below is a detail of the reference template files needed for the various types
-of testing:
-
-- **DockerCompose**: generally no variables needed, except:
-  - **vectorize in-depth**: provide as in `env.vectorize-minimal.template`
-  - **vectorize all-providers**: provide as in `env.vectorize.template`
-  - (also note that _idiomatic admin Astra_ amounts to nothing in this case)
-- **nonAstra**: all tests require as in `env.local.template`, plus:
-  - **vectorize in-depth**: also provide as in `env.vectorize-minimal.template`
-  - **vectorize all-providers**: also provide as in `env.vectorize.template`
-  - (also note that _idiomatic admin Astra_ amounts to nothing in this case)
-- **Astra**: all tests require as in `env.astra.template`, plus:
-  - **idiomatic admin Astra**: also provide as in `env.astra.admin.template`
-  - **vectorize in-depth**: also provide as in `env.vectorize-minimal.template`
-  - **vectorize all-providers**: also provide as in `env.vectorize.template`
-  - (also note that _idiomatic admin nonAstra_ amounts to nothing in this case)
+Depending on the test, different environment variables are needed: refer to
+the templates in `tests/env_templates`. The "basic" credentials (one of the three options)
+are always required, _even for unit testing_.
 
 #### Sample testing commands
 
-For the **DockerCompose** case, prepend all of the following with `DOCKER_COMPOSE_LOCAL_DATA_API="yes" `.
-
-All the usual `pytest` ways of restricting the test selection hold in addition
-(e.g. `poetry run pytest tests/idiomatic/unit` or `[...] -k <test_name_selector>`).
-
-##### _idiomatic regular_:
-
-Warning: this will also trigger the very long-running _idiomatic admin Astra_ if the vars as in `env.astra.admin.template` are also detected. Likewise, the _idiomatic admin nonAstra_ may start (if `DO_IDIOMATIC_ADMIN_TESTS` is set), which however takes few seconds.
+Base:
 
 ```
-poetry run pytest tests/idiomatic
+# choose one:
+poetry run pytest tests/base
+poetry run pytest tests/base/unit
+poetry run pytest tests/base/integration
 ```
 
-##### _idiomatic admin Astra_:
+Admin:
 
 ```
-poetry run pytest tests/idiomatic/integration/test_admin.py 
+# depending on the environment, different 'admin tests' will run:
+poetry run pytest tests/admin
 ```
 
-##### _idiomatic admin nonAstra_:
+Extended vectorize:
 
 ```
-DO_IDIOMATIC_ADMIN_TESTS="1" poetry run pytest tests/idiomatic/integration/test_nonastra_admin.py
+# very many env. variables required for this one:
+poetry run pytest tests/vectorize
+
+# restrict to some combination(s) with e.g.:
+EMBEDDING_MODEL_TAGS="openai/text-embedding-3-large/HEADER/0,voyageAI/voyage-finance-2/SHARED_SECRET/f" \
+    poetry run pytest tests/vectorize/integration/test_vectorize_providers.py \
+    -k test_vectorize_usage_auth_type_header_sync
 ```
 
-##### _vectorize in-depth_:
+All the usual `pytest` ways of restricting the test selection hold
+(e.g. `poetry run pytest tests/idiomatic/unit` or `[...] -k <test_name_selector>`). Also e.g.:
 
 ```
-poetry run pytest tests/vectorize_idiomatic/integration/test_vectorize_methods*.py
-```
-
-or just:
-
-```
-poetry run pytest tests/vectorize_idiomatic/integration/test_vectorize_methods_sync.py
-```
-
-##### _vectorize all-providers_:
-
-This generates all possible test cases and runs them:
-
-```
-poetry run pytest tests/vectorize_idiomatic
-```
-
-For a spot test, you may restrict to one case, e.g.
-
-```
-EMBEDDING_MODEL_TAGS="openai/text-embedding-3-large/HEADER/0" poetry run pytest tests/vectorize_idiomatic/integration/test_vectorize_providers.py -k test_vectorize_usage_auth_type_header_sync
-```
-
-#### Useful flags for testing
-
-Remove logging noise with:
-
-```
+# suppress log noise
 poetry run pytest [...] -o log_cli=0
-```
 
-Increase logging level to `DEBUG` (i.e. level `10`):
-
-```
+# increase log level
 poetry run pytest [...] -o log_cli=1 --log-cli-level=10
 ```
 
-
 ## Appendices
 
-### Appendix A: quick reference for imports
+### Appendix A: quick reference for key imports
 
-Client, data and admin abstractions (_Note: table-related imports to be added_):
+_Note: check `tests/base/unit/test_imports.py` for more._
+
+Client, data and admin abstractions
 
 ```python
 from astrapy import (
@@ -537,10 +482,12 @@ from astrapy import (
     AstraDBDatabaseAdmin,
     AsyncCollection,
     AsyncDatabase,
+    AsyncTable,
     Collection,
+    Database,
     DataAPIClient,
     DataAPIDatabaseAdmin,
-    Database,
+    Table,
 )
 ```
 
@@ -584,50 +531,17 @@ from astrapy.api_options import (
 )
 ```
 
-Result classes:
+Data types:
 
 ```python
-from astrapy.results import (
-    CollectionDeleteResult,
-    CollectionInsertManyResult,
-    CollectionInsertOneResult,
-    CollectionUpdateResult,
-    OperationResult,
-    TableDeleteResult,
-    TableInsertManyResult,
-    TableInsertOneResult,
-    TableUpdateResult,
-)
-```
-
-Exceptions:
-
-```python
-from astrapy.exceptions import (
-    CollectionDeleteManyException,
-    CollectionInsertManyException,
-    CollectionUpdateManyException,
-    CumulativeOperationException,
-    CursorException,
-    DataAPIDetailedErrorDescriptor,
-    DataAPIErrorDescriptor,
-    DataAPIException,
-    DataAPIHttpException,
-    DataAPIResponseException,
-    DataAPITimeoutException,
-    DevOpsAPIErrorDescriptor,
-    DevOpsAPIException,
-    DevOpsAPIHttpException,
-    DevOpsAPIResponseException,
-    DevOpsAPITimeoutException,
-    MultiCallTimeoutManager,
-    TableDeleteManyException,
-    TableInsertManyException,
-    TableUpdateManyException,
-    TooManyDocumentsToCountException,
-    TooManyRowsToCountException,
-    UnexpectedDataAPIResponseException,
-    UnexpectedDevOpsAPIResponseException,
+from astrapy.data_types import (
+    DataAPITimestamp,
+    DataAPIVector,
+    DataAPIDate,
+    DataAPIDuration,
+    DataAPIMap,
+    DataAPISet,
+    DataAPITime,
 )
 ```
 
@@ -635,41 +549,45 @@ Info/metadata classes:
 
 ```python
 from astrapy.info import (
-    AstraDBAdminDatabaseInfo,
+    AlterTableAddColumns,
+    AlterTableAddVectorize,
+    AlterTableDropColumns,
+    AlterTableDropVectorize,
     CollectionDefaultIDOptions,
     CollectionDefinition,
-    CollectionDescriptor,
-    CollectionInfo,
     CollectionVectorOptions,
-    AstraDBDatabaseInfo,
+    ColumnType,
+    CreateTableDefinition,
     EmbeddingProvider,
     EmbeddingProviderAuthentication,
     EmbeddingProviderModel,
     EmbeddingProviderParameter,
     EmbeddingProviderToken,
-    FindEmbeddingProvidersResult,
+    TableBaseIndexDefinition,
+    TableIndexDefinition,
+    TableIndexOptions,
+    TableKeyValuedColumnType,
+    TableKeyValuedColumnTypeDescriptor,
+    TablePrimaryKeyDescriptor,
+    TableScalarColumnTypeDescriptor,
+    TableUnsupportedColumnTypeDescriptor,
+    TableValuedColumnType,
+    TableValuedColumnTypeDescriptor,
+    TableVectorColumnTypeDescriptor,
+    TableVectorIndexDefinition,
+    TableVectorIndexOptions,
     VectorServiceOptions,
 )
 ```
 
-Admin-related classes, functions and constants:
+Authentication:
 
 ```python
-from astrapy.admin import (
-    DatabaseAdmin,
-    ParsedAPIEndpoint,
-    fetch_database_info,
-    parse_api_endpoint,
-)
-```
-
-Cursors:
-
-```python
-from astrapy.cursors import (
-    AsyncCursor,
-    Cursor,
-    FindCursorState,
+from astrapy.authentication import (
+    StaticTokenProvider,
+    UsernamePasswordTokenProvider,
+    EmbeddingAPIKeyHeaderProvider,
+    AWSEmbeddingHeadersProvider,
 )
 ```
 

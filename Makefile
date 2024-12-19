@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: all format format-fix format-tests format-src test-idiomatic test-idiomatic-unit test-idiomatic-integration build help
+.PHONY: all format format-fix format-tests format-src test-integration test build help
 
 all: help
 
@@ -26,23 +26,14 @@ format-fix-src: format-src
 format-fix-tests: FMT_FLAGS=
 format-fix-tests: format-tests
 
-test-idiomatic:
-	poetry run pytest tests/idiomatic -vv
+test-integration:
+	poetry run pytest tests/base -vv
 
-test-idiomatic-unit:
-	poetry run pytest tests/idiomatic/unit -vv
+test:
+	poetry run pytest tests/base/unit -vv
 
-test-idiomatic-integration:
-	poetry run pytest tests/idiomatic/integration -vv
-
-docker-test-idiomatic:
-	DOCKER_COMPOSE_LOCAL_DATA_API="yes" poetry run pytest tests/idiomatic -vv
-
-docker-test-idiomatic-unit:
-	DOCKER_COMPOSE_LOCAL_DATA_API="yes" poetry run pytest tests/idiomatic/unit -vv
-
-docker-test-idiomatic-integration:
-	DOCKER_COMPOSE_LOCAL_DATA_API="yes" poetry run pytest tests/idiomatic/integration -vv
+docker-test-integration:
+	DOCKER_COMPOSE_LOCAL_DATA_API="yes" poetry run pytest tests/base -vv
 
 build:
 	rm -f dist/astrapy*
