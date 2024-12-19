@@ -415,7 +415,7 @@ Tests are grouped in:
 - "vectorize", extensively running a base workload on all provider/integration choices;
 - "admin", doing a whole sweep of admin operations. Very slow on Astra DB.
 
-Astrapy's CI only runs "base". The other are to be checked manually when it's needed.
+Astrapy's CI only runs "base". The others are to be checked manually when it's needed.
 
 Tests can be run on three types of Data API _targets_ (with slight differences in what is applicable):
 
