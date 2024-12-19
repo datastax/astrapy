@@ -3226,7 +3226,7 @@ class AsyncDatabase:
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         lt_payload = {"listTables": {"options": {"explain": True}}}
         logger.info("listTables")
-        lt_response = driver_commander.request(
+        lt_response = await driver_commander.async_request(
             payload=lt_payload,
             timeout_context=timeout_context,
         )
