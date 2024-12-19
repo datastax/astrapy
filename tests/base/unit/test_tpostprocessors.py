@@ -94,6 +94,7 @@ TABLE_DESCRIPTION = {
                 "apiSupport": {
                     "createTable": False,
                     "insert": False,
+                    "filter": True,
                     "read": False,
                     "cqlDefinition": "counter",
                 },
@@ -103,6 +104,7 @@ TABLE_DESCRIPTION = {
                 "apiSupport": {
                     "createTable": False,
                     "insert": False,
+                    "filter": True,
                     "read": False,
                     "cqlDefinition": "varchar",
                 },
@@ -112,6 +114,7 @@ TABLE_DESCRIPTION = {
                 "apiSupport": {
                     "createTable": False,
                     "insert": False,
+                    "filter": True,
                     "read": False,
                     "cqlDefinition": "timeuuid",
                 },
@@ -493,7 +496,7 @@ class TestTableConverters:
             expected_primary_key
         )
 
-    @pytest.mark.descripte("test of type-based row preprocessor")
+    @pytest.mark.describe("test of type-based row preprocessor")
     def test_row_preprocessors_from_types(self) -> None:
         ptp_opts = FullSerdesOptions(
             binary_encode_vectors=True,
