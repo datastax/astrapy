@@ -93,6 +93,7 @@ def _create_scalar_tpostprocessor(
         ColumnType.BIGINT,
         ColumnType.SMALLINT,
         ColumnType.TINYINT,
+        ColumnType.COUNTER,
     }:
 
         def _tpostprocessor_int(raw_value: Any) -> int | None:
@@ -136,7 +137,7 @@ def _create_scalar_tpostprocessor(
 
         return _tpostprocessor_bytes
 
-    elif column_type == ColumnType.UUID:
+    elif column_type in {ColumnType.UUID, ColumnType.TIMEUUID}:
 
         def _tpostprocessor_uuid(raw_value: Any) -> UUID | None:
             if raw_value is None:

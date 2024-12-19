@@ -85,21 +85,147 @@ TABLE_DICTS = [
         },
     },
     {
-        "name": "uns_counter",
+        "name": "with_uncreatable_columns",
         "definition": {
             "columns": {
                 "p_text": {"type": "text"},
                 "p_counter": {
+                    "type": "counter",
+                    "apiSupport": {
+                        "createTable": False,
+                        "insert": False,
+                        "read": True,
+                        "filter": True,
+                        "cqlDefinition": "counter",
+                    },
+                },
+                "p_timeuuid": {
+                    "type": "timeuuid",
+                    "apiSupport": {
+                        "createTable": False,
+                        "insert": True,
+                        "read": True,
+                        "filter": True,
+                        "cqlDefinition": "timeuuid",
+                    },
+                },
+            },
+            "primaryKey": {"partitionBy": ["p_text"], "partitionSort": {}},
+        },
+    },
+    {
+        "name": "with_unsupported",
+        "definition": {
+            "columns": {
+                "p_text": {"type": "text"},
+                "my_nested_frozen": {
                     "type": "UNSUPPORTED",
                     "apiSupport": {
                         "createTable": False,
                         "insert": False,
                         "read": False,
-                        "cqlDefinition": "counter",
+                        "filter": False,
+                        "cqlDefinition": "map<text, frozen<list<int>>>",
                     },
                 },
             },
             "primaryKey": {"partitionBy": ["p_text"], "partitionSort": {}},
+        },
+    },
+    {
+        "name": "without_apisupports",
+        "definition": {
+            "columns": {
+                "p_scalar": {
+                    "type": "text",
+                },
+                "p_list": {
+                    "type": "list",
+                    "valueType": "text",
+                },
+                "p_map": {
+                    "type": "map",
+                    "keyType": "text",
+                    "valueType": "text",
+                },
+                "p_vector": {
+                    "type": "vector",
+                    "dimension": 999,
+                },
+                "p_unsupported": {
+                    "type": "UNSUPPORTED",
+                    "apiSupport": {
+                        "createTable": False,
+                        "insert": False,
+                        "read": False,
+                        "filter": False,
+                        "cqlDefinition": "real unsupported cannot omit apiSupport!",
+                    },
+                },
+            },
+            "primaryKey": {"partitionBy": ["id"], "partitionSort": {}},
+        },
+    },
+    {
+        "name": "with_all_apisupports",
+        "definition": {
+            "columns": {
+                "p_scalar": {
+                    "type": "text",
+                    "apiSupport": {
+                        "createTable": True,
+                        "insert": True,
+                        "read": True,
+                        "filter": True,
+                        "cqlDefinition": "for scalar, not seen in API yet",
+                    },
+                },
+                "p_list": {
+                    "type": "list",
+                    "valueType": "text",
+                    "apiSupport": {
+                        "createTable": True,
+                        "insert": True,
+                        "read": True,
+                        "filter": True,
+                        "cqlDefinition": "the API returns apisupport for this type",
+                    },
+                },
+                "p_map": {
+                    "type": "map",
+                    "keyType": "text",
+                    "valueType": "text",
+                    "apiSupport": {
+                        "createTable": True,
+                        "insert": True,
+                        "read": True,
+                        "filter": True,
+                        "cqlDefinition": "the API returns apisupport for this type",
+                    },
+                },
+                "p_vector": {
+                    "type": "vector",
+                    "dimension": 999,
+                    "apiSupport": {
+                        "createTable": True,
+                        "insert": True,
+                        "read": True,
+                        "filter": True,
+                        "cqlDefinition": "the API returns apisupport for this type",
+                    },
+                },
+                "p_unsupported": {
+                    "type": "UNSUPPORTED",
+                    "apiSupport": {
+                        "createTable": False,
+                        "insert": False,
+                        "read": False,
+                        "filter": False,
+                        "cqlDefinition": "real unsupported cannot omit apiSupport!",
+                    },
+                },
+            },
+            "primaryKey": {"partitionBy": ["id"], "partitionSort": {}},
         },
     },
 ]

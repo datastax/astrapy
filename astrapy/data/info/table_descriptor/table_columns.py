@@ -30,6 +30,78 @@ from astrapy.utils.parsing import _warn_residual_keys
 
 
 @dataclass
+class TableAPISupportDescriptor:
+    """
+    Represents the additional support information returned by the Data API when
+    describing columns of a table. Some columns indeed require a detailed description
+    of what operations are supported on them - this includes, but is not limited to,
+    columns created by means other than the Data API (e.g. CQL direct interaction
+    with the database).
+
+    When the Data API reports these columns (in listing the tables and their metadata),
+    it provides the information marshaled in this object to detail which level
+    of support the column has (for instance, it can be a partial support whereby the
+    column is readable by the API but not writable).
+
+    Attributes:
+        cql_definition: a free-form string containing the CQL definition for the column.
+        create_table: whether a column of this nature can be used in API table creation.
+        insert: whether a column of this nature can be written through the API.
+        filter: whether a column of this nature can be used for filtering with API find.
+        read: whether a column of this nature can be read through the API.
+    """
+
+    cql_definition: str
+    create_table: bool
+    insert: bool
+    filter: bool
+    read: bool
+
+    def __repr__(self) -> str:
+        desc = ", ".join(
+            [
+                f'"{self.cql_definition}"',
+                f"create_table={self.create_table}",
+                f"insert={self.insert}",
+                f"filter={self.filter}",
+                f"read={self.read}",
+            ]
+        )
+        return f"{self.__class__.__name__}({desc})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            "cqlDefinition": self.cql_definition,
+            "createTable": self.create_table,
+            "insert": self.insert,
+            "filter": self.filter,
+            "read": self.read,
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableAPISupportDescriptor:
+        """
+        Create an instance of TableAPISupportDescriptor from a dictionary
+        such as one from the Data API.
+        """
+
+        _warn_residual_keys(
+            cls,
+            raw_dict,
+            {"cqlDefinition", "createTable", "insert", "filter", "read"},
+        )
+        return TableAPISupportDescriptor(
+            cql_definition=raw_dict["cqlDefinition"],
+            create_table=raw_dict["createTable"],
+            insert=raw_dict["insert"],
+            filter=raw_dict["filter"],
+            read=raw_dict["read"],
+        )
+
+
+@dataclass
 class TableColumnTypeDescriptor(ABC):
     """
     Represents and describes a column in a Table, with its type and any
@@ -46,6 +118,7 @@ class TableColumnTypeDescriptor(ABC):
             `column_type` attributes.
             For example the `column_type` of `TableValuedColumnTypeDescriptor`
             is a `TableValuedColumnType`.
+        api_support: a `TableAPISupportDescriptor` object giving more details.
     """
 
     column_type: (
@@ -55,6 +128,7 @@ class TableColumnTypeDescriptor(ABC):
         | TableVectorColumnType
         | TableUnsupportedColumnType
     )
+    api_support: TableAPISupportDescriptor | None
 
     @abstractmethod
     def as_dict(self) -> dict[str, Any]: ...
@@ -77,10 +151,7 @@ class TableColumnTypeDescriptor(ABC):
         elif raw_dict["type"] == "UNSUPPORTED":
             return TableUnsupportedColumnTypeDescriptor._from_dict(raw_dict)
         else:
-            _warn_residual_keys(cls, raw_dict, {"type"})
-            return TableScalarColumnTypeDescriptor(
-                column_type=raw_dict["type"],
-            )
+            return TableScalarColumnTypeDescriptor._from_dict(raw_dict)
 
     @classmethod
     def coerce(
@@ -108,21 +179,34 @@ class TableScalarColumnTypeDescriptor(TableColumnTypeDescriptor):
     Attributes:
         column_type: a `ColumnType` value. When creating the object,
             simple strings such as "TEXT" or "UUID" are also accepted.
+        api_support: a `TableAPISupportDescriptor` object giving more details.
     """
 
     column_type: ColumnType
 
-    def __init__(self, column_type: str | ColumnType) -> None:
-        self.column_type = ColumnType.coerce(column_type)
+    def __init__(
+        self,
+        column_type: str | ColumnType,
+        api_support: TableAPISupportDescriptor | None = None,
+    ) -> None:
+        super().__init__(
+            column_type=ColumnType.coerce(column_type),
+            api_support=api_support,
+        )
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.column_type})"
+        return f"{self.__class__.__name__}({self.column_type.value})"
 
     def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
 
         return {
-            "type": self.column_type.value,
+            k: v
+            for k, v in {
+                "type": self.column_type.value,
+                "apiSupport": self.api_support.as_dict() if self.api_support else None,
+            }.items()
+            if v is not None
         }
 
     @classmethod
@@ -132,9 +216,12 @@ class TableScalarColumnTypeDescriptor(TableColumnTypeDescriptor):
         such as one from the Data API.
         """
 
-        _warn_residual_keys(cls, raw_dict, {"type"})
+        _warn_residual_keys(cls, raw_dict, {"type", "apiSupport"})
         return TableScalarColumnTypeDescriptor(
             column_type=raw_dict["type"],
+            api_support=TableAPISupportDescriptor._from_dict(raw_dict["apiSupport"])
+            if raw_dict.get("apiSupport")
+            else None,
         )
 
 
@@ -151,6 +238,7 @@ class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
             This can be left unspecified in some cases of vectorize-enabled columns.
         service: an optional `VectorServiceOptions` object defining the vectorize
             settings (i.e. server-side embedding computation) for the column.
+        api_support: a `TableAPISupportDescriptor` object giving more details.
     """
 
     column_type: TableVectorColumnType
@@ -163,10 +251,14 @@ class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
         column_type: str | TableVectorColumnType = TableVectorColumnType.VECTOR,
         dimension: int | None,
         service: VectorServiceOptions | None = None,
+        api_support: TableAPISupportDescriptor | None = None,
     ) -> None:
         self.dimension = dimension
         self.service = service
-        super().__init__(column_type=TableVectorColumnType.coerce(column_type))
+        super().__init__(
+            column_type=TableVectorColumnType.coerce(column_type),
+            api_support=api_support,
+        )
 
     def __repr__(self) -> str:
         not_null_pieces = [
@@ -179,7 +271,7 @@ class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
         ]
         inner_desc = ", ".join(not_null_pieces)
 
-        return f"{self.__class__.__name__}({self.column_type}[{inner_desc}])"
+        return f"{self.__class__.__name__}({self.column_type.value}[{inner_desc}])"
 
     def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
@@ -190,6 +282,7 @@ class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
                 "type": self.column_type.value,
                 "dimension": self.dimension,
                 "service": None if self.service is None else self.service.as_dict(),
+                "apiSupport": self.api_support.as_dict() if self.api_support else None,
             }.items()
             if v is not None
         }
@@ -201,11 +294,18 @@ class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
         such as one from the Data API.
         """
 
-        _warn_residual_keys(cls, raw_dict, {"type", "dimension", "service"})
+        _warn_residual_keys(
+            cls,
+            raw_dict,
+            {"type", "dimension", "service", "apiSupport"},
+        )
         return TableVectorColumnTypeDescriptor(
             column_type=raw_dict["type"],
             dimension=raw_dict.get("dimension"),
             service=VectorServiceOptions.coerce(raw_dict.get("service")),
+            api_support=TableAPISupportDescriptor._from_dict(raw_dict["apiSupport"])
+            if raw_dict.get("apiSupport")
+            else None,
         )
 
 
@@ -221,6 +321,7 @@ class TableValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
         value_type: the type of the individual items stored in the column.
             This is a `ColumnType`, but when creating the object,
             strings such as "TEXT" or "UUID" are also accepted.
+        api_support: a `TableAPISupportDescriptor` object giving more details.
     """
 
     column_type: TableValuedColumnType
@@ -231,19 +332,31 @@ class TableValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
         *,
         column_type: str | TableValuedColumnType,
         value_type: str | ColumnType,
+        api_support: TableAPISupportDescriptor | None = None,
     ) -> None:
         self.value_type = ColumnType.coerce(value_type)
-        super().__init__(column_type=TableValuedColumnType.coerce(column_type))
+        super().__init__(
+            column_type=TableValuedColumnType.coerce(column_type),
+            api_support=api_support,
+        )
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.column_type}<{self.value_type}>)"
+        return (
+            f"{self.__class__.__name__}({self.column_type.value}"
+            f"<{self.value_type.value}>)"
+        )
 
     def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
 
         return {
-            "type": self.column_type.value,
-            "valueType": self.value_type.value,
+            k: v
+            for k, v in {
+                "type": self.column_type.value,
+                "valueType": self.value_type.value,
+                "apiSupport": self.api_support.as_dict() if self.api_support else None,
+            }.items()
+            if v is not None
         }
 
     @classmethod
@@ -253,10 +366,13 @@ class TableValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
         such as one from the Data API.
         """
 
-        _warn_residual_keys(cls, raw_dict, {"type", "valueType"})
+        _warn_residual_keys(cls, raw_dict, {"type", "valueType", "apiSupport"})
         return TableValuedColumnTypeDescriptor(
             column_type=raw_dict["type"],
             value_type=raw_dict["valueType"],
+            api_support=TableAPISupportDescriptor._from_dict(raw_dict["apiSupport"])
+            if raw_dict.get("apiSupport")
+            else None,
         )
 
 
@@ -276,6 +392,7 @@ class TableKeyValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
         value_type: the type of the individual values stored in the map for a single key.
             This is a `ColumnType`, but when creating the object,
             strings such as "TEXT" or "UUID" are also accepted.
+        api_support: a `TableAPISupportDescriptor` object giving more details.
     """
 
     column_type: TableKeyValuedColumnType
@@ -288,21 +405,33 @@ class TableKeyValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
         column_type: str | TableKeyValuedColumnType,
         value_type: str | ColumnType,
         key_type: str | ColumnType,
+        api_support: TableAPISupportDescriptor | None = None,
     ) -> None:
         self.key_type = ColumnType.coerce(key_type)
         self.value_type = ColumnType.coerce(value_type)
-        super().__init__(column_type=TableKeyValuedColumnType.coerce(column_type))
+        super().__init__(
+            column_type=TableKeyValuedColumnType.coerce(column_type),
+            api_support=api_support,
+        )
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.column_type}<{self.key_type},{self.value_type}>)"
+        return (
+            f"{self.__class__.__name__}({self.column_type.value}"
+            f"<{self.key_type.value},{self.value_type.value}>)"
+        )
 
     def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
 
         return {
-            "type": self.column_type.value,
-            "keyType": self.key_type.value,
-            "valueType": self.value_type.value,
+            k: v
+            for k, v in {
+                "type": self.column_type.value,
+                "keyType": self.key_type.value,
+                "valueType": self.value_type.value,
+                "apiSupport": self.api_support.as_dict() if self.api_support else None,
+            }.items()
+            if v is not None
         }
 
     @classmethod
@@ -312,76 +441,16 @@ class TableKeyValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
         such as one from the Data API.
         """
 
-        _warn_residual_keys(cls, raw_dict, {"type", "keyType", "valueType"})
+        _warn_residual_keys(
+            cls, raw_dict, {"type", "keyType", "valueType", "apiSupport"}
+        )
         return TableKeyValuedColumnTypeDescriptor(
             column_type=raw_dict["type"],
             key_type=raw_dict["keyType"],
             value_type=raw_dict["valueType"],
-        )
-
-
-@dataclass
-class TableAPISupportDescriptor:
-    """
-    Represents the additional information returned by the Data API when describing
-    a table with unsupported columns. Unsupported columns may have been created by
-    means other than the Data API (e.g. CQL direct interaction with the database).
-
-    The Data API reports these columns when listing the tables and their metadata,
-    and provides the information marshaled in this object to detail which level
-    of support the column has (for instance, it can be a partial support where the
-    column is readable by the API but not writable).
-
-    Attributes:
-        cql_definition: a free-form string containing the CQL definition for the column.
-        create_table: whether a column of this nature can be used in API table creation.
-        insert: whether a column of this nature can be written through the API.
-        read: whether a column of this nature can be read through the API.
-    """
-
-    cql_definition: str
-    create_table: bool
-    insert: bool
-    read: bool
-
-    def __repr__(self) -> str:
-        desc = ", ".join(
-            [
-                f'"{self.cql_definition}"',
-                f"create_table={self.create_table}",
-                f"insert={self.insert}",
-                f"read={self.read}",
-            ]
-        )
-        return f"{self.__class__.__name__}({desc})"
-
-    def as_dict(self) -> dict[str, Any]:
-        """Recast this object into a dictionary."""
-
-        return {
-            "cqlDefinition": self.cql_definition,
-            "createTable": self.create_table,
-            "insert": self.insert,
-            "read": self.read,
-        }
-
-    @classmethod
-    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableAPISupportDescriptor:
-        """
-        Create an instance of TableAPISupportDescriptor from a dictionary
-        such as one from the Data API.
-        """
-
-        _warn_residual_keys(
-            cls,
-            raw_dict,
-            {"cqlDefinition", "createTable", "insert", "read"},
-        )
-        return TableAPISupportDescriptor(
-            cql_definition=raw_dict["cqlDefinition"],
-            create_table=raw_dict["createTable"],
-            insert=raw_dict["insert"],
-            read=raw_dict["read"],
+            api_support=TableAPISupportDescriptor._from_dict(raw_dict["apiSupport"])
+            if raw_dict.get("apiSupport")
+            else None,
         )
 
 
@@ -410,8 +479,10 @@ class TableUnsupportedColumnTypeDescriptor(TableColumnTypeDescriptor):
         column_type: TableUnsupportedColumnType | str,
         api_support: TableAPISupportDescriptor,
     ) -> None:
-        self.api_support = api_support
-        super().__init__(column_type=TableUnsupportedColumnType.coerce(column_type))
+        super().__init__(
+            column_type=TableUnsupportedColumnType.coerce(column_type),
+            api_support=api_support,
+        )
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.api_support.cql_definition})"
@@ -420,8 +491,12 @@ class TableUnsupportedColumnTypeDescriptor(TableColumnTypeDescriptor):
         """Recast this object into a dictionary."""
 
         return {
-            "type": self.column_type.value,
-            "apiSupport": self.api_support.as_dict(),
+            k: v
+            for k, v in {
+                "type": self.column_type.value,
+                "apiSupport": self.api_support.as_dict(),
+            }.items()
+            if v is not None
         }
 
     @classmethod
