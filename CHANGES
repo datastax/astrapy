@@ -1,5 +1,5 @@
-main
-====
+v 2.0.0rc1
+==========
 Support for TIMEUUID and COUNTER columns:
     - enlarged ColumnType enum (used by the API to describe non-creatable columns)
     - readable through find/find_one operations (now returned by the API when reading)
@@ -8,6 +8,7 @@ added 'filter' to the `TableAPISupportDescriptor` structure (now returned by the
 added optional `api_support` member to all column descriptor (as the Data API returns it for various columns)
 restore support for Python 3.8, 3.9
 maintenance: full restructuring of tests and CI (tables+collections on same footing+other)
+maintenance: adopt `blockbuster` in async tests to detect (and bust) any blocking call
 
 v 2.0.0-preview
 ===============
