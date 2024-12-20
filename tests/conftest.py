@@ -20,9 +20,11 @@ from __future__ import annotations
 
 import functools
 import warnings
+from collections.abc import Iterator
 from typing import Any, Awaitable, Callable, Iterable, TypedDict
 
 import pytest
+from blockbuster import BlockBuster, blockbuster_ctx
 from deprecation import UnsupportedWarning
 
 from astrapy import AsyncDatabase, DataAPIClient, Database
@@ -49,6 +51,14 @@ from .preprocess_env import (
     LOCAL_DATA_API_USERNAME,
     SECONDARY_KEYSPACE,
 )
+
+
+@pytest.fixture(autouse=True)
+def blockbuster() -> Iterator[BlockBuster]:
+    with blockbuster_ctx() as bb:
+        # TODO: follow discussion in https://github.com/encode/httpx/discussions/3456
+        bb.functions["os.stat"].can_block_in("httpx/_client.py", "_init_transport")
+        yield bb
 
 
 class DataAPICredentials(TypedDict):
