@@ -29,7 +29,7 @@ class TestVectorizeOpsAsync:
         async_database: AsyncDatabase,
     ) -> None:
         database_admin = async_database.get_database_admin()
-        ep_result = database_admin.find_embedding_providers()
+        ep_result = await database_admin.async_find_embedding_providers()
 
         assert isinstance(ep_result, FindEmbeddingProvidersResult)
 

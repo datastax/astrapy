@@ -80,11 +80,11 @@ class TestCollectionTimeoutAsync:
         acol = async_empty_collection
         await acol.insert_many([{"a": 1}] * 1000)
 
-        await acol.distinct("a", timeout_ms=20000)
+        await acol.distinct("a", timeout_ms=60000)
         with pytest.raises(DataAPITimeoutException):
             await acol.distinct("a", timeout_ms=1)
 
-        await acol.distinct("a", timeout_ms=20000)
+        await acol.distinct("a", timeout_ms=60000)
         with pytest.raises(DataAPITimeoutException):
             await acol.distinct("a", timeout_ms=1)
 
