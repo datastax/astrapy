@@ -20,12 +20,22 @@ import pytest
 
 from astrapy.data_types import DataAPIDuration
 
+# constants lifted from https://github.com/apache/cassandra/blob/
+#   198df38860d1575b60fbcaf9a8a506d2efd1bb31/test/unit/org/apache/
+#   cassandra/cql3/DurationTest.java#L37
+NANOS_PER_MICRO = 1000
+NANOS_PER_MILLI = 1000 * NANOS_PER_MICRO
+NANOS_PER_SECOND = 1000 * NANOS_PER_MILLI
+NANOS_PER_MINUTE = 60 * NANOS_PER_SECOND
+NANOS_PER_HOUR = 60 * NANOS_PER_MINUTE
+
 
 class TestDataAPIDuration:
     @pytest.mark.describe("test of duration type, errors in parsing from string")
     def test_dataapiduration_parse_errors(self) -> None:
-        # baseline
+        # baselines
         DataAPIDuration.from_string("P1Y")
+        DataAPIDuration.from_string("P3W")
         # spurious begin
         with pytest.raises(ValueError):
             DataAPIDuration.from_string("?P1Y")
@@ -52,6 +62,16 @@ class TestDataAPIDuration:
             DataAPIDuration.from_string("P1Y-1M")
         with pytest.raises(ValueError):
             DataAPIDuration.from_string("-P1Y-1M")
+
+        # W-format with other things pre-T
+        with pytest.raises(ValueError):
+            DataAPIDuration.from_string("P3W1D")
+        # W-format with other things post-T
+        with pytest.raises(ValueError):
+            DataAPIDuration.from_string("P3WT12H")
+        # W-format with trailing T
+        with pytest.raises(ValueError):
+            DataAPIDuration.from_string("P3WT")
 
         # repeated unit, subday part
         with pytest.raises(ValueError):
@@ -248,3 +268,73 @@ class TestDataAPIDuration:
         assert DataAPIDuration.from_timedelta(tdelta_0).to_timedelta() == tdelta_0
         assert DataAPIDuration.from_timedelta(tdelta_1).to_timedelta() == tdelta_1
         assert DataAPIDuration.from_timedelta(tdelta_2).to_timedelta() == tdelta_2
+
+    @pytest.mark.describe("test of duration parsing, lifted from Cassandra codebase")
+    def test_dataapiduration_parsing_cassandra_testcases(self) -> None:
+        assert DataAPIDuration(+1, 12, 2, 0) == DataAPIDuration.from_string("P1Y2D")
+        assert DataAPIDuration(+1, 14, 0, 0) == DataAPIDuration.from_string("P1Y2M")
+        assert DataAPIDuration(+1, 0, 14, 0) == DataAPIDuration.from_string("P2W")
+        assert DataAPIDuration(
+            +1, 12, 0, 2 * NANOS_PER_HOUR
+        ) == DataAPIDuration.from_string("P1YT2H")
+        assert DataAPIDuration(-1, 14, 0, 0) == DataAPIDuration.from_string("-P1Y2M")
+        assert DataAPIDuration(+1, 0, 2, 0) == DataAPIDuration.from_string("P2D")
+        assert DataAPIDuration(
+            +1, 0, 0, 30 * NANOS_PER_HOUR
+        ) == DataAPIDuration.from_string("PT30H")
+        assert DataAPIDuration(
+            +1, 0, 0, 30 * NANOS_PER_HOUR + 20 * NANOS_PER_MINUTE
+        ) == DataAPIDuration.from_string("PT30H20M")
+        assert DataAPIDuration(
+            +1, 0, 0, 20 * NANOS_PER_MINUTE
+        ) == DataAPIDuration.from_string("PT20M")
+        assert DataAPIDuration(
+            +1, 0, 0, 56 * NANOS_PER_SECOND
+        ) == DataAPIDuration.from_string("PT56S")
+        assert DataAPIDuration(
+            +1, 15, 0, 130 * NANOS_PER_MINUTE
+        ) == DataAPIDuration.from_string("P1Y3MT2H10M")
+
+    @pytest.mark.describe("test of duration c-parsing, lifted from Cassandra codebase")
+    def test_dataapiduration_c_parsing_cassandra_testcases(self) -> None:
+        assert DataAPIDuration(+1, 14, 0, 0) == DataAPIDuration.from_c_string("1y2mo")
+        assert DataAPIDuration(-1, 14, 0, 0) == DataAPIDuration.from_c_string("-1y2mo")
+        assert DataAPIDuration(+1, 14, 0, 0) == DataAPIDuration.from_c_string("1Y2MO")
+        assert DataAPIDuration(+1, 0, 14, 0) == DataAPIDuration.from_c_string("2w")
+        assert DataAPIDuration(
+            +1, 0, 2, 10 * NANOS_PER_HOUR
+        ) == DataAPIDuration.from_c_string("2d10h")
+        assert DataAPIDuration(+1, 0, 2, 0) == DataAPIDuration.from_c_string("2d")
+        assert DataAPIDuration(
+            +1, 0, 0, 30 * NANOS_PER_HOUR
+        ) == DataAPIDuration.from_c_string("30h")
+        assert DataAPIDuration(
+            +1, 0, 0, 30 * NANOS_PER_HOUR + 20 * NANOS_PER_MINUTE
+        ) == DataAPIDuration.from_c_string("30h20m")
+        assert DataAPIDuration(
+            +1, 0, 0, 20 * NANOS_PER_MINUTE
+        ) == DataAPIDuration.from_c_string("20m")
+        assert DataAPIDuration(
+            +1, 0, 0, 56 * NANOS_PER_SECOND
+        ) == DataAPIDuration.from_c_string("56s")
+        assert DataAPIDuration(
+            +1, 0, 0, 567 * NANOS_PER_MILLI
+        ) == DataAPIDuration.from_c_string("567ms")
+        assert DataAPIDuration(
+            +1, 0, 0, 1950 * NANOS_PER_MICRO
+        ) == DataAPIDuration.from_c_string("1950us")
+        assert DataAPIDuration(
+            +1, 0, 0, 1950 * NANOS_PER_MICRO
+        ) == DataAPIDuration.from_c_string("1950µs")
+        assert DataAPIDuration(+1, 0, 0, 1950000) == DataAPIDuration.from_c_string(
+            "1950000ns"
+        )
+        assert DataAPIDuration(+1, 0, 0, 1950000) == DataAPIDuration.from_c_string(
+            "1950000NS"
+        )
+        assert DataAPIDuration(-1, 0, 0, 1950000) == DataAPIDuration.from_c_string(
+            "-1950000ns"
+        )
+        assert DataAPIDuration(
+            +1, 15, 0, 130 * NANOS_PER_MINUTE
+        ) == DataAPIDuration.from_c_string("1y3mo2h10m")
