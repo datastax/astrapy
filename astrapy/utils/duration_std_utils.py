@@ -67,10 +67,7 @@ def _parse_std_duration_string(duration_string: str) -> tuple[int, int, int, int
     _pre_t: str
     _post_t: str
     if _stripped0 == "" or _stripped0 == "T":
-        raise ValueError(
-            "A string without quantity-unit specifications is not a valid "
-            f"duration (received: {duration_string}. {DURATION_STD_FORMAT_DESC}"
-        )
+        return (+1, 0, 0, 0)
     t_blocks = _stripped0.split("T")
     if len(t_blocks) == 0:
         raise ValueError(

@@ -68,6 +68,19 @@ class TestDataAPIDuration:
         with pytest.raises(ValueError):
             DataAPIDuration.from_string("-P1Y1MT1H-1M1.123S")
 
+    @pytest.mark.describe("test of duration type, null-duration forms parsing")
+    def test_dataapiduration_parse_nulldurations(self) -> None:
+        zerod = DataAPIDuration(
+            signum=+1,
+            months=0,
+            days=0,
+            nanoseconds=0,
+        )
+        assert zerod == DataAPIDuration.from_string("P")
+        assert zerod == DataAPIDuration.from_string("PT")
+        assert zerod == DataAPIDuration.from_string("-P")
+        assert zerod == DataAPIDuration.from_string("-PT")
+
     @pytest.mark.describe("test of duration type, lifecycle")
     def test_dataapiduration_lifecycle(self) -> None:
         # base
@@ -107,6 +120,13 @@ class TestDataAPIDuration:
         repr(dfull)
         zd0.to_string()
         repr(zd0)
+        # trailing 'T' test
+        one_y_0 = DataAPIDuration.from_string("P1YT")
+        one_y_t = DataAPIDuration.from_string("P1Y")
+        m_one_y_0 = DataAPIDuration.from_string("-P1YT")
+        m_one_y_t = DataAPIDuration.from_string("-P1Y")
+        assert one_y_0 == one_y_t
+        assert m_one_y_0 == m_one_y_t
 
     @pytest.mark.describe("test of duration type, errors in c-parsing from string")
     def test_dataapiduration_c_parse_errors(self) -> None:
