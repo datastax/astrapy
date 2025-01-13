@@ -33,8 +33,6 @@ class TestDataAPITime:
         with pytest.raises(ValueError):
             DataAPITime.from_string("12:34:56:21")
         with pytest.raises(ValueError):
-            DataAPITime.from_string("12:23")
-        with pytest.raises(ValueError):
             DataAPITime.from_string("+12:34:56")
         with pytest.raises(ValueError):
             DataAPITime.from_string("12:+34:56")
@@ -54,6 +52,7 @@ class TestDataAPITime:
         with pytest.raises(ValueError):
             DataAPITime.from_string("00:00:60")
 
+        DataAPITime.from_string("12:23")
         DataAPITime.from_string("00:00:00")
         DataAPITime.from_string("23:00:00")
         DataAPITime.from_string("00:59:00")
