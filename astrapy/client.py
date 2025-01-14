@@ -18,7 +18,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Sequence
 
 from astrapy.admin.endpoints import (
-    api_endpoint_parsing_error_message,
+    api_endpoint_parsing_cdinfo_message,
     generic_api_url_parsing_error_message,
     parse_api_endpoint,
     parse_generic_api_url,
@@ -206,7 +206,8 @@ class DataAPIClient:
 
         Args:
             api_endpoint: the API Endpoint for the target database
-                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
+                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`,
+                or a custom domain if one is configured for the database).
                 The database must exist already for the resulting object
                 to be effectively used; in other words, this invocation
                 does not create the database, just the object instance.
@@ -275,8 +276,13 @@ class DataAPIClient:
                     api_options=resulting_api_options,
                 )
             else:
-                msg = api_endpoint_parsing_error_message(api_endpoint)
-                raise ValueError(msg)
+                msg = api_endpoint_parsing_cdinfo_message(api_endpoint)
+                logger.info(msg)
+                return Database(
+                    api_endpoint=api_endpoint,
+                    keyspace=keyspace,
+                    api_options=resulting_api_options,
+                )
         else:
             parsed_generic_api_endpoint = parse_generic_api_url(api_endpoint)
             if parsed_generic_api_endpoint:
@@ -302,7 +308,8 @@ class DataAPIClient:
 
         Args:
             api_endpoint: the API Endpoint for the target database
-                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
+                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`,
+                or a custom domain if one is configured for the database).
                 The database must exist already for the resulting object
                 to be effectively used; in other words, this invocation
                 does not create the database, just the object instance.
@@ -370,7 +377,8 @@ class DataAPIClient:
 
         Args:
             api_endpoint: the API Endpoint for the target database
-                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
+                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`,
+                or a custom domain if one is configured for the database).
                 The database must exist already for the resulting object
                 to be effectively used; in other words, this invocation
                 does not create the database, just the object instance.
@@ -413,7 +421,8 @@ class DataAPIClient:
 
         Args:
             api_endpoint: the API Endpoint for the target database
-                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
+                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`,
+                or a custom domain if one is configured for the database).
                 The database must exist already for the resulting object
                 to be effectively used; in other words, this invocation
                 does not create the database, just the object instance.

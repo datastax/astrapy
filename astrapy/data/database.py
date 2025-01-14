@@ -358,6 +358,8 @@ class Database:
         of the database (such as raw_info["keyspaces"]). For this reason,
         each invocation of this method triggers a new request to the DevOps API.
 
+        Not available outside of Astra DB and when using custom domains.
+
         Args:
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
                 underlying API request. If not provided, this object's defaults apply.
@@ -381,6 +383,10 @@ class Database:
         if self.api_options.environment not in Environment.astra_db_values:
             raise InvalidEnvironmentException(
                 "Environments outside of Astra DB are not supported."
+            )
+        elif parse_api_endpoint(self.api_endpoint) is None:
+            raise InvalidEnvironmentException(
+                "Cannot inspect a nonstandard API endpoint for properties."
             )
 
         _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
@@ -406,17 +412,23 @@ class Database:
     def id(self) -> str:
         """
         The ID of this database.
+        Not available outside of Astra DB and when using custom domains.
 
         Example:
             >>> my_db.id
             '01234567-89ab-cdef-0123-456789abcdef'
         """
 
-        parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
-        if parsed_api_endpoint is not None:
-            return parsed_api_endpoint.database_id
+        if self.api_options.environment in Environment.astra_db_values:
+            parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
+            if parsed_api_endpoint is not None:
+                return parsed_api_endpoint.database_id
+            else:
+                raise InvalidEnvironmentException(
+                    "Cannot inspect a nonstandard API endpoint for properties."
+                )
         else:
-            raise DevOpsAPIException(
+            raise InvalidEnvironmentException(
                 "Database is not in a supported environment for this operation."
             )
 
@@ -429,16 +441,23 @@ class Database:
         since a Database instance connects to exactly one of the regions
         (as specified by the API Endpoint).
 
+        Not available outside of Astra DB and when using custom domains.
+
         Example:
             >>> my_db.region
             'us-west-2'
         """
 
-        parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
-        if parsed_api_endpoint is not None:
-            return parsed_api_endpoint.region
+        if self.api_options.environment in Environment.astra_db_values:
+            parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
+            if parsed_api_endpoint is not None:
+                return parsed_api_endpoint.region
+            else:
+                raise InvalidEnvironmentException(
+                    "Cannot inspect a nonstandard API endpoint for properties."
+                )
         else:
-            raise DevOpsAPIException(
+            raise InvalidEnvironmentException(
                 "Database is not in a supported environment for this operation."
             )
 
@@ -1730,6 +1749,10 @@ class Database:
         )
 
         if api_options.environment in Environment.astra_db_values:
+            if parse_api_endpoint(self.api_endpoint) is None:
+                raise InvalidEnvironmentException(
+                    "Cannot use a nonstandard API endpoint for this operation."
+                )
             return AstraDBDatabaseAdmin(
                 api_endpoint=self.api_endpoint,
                 api_options=api_options,
@@ -2052,6 +2075,8 @@ class AsyncDatabase:
         of the database (such as raw_info["keyspaces"]). For this reason,
         each invocation of this method triggers a new request to the DevOps API.
 
+        Not available outside of Astra DB and when using custom domains.
+
         Args:
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
                 underlying API request. If not provided, this object's defaults apply.
@@ -2079,6 +2104,10 @@ class AsyncDatabase:
             raise InvalidEnvironmentException(
                 "Environments outside of Astra DB are not supported."
             )
+        elif parse_api_endpoint(self.api_endpoint) is None:
+            raise InvalidEnvironmentException(
+                "Cannot inspect a nonstandard API endpoint for properties."
+            )
 
         _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
             timeout_options=self.api_options.timeout_options,
@@ -2103,17 +2132,23 @@ class AsyncDatabase:
     def id(self) -> str:
         """
         The ID of this database.
+        Not available outside of Astra DB and when using custom domains.
 
         Example:
             >>> my_async_database.id
             '01234567-89ab-cdef-0123-456789abcdef'
         """
 
-        parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
-        if parsed_api_endpoint is not None:
-            return parsed_api_endpoint.database_id
+        if self.api_options.environment in Environment.astra_db_values:
+            parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
+            if parsed_api_endpoint is not None:
+                return parsed_api_endpoint.database_id
+            else:
+                raise InvalidEnvironmentException(
+                    "Cannot inspect a nonstandard API endpoint for properties."
+                )
         else:
-            raise DevOpsAPIException(
+            raise InvalidEnvironmentException(
                 "Database is not in a supported environment for this operation."
             )
 
@@ -2126,16 +2161,23 @@ class AsyncDatabase:
         since a Database instance connects to exactly one of the regions
         (as specified by the API Endpoint).
 
+        Not available outside of Astra DB and when using custom domains.
+
         Example:
             >>> my_async_database.region
             'us-west-2'
         """
 
-        parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
-        if parsed_api_endpoint is not None:
-            return parsed_api_endpoint.region
+        if self.api_options.environment in Environment.astra_db_values:
+            parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
+            if parsed_api_endpoint is not None:
+                return parsed_api_endpoint.region
+            else:
+                raise InvalidEnvironmentException(
+                    "Cannot inspect a nonstandard API endpoint for properties."
+                )
         else:
-            raise DevOpsAPIException(
+            raise InvalidEnvironmentException(
                 "Database is not in a supported environment for this operation."
             )
 
@@ -3460,6 +3502,10 @@ class AsyncDatabase:
         )
 
         if api_options.environment in Environment.astra_db_values:
+            if parse_api_endpoint(self.api_endpoint) is None:
+                raise InvalidEnvironmentException(
+                    "Cannot use a nonstandard API endpoint for this operation."
+                )
             return AstraDBDatabaseAdmin(
                 api_endpoint=self.api_endpoint,
                 api_options=api_options,

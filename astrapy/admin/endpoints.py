@@ -93,6 +93,17 @@ def api_endpoint_parsing_error_message(failing_url: str) -> str:
     )
 
 
+def api_endpoint_parsing_cdinfo_message(failing_url: str) -> str:
+    """
+    Format a warning message about a possibly-custom-domain API endpoint.
+    """
+    return (
+        f"An API endpoint was supplied ({failing_url}) that does not conform to the "
+        f'standard form ("{api_endpoint_description}"). It will be assumed that this '
+        "is intentional, i.e. that the desired API endpoint is a 'Custom Domain'."
+    )
+
+
 def parse_generic_api_url(api_endpoint: str) -> str | None:
     """
     Validate a generic API Endpoint string,

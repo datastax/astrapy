@@ -1,5 +1,6 @@
 main
 ====
+Support for Astra DB "custom domain" endpoints for database (then: `.id`, `.region`, `.get_database_admin()`, `.info()` and `.name()` aren't available)
 Support for the `indexType` field to describe table indexes (as not mandatory for compatibility)
 DataAPITime: support for "hh:mm" no-seconds format
 DataAPIDuration: improved parse performance by caching regexpes
