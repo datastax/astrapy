@@ -1,3 +1,10 @@
+main
+====
+Support for the `indexType` field to describe table indexes (as not mandatory for compatibility)
+DataAPITime: support for "hh:mm" no-seconds format
+DataAPIDuration: improved parse performance by caching regexpes
+DataAPIDuration: support for "P4W"-type strings and for zeroes such as "P", "-PR"
+
 v 2.0.0rc1
 ==========
 Support for TIMEUUID and COUNTER columns:

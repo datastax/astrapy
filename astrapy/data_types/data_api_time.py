@@ -23,10 +23,11 @@ from astrapy.utils.date_utils import (
     _validate_time,
 )
 
-TIME_PARSE_PATTERN = re.compile(r"^(\d+):(\d+):(\d+)(\.\d+)?$")
+TIME_PARSE_PATTERN = re.compile(r"^(\d+):(\d+)(:(\d+)(\.\d+)?)?$")
+SECONDS_PARSE_PATTERN = re.compile(r"^:(\d+)(\.\d+)?$")
 
 TIME_FORMAT_DESC = (
-    "Times must be '<hour>:<minute>:<second>[.<fractional-seconds>]', with: "
+    "Times must be '<hour>:<minute>[:<second>[.<fractional-seconds>]]', with: "
     "hour in 0..23; minute in 0..59; second in 0..59; and optionally a decimal "
     "point followed by a fraction of second up to nanosecond precision (9 digits)."
 )
@@ -261,11 +262,23 @@ class DataAPITime:
         if match:
             hour = int(match[1])
             minute = int(match[2])
-            second = int(match[3])
+            second: int
             nanosecond: int
-            if match[4]:
-                nanosecond = int(float(match[4]) * 1000000000)
+            if match[3]:
+                second_match = SECONDS_PARSE_PATTERN.match(match[3])
+                if second_match:
+                    second = int(second_match[1])
+                    if second_match[2]:
+                        nanosecond = int(float(second_match[2]) * 1000000000)
+                    else:
+                        nanosecond = 0
+                else:
+                    raise ValueError(
+                        f"Cannot parse '{time_string}' into a valid time "
+                        f"(unrecognized format). {TIME_FORMAT_DESC}"
+                    )
             else:
+                second = 0
                 nanosecond = 0
             _fail_reason = _validate_time(
                 hour=hour,

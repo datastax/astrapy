@@ -14,12 +14,28 @@
 
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
 
 from astrapy.utils.parsing import _warn_residual_keys
+from astrapy.utils.str_enum import StrEnum
 from astrapy.utils.unset import _UNSET, UnsetType
+
+logger = logging.getLogger(__name__)
+
+
+class TableIndexType(StrEnum):
+    """
+    Enum to describe the index types for Table columns.
+    """
+
+    COLLECTION = "collection"
+    REGULAR = "regular"
+    TEXT_ANALYSED = "text-analysed"
+    UNKNOWN = "UNKNOWN"
+    VECTOR = "vector"
 
 
 @dataclass
@@ -201,6 +217,7 @@ class TableBaseIndexDefinition(ABC):
     """
 
     column: str
+    _index_type: TableIndexType
 
     @abstractmethod
     def as_dict(self) -> dict[str, Any]: ...
@@ -243,6 +260,7 @@ class TableIndexDefinition(TableBaseIndexDefinition):
         column: str,
         options: TableIndexOptions | UnsetType = _UNSET,
     ) -> None:
+        self._index_type = TableIndexType.REGULAR
         self.column = column
         self.options = (
             TableIndexOptions() if isinstance(options, UnsetType) else options
@@ -300,6 +318,15 @@ class TableVectorIndexDefinition(TableBaseIndexDefinition):
     """
 
     options: TableVectorIndexOptions
+
+    def __init__(
+        self,
+        column: str,
+        options: TableVectorIndexOptions,
+    ) -> None:
+        self._index_type = TableIndexType.VECTOR
+        self.column = column
+        self.options = options
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.column}, options={self.options})"
@@ -415,6 +442,15 @@ class TableUnsupportedIndexDefinition(TableBaseIndexDefinition):
 
     api_support: TableAPIIndexSupportDescriptor
 
+    def __init__(
+        self,
+        column: str,
+        api_support: TableAPIIndexSupportDescriptor,
+    ) -> None:
+        self._index_type = TableIndexType.UNKNOWN
+        self.column = column
+        self.api_support = api_support
+
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.api_support.cql_definition})"
 
@@ -471,10 +507,25 @@ class TableIndexDescriptor:
             two tables in the same keyspace cannot use the same name for their indexes.
         definition: an appropriate concrete subclass of `TableBaseIndexDefinition`
             providing the detailed definition of the index.
+        index_type: a value in the TableIndexType enum, describing the index type.
     """
 
     name: str
     definition: TableBaseIndexDefinition
+    index_type: TableIndexType
+
+    def __init__(
+        self,
+        name: str,
+        definition: TableBaseIndexDefinition,
+        index_type: TableIndexType | str | UnsetType = _UNSET,
+    ) -> None:
+        self.name = name
+        self.definition = definition
+        if isinstance(index_type, UnsetType):
+            self.index_type = self.definition._index_type
+        else:
+            self.index_type = TableIndexType.coerce(index_type)
 
     def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
@@ -482,6 +533,7 @@ class TableIndexDescriptor:
         return {
             "name": self.name,
             "definition": self.definition.as_dict(),
+            "indexType": self.index_type.value,
         }
 
     @classmethod
@@ -491,10 +543,43 @@ class TableIndexDescriptor:
         such as one from the Data API.
         """
 
-        _warn_residual_keys(cls, raw_dict, {"name", "definition"})
+        _warn_residual_keys(cls, raw_dict, {"name", "definition", "indexType"})
+
+        index_definition: TableBaseIndexDefinition
+        # index type determination:
+        if "indexType" in raw_dict:
+            idx_type = raw_dict["indexType"]
+            idx_def = raw_dict["definition"]
+            if idx_type == TableIndexType.REGULAR.value:
+                index_definition = TableIndexDefinition._from_dict(idx_def)
+            elif idx_type == TableIndexType.VECTOR.value:
+                index_definition = TableVectorIndexDefinition._from_dict(idx_def)
+            elif idx_type == TableIndexType.UNKNOWN.value:
+                index_definition = TableUnsupportedIndexDefinition._from_dict(idx_def)
+            else:
+                # not throwing here. Log a warning and try the inspection path
+                logger.warning(
+                    f"Found an unexpected indexType when parsing a {cls.__name__} "
+                    f"dictionary: {idx_type}. Falling back to inspecting the "
+                    f"index definition."
+                )
+                index_definition = TableBaseIndexDefinition._from_dict(
+                    raw_dict["definition"]
+                )
+        else:
+            # fall back to the 'inspection' path
+            logger.info(
+                f"Field 'indexType' missing when parsing a {cls.__name__} "
+                f"dictionary. Falling back to inspecting the "
+                f"index definition."
+            )
+            index_definition = TableBaseIndexDefinition._from_dict(
+                raw_dict["definition"]
+            )
+
         return TableIndexDescriptor(
             name=raw_dict["name"],
-            definition=TableBaseIndexDefinition._from_dict(raw_dict["definition"]),
+            definition=index_definition,
         )
 
     def coerce(

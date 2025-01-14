@@ -1,19 +1,14 @@
 [project]
 requires-python = ">=3.8"
-
-[tool.poetry]
-name = "astrapy"
 version = "2.0.0rc1"
+name = "astrapy"
 description = "AstraPy is a Pythonic SDK for DataStax Astra and its Data API"
 authors = [
-    "Stefano Lottini <stefano.lottini@datastax.com>",
-    "Eric Hare <eric.hare@datastax.com>",
+    {"name" = "Stefano Lottini", "email" = "stefano.lottini@datastax.com"},
+    {"name" = "Eric Hare", "email" = "eric.hare@datastax.com"},
 ]
 license = "Apache-2.0"
 readme = "README.md"
-packages = [
-    { include = "astrapy" }
-]
 keywords = ["DataStax", "Astra"]
 homepage = "https://github.com/datastax/astrapy"
 repository = "https://github.com/datastax/astrapy"
@@ -27,6 +22,18 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+]
+
+[tool.poetry]
+version = "2.0.0rc1"
+name = "astrapy"
+description = "AstraPy is a Pythonic SDK for DataStax Astra and its Data API"
+authors = [
+    "Stefano Lottini <stefano.lottini@datastax.com>",
+    "Eric Hare eric.hare@datastax.com>",
+]
+packages = [
+    { include = "astrapy" }
 ]
 
 [tool.poetry.dependencies]
