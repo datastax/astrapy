@@ -1,12 +1,12 @@
-name: Run base integration tests on HCD
+name: Run base integration tests on a local Data API
 
 on:
   push:
     branches:
-      - RESTOREME_main
+      - main
   pull_request:
     branches:
-      - RESTOREME_main
+      - main
 
 jobs:
   test:
