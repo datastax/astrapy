@@ -29,8 +29,8 @@ version = "2.0.0rc1"
 name = "astrapy"
 description = "AstraPy is a Pythonic SDK for DataStax Astra and its Data API"
 authors = [
-    {"name" = "Stefano Lottini", "email" = "stefano.lottini@datastax.com"},
-    {"name" = "Eric Hare", "email" = "eric.hare@datastax.com"},
+    "Stefano Lottini <stefano.lottini@datastax.com>",
+    "Eric Hare eric.hare@datastax.com>",
 ]
 packages = [
     { include = "astrapy" }
