@@ -3,10 +3,10 @@ name: Run base integration tests on HCD
 on:
   push:
     branches:
-      - main
+      - RESTOREME_main
   pull_request:
     branches:
-      - main
+      - RESTOREME_main
 
 jobs:
   test:

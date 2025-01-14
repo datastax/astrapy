@@ -129,7 +129,7 @@ class TestTableDryMethods:
             await mock_atable.count_documents({}, upper_bound=20)
 
     @pytest.mark.describe("test of table update_one, sync")
-    def test_table_update_one_sync(
+    def test_table_dry_update_one_sync(
         self,
         httpserver: HTTPServer,
         mock_table: DefaultTable,
@@ -141,7 +141,7 @@ class TestTableDryMethods:
         mock_table.update_one({"pk": "v"}, {"$set": {"x": {1, 2, 3}}})
 
     @pytest.mark.describe("test of table update_one, async")
-    async def test_table_update_one_async(
+    async def test_table_dry_update_one_async(
         self,
         httpserver: HTTPServer,
         mock_atable: DefaultAsyncTable,
