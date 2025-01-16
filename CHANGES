@@ -1,9 +1,11 @@
 main
 ====
+Support for Astra DB "custom domain" endpoints for database (then: `.id`, `.region`, `.get_database_admin()`, `.info()` and `.name()` aren't available)
 Support for the `indexType` field to describe table indexes (as not mandatory for compatibility)
 DataAPITime: support for "hh:mm" no-seconds format
 DataAPIDuration: improved parse performance by caching regexpes
 DataAPIDuration: support for "P4W"-type strings and for zeroes such as "P", "-PR"
+maintenance: switch to DSE6.9 for local non-Astra testing
 
 v 2.0.0rc1
 ==========

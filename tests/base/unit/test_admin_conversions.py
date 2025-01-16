@@ -91,8 +91,12 @@ class TestAdminConversions:
         )
 
         assert db1 == expected_db_1
+        a_e_string_test = (
+            "https://99999999-89ab-cdef-0123-456789abcdef-us-east1"
+            ".apps.astra-test.datastax.com"
+        )
         with pytest.raises(ValueError):
-            dac1["abc"]
+            dac1[a_e_string_test]
 
         # equivalence between passing api_options and named parameters; option override
         dac1_opt = DataAPIClient(

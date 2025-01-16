@@ -19,7 +19,7 @@ import pytest
 from astrapy import AsyncCollection, AsyncDatabase, DataAPIClient
 from astrapy.authentication import StaticTokenProvider
 from astrapy.constants import Environment
-from astrapy.exceptions import DevOpsAPIException
+from astrapy.exceptions import InvalidEnvironmentException
 from astrapy.settings.defaults import DEFAULT_ASTRA_DB_KEYSPACE
 from astrapy.utils.api_options import (
     APIOptions,
@@ -192,9 +192,9 @@ class TestDatabasesAsync:
             keyspace="k",
             api_options=defaultAPIOptions(environment="dev"),
         )
-        with pytest.raises(DevOpsAPIException):
+        with pytest.raises(InvalidEnvironmentException):
             db2.id
-        with pytest.raises(DevOpsAPIException):
+        with pytest.raises(InvalidEnvironmentException):
             db2.region
 
     @pytest.mark.describe("test database default keyspace per environment, async")
@@ -263,3 +263,19 @@ class TestDatabasesAsync:
         async_database: AsyncDatabase,
     ) -> None:
         assert isinstance(async_database.keyspace, str)
+
+    @pytest.mark.describe("test of database with custom domains, async")
+    async def test_database_custom_domain_async(self) -> None:
+        client = DataAPIClient()
+        adatabase = client.get_async_database("http://bubbu.com")
+
+        with pytest.raises(InvalidEnvironmentException):
+            adatabase.id
+        with pytest.raises(InvalidEnvironmentException):
+            adatabase.region
+        with pytest.raises(InvalidEnvironmentException):
+            await adatabase.info()
+        with pytest.raises(InvalidEnvironmentException):
+            await adatabase.name()
+        with pytest.raises(InvalidEnvironmentException):
+            adatabase.get_database_admin()

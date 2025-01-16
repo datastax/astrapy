@@ -1,4 +1,4 @@
-name: Run base integration tests on HCD
+name: Run base integration tests on a local Data API
 
 on:
   push:

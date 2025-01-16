@@ -116,6 +116,7 @@ INSMANY_AR_ROWS = [
         "p_int": i,
         "p_boolean": i % 2 == 0,
         #
+        "p_vector": None,
         "p_float": 0.2 + i,
         "p_text": f"b{i}",
         "p_timestamp": DataAPITimestamp.from_string(f"1{i:03}-01-01T01:01:01Z"),

@@ -19,7 +19,7 @@ import pytest
 from astrapy import Collection, DataAPIClient, Database
 from astrapy.authentication import StaticTokenProvider
 from astrapy.constants import Environment
-from astrapy.exceptions import DevOpsAPIException
+from astrapy.exceptions import InvalidEnvironmentException
 from astrapy.settings.defaults import DEFAULT_ASTRA_DB_KEYSPACE
 from astrapy.utils.api_options import (
     APIOptions,
@@ -193,9 +193,9 @@ class TestDatabasesSync:
             keyspace="k",
             api_options=defaultAPIOptions(environment="dev"),
         )
-        with pytest.raises(DevOpsAPIException):
+        with pytest.raises(InvalidEnvironmentException):
             db2.id
-        with pytest.raises(DevOpsAPIException):
+        with pytest.raises(InvalidEnvironmentException):
             db2.region
 
     @pytest.mark.describe("test database default keyspace per environment, sync")
@@ -262,3 +262,19 @@ class TestDatabasesSync:
         sync_database: Database,
     ) -> None:
         assert isinstance(sync_database.keyspace, str)
+
+    @pytest.mark.describe("test of database with custom domains, sync")
+    def test_database_custom_domain_sync(self) -> None:
+        client = DataAPIClient()
+        database = client.get_database("http://bubbu.com")
+
+        with pytest.raises(InvalidEnvironmentException):
+            database.id
+        with pytest.raises(InvalidEnvironmentException):
+            database.region
+        with pytest.raises(InvalidEnvironmentException):
+            database.info()
+        with pytest.raises(InvalidEnvironmentException):
+            database.name()
+        with pytest.raises(InvalidEnvironmentException):
+            database.get_database_admin()
