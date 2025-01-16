@@ -39,12 +39,10 @@ AR_ROW_PK_0 = {
 AR_ROW_PK_0_TUPLE = ("abc", 10000, 987, False)
 AR_ROW_0 = {
     "p_text": "Ålesund",
-    "p_vector": DataAPIVector([0.1, -0.2, 0.3]),
     **AR_ROW_PK_0,
 }
 AR_ROW_0_B = {
     "p_text": "Overwritten™",
-    "p_vector": DataAPIVector([0.1, -0.2, 0.3]),
     **AR_ROW_PK_0,
 }
 
@@ -118,7 +116,7 @@ INSMANY_AR_ROWS = [
         "p_int": i,
         "p_boolean": i % 2 == 0,
         #
-        "p_vector": DataAPIVector([0.0, 0.001 * i, -0.01]),
+        "p_vector": None,
         "p_float": 0.2 + i,
         "p_text": f"b{i}",
         "p_timestamp": DataAPITimestamp.from_string(f"1{i:03}-01-01T01:01:01Z"),

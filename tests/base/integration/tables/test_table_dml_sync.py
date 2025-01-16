@@ -348,27 +348,21 @@ class TestTableDMLSync:
         sync_table_simple.delete_many({})
         ins_res_o = sync_table_simple.insert_many(many_rows, ordered=True)
         assert set(ins_res_o.inserted_id_tuples) == exp_tuple_set
-        assert len(
-            sync_table_simple.find(projection={"p_text": True}).to_list()
-        ) == len(many_rows)
+        assert len(sync_table_simple.find().to_list()) == len(many_rows)
         # unordered, concurrency=1
         sync_table_simple.delete_many({})
         ins_res_u_c1 = sync_table_simple.insert_many(
             many_rows, ordered=False, concurrency=1
         )
         assert set(ins_res_u_c1.inserted_id_tuples) == exp_tuple_set
-        assert len(
-            sync_table_simple.find(projection={"p_text": True}).to_list()
-        ) == len(many_rows)
+        assert len(sync_table_simple.find().to_list()) == len(many_rows)
         # unordered, concurrency>1
         sync_table_simple.delete_many({})
         ins_res_u_cn = sync_table_simple.insert_many(
             many_rows, ordered=False, concurrency=10
         )
         assert set(ins_res_u_cn.inserted_id_tuples) == exp_tuple_set
-        assert len(
-            sync_table_simple.find(projection={"p_text": True}).to_list()
-        ) == len(many_rows)
+        assert len(sync_table_simple.find().to_list()) == len(many_rows)
 
     @pytest.mark.describe("test of table update_one, sync")
     def test_table_update_one_sync(
@@ -484,12 +478,10 @@ class TestTableDMLSync:
             {"p_text": "B"},
             update={"$unset": {"p_vector": ""}},
         )
-        assert sync_table_simple.find_one(
-            {"p_text": "B"},
-            projection={"p_text": True, "p_int": True},
-        ) == {
+        assert sync_table_simple.find_one({"p_text": "B"}) == {
             "p_text": "B",
             "p_int": None,
+            "p_vector": None,
         }
 
         # $unset, on existing(full) (which DOES NOT DELETE the row)
@@ -497,12 +489,10 @@ class TestTableDMLSync:
             {"p_text": "B"},
             update={"$unset": {"p_int": "", "p_vector": ""}},
         )
-        assert sync_table_simple.find_one(
-            {"p_text": "B"},
-            projection={"p_text": True, "p_int": True},
-        ) == {
+        assert sync_table_simple.find_one({"p_text": "B"}) == {
             "p_text": "B",
             "p_int": None,
+            "p_vector": None,
         }
 
         # $unset, on nonexisting

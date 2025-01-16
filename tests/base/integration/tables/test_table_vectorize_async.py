@@ -56,20 +56,16 @@ class TestTableVectorizeAsync:
         )
         v_row = await aauthenticated_table.find_one(filter={"p_text": "v"})
         t_row = await aauthenticated_table.find_one(filter={"p_text": "t"})
-        u_row = await aauthenticated_table.find_one(
-            filter={"p_text": "u"},
-            projection={"p_vector": False},
-        )
-        n_row = await aauthenticated_table.find_one(
-            filter={"p_text": "n"},
-            projection={"p_vector": False},
-        )
+        u_row = await aauthenticated_table.find_one(filter={"p_text": "u"})
+        n_row = await aauthenticated_table.find_one(filter={"p_text": "n"})
         assert v_row is not None
         assert t_row is not None
         assert u_row is not None
         assert n_row is not None
         assert isinstance(v_row["p_vector"], DataAPIVector)
         assert v_row["p_vector"] == i_vector
+        assert u_row["p_vector"] is None
+        assert n_row["p_vector"] is None
 
         vec_row = await aauthenticated_table.find_one(
             sort={"p_vector": "This is one text example."}
