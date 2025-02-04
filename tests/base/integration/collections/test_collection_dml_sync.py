@@ -997,6 +997,46 @@ class TestCollectionDMLSync:
             len(doc["$vector"]) == 2 for doc in col.find({}, projection={"*": 1})
         )
 
+    @pytest.mark.describe("test of collection insert_many, failures, sync")
+    def test_collection_insert_many_failures_sync(
+        self,
+        sync_empty_collection: DefaultCollection,
+    ) -> None:
+        # The main goal here is to keep the switch to returnDocumentResponses in check.
+        N = 110
+        ins_res0 = sync_empty_collection.insert_many(
+            [{"_id": i} for i in range(N)],
+            concurrency=1,
+        )
+        assert set(ins_res0.inserted_ids) == set(range(N))
+
+        ins_res1 = sync_empty_collection.insert_many(
+            [{"_id": N + i} for i in range(N)],
+            concurrency=20,
+        )
+        assert set(ins_res1.inserted_ids) == {N + i for i in range(N)}
+
+        # unordered insertion [good, bad]
+        err2: CollectionInsertManyException | None = None
+        try:
+            sync_empty_collection.insert_many([{"_id": 2 * N}, {"_id": 0}])
+        except CollectionInsertManyException as e:
+            err2 = e
+        assert err2 is not None
+        assert err2.partial_result.inserted_ids == [2 * N]
+
+        # ordered insertion [good, bad, good_skipped]
+        err3: CollectionInsertManyException | None = None
+        try:
+            sync_empty_collection.insert_many(
+                [{"_id": 2 * N + 1}, {"_id": 0}, {"_id": 2 * N + 2}],
+                ordered=True,
+            )
+        except CollectionInsertManyException as e:
+            err3 = e
+        assert err3 is not None
+        assert err3.partial_result.inserted_ids == [2 * N + 1]
+
     @pytest.mark.describe("test of collection find_one, sync")
     def test_collection_find_one_sync(
         self,

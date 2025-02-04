@@ -1061,6 +1061,46 @@ class TestCollectionDMLAsync:
         vectors = [doc["$vector"] async for doc in acol.find({}, projection={"*": 1})]
         assert all(len(vec) == 2 for vec in vectors)
 
+    @pytest.mark.describe("test of collection insert_many, failures, async")
+    async def test_collection_insert_many_failures_async(
+        self,
+        async_empty_collection: DefaultAsyncCollection,
+    ) -> None:
+        # The main goal here is to keep the switch to returnDocumentResponses in check.
+        N = 110
+        ins_res0 = await async_empty_collection.insert_many(
+            [{"_id": i} for i in range(N)],
+            concurrency=1,
+        )
+        assert set(ins_res0.inserted_ids) == set(range(N))
+
+        ins_res1 = await async_empty_collection.insert_many(
+            [{"_id": N + i} for i in range(N)],
+            concurrency=20,
+        )
+        assert set(ins_res1.inserted_ids) == {N + i for i in range(N)}
+
+        # unordered insertion [good, bad]
+        err2: CollectionInsertManyException | None = None
+        try:
+            await async_empty_collection.insert_many([{"_id": 2 * N}, {"_id": 0}])
+        except CollectionInsertManyException as e:
+            err2 = e
+        assert err2 is not None
+        assert err2.partial_result.inserted_ids == [2 * N]
+
+        # ordered insertion [good, bad, good_skipped]
+        err3: CollectionInsertManyException | None = None
+        try:
+            await async_empty_collection.insert_many(
+                [{"_id": 2 * N + 1}, {"_id": 0}, {"_id": 2 * N + 2}],
+                ordered=True,
+            )
+        except CollectionInsertManyException as e:
+            err3 = e
+        assert err3 is not None
+        assert err3.partial_result.inserted_ids == [2 * N + 1]
+
     @pytest.mark.describe("test of collection find_one, async")
     async def test_collection_find_one_async(
         self,

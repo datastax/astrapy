@@ -22,7 +22,7 @@ from astrapy import AsyncDatabase
 from astrapy.constants import DefaultDocumentType
 from astrapy.cursors import AsyncCollectionFindCursor
 from astrapy.data_types import DataAPIVector
-from astrapy.exceptions import DataAPIResponseException
+from astrapy.exceptions import CollectionInsertManyException, DataAPIResponseException
 from astrapy.info import CollectionDefinition
 
 from ..conftest import HEADER_EMBEDDING_API_KEY_OPENAI, DefaultAsyncCollection
@@ -238,6 +238,28 @@ class TestCollectionVectorizeMethodsAsync:
                     assert _is_vector(await this_ite_2.get_sort_vector())
                 else:
                     assert (await this_ite_2.get_sort_vector()) is None
+
+    @pytest.mark.describe("test of vectorize-based insert many grand failures, async")
+    async def test_collection_methods_grandfailure_vectorize_async(
+        self,
+        async_empty_service_collection: DefaultAsyncCollection,
+    ) -> None:
+        await async_empty_service_collection.insert_many(
+            [{"_id": "Z", "$vectorize": "Text."}]
+        )
+
+        bad_collection = async_empty_service_collection.with_options(
+            embedding_api_key="BadKey",
+        )
+        err: CollectionInsertManyException | None = None
+        try:
+            await bad_collection.insert_many(
+                [{"_id": "A"}, {"_id": "B", "$vectorize": "Text."}]
+            )
+        except CollectionInsertManyException as e:
+            err = e
+        assert err is not None
+        assert err.partial_result.inserted_ids == []
 
     @pytest.mark.describe(
         "test of database create_collection dimension-mismatch failure, async"

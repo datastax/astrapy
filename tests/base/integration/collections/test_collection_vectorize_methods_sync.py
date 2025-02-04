@@ -20,7 +20,7 @@ import pytest
 
 from astrapy import Database
 from astrapy.data_types import DataAPIVector
-from astrapy.exceptions import DataAPIResponseException
+from astrapy.exceptions import CollectionInsertManyException, DataAPIResponseException
 from astrapy.info import CollectionDefinition
 
 from ..conftest import HEADER_EMBEDDING_API_KEY_OPENAI, DefaultCollection
@@ -222,6 +222,26 @@ class TestCollectionVectorizeMethodsSync:
                     assert _is_vector(this_ite_2.get_sort_vector())
                 else:
                     assert this_ite_2.get_sort_vector() is None
+
+    @pytest.mark.describe("test of vectorize-based insert many grand failures, sync")
+    def test_collection_methods_grandfailure_vectorize_sync(
+        self,
+        sync_empty_service_collection: DefaultCollection,
+    ) -> None:
+        sync_empty_service_collection.insert_many([{"_id": "Z", "$vectorize": "Text."}])
+
+        bad_collection = sync_empty_service_collection.with_options(
+            embedding_api_key="BadKey",
+        )
+        err: CollectionInsertManyException | None = None
+        try:
+            bad_collection.insert_many(
+                [{"_id": "A"}, {"_id": "B", "$vectorize": "Text."}]
+            )
+        except CollectionInsertManyException as e:
+            err = e
+        assert err is not None
+        assert err.partial_result.inserted_ids == []
 
     @pytest.mark.describe(
         "test of database create_collection dimension-mismatch failure, sync"
