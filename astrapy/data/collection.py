@@ -787,7 +787,7 @@ class Collection(Generic[DOC]):
             timeout_label=_gmt_label,
         )
         if ordered:
-            options = {"ordered": True}
+            options = {"ordered": True, "returnDocumentResponses": True}
             inserted_ids: list[Any] = []
             for i in range(0, len(_documents), _chunk_size):
                 im_payload = {
@@ -807,9 +807,13 @@ class Collection(Generic[DOC]):
                 )
                 logger.info(f"finished insertMany(chunk) on '{self.name}'")
                 # accumulate the results in this call
-                chunk_inserted_ids = (chunk_response.get("status") or {}).get(
-                    "insertedIds", []
-                )
+                chunk_inserted_ids = [
+                    doc_resp["_id"]
+                    for doc_resp in (chunk_response.get("status") or {}).get(
+                        "documentResponses", []
+                    )
+                    if doc_resp["status"] == "OK"
+                ]
                 inserted_ids += chunk_inserted_ids
                 raw_results += [chunk_response]
                 # if errors, quit early
@@ -836,7 +840,7 @@ class Collection(Generic[DOC]):
 
         else:
             # unordered: concurrent or not, do all of them and parse the results
-            options = {"ordered": False}
+            options = {"ordered": False, "returnDocumentResponses": True}
             if _concurrency > 1:
                 with ThreadPoolExecutor(max_workers=_concurrency) as executor:
 
@@ -891,11 +895,12 @@ class Collection(Generic[DOC]):
                     raw_results.append(im_response)
             # recast raw_results
             inserted_ids = [
-                inserted_id
+                doc_resp["_id"]
                 for chunk_response in raw_results
-                for inserted_id in (chunk_response.get("status") or {}).get(
-                    "insertedIds", []
+                for doc_resp in (chunk_response.get("status") or {}).get(
+                    "documentResponses", []
                 )
+                if doc_resp["status"] == "OK"
             ]
 
             # check-raise
@@ -3335,7 +3340,7 @@ class AsyncCollection(Generic[DOC]):
             timeout_label=_gmt_label,
         )
         if ordered:
-            options = {"ordered": True}
+            options = {"ordered": True, "returnDocumentResponses": True}
             inserted_ids: list[Any] = []
             for i in range(0, len(_documents), _chunk_size):
                 im_payload = {
@@ -3355,9 +3360,13 @@ class AsyncCollection(Generic[DOC]):
                 )
                 logger.info(f"finished insertMany(chunk) on '{self.name}'")
                 # accumulate the results in this call
-                chunk_inserted_ids = (chunk_response.get("status") or {}).get(
-                    "insertedIds", []
-                )
+                chunk_inserted_ids = [
+                    doc_resp["_id"]
+                    for doc_resp in (chunk_response.get("status") or {}).get(
+                        "documentResponses", []
+                    )
+                    if doc_resp["status"] == "OK"
+                ]
                 inserted_ids += chunk_inserted_ids
                 raw_results += [chunk_response]
                 # if errors, quit early
@@ -3384,7 +3393,7 @@ class AsyncCollection(Generic[DOC]):
 
         else:
             # unordered: concurrent or not, do all of them and parse the results
-            options = {"ordered": False}
+            options = {"ordered": False, "returnDocumentResponses": True}
 
             sem = asyncio.Semaphore(_concurrency)
 
@@ -3426,11 +3435,12 @@ class AsyncCollection(Generic[DOC]):
 
             # recast raw_results
             inserted_ids = [
-                inserted_id
+                doc_resp["_id"]
                 for chunk_response in raw_results
-                for inserted_id in (chunk_response.get("status") or {}).get(
-                    "insertedIds", []
+                for doc_resp in (chunk_response.get("status") or {}).get(
+                    "documentResponses", []
                 )
+                if doc_resp["status"] == "OK"
             ]
 
             # check-raise
