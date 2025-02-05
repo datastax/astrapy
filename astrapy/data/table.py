@@ -1183,29 +1183,37 @@ class Table(Generic[ROW]):
                 ids = []
                 id_tuples = []
         else:
-            if "primaryKeySchema" not in status:
+            if "documentResponses" not in status:
                 raise UnexpectedDataAPIResponseException(
                     text=(
-                        "received a 'status' without 'primaryKeySchema' "
+                        "received a 'status' without 'documentResponses' "
                         f"in API response (received: {status})"
                     ),
                     raw_response=None,
                 )
-            if "insertedIds" not in status:
-                raise UnexpectedDataAPIResponseException(
-                    text=(
-                        "received a 'status' without 'insertedIds' "
-                        f"in API response (received: {status})"
-                    ),
-                    raw_response=None,
+            raw_inserted_ids = [
+                row_resp["_id"]
+                for row_resp in status["documentResponses"]
+                if row_resp["status"] == "OK"
+            ]
+            if raw_inserted_ids:
+                if "primaryKeySchema" not in status:
+                    raise UnexpectedDataAPIResponseException(
+                        text=(
+                            "received a 'status' without 'primaryKeySchema' "
+                            f"in API response (received: {status})"
+                        ),
+                        raw_response=None,
+                    )
+                id_tuples_and_ids = self._converter_agent.postprocess_keys(
+                    raw_inserted_ids,
+                    primary_key_schema_dict=status["primaryKeySchema"],
                 )
-            primary_key_schema = status["primaryKeySchema"]
-            id_tuples_and_ids = self._converter_agent.postprocess_keys(
-                status["insertedIds"],
-                primary_key_schema_dict=primary_key_schema,
-            )
-            id_tuples = [tpl for tpl, _ in id_tuples_and_ids]
-            ids = [id for _, id in id_tuples_and_ids]
+                id_tuples = [tpl for tpl, _ in id_tuples_and_ids]
+                ids = [id for _, id in id_tuples_and_ids]
+            else:
+                ids = []
+                id_tuples = []
         return ids, id_tuples
 
     def insert_many(
@@ -1384,7 +1392,7 @@ class Table(Generic[ROW]):
             timeout_label=_gmt_label,
         )
         if ordered:
-            options = {"ordered": True}
+            options = {"ordered": True, "returnDocumentResponses": True}
             inserted_ids: list[Any] = []
             inserted_id_tuples: list[Any] = []
             for i in range(0, len(_rows), _chunk_size):
@@ -1437,7 +1445,7 @@ class Table(Generic[ROW]):
 
         else:
             # unordered: concurrent or not, do all of them and parse the results
-            options = {"ordered": False}
+            options = {"ordered": False, "returnDocumentResponses": True}
             if _concurrency > 1:
                 with ThreadPoolExecutor(max_workers=_concurrency) as executor:
 
@@ -3900,29 +3908,37 @@ class AsyncTable(Generic[ROW]):
                 ids = []
                 id_tuples = []
         else:
-            if "primaryKeySchema" not in status:
+            if "documentResponses" not in status:
                 raise UnexpectedDataAPIResponseException(
                     text=(
-                        "received a 'status' without 'primaryKeySchema' "
+                        "received a 'status' without 'documentResponses' "
                         f"in API response (received: {status})"
                     ),
                     raw_response=None,
                 )
-            if "insertedIds" not in status:
-                raise UnexpectedDataAPIResponseException(
-                    text=(
-                        "received a 'status' without 'insertedIds' "
-                        f"in API response (received: {status})"
-                    ),
-                    raw_response=None,
+            raw_inserted_ids = [
+                row_resp["_id"]
+                for row_resp in status["documentResponses"]
+                if row_resp["status"] == "OK"
+            ]
+            if raw_inserted_ids:
+                if "primaryKeySchema" not in status:
+                    raise UnexpectedDataAPIResponseException(
+                        text=(
+                            "received a 'status' without 'primaryKeySchema' "
+                            f"in API response (received: {status})"
+                        ),
+                        raw_response=None,
+                    )
+                id_tuples_and_ids = self._converter_agent.postprocess_keys(
+                    raw_inserted_ids,
+                    primary_key_schema_dict=status["primaryKeySchema"],
                 )
-            primary_key_schema = status["primaryKeySchema"]
-            id_tuples_and_ids = self._converter_agent.postprocess_keys(
-                status["insertedIds"],
-                primary_key_schema_dict=primary_key_schema,
-            )
-            id_tuples = [tpl for tpl, _ in id_tuples_and_ids]
-            ids = [id for _, id in id_tuples_and_ids]
+                id_tuples = [tpl for tpl, _ in id_tuples_and_ids]
+                ids = [id for _, id in id_tuples_and_ids]
+            else:
+                ids = []
+                id_tuples = []
         return ids, id_tuples
 
     async def insert_many(
@@ -4103,7 +4119,7 @@ class AsyncTable(Generic[ROW]):
             timeout_label=_gmt_label,
         )
         if ordered:
-            options = {"ordered": True}
+            options = {"ordered": True, "returnDocumentResponses": True}
             inserted_ids: list[Any] = []
             inserted_id_tuples: list[Any] = []
             for i in range(0, len(_rows), _chunk_size):
@@ -4156,7 +4172,7 @@ class AsyncTable(Generic[ROW]):
 
         else:
             # unordered: concurrent or not, do all of them and parse the results
-            options = {"ordered": False}
+            options = {"ordered": False, "returnDocumentResponses": True}
 
             sem = asyncio.Semaphore(_concurrency)
 
