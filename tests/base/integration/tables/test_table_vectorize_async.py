@@ -20,6 +20,7 @@ import pytest
 
 from astrapy.api_options import APIOptions
 from astrapy.data_types import DataAPIVector
+from astrapy.exceptions import TableInsertManyException
 
 from ..conftest import IS_ASTRA_DB, VECTORIZE_TEXTS, DefaultAsyncTable
 
@@ -94,6 +95,36 @@ class TestTableVectorizeAsync:
         match0 = await cur_isv.__anext__()
         assert match0 is not None
         assert isinstance(match0["$similarity"], float)
+
+    @pytest.mark.skipif(
+        HEADER_EMBEDDING_API_KEY_OPENAI is None,
+        reason="No HEADER_EMBEDDING_API_KEY_OPENAI detected",
+    )
+    @pytest.mark.describe(
+        "test of vectorize-based table insert many grand failures, async"
+    )
+    async def test_table_insertmany_grandfailure_vectorize_async(
+        self,
+        async_empty_table_vectorize: DefaultAsyncTable,
+    ) -> None:
+        authenticated_atable = async_empty_table_vectorize.with_options(
+            api_options=APIOptions(
+                embedding_api_key=HEADER_EMBEDDING_API_KEY_OPENAI or "",
+            ),
+        )
+        await authenticated_atable.insert_many([{"p_text": "0", "p_vector": "Text."}])
+
+        bad_atable = authenticated_atable.with_options(embedding_api_key="BadKey")
+
+        err: TableInsertManyException | None = None
+        try:
+            await bad_atable.insert_many(
+                [{"p_text": "1"}, {"p_text": "2", "p_vector": "Text."}]
+            )
+        except TableInsertManyException as e:
+            err = e
+        assert err is not None
+        assert err.partial_result.inserted_ids == []
 
     @pytest.mark.skipif(
         not IS_ASTRA_DB,

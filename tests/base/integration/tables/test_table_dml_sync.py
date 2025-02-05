@@ -365,6 +365,59 @@ class TestTableDMLSync:
         assert len(sync_table_simple.find().to_list()) == len(many_rows)
 
     @pytest.mark.describe("test of table update_one, sync")
+    def test_table_insert_many_failures_sync(
+        self,
+        sync_table_simple: DefaultTable,
+    ) -> None:
+        # The main goal here is to keep the switch to returnDocumentResponses in check.
+        N = 110
+        ins_res0 = sync_table_simple.insert_many(
+            [{"p_text": f"{i}"} for i in range(N)],
+            concurrency=1,
+        )
+        assert set(ins_res0.inserted_id_tuples) == {(f"{i}",) for i in range(N)}
+
+        ins_res1 = sync_table_simple.insert_many(
+            [{"p_text": f"{N + i}"} for i in range(N)],
+            concurrency=20,
+        )
+        assert set(ins_res1.inserted_id_tuples) == {(f"{N + i}",) for i in range(N)}
+
+        # unordered insertion [good, bad]
+        err2: TableInsertManyException | None = None
+        try:
+            sync_table_simple.insert_many([{"p_text": f"{2 * N}"}, {"p_text": -1}])
+        except TableInsertManyException as e:
+            err2 = e
+        assert err2 is not None
+        assert len(err2.error_descriptors) == 1
+        assert err2.partial_result.inserted_id_tuples == [(f"{2 * N}",)]
+
+        # unordered insertion [bad, bad]
+        err3: TableInsertManyException | None = None
+        try:
+            sync_table_simple.insert_many([{"p_text": -2}, {"p_text": -3}])
+        except TableInsertManyException as e:
+            err3 = e
+        assert err3 is not None
+        assert len(err3.error_descriptors) == 2
+        assert err3.partial_result.inserted_id_tuples == []
+
+        # ordered insertion [good, bad, good_skipped]
+        # Tables do not insert anything in this case! (as opposed to Collections)
+        err4: TableInsertManyException | None = None
+        try:
+            sync_table_simple.insert_many(
+                [{"p_text": "n0"}, {"p_text": -4}, {"p_text": "n1"}],
+                ordered=True,
+            )
+        except TableInsertManyException as e:
+            err4 = e
+        assert err4 is not None
+        assert len(err4.error_descriptors) == 1
+        assert err4.partial_result.inserted_ids == []
+
+    @pytest.mark.describe("test of table update_one, sync")
     def test_table_update_one_sync(
         self,
         sync_table_simple: DefaultTable,
