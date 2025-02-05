@@ -205,7 +205,8 @@ def fetch_raw_database_info_from_id_token(
     gd_response = dev_ops_commander.request(
         http_method=HttpMethod.GET,
         timeout_context=_TimeoutContext(
-            request_ms=timeout_ms, label=_timeout_context_label
+            request_ms=_api_options.timeout_options.request_timeout_ms,
+            label=_timeout_context_label,
         ),
     )
     return gd_response
@@ -299,7 +300,8 @@ async def async_fetch_raw_database_info_from_id_token(
     gd_response = await dev_ops_commander.async_request(
         http_method=HttpMethod.GET,
         timeout_context=_TimeoutContext(
-            request_ms=timeout_ms, label=_timeout_context_label
+            request_ms=_api_options.timeout_options.request_timeout_ms,
+            label=_timeout_context_label,
         ),
     )
     return gd_response
