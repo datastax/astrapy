@@ -439,7 +439,7 @@ class MultiCallTimeoutManager:
         Returns:
             A _TimeoutContext appropriately detailing the residual time an overall
             operation is allowed to last. Alternatively, the method may not return
-            and raise a DataAPITimeoutException directly.
+            and raise a DataAPITimeoutException/DevOpsAPITimeoutException directly.
         """
 
         # a zero 'cap' must be treated as None:

@@ -205,7 +205,8 @@ def fetch_raw_database_info_from_id_token(
     gd_response = dev_ops_commander.request(
         http_method=HttpMethod.GET,
         timeout_context=_TimeoutContext(
-            request_ms=timeout_ms, label=_timeout_context_label
+            request_ms=_api_options.timeout_options.request_timeout_ms,
+            label=_timeout_context_label,
         ),
     )
     return gd_response
@@ -299,7 +300,8 @@ async def async_fetch_raw_database_info_from_id_token(
     gd_response = await dev_ops_commander.async_request(
         http_method=HttpMethod.GET,
         timeout_context=_TimeoutContext(
-            request_ms=timeout_ms, label=_timeout_context_label
+            request_ms=_api_options.timeout_options.request_timeout_ms,
+            label=_timeout_context_label,
         ),
     )
     return gd_response
@@ -1747,7 +1749,7 @@ class AstraDBAdmin:
                     (
                         self.database_info(
                             parsed_api_endpoint.database_id,
-                            timeout_ms=_database_admin_timeout_ms,
+                            database_admin_timeout_ms=_database_admin_timeout_ms,
                         ).raw
                         or {}
                     ).get("info")
@@ -1775,7 +1777,8 @@ class AstraDBAdmin:
                 _keyspace = (
                     (
                         self.database_info(
-                            _id_p, timeout_ms=_database_admin_timeout_ms
+                            _id_p,
+                            database_admin_timeout_ms=_database_admin_timeout_ms,
                         ).raw
                         or {}
                     ).get("info")

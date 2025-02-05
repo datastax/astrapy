@@ -40,7 +40,7 @@ class TestCollectionTimeoutAsync:
 
         with pytest.raises(DataAPITimeoutException) as exc:
             await async_empty_collection.count_documents(
-                {}, upper_bound=800, timeout_ms=1
+                {}, upper_bound=800, general_method_timeout_ms=1
             )
         assert await async_empty_collection.count_documents({}, upper_bound=800) >= 500
         assert exc.value.timeout_type in {"connect", "read"}
@@ -65,7 +65,7 @@ class TestCollectionTimeoutAsync:
                 async_database.api_endpoint,
                 token=async_database.api_options.token,
                 keyspace=async_database.keyspace,
-                timeout_ms=1,
+                request_timeout_ms=1,
             )
             assert info is not None
         assert exc.value.timeout_type in {"connect", "read"}
@@ -80,13 +80,13 @@ class TestCollectionTimeoutAsync:
         acol = async_empty_collection
         await acol.insert_many([{"a": 1}] * 1000)
 
-        await acol.distinct("a", timeout_ms=60000)
+        await acol.distinct("a", general_method_timeout_ms=60000)
         with pytest.raises(DataAPITimeoutException):
-            await acol.distinct("a", timeout_ms=1)
+            await acol.distinct("a", general_method_timeout_ms=1)
 
-        await acol.distinct("a", timeout_ms=60000)
+        await acol.distinct("a", general_method_timeout_ms=60000)
         with pytest.raises(DataAPITimeoutException):
-            await acol.distinct("a", timeout_ms=1)
+            await acol.distinct("a", general_method_timeout_ms=1)
 
     @pytest.mark.describe("test of insert_many timeouts, async")
     async def test_insert_many_timeout_exceptions_async(
@@ -94,23 +94,27 @@ class TestCollectionTimeoutAsync:
         async_collection: DefaultAsyncCollection,
     ) -> None:
         fifty_docs = [{"seq": i} for i in range(50)]
-        await async_collection.insert_many(fifty_docs, ordered=True, timeout_ms=20000)
         await async_collection.insert_many(
-            fifty_docs, ordered=False, concurrency=1, timeout_ms=20000
+            fifty_docs, ordered=True, general_method_timeout_ms=20000
         )
         await async_collection.insert_many(
-            fifty_docs, ordered=False, concurrency=2, timeout_ms=20000
+            fifty_docs, ordered=False, concurrency=1, general_method_timeout_ms=20000
+        )
+        await async_collection.insert_many(
+            fifty_docs, ordered=False, concurrency=2, general_method_timeout_ms=20000
         )
 
         with pytest.raises(DataAPITimeoutException):
-            await async_collection.insert_many(fifty_docs, ordered=True, timeout_ms=2)
-        with pytest.raises(DataAPITimeoutException):
             await async_collection.insert_many(
-                fifty_docs, ordered=False, concurrency=1, timeout_ms=2
+                fifty_docs, ordered=True, general_method_timeout_ms=2
             )
         with pytest.raises(DataAPITimeoutException):
             await async_collection.insert_many(
-                fifty_docs, ordered=False, concurrency=2, timeout_ms=2
+                fifty_docs, ordered=False, concurrency=1, general_method_timeout_ms=2
+            )
+        with pytest.raises(DataAPITimeoutException):
+            await async_collection.insert_many(
+                fifty_docs, ordered=False, concurrency=2, general_method_timeout_ms=2
             )
 
     @pytest.mark.describe("test of update_many timeouts, async")
@@ -123,12 +127,16 @@ class TestCollectionTimeoutAsync:
 
         await async_collection.update_many({"f": "update_many"}, {"$inc": {"seq": 100}})
         await async_collection.update_many(
-            {"f": "update_many"}, {"$inc": {"seq": 100}}, timeout_ms=20000
+            {"f": "update_many"},
+            {"$inc": {"seq": 100}},
+            general_method_timeout_ms=20000,
         )
 
         with pytest.raises(DataAPITimeoutException):
             await async_collection.update_many(
-                {"f": "update_many"}, {"$inc": {"seq": 100}}, timeout_ms=2
+                {"f": "update_many"},
+                {"$inc": {"seq": 100}},
+                general_method_timeout_ms=2,
             )
 
     @pytest.mark.describe("test of delete_many timeouts, async")
@@ -146,9 +154,13 @@ class TestCollectionTimeoutAsync:
         )
 
         await async_collection.delete_many({"f": "delete_many1"})
-        await async_collection.delete_many({"f": "delete_many2"}, timeout_ms=20000)
+        await async_collection.delete_many(
+            {"f": "delete_many2"}, general_method_timeout_ms=20000
+        )
         with pytest.raises(DataAPITimeoutException):
-            await async_collection.delete_many({"f": "delete_many3"}, timeout_ms=2)
+            await async_collection.delete_many(
+                {"f": "delete_many3"}, general_method_timeout_ms=2
+            )
 
     @pytest.mark.describe("test of collection find-with-collective timeout, async")
     async def test_collection_find_with_collective_timeout_async(
