@@ -298,7 +298,7 @@ class TestTimeouts:
         dmr_LS_zrq = collection_L_S.delete_many({}, general_method_timeout_ms=0)
         assert dmr_LS_zrq.deleted_count == 12
 
-        # remove the timeout completely with a zero per-method 'timeout_ms' shorthand
+        # remove the timeout completely: a zero per-method 'general_method_timeout_ms'
         httpserver.expect_oneshot_request(
             expected_url,
             method="POST",
@@ -313,7 +313,7 @@ class TestTimeouts:
                 },
             )
         )
-        dmr_LS_zgrq = collection_L_S.delete_many({}, timeout_ms=0)
+        dmr_LS_zgrq = collection_L_S.delete_many({}, general_method_timeout_ms=0)
         assert dmr_LS_zgrq.deleted_count == 12
 
     @pytest.mark.describe(
@@ -491,7 +491,7 @@ class TestTimeouts:
         dmr_LS_zrq = await acollection_L_S.delete_many({}, general_method_timeout_ms=0)
         assert dmr_LS_zrq.deleted_count == 12
 
-        # remove the timeout completely with a zero per-method 'timeout_ms' shorthand
+        # remove the timeout completely: a zero per-method 'general_method_timeout_ms'
         httpserver.expect_oneshot_request(
             expected_url,
             method="POST",
@@ -506,5 +506,5 @@ class TestTimeouts:
                 },
             )
         )
-        dmr_LS_zgrq = await acollection_L_S.delete_many({}, timeout_ms=0)
+        dmr_LS_zgrq = await acollection_L_S.delete_many({}, general_method_timeout_ms=0)
         assert dmr_LS_zgrq.deleted_count == 12

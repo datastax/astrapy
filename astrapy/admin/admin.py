@@ -1747,7 +1747,7 @@ class AstraDBAdmin:
                     (
                         self.database_info(
                             parsed_api_endpoint.database_id,
-                            timeout_ms=_database_admin_timeout_ms,
+                            database_admin_timeout_ms=_database_admin_timeout_ms,
                         ).raw
                         or {}
                     ).get("info")
@@ -1775,7 +1775,8 @@ class AstraDBAdmin:
                 _keyspace = (
                     (
                         self.database_info(
-                            _id_p, timeout_ms=_database_admin_timeout_ms
+                            _id_p,
+                            database_admin_timeout_ms=_database_admin_timeout_ms,
                         ).raw
                         or {}
                     ).get("info")
