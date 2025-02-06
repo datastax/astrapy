@@ -19,7 +19,6 @@ import time
 import pytest
 
 from astrapy import DataAPIClient, Database
-from astrapy.admin import parse_api_endpoint
 from astrapy.constants import DefaultIdType, VectorMetric
 from astrapy.ids import UUID, ObjectId
 from astrapy.info import (
@@ -421,37 +420,6 @@ class TestCollectionDDLSync:
             keyspace=data_api_credentials_kwargs["keyspace"],
         )
         assert isinstance(database.list_collection_names(), list)
-
-    @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
-    @pytest.mark.describe(
-        "test of autoregion through DevOps API for get_database(_admin), sync"
-    )
-    def test_autoregion_getdatabase_sync(
-        self,
-        data_api_credentials_kwargs: DataAPICredentials,
-        data_api_credentials_info: DataAPICredentialsInfo,
-    ) -> None:
-        client = DataAPIClient(environment=data_api_credentials_info["environment"])
-        parsed_api_endpoint = parse_api_endpoint(
-            data_api_credentials_kwargs["api_endpoint"]
-        )
-        if parsed_api_endpoint is None:
-            raise ValueError(
-                f"Unparseable API endpoint: {data_api_credentials_kwargs['api_endpoint']}"
-            )
-        adm = client.get_admin(token=data_api_credentials_kwargs["token"])
-        # auto-region through the DebvOps "db info" call
-        assert adm.get_database_admin(
-            parsed_api_endpoint.database_id
-        ) == adm.get_database_admin(data_api_credentials_kwargs["api_endpoint"])
-
-        # auto-region for get_database
-        assert adm.get_database(
-            parsed_api_endpoint.database_id,
-            keyspace="the_ks",
-        ) == adm.get_database(
-            data_api_credentials_kwargs["api_endpoint"], keyspace="the_ks"
-        )
 
     @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
     @pytest.mark.describe(

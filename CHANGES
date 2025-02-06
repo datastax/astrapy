@@ -5,6 +5,7 @@ Support for the `indexType` field to describe table indexes (as not mandatory fo
 DataAPITime: support for "hh:mm" no-seconds format
 DataAPIDuration: improved parse performance by caching regexpes
 DataAPIDuration: support for "P4W"-type strings and for zeroes such as "P", "-PR"
+Replaced the ValueErrors not directly coming from function calls/constructors with more appropriate exceptions
 Collection and Table `insert_many` methods employ returnDocumentResponses under the hood
 maintenance: switch to DSE6.9 for local non-Astra testing
 

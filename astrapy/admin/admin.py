@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Any
 
 from astrapy.admin.endpoints import (
     ParsedAPIEndpoint,
+    api_endpoint_parsing_cdinfo_message,
     api_endpoint_parsing_error_message,
     build_api_endpoint,
     database_id_matcher,
@@ -45,7 +46,6 @@ from astrapy.info import (
     FindEmbeddingProvidersResult,
 )
 from astrapy.settings.defaults import (
-    DEFAULT_ASTRA_DB_KEYSPACE,
     DEFAULT_DATA_API_AUTH_HEADER,
     DEFAULT_DEV_OPS_AUTH_HEADER,
     DEFAULT_DEV_OPS_AUTH_PREFIX,
@@ -1648,9 +1648,6 @@ class AstraDBAdmin:
         keyspace: str | None = None,
         id: str | None = None,
         region: str | None = None,
-        database_admin_timeout_ms: int | None = None,
-        request_timeout_ms: int | None = None,
-        timeout_ms: int | None = None,
         token: str | TokenProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
@@ -1658,41 +1655,33 @@ class AstraDBAdmin:
         Create a Database instance for a specific database, to be used
         when doing data-level work (such as creating/managing collections).
 
+        The database can be specified by its API endpoint or, alternatively,
+        by its (id, region) parameters: these two call patterns exclude each other.
+
         Args:
             api_endpoint_or_id: positional parameter that can stand for both
                 `api_endpoint` and `id`. Passing them together is an error.
             api_endpoint: the API Endpoint for the target database
-                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
+                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`,
+                or a custom domain if one is configured for the database).
                 The database must exist already for the resulting object
                 to be effectively used; in other words, this invocation
                 does not create the database, just the object instance.
-            keyspace: used to specify a certain keyspace the resulting
-                Database will primarily work on. If not specified, an additional
-                DevOps API call reveals the default keyspace for the target database.
+            keyspace: if provided, it is passed to the Database; otherwise
+                the Database class will apply an environment-specific default.
             id: the target database ID. This is alternative to using the API Endpoint.
-            region: the region to use for connecting to the database. The
-                database must be located in that region. This parameter can be used
-                only if the database is specified by its ID (instead of API Endpoint).
-                If this parameter is not passed, and cannot be inferred
-                from the API endpoint, an additional DevOps API request is made
-                to determine the default region and use it subsequently.
-            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying DevOps API request for 'region', should it be necessary.
-                If not provided, this object's defaults apply.
-                (This method issues a single API request, hence all timeout parameters
-                are treated the same.)
-            request_timeout_ms: an alias for `database_admin_timeout_ms`.
-            timeout_ms: an alias for `database_admin_timeout_ms`.
+            region: the region to use for connecting to the database.
+                This parameter must be supplied if (and only if) the `id` is
+                given for the database instead of the full API endpoint.
             token: if supplied, is passed to the Database instead of
                 the one set for this object.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
             spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the AstraDBAdmin.
-                This allows for a deeper configuration of the database, e.g.
-                concerning timeouts; if this is passed together with
-                the named timeout parameters, the latter will take precedence
-                in their respective settings.
+                This allows for a deeper configuration of the database, i.e. beyond
+                just specifying a token; if this is passed together with
+                the named token parameter, the latter will take precedence.
 
         Returns:
             A Database object ready to be used.
@@ -1713,85 +1702,63 @@ class AstraDBAdmin:
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
         """
 
-        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
-            timeout_options=self.api_options.timeout_options,
-            database_admin_timeout_ms=database_admin_timeout_ms,
-            request_timeout_ms=request_timeout_ms,
-            timeout_ms=timeout_ms,
-        )
         _api_endpoint_p, _id_p = check_id_endpoint_parg_kwargs(
             p_arg=api_endpoint_or_id, api_endpoint=api_endpoint, id=id
         )
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
-        _final_api_options = self.api_options.with_override(
+        resulting_api_options = self.api_options.with_override(
             spawn_api_options
         ).with_override(
             APIOptions(token=token),
         )
 
-        _keyspace: str | None
         # handle the "endpoint passed as id" case first:
         if _api_endpoint_p is not None:
             if region is not None:
                 raise ValueError(
                     "Parameter `region` not supported with an API endpoint."
                 )
-            if keyspace:
-                _keyspace = keyspace
+
+            parsed_api_endpoint = parse_api_endpoint(_api_endpoint_p)
+            if parsed_api_endpoint is not None:
+                if parsed_api_endpoint.environment != resulting_api_options.environment:
+                    raise InvalidEnvironmentException(
+                        "Environment mismatch between client and provided "
+                        "API endpoint. You can try adding "
+                        f'`environment="{parsed_api_endpoint.environment}"` '
+                        "to the DataAPIClient creation statement."
+                    )
+                return Database(
+                    api_endpoint=_api_endpoint_p,
+                    keyspace=keyspace,
+                    api_options=resulting_api_options,
+                )
             else:
-                parsed_api_endpoint = parse_api_endpoint(_api_endpoint_p)
-                if parsed_api_endpoint is None:
-                    msg = api_endpoint_parsing_error_message(_api_endpoint_p)
-                    raise ValueError(msg)
-                _keyspace = (
-                    (
-                        self.database_info(
-                            parsed_api_endpoint.database_id,
-                            database_admin_timeout_ms=_database_admin_timeout_ms,
-                        ).raw
-                        or {}
-                    ).get("info")
-                    or {}
-                ).get("keyspace", DEFAULT_ASTRA_DB_KEYSPACE)
-            return Database(
-                api_endpoint=_api_endpoint_p,
-                keyspace=_keyspace,
-                api_options=_final_api_options,
-            )
+                msg = api_endpoint_parsing_cdinfo_message(_api_endpoint_p)
+                logger.info(msg)
+                return Database(
+                    api_endpoint=_api_endpoint_p,
+                    keyspace=keyspace,
+                    api_options=resulting_api_options,
+                )
         else:
             # the case where an ID is passed:
             if _id_p is None:
                 raise ValueError("Either `api_endpoint` or `id` must be supplied.")
-            _region = normalize_region_for_id(
-                database_id=_id_p,
+            if region is None:
+                raise ValueError("Parameter `region` must be supplied with `id`.")
+
+            _api_endpoint = build_api_endpoint(
                 environment=self.api_options.environment,
-                region_param=region,
-                request_timeout_ms=_database_admin_timeout_ms,
-                api_options=self.api_options,
+                database_id=_id_p,
+                region=region,
             )
-            if keyspace:
-                _keyspace = keyspace
-            else:
-                _keyspace = (
-                    (
-                        self.database_info(
-                            _id_p,
-                            database_admin_timeout_ms=_database_admin_timeout_ms,
-                        ).raw
-                        or {}
-                    ).get("info")
-                    or {}
-                ).get("keyspace", DEFAULT_ASTRA_DB_KEYSPACE)
             return Database(
-                api_endpoint=build_api_endpoint(
-                    environment=self.api_options.environment,
-                    database_id=_id_p,
-                    region=_region,
-                ),
-                keyspace=_keyspace,
-                api_options=_final_api_options,
+                api_endpoint=_api_endpoint,
+                keyspace=keyspace,
+                api_options=resulting_api_options,
             )
 
     def get_async_database(
@@ -1802,9 +1769,6 @@ class AstraDBAdmin:
         keyspace: str | None = None,
         id: str | None = None,
         region: str | None = None,
-        database_admin_timeout_ms: int | None = None,
-        request_timeout_ms: int | None = None,
-        timeout_ms: int | None = None,
         token: str | TokenProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
@@ -1812,41 +1776,33 @@ class AstraDBAdmin:
         Create an AsyncDatabase instance for a specific database, to be used
         when doing data-level work (such as creating/managing collections).
 
+        The database can be specified by its API endpoint or, alternatively,
+        by its (id, region) parameters: these two call patterns exclude each other.
+
         Args:
             api_endpoint_or_id: positional parameter that can stand for both
                 `api_endpoint` and `id`. Passing them together is an error.
             api_endpoint: the API Endpoint for the target database
-                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
+                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`,
+                or a custom domain if one is configured for the database).
                 The database must exist already for the resulting object
                 to be effectively used; in other words, this invocation
                 does not create the database, just the object instance.
-            keyspace: used to specify a certain keyspace the resulting
-                AsyncDatabase will primarily work on. If not specified, an additional
-                DevOps API call reveals the default keyspace for the target database.
+            keyspace: if provided, it is passed to the AsyncDatabase; otherwise
+                the AsyncDatabase class will apply an environment-specific default.
             id: the target database ID. This is alternative to using the API Endpoint.
-            region: the region to use for connecting to the database. The
-                database must be located in that region. This parameter can be used
-                only if the database is specified by its ID (instead of API Endpoint).
-                If this parameter is not passed, and cannot be inferred
-                from the API endpoint, an additional DevOps API request is made
-                to determine the default region and use it subsequently.
-            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying DevOps API request for 'region', should it be necessary.
-                If not provided, this object's defaults apply.
-                (This method issues a single API request, hence all timeout parameters
-                are treated the same.)
-            request_timeout_ms: an alias for `database_admin_timeout_ms`.
-            timeout_ms: an alias for `database_admin_timeout_ms`.
-            token: if supplied, is passed to the Database instead of
+            region: the region to use for connecting to the database.
+                This parameter must be supplied if (and only if) the `id` is
+                given for the database instead of the full API endpoint.
+            token: if supplied, is passed to the AsyncDatabase instead of
                 the one set for this object.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
             spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the AstraDBAdmin.
-                This allows for a deeper configuration of the database, e.g.
-                concerning timeouts; if this is passed together with
-                the named timeout parameters, the latter will take precedence
-                in their respective settings.
+                This allows for a deeper configuration of the database, i.e. beyond
+                just specifying a token; if this is passed together with
+                the named token parameter, the latter will take precedence.
 
         Returns:
             An AsyncDatabase object ready to be used.
@@ -1884,13 +1840,10 @@ class AstraDBAdmin:
         return self.get_database(
             api_endpoint_or_id=api_endpoint_or_id,
             api_endpoint=api_endpoint,
-            token=token,
             keyspace=keyspace,
             id=id,
             region=region,
-            database_admin_timeout_ms=database_admin_timeout_ms,
-            request_timeout_ms=request_timeout_ms,
-            timeout_ms=timeout_ms,
+            token=token,
             spawn_api_options=spawn_api_options,
         ).to_async()
 
@@ -3048,9 +3001,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         self,
         *,
         keyspace: str | None = None,
-        database_admin_timeout_ms: int | None = None,
-        request_timeout_ms: int | None = None,
-        timeout_ms: int | None = None,
         token: str | TokenProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
@@ -3058,15 +3008,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         Create a Database instance from this database admin, for data-related tasks.
 
         Args:
-            keyspace: an optional keyspace to set in the resulting Database.
-                The same default logic as for `AstraDBAdmin.get_database` applies.
-            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying DevOps API request for 'region', should it be necessary.
-                If not provided, this object's defaults apply.
-                (This method issues a single API request, hence all timeout parameters
-                are treated the same.)
-            request_timeout_ms: an alias for `database_admin_timeout_ms`.
-            timeout_ms: an alias for `database_admin_timeout_ms`.
+            keyspace: if provided, it is passed to the Database; otherwise
+                the Database class will apply an environment-specific default.
             token: if supplied, is passed to the Database instead of
                 the one set for this object. Useful if one wants to work in
                 a least-privilege manner, limiting the permissions for non-admin work.
@@ -3095,11 +3038,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
         return self._astra_db_admin.get_database(
             api_endpoint=self.api_endpoint,
-            token=token,
             keyspace=keyspace,
-            database_admin_timeout_ms=database_admin_timeout_ms,
-            request_timeout_ms=request_timeout_ms,
-            timeout_ms=timeout_ms,
+            token=token,
             spawn_api_options=spawn_api_options,
         )
 
@@ -3107,9 +3047,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         self,
         *,
         keyspace: str | None = None,
-        database_admin_timeout_ms: int | None = None,
-        request_timeout_ms: int | None = None,
-        timeout_ms: int | None = None,
         token: str | TokenProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
@@ -3118,15 +3055,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         for data-related tasks.
 
         Args:
-            keyspace: an optional keyspace to set in the resulting AsyncDatabase.
-                The same default logic as for `AstraDBAdmin.get_database` applies.
-            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying DevOps API request for 'region', should it be necessary.
-                If not provided, this object's defaults apply.
-                (This method issues a single API request, hence all timeout parameters
-                are treated the same.)
-            request_timeout_ms: an alias for `database_admin_timeout_ms`.
-            timeout_ms: an alias for `database_admin_timeout_ms`.
+            keyspace: if provided, it is passed to the AsyncDatabase; otherwise
+                the AsyncDatabase class will apply an environment-specific default.
             token: if supplied, is passed to the AsyncDatabase instead of
                 the one set for this object. Useful if one wants to work in
                 a least-privilege manner, limiting the permissions for non-admin work.
@@ -3144,13 +3074,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             data and collections.
         """
 
-        return self._astra_db_admin.get_database(
-            api_endpoint=self.api_endpoint,
-            token=token,
+        return self.get_database(
             keyspace=keyspace,
-            database_admin_timeout_ms=database_admin_timeout_ms,
-            request_timeout_ms=request_timeout_ms,
-            timeout_ms=timeout_ms,
+            token=token,
             spawn_api_options=spawn_api_options,
         ).to_async()
 
