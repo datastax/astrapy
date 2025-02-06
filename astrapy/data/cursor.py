@@ -375,7 +375,7 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         timeout_context: _TimeoutContext,
     ) -> tuple[list[TRAW], str | None, dict[str, Any] | None]:
         if self.collection is None:
-            raise ValueError("Query engine has no sync collection.")
+            raise RuntimeError("Query engine has no sync collection.")
         f_payload = {
             "find": {
                 **self.f_r_subpayload,
@@ -419,7 +419,7 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         timeout_context: _TimeoutContext,
     ) -> tuple[list[TRAW], str | None, dict[str, Any] | None]:
         if self.async_collection is None:
-            raise ValueError("Query engine has no async collection.")
+            raise RuntimeError("Query engine has no async collection.")
         f_payload = {
             "find": {
                 **self.f_r_subpayload,
@@ -512,7 +512,7 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         timeout_context: _TimeoutContext,
     ) -> tuple[list[TRAW], str | None, dict[str, Any] | None]:
         if self.table is None:
-            raise ValueError("Query engine has no sync table.")
+            raise RuntimeError("Query engine has no sync table.")
         f_payload = self.table._converter_agent.preprocess_payload(
             {
                 "find": {
@@ -561,7 +561,7 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         timeout_context: _TimeoutContext,
     ) -> tuple[list[TRAW], str | None, dict[str, Any] | None]:
         if self.async_table is None:
-            raise ValueError("Query engine has no async table.")
+            raise RuntimeError("Query engine has no async table.")
         f_payload = self.async_table._converter_agent.preprocess_payload(
             {
                 "find": {
@@ -714,7 +714,7 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         skip: int | None | UnsetType = _UNSET,
     ) -> CollectionFindCursor[TRAW, T]:
         if self._query_engine.collection is None:
-            raise ValueError("Query engine has no collection.")
+            raise RuntimeError("Query engine has no collection.")
         return CollectionFindCursor(
             collection=self._query_engine.collection,
             request_timeout_ms=self._request_timeout_ms
@@ -805,7 +805,7 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         """
 
         if self._query_engine.collection is None:
-            raise ValueError("Query engine has no collection.")
+            raise RuntimeError("Query engine has no collection.")
         return self._query_engine.collection
 
     def clone(self) -> CollectionFindCursor[TRAW, TRAW]:
@@ -839,7 +839,7 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         """
 
         if self._query_engine.collection is None:
-            raise ValueError("Query engine has no collection.")
+            raise RuntimeError("Query engine has no collection.")
         return CollectionFindCursor(
             collection=self._query_engine.collection,
             request_timeout_ms=self._request_timeout_ms,
@@ -1060,7 +1060,7 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         """
         self._ensure_idle()
         if self._query_engine.collection is None:
-            raise ValueError("Query engine has no collection.")
+            raise RuntimeError("Query engine has no collection.")
         composite_mapper: Callable[[TRAW], TNEW]
         if self._mapper is not None:
 
@@ -1392,7 +1392,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         skip: int | None | UnsetType = _UNSET,
     ) -> AsyncCollectionFindCursor[TRAW, T]:
         if self._query_engine.async_collection is None:
-            raise ValueError("Query engine has no async collection.")
+            raise RuntimeError("Query engine has no async collection.")
         return AsyncCollectionFindCursor(
             collection=self._query_engine.async_collection,
             request_timeout_ms=self._request_timeout_ms
@@ -1488,7 +1488,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         """
 
         if self._query_engine.async_collection is None:
-            raise ValueError("Query engine has no async collection.")
+            raise RuntimeError("Query engine has no async collection.")
         return self._query_engine.async_collection
 
     def clone(self) -> AsyncCollectionFindCursor[TRAW, TRAW]:
@@ -1508,7 +1508,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         """
 
         if self._query_engine.async_collection is None:
-            raise ValueError("Query engine has no async collection.")
+            raise RuntimeError("Query engine has no async collection.")
         return AsyncCollectionFindCursor(
             collection=self._query_engine.async_collection,
             request_timeout_ms=self._request_timeout_ms,
@@ -1701,7 +1701,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
 
         self._ensure_idle()
         if self._query_engine.async_collection is None:
-            raise ValueError("Query engine has no async collection.")
+            raise RuntimeError("Query engine has no async collection.")
         composite_mapper: Callable[[TRAW], TNEW]
         if self._mapper is not None:
 
@@ -1994,7 +1994,7 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         skip: int | None | UnsetType = _UNSET,
     ) -> TableFindCursor[TRAW, T]:
         if self._query_engine.table is None:
-            raise ValueError("Query engine has no table.")
+            raise RuntimeError("Query engine has no table.")
         return TableFindCursor(
             table=self._query_engine.table,
             request_timeout_ms=self._request_timeout_ms
@@ -2085,7 +2085,7 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         """
 
         if self._query_engine.table is None:
-            raise ValueError("Query engine has no table.")
+            raise RuntimeError("Query engine has no table.")
         return self._query_engine.table
 
     def clone(self) -> TableFindCursor[TRAW, TRAW]:
@@ -2119,7 +2119,7 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         """
 
         if self._query_engine.table is None:
-            raise ValueError("Query engine has no table.")
+            raise RuntimeError("Query engine has no table.")
         return TableFindCursor(
             table=self._query_engine.table,
             request_timeout_ms=self._request_timeout_ms,
@@ -2338,7 +2338,7 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
 
         self._ensure_idle()
         if self._query_engine.table is None:
-            raise ValueError("Query engine has no table.")
+            raise RuntimeError("Query engine has no table.")
         composite_mapper: Callable[[TRAW], TNEW]
         if self._mapper is not None:
 
@@ -2670,7 +2670,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         skip: int | None | UnsetType = _UNSET,
     ) -> AsyncTableFindCursor[TRAW, T]:
         if self._query_engine.async_table is None:
-            raise ValueError("Query engine has no async table.")
+            raise RuntimeError("Query engine has no async table.")
         return AsyncTableFindCursor(
             table=self._query_engine.async_table,
             request_timeout_ms=self._request_timeout_ms
@@ -2765,7 +2765,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         """
 
         if self._query_engine.async_table is None:
-            raise ValueError("Query engine has no async table.")
+            raise RuntimeError("Query engine has no async table.")
         return self._query_engine.async_table
 
     def clone(self) -> AsyncTableFindCursor[TRAW, TRAW]:
@@ -2785,7 +2785,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         """
 
         if self._query_engine.async_table is None:
-            raise ValueError("Query engine has no async table.")
+            raise RuntimeError("Query engine has no async table.")
         return AsyncTableFindCursor(
             table=self._query_engine.async_table,
             request_timeout_ms=self._request_timeout_ms,
@@ -2978,7 +2978,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
 
         self._ensure_idle()
         if self._query_engine.async_table is None:
-            raise ValueError("Query engine has no async table.")
+            raise RuntimeError("Query engine has no async table.")
         composite_mapper: Callable[[TRAW], TNEW]
         if self._mapper is not None:
 

@@ -437,7 +437,7 @@ def normalize_region_for_id(
         logger.info(f"finished fetching raw database info for {database_id}")
         found_region = this_db_info.get("info", {}).get("region")
         if not isinstance(found_region, str):
-            raise ValueError(
+            raise DevOpsAPIException(
                 f"Could not determine 'region' from database info: {str(this_db_info)}"
             )
         return found_region
@@ -2002,10 +2002,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
     Args:
         api_endpoint: the API Endpoint for the target database
-            (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
+            (i.e. `https://<ID>-<REGION>.apps.astra.datastax.com`).
             The database must exist already for the resulting object
             to be effectively used; in other words, this invocation
             does not create the database, just the object instance.
+            Database admin objects cannot work with 'Custom Domain' endpoints.
         api_options: a complete specification of the API Options for this instance.
         spawner_database: either a Database or an AsyncDatabase instance. This represents
             the database class which spawns this admin object, so that, if required,
