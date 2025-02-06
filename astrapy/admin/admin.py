@@ -413,36 +413,6 @@ def _recast_as_admin_database_info(
     )
 
 
-def normalize_region_for_id(
-    database_id: str,
-    environment: str,
-    region_param: str | None,
-    token: str | TokenProvider | UnsetType = _UNSET,
-    request_timeout_ms: int | None = None,
-    timeout_ms: int | None = None,
-    api_options: APIOptions | None = None,
-) -> str:
-    if region_param:
-        return region_param
-    else:
-        logger.info(f"fetching raw database info for {database_id}")
-        this_db_info = fetch_raw_database_info_from_id_token(
-            id=database_id,
-            token=token,
-            environment=environment,
-            request_timeout_ms=request_timeout_ms,
-            timeout_ms=timeout_ms,
-            api_options=api_options,
-        )
-        logger.info(f"finished fetching raw database info for {database_id}")
-        found_region = this_db_info.get("info", {}).get("region")
-        if not isinstance(found_region, str):
-            raise DevOpsAPIException(
-                f"Could not determine 'region' from database info: {str(this_db_info)}"
-            )
-        return found_region
-
-
 class AstraDBAdmin:
     """
     An "admin" object, able to perform administrative tasks at the databases
@@ -1538,47 +1508,37 @@ class AstraDBAdmin:
         api_endpoint: str | None = None,
         id: str | None = None,
         region: str | None = None,
-        database_admin_timeout_ms: int | None = None,
-        request_timeout_ms: int | None = None,
-        timeout_ms: int | None = None,
         token: str | TokenProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBDatabaseAdmin:
         """
         Create an AstraDBDatabaseAdmin object for admin work within a certain database.
 
+        The database can be specified by its API endpoint or, alternatively,
+        by its (id, region) parameters: these two call patterns exclude each other.
+
         Args:
             api_endpoint_or_id: positional parameter that can stand for both
                 `api_endpoint` and `id`. Passing them together is an error.
             api_endpoint: the API Endpoint for the target database
-                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
+                (i.e. `https://<ID>-<REGION>.apps.astra.datastax.com`.
+                Note that no 'Custom Domain' endpoints are accepted).
                 The database must exist already for the resulting object
                 to be effectively used; in other words, this invocation
                 does not create the database, just the object instance.
             id: the target database ID. This is alternative to using the API Endpoint.
-            region: the region to use for connecting to the database. The
-                database must be located in that region. This parameter can be used
-                only if the database is specified by its ID (instead of API Endpoint).
-                If this parameter is not passed, and cannot be inferred
-                from the API endpoint, an additional DevOps API request is made
-                to determine the default region and use it subsequently.
-            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying DevOps API request for 'region', should it be necessary.
-                If not provided, this object's defaults apply.
-                (This method issues a single API request, hence all timeout parameters
-                are treated the same.)
-            request_timeout_ms: an alias for `database_admin_timeout_ms`.
-            timeout_ms: an alias for `database_admin_timeout_ms`.
+            region: the region to use for connecting to the database.
+                This parameter must be supplied if (and only if) the `id` is
+                given for the database instead of the full API endpoint.
             token: if supplied, is passed to the Database instead of
                 the one set for this object.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
             spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the AstraDBAdmin.
-                This allows for a deeper configuration of the database admin, e.g.
-                concerning timeouts; if this is passed together with
-                the named timeout parameters, the latter will take precedence
-                in their respective settings.
+                This allows for a deeper configuration of the database admin, i.e.
+                beyond just specifying a token; if this is passed together with
+                the named token parameter, the latter will take precedence.
 
         Returns:
             An AstraDBDatabaseAdmin instance representing the requested database.
@@ -1597,18 +1557,15 @@ class AstraDBAdmin:
             `create_database` method.
         """
 
-        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
-            timeout_options=self.api_options.timeout_options,
-            database_admin_timeout_ms=database_admin_timeout_ms,
-            request_timeout_ms=request_timeout_ms,
-            timeout_ms=timeout_ms,
-        )
         _api_endpoint_p, _id_p = check_id_endpoint_parg_kwargs(
             p_arg=api_endpoint_or_id, api_endpoint=api_endpoint, id=id
         )
-        _final_api_options = self.api_options.with_override(
+        resulting_api_options = self.api_options.with_override(
             spawn_api_options
-        ).with_override(APIOptions(token=token))
+        ).with_override(
+            APIOptions(token=token),
+        )
+
         # handle the "endpoint passed as id" case first:
         if _api_endpoint_p is not None:
             if region is not None:
@@ -1618,26 +1575,22 @@ class AstraDBAdmin:
             return AstraDBDatabaseAdmin.from_astra_db_admin(
                 api_endpoint=_api_endpoint_p,
                 astra_db_admin=self,
-                spawn_api_options=_final_api_options,
+                spawn_api_options=resulting_api_options,
             )
         else:
             if _id_p is None:
                 raise ValueError("Either `api_endpoint` or `id` must be supplied.")
-            _region = normalize_region_for_id(
-                database_id=_id_p,
-                environment=self.api_options.environment,
-                region_param=region,
-                request_timeout_ms=_database_admin_timeout_ms,
-                api_options=self.api_options,
-            )
+            if region is None:
+                raise ValueError("Parameter `region` must be supplied with `id`.")
+
             return AstraDBDatabaseAdmin.from_astra_db_admin(
                 api_endpoint=build_api_endpoint(
                     environment=self.api_options.environment,
                     database_id=_id_p,
-                    region=_region,
+                    region=region,
                 ),
                 astra_db_admin=self,
-                spawn_api_options=_final_api_options,
+                spawn_api_options=resulting_api_options,
             )
 
     def get_database(
@@ -1955,7 +1908,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
     Args:
         api_endpoint: the API Endpoint for the target database
-            (i.e. `https://<ID>-<REGION>.apps.astra.datastax.com`).
+            (i.e. `https://<ID>-<REGION>.apps.astra.datastax.com`.
+            Note that no 'Custom Domain' endpoints are accepted).
             The database must exist already for the resulting object
             to be effectively used; in other words, this invocation
             does not create the database, just the object instance.
@@ -3023,7 +2977,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 in their respective settings.
 
         Returns:
-            A Database object, ready to be used for working with data and collections.
+            A Database object, ready to work with data, collections and tables.
 
         Example:
             >>> my_db = my_db_admin.get_database()
@@ -3070,8 +3024,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 in their respective settings.
 
         Returns:
-            An AsyncDatabase object, ready to be used for working with
-            data and collections.
+            An AsyncDatabase object, ready to work with data, collections and tables.
         """
 
         return self.get_database(
@@ -3770,7 +3723,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 in their respective settings.
 
         Returns:
-            A Database object, ready to be used for working with data and collections.
+            A Database object, ready to work with data, collections and tables.
 
         Example:
             >>> my_db = admin_for_my_db.get_database()
@@ -3828,9 +3781,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 in their respective settings.
 
         Returns:
-            An AsyncDatabase object, ready to be used for working with
-            data and collections.
-
+            An AsyncDatabase object, ready to work with data, collections and tables.
         Note:
             creating an instance of AsyncDatabase does not trigger actual creation
             of the database itself, which should exist beforehand.
