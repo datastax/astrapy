@@ -16,6 +16,7 @@ Spawner methods for databases/admins standardized; they don't issue DevOps API c
 Support for Astra DB "custom domain" endpoints for database
     - in which case: `.id`, `.region`, `.get_database_admin()`, `.info()` and `.name()` aren't available.
 Support for the `indexType` field to describe table indexes (for compatibility, said field is not mandatory).
+Collections write path now obeys the binary-encoding API Option (which in turn defaults to True. Formerly bin-encoding was always turned off.)
 DataAPITime: support for "hh:mm" no-seconds format.
 DataAPIDuration: improved parse performance by caching regexpes.
 DataAPIDuration: support for "P4W"-type strings and for zeroes such as "P", "-PR".
