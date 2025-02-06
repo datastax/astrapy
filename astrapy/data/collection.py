@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
@@ -476,7 +475,7 @@ class Collection(Generic[DOC]):
         if self_descriptors:
             return self_descriptors[0].definition
         else:
-            raise ValueError(
+            raise RuntimeError(
                 f"Collection {self.keyspace}.{self.name} not found.",
             )
 
@@ -552,7 +551,7 @@ class Collection(Generic[DOC]):
 
         _keyspace = self.database.keyspace
         if _keyspace is None:
-            raise ValueError("The collection's DB is set with keyspace=None")
+            raise RuntimeError("The collection's DB is set with keyspace=None")
         return _keyspace
 
     @property
@@ -3009,7 +3008,7 @@ class AsyncCollection(Generic[DOC]):
         if self_descriptors:
             return self_descriptors[0].definition
         else:
-            raise ValueError(
+            raise RuntimeError(
                 f"Collection {self.keyspace}.{self.name} not found.",
             )
 
@@ -3088,7 +3087,7 @@ class AsyncCollection(Generic[DOC]):
 
         _keyspace = self.database.keyspace
         if _keyspace is None:
-            raise ValueError("The collection's DB is set with keyspace=None")
+            raise RuntimeError("The collection's DB is set with keyspace=None")
         return _keyspace
 
     @property
@@ -3195,14 +3194,14 @@ class AsyncCollection(Generic[DOC]):
                     inserted_id=inserted_id,
                 )
             else:
-                raise ValueError(
-                    "Could not complete a insert_one operation. "
-                    f"(gotten '${json.dumps(io_response)}')"
+                raise UnexpectedDataAPIResponseException(
+                    text="Faulty response from insert_one API command.",
+                    raw_response=io_response,
                 )
         else:
-            raise ValueError(
-                "Could not complete a insert_one operation. "
-                f"(gotten '${json.dumps(io_response)}')"
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from insert_one API command.",
+                raw_response=io_response,
             )
 
     async def insert_many(

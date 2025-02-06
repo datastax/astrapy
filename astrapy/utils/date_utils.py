@@ -129,7 +129,7 @@ def _unix_timestamp_ms_to_timetuple(
         milliseconds=y_remainder_ms
     )
     if ref_dt.year != ref_year:
-        raise ValueError(f"Could not map timestamp ({timestamp_ms} ms) to a date.")
+        raise RuntimeError(f"Could not map timestamp ({timestamp_ms} ms) to a date.")
     month = ref_dt.month
     day = ref_dt.day
     hour = ref_dt.hour

@@ -451,7 +451,7 @@ class Table(Generic[ROW]):
         if self_descriptors:
             return self_descriptors[0].definition
         else:
-            raise ValueError(
+            raise RuntimeError(
                 f"Table {self.keyspace}.{self.name} not found.",
             )
 
@@ -524,7 +524,7 @@ class Table(Generic[ROW]):
 
         _keyspace = self.database.keyspace
         if _keyspace is None:
-            raise ValueError("The table's DB is set with keyspace=None")
+            raise RuntimeError("The table's DB is set with keyspace=None")
         return _keyspace
 
     @property
@@ -3162,7 +3162,7 @@ class AsyncTable(Generic[ROW]):
         if self_descriptors:
             return self_descriptors[0].definition
         else:
-            raise ValueError(
+            raise RuntimeError(
                 f"Table {self.keyspace}.{self.name} not found.",
             )
 
@@ -3238,7 +3238,7 @@ class AsyncTable(Generic[ROW]):
 
         _keyspace = self.database.keyspace
         if _keyspace is None:
-            raise ValueError("The table's DB is set with keyspace=None")
+            raise RuntimeError("The table's DB is set with keyspace=None")
         return _keyspace
 
     @property

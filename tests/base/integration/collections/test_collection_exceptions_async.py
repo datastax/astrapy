@@ -144,7 +144,7 @@ class TestCollectionExceptionsAsync:
     ) -> None:
         acol = async_empty_collection._copy()
         acol._name += "_hacked"
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(RuntimeError, match="not found"):
             await acol.options()
 
     @pytest.mark.describe("test of collection count_documents failure modes, async")

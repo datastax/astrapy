@@ -134,7 +134,7 @@ class TestCollectionExceptionsSync:
     ) -> None:
         col = sync_empty_collection._copy()
         col._name += "_hacked"
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(RuntimeError, match="not found"):
             col.options()
 
     @pytest.mark.describe("test of collection count_documents failure modes, sync")
