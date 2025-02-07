@@ -197,6 +197,7 @@ class TestCollectionDMLSync:
             "Nb_Nc_[]": False,
             "Nb_Nc_DV": False,
         }
+
         raw_find_response = sync_empty_collection.command(
             body={"find": {"projection": {"_id": True, "$vector": True}}},
         )

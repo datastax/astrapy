@@ -226,6 +226,7 @@ class TestCollectionDMLAsync:
             "Nb_Nc_[]": False,
             "Nb_Nc_DV": False,
         }
+
         raw_find_response = await async_empty_collection.command(
             body={"find": {"projection": {"_id": True, "$vector": True}}},
         )
