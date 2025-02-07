@@ -19,7 +19,8 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Callable, Generic, TypeVar, cast
+from inspect import iscoroutinefunction
+from typing import Any, Awaitable, Callable, Generic, TypeVar, cast
 
 from typing_extensions import override
 
@@ -1106,7 +1107,7 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         results in the cursor entering CLOSED state.
 
         Args:
-            function: a callback function whose only parameter is the type returned
+            function: a callback function whose only parameter is of the type returned
                 by the cursor. This callback is invoked once per each document yielded
                 by the cursor. If the callback returns a `False`, the `for_each`
                 invocation stops early and returns without consuming further documents.
@@ -1729,14 +1730,14 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
 
     async def for_each(
         self,
-        function: Callable[[T], bool | None],
+        function: Callable[[T], bool | None] | Callable[[T], Awaitable[bool | None]],
         *,
         general_method_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
         Consume the remaining documents in the cursor, invoking a provided callback
-        function on each of them.
+        function -- or coroutine -- on each of them.
 
         Calling this method on a CLOSED cursor results in an error.
 
@@ -1751,8 +1752,9 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         adaptations to the async interface.
 
         Args:
-            function: a callback function whose only parameter is the type returned
-                by the cursor. This callback is invoked once per each document yielded
+            function: a callback function, or a coroutine, whose only parameter is of
+                the type returned by the cursor.
+                This callback is invoked once per each document yielded
                 by the cursor. If the callback returns a `False`, the `for_each`
                 invocation stops early and returns without consuming further documents.
             general_method_timeout_ms: a timeout, in milliseconds, for the whole
@@ -1772,8 +1774,12 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             overall_timeout_ms=copy_ovr_ms,
         )
         self._imprint_internal_state(_cursor)
+        is_coro = iscoroutinefunction(function)
         async for document in _cursor:
-            res = function(document)
+            if is_coro:
+                res = await function(document)  # type: ignore[misc]
+            else:
+                res = function(document)
             if res is False:
                 break
         _cursor._imprint_internal_state(self)
@@ -2384,7 +2390,7 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         results in the cursor entering CLOSED state.
 
         Args:
-            function: a callback function whose only parameter is the type returned
+            function: a callback function whose only parameter is of the type returned
                 by the cursor. This callback is invoked once per each row yielded
                 by the cursor. If the callback returns a `False`, the `for_each`
                 invocation stops early and returns without consuming further rows.
@@ -2445,8 +2451,8 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             overall_timeout_ms=copy_ovr_ms,
         )
         self._imprint_internal_state(_cursor)
-        for document in _cursor:
-            res = function(document)
+        for row in _cursor:
+            res = function(row)
             if res is False:
                 break
         _cursor._imprint_internal_state(self)
@@ -3006,14 +3012,14 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
 
     async def for_each(
         self,
-        function: Callable[[T], bool | None],
+        function: Callable[[T], bool | None] | Callable[[T], Awaitable[bool | None]],
         *,
         general_method_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
         Consume the remaining rows in the cursor, invoking a provided callback
-        function on each of them.
+        function -- or coroutine -- on each of them.
 
         Calling this method on a CLOSED cursor results in an error.
 
@@ -3028,8 +3034,9 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         adaptations to the async interface.
 
         Args:
-            function: a callback function whose only parameter is the type returned
-                by the cursor. This callback is invoked once per each row yielded
+            function: a callback function, or a coroutine, whose only parameter is of
+                the type returned by the cursor.
+                This callback is invoked once per each row yielded
                 by the cursor. If the callback returns a `False`, the `for_each`
                 invocation stops early and returns without consuming further rows.
             general_method_timeout_ms: a timeout, in milliseconds, for the whole
@@ -3049,8 +3056,12 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             overall_timeout_ms=copy_ovr_ms,
         )
         self._imprint_internal_state(_cursor)
-        async for document in _cursor:
-            res = function(document)
+        is_coro = iscoroutinefunction(function)
+        async for row in _cursor:
+            if is_coro:
+                res = await function(row)  # type: ignore[misc]
+            else:
+                res = function(row)
             if res is False:
                 break
         _cursor._imprint_internal_state(self)

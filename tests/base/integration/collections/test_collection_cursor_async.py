@@ -314,6 +314,20 @@ class TestCollectionCursorSync:
         assert accum0 == base_rows
         assert fe_cur.state == FindCursorState.CLOSED
 
+        # full for_each, coroutine
+        aaccum0: list[dict[str, Any]] = []
+
+        async def amarker0(
+            row: dict[str, Any],
+            acc: list[dict[str, Any]] = aaccum0,
+        ) -> None:
+            acc += [row]
+
+        afe_cur = async_filled_collection.find()
+        await afe_cur.for_each(amarker0)
+        assert aaccum0 == base_rows
+        assert afe_cur.state == FindCursorState.CLOSED
+
         # partially-consumed for_each
         accum1: list[dict[str, Any]] = []
 
@@ -327,6 +341,22 @@ class TestCollectionCursorSync:
         assert accum1 == base_rows[11:]
         assert pfe_cur.state == FindCursorState.CLOSED
 
+        # partially-consumed for_each, coroutine
+        aaccum1: list[dict[str, Any]] = []
+
+        async def amarker1(
+            row: dict[str, Any],
+            acc: list[dict[str, Any]] = aaccum1,
+        ) -> None:
+            acc += [row]
+
+        apfe_cur = async_filled_collection.find()
+        for _ in range(11):
+            await apfe_cur.__anext__()
+        await apfe_cur.for_each(amarker1)
+        assert aaccum1 == base_rows[11:]
+        assert apfe_cur.state == FindCursorState.CLOSED
+
         # mapped for_each
         accum2: list[int] = []
 
@@ -339,6 +369,19 @@ class TestCollectionCursorSync:
         await mfe_cur.for_each(marker2)
         assert accum2 == [mint(row) for row in base_rows[17:]]
         assert mfe_cur.state == FindCursorState.CLOSED
+
+        # mapped for_each, coroutine
+        aaccum2: list[int] = []
+
+        async def amarker2(val: int, acc: list[int] = aaccum2) -> None:
+            acc += [val]
+
+        amfe_cur = async_filled_collection.find().map(mint)
+        for _ in range(17):
+            await amfe_cur.__anext__()
+        await amfe_cur.for_each(amarker2)
+        assert aaccum2 == [mint(row) for row in base_rows[17:]]
+        assert amfe_cur.state == FindCursorState.CLOSED
 
         # breaking (early) for_each
         accum3: list[dict[str, Any]] = []
@@ -354,6 +397,23 @@ class TestCollectionCursorSync:
         bfe_another = await bfe_cur.__anext__()
         assert bfe_another == base_rows[5]
 
+        # breaking (early) for_each, coroutine
+        aaccum3: list[dict[str, Any]] = []
+
+        async def amarker3(
+            row: dict[str, Any],
+            acc: list[dict[str, Any]] = aaccum3,
+        ) -> bool:
+            acc += [row]
+            return len(acc) < 5
+
+        abfe_cur = async_filled_collection.find()
+        await abfe_cur.for_each(amarker3)
+        assert aaccum3 == base_rows[:5]
+        assert abfe_cur.state == FindCursorState.STARTED
+        abfe_another = await abfe_cur.__anext__()
+        assert abfe_another == base_rows[5]
+
         # nonbool-nonbreaking for_each
         accum4: list[dict[str, Any]] = []
 
@@ -365,6 +425,21 @@ class TestCollectionCursorSync:
         await nbfe_cur.for_each(marker4)  # type: ignore[arg-type]
         assert accum4 == base_rows
         assert nbfe_cur.state == FindCursorState.CLOSED
+
+        # nonbool-nonbreaking for_each, coroutine
+        aaccum4: list[dict[str, Any]] = []
+
+        async def amarker4(
+            row: dict[str, Any],
+            acc: list[dict[str, Any]] = aaccum4,
+        ) -> int:
+            acc += [row]
+            return 8 if len(acc) < 5 else 0
+
+        anbfe_cur = async_filled_collection.find()
+        await anbfe_cur.for_each(amarker4)  # type: ignore[arg-type]
+        assert aaccum4 == base_rows
+        assert anbfe_cur.state == FindCursorState.CLOSED
 
     @pytest.mark.describe("test of collection cursors, serdes options obeyance, async")
     async def test_collection_cursors_serdes_options_async(
