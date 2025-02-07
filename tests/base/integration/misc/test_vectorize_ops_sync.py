@@ -24,7 +24,7 @@ from ..conftest import clean_nulls_from_dict
 
 class TestVectorizeOpsSync:
     @pytest.mark.describe("test of find_embedding_providers, sync")
-    def test_collection_methods_vectorize_sync(
+    def test_findembeddingproviders_sync(
         self,
         sync_database: Database,
     ) -> None:

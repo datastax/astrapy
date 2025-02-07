@@ -24,7 +24,7 @@ from ..conftest import clean_nulls_from_dict
 
 class TestVectorizeOpsAsync:
     @pytest.mark.describe("test of find_embedding_providers, async")
-    async def test_collection_methods_vectorize_async(
+    async def test_findembeddingproviders_async(
         self,
         async_database: AsyncDatabase,
     ) -> None:
