@@ -96,6 +96,11 @@ class DataAPIErrorDescriptor:
         return self.summary()
 
     def summary(self) -> str:
+        """
+        Determine a string succinct description of this error descriptor.
+
+        The precise format of this summary is determined by which fields are set.
+        """
         non_code_part: str | None
         if self.title:
             if self.message:
@@ -141,6 +146,14 @@ class DataAPIDetailedErrorDescriptor:
     command: dict[str, Any] | None
     raw_response: dict[str, Any]
 
+    def __repr__(self) -> str:
+        pieces = [
+            f"error_descriptors={self.error_descriptors.__repr__()}" if self.error_descriptors else None,
+            f"command=..." if self.command else None,
+            f"raw_response=..." if self.raw_response else None,
+        ]
+        return f"{self.__class__.__name__}({', '.join(pc for pc in pieces if pc)})"
+
 
 @dataclass
 class DataAPIResponseException(DataAPIException):
@@ -156,9 +169,6 @@ class DataAPIResponseException(DataAPIException):
 
     Attributes:
         text: a text message about the exception.
-        error_descriptors: a list of all DataAPIErrorDescriptor objects
-            found across all requests involved in this exception, which are
-            possibly more than one.
         detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
             objects, one for each of the requests performed during this operation.
             For single-request methods, such as insert_one, this list always
@@ -166,20 +176,27 @@ class DataAPIResponseException(DataAPIException):
     """
 
     text: str | None
-    error_descriptors: list[DataAPIErrorDescriptor]
     detailed_error_descriptors: list[DataAPIDetailedErrorDescriptor]
 
     def __init__(
         self,
         text: str | None,
         *,
-        error_descriptors: list[DataAPIErrorDescriptor],
         detailed_error_descriptors: list[DataAPIDetailedErrorDescriptor],
     ) -> None:
         super().__init__(text)
         self.text = text
-        self.error_descriptors = error_descriptors
         self.detailed_error_descriptors = detailed_error_descriptors
+
+    @property
+    def error_descriptors(self) -> list[DataAPIErrorDescriptor]:
+        """Return a flattened list of all individual DataAPIErrorDescriptor objects."""
+
+        return [
+            error_descriptor
+            for d_e_d in self.detailed_error_descriptors
+            for error_descriptor in d_e_d.error_descriptors
+        ]
 
     @classmethod
     def from_response(
@@ -219,15 +236,14 @@ class DataAPIResponseException(DataAPIException):
                 )
                 detailed_error_descriptors.append(detailed_error_descriptor)
 
-        # flatten
-        error_descriptors = [
+        flat_error_descriptors = [
             error_descriptor
             for d_e_d in detailed_error_descriptors
             for error_descriptor in d_e_d.error_descriptors
         ]
 
-        if error_descriptors:
-            summaries = [e_d.summary() for e_d in error_descriptors]
+        if flat_error_descriptors:
+            summaries = [e_d.summary() for e_d in flat_error_descriptors]
             if len(summaries) == 1:
                 text = summaries[0]
             else:
@@ -241,7 +257,6 @@ class DataAPIResponseException(DataAPIException):
 
         return cls(
             text,
-            error_descriptors=error_descriptors,
             detailed_error_descriptors=detailed_error_descriptors,
             **kwargs,
         )
@@ -251,7 +266,6 @@ class DataAPIResponseException(DataAPIException):
 
         return DataAPIResponseException(
             text=self.text,
-            error_descriptors=self.error_descriptors,
             detailed_error_descriptors=self.detailed_error_descriptors,
         )
 
