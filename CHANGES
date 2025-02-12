@@ -1,5 +1,8 @@
 main
 ====
+Exceptions
+    - `DataAPIResponseException.error_descriptors` is a property (computed from detailed_error_descriptors)
+    - better string representation of `DataAPIDetailedErrorDescriptor`
 Spawner methods for databases/admins standardized; they don't issue DevOps API calls.
     - removed `normalize_region_for_id` utility method, not used anymore.
     - `AstraDBAdmin.get_[async]_database()`:
