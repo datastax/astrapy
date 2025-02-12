@@ -148,9 +148,11 @@ class DataAPIDetailedErrorDescriptor:
 
     def __repr__(self) -> str:
         pieces = [
-            f"error_descriptors={self.error_descriptors.__repr__()}" if self.error_descriptors else None,
-            f"command=..." if self.command else None,
-            f"raw_response=..." if self.raw_response else None,
+            f"error_descriptors={self.error_descriptors.__repr__()}"
+            if self.error_descriptors
+            else None,
+            "command=..." if self.command else None,
+            "raw_response=..." if self.raw_response else None,
         ]
         return f"{self.__class__.__name__}({', '.join(pc for pc in pieces if pc)})"
 
