@@ -2071,7 +2071,7 @@ class Table(Generic[ROW]):
 
     def distinct(
         self,
-        key: str,
+        key: str | Iterable[str | int],
         *,
         filter: FilterType | None = None,
         general_method_timeout_ms: int | None = None,
@@ -2083,7 +2083,7 @@ class Table(Generic[ROW]):
         in the table that match the provided filter.
 
         Args:
-            key: the name of the field whose value is inspected across rows.
+            TODO key: the name of the field whose value is inspected across rows.
                 Keys are typically just column names, although they can use
                 the dot notation to select particular entries in map columns.
                 For set and list columns, individual entries are "unrolled"
@@ -2170,11 +2170,6 @@ class Table(Generic[ROW]):
         # preparing cursor:
         _extractor = _create_document_key_extractor(key)
         _key = _reduce_distinct_key_to_shallow_safe(key)
-        if _key == "":
-            raise ValueError(
-                "The 'key' parameter for distinct cannot be empty "
-                "or start with a list index."
-            )
         # relaxing the type hint (limited to within this method body)
         f_cursor: TableFindCursor[dict[str, Any], dict[str, Any]] = (
             TableFindCursor(
@@ -4812,7 +4807,7 @@ class AsyncTable(Generic[ROW]):
 
     async def distinct(
         self,
-        key: str,
+        key: str | Iterable[str | int],
         *,
         filter: FilterType | None = None,
         request_timeout_ms: int | None = None,
@@ -4824,7 +4819,7 @@ class AsyncTable(Generic[ROW]):
         in the table that match the provided filter.
 
         Args:
-            key: the name of the field whose value is inspected across rows.
+            TODO key: the name of the field whose value is inspected across rows.
                 Keys are typically just column names, although they can use
                 the dot notation to select particular entries in map columns.
                 For set and list columns, individual entries are "unrolled"
@@ -4916,11 +4911,6 @@ class AsyncTable(Generic[ROW]):
         # preparing cursor:
         _extractor = _create_document_key_extractor(key)
         _key = _reduce_distinct_key_to_shallow_safe(key)
-        if _key == "":
-            raise ValueError(
-                "The 'key' parameter for distinct cannot be empty "
-                "or start with a list index."
-            )
         # relaxing the type hint (limited to within this method body)
         f_cursor: AsyncTableFindCursor[dict[str, Any], dict[str, Any]] = (
             AsyncTableFindCursor(
