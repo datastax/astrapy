@@ -29,6 +29,7 @@ ESCAPE_TEST_FIELDS = {
     "a": "a",
     "a.b": "a&.b",
     "a&c": "a&&c",
+    "a..": "a&.&.",
     "": "",
     "xyz": "xyz",
     ".": "&.",
@@ -76,6 +77,8 @@ class TestDocumentPaths:
 
     @pytest.mark.describe("test of unescape_field_path")
     def test_unescape_field_path(self) -> None:
+        assert unescape_field_path("a&.b") == ["a.b"]
+
         all_lits, all_escs = list(zip(*ESCAPE_TEST_FIELDS.items()))
         assert unescape_field_path(".".join(all_escs)) == list(all_lits)
         assert unescape_field_path(".".join(all_escs[:3])) == list(all_lits[:3])
