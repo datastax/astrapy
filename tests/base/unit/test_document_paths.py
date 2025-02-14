@@ -17,19 +17,78 @@ from __future__ import annotations
 import pytest
 
 from astrapy.utils.document_paths import (
-    # ILLEGAL_ESCAPE_ERROR_MESSAGE_TEMPLATE,
-    # UNTERMINATED_ESCAPE_ERROR_MESSAGE_TEMPLATE,
+    ILLEGAL_ESCAPE_ERROR_MESSAGE_TEMPLATE,
+    UNTERMINATED_ESCAPE_ERROR_MESSAGE_TEMPLATE,
     escape_field_name,
-    # escape_field_names,
-    # field_names_to_path,
-    # unescape_field_path,
+    escape_field_names,
+    field_names_to_path,
+    unescape_field_path,
 )
+
+ESCAPE_TEST_FIELDS = {
+    "a": "a",
+    "a.b": "a&.b",
+    "a&c": "a&&c",
+    "": "",
+    "xyz": "xyz",
+    ".": "&.",
+    "...": "&.&.&.",
+    "&": "&&",
+    "&&": "&&&&",
+    "&.&.&..": "&&&.&&&.&&&.&.",
+    "🇦🇨": "🇦🇨",
+    "q🇦🇨w": "q🇦🇨w",
+    ".🇦🇨&": "&.🇦🇨&&",
+    "a&b.c.&.d": "a&&b&.c&.&&&.d",
+    ".env": "&.env",
+    "&quot": "&&quot",
+    "ݤ": "ݤ",
+    "Aݤ": "Aݤ",
+    "ݤZ": "ݤZ",
+    "🚾 🆒 🆓 🆕 🆖 🆗 🆙 🏧": "🚾 🆒 🆓 🆕 🆖 🆗 🆙 🏧",
+    "✋🏿 💪🏿 👐🏿 🙌🏿 👏🏿 🙏🏿": "✋🏿 💪🏿 👐🏿 🙌🏿 👏🏿 🙏🏿",
+    "👨‍👩‍👦 👨‍👩‍👧‍👦 👨‍👨‍👦 👩‍👩‍👧 👨‍👦 👨‍👧‍👦 👩‍👦 👩‍👧‍👦": "👨‍👩‍👦 👨‍👩‍👧‍👦 👨‍👨‍👦 👩‍👩‍👧 👨‍👦 👨‍👧‍👦 👩‍👦 👩‍👧‍👦",
+}
 
 
 class TestDocumentPaths:
     @pytest.mark.describe("test of escape_field_name")
     def test_escape_field_name(self) -> None:
-        # TODO tests
-        assert escape_field_name("a") == "a"
-        assert escape_field_name("a.b") == "a&.b"
-        assert escape_field_name("a&c") == "a&&c"
+        for lit_fn, esc_fn in ESCAPE_TEST_FIELDS.items():
+            assert escape_field_name(lit_fn) == esc_fn
+
+    @pytest.mark.describe("test of escape_field_names")
+    def test_escape_field_names(self) -> None:
+        all_lits, all_escs = list(zip(*ESCAPE_TEST_FIELDS.items()))
+        assert escape_field_names(all_lits) == list(all_escs)
+        assert escape_field_names(all_lits[:0]) == list(all_escs[:0])
+        assert escape_field_names(all_lits[:3]) == list(all_escs[:3])
+        assert escape_field_names(all_lits[3:6]) == list(all_escs[3:6])
+
+    @pytest.mark.describe("test of field_names_to_path")
+    def test_field_names_to_path(self) -> None:
+        all_lits, all_escs = list(zip(*ESCAPE_TEST_FIELDS.items()))
+        assert field_names_to_path(all_lits) == ".".join(all_escs)
+        assert field_names_to_path(all_lits[:3]) == ".".join(all_escs[:3])
+        assert field_names_to_path(all_lits[3:6]) == ".".join(all_escs[3:6])
+
+        assert field_names_to_path([]) == ""
+
+    @pytest.mark.describe("test of unescape_field_path")
+    def test_unescape_field_path(self) -> None:
+        all_lits, all_escs = list(zip(*ESCAPE_TEST_FIELDS.items()))
+        assert unescape_field_path(".".join(all_escs)) == list(all_lits)
+        assert unescape_field_path(".".join(all_escs[:3])) == list(all_lits[:3])
+        assert unescape_field_path(".".join(all_escs[3:6])) == list(all_lits[3:6])
+
+        assert unescape_field_path("") == [""]
+
+        with pytest.raises(
+            ValueError, match=ILLEGAL_ESCAPE_ERROR_MESSAGE_TEMPLATE[:24]
+        ):
+            unescape_field_path("a.b&?c.d")
+
+        with pytest.raises(
+            ValueError, match=UNTERMINATED_ESCAPE_ERROR_MESSAGE_TEMPLATE[:24]
+        ):
+            unescape_field_path("a.b.c&")

@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+from typing import Iterable
+
 FIELD_NAME_ESCAPE_CHAR = "&"
 FIELD_NAME_SEGMENT_SEPARATOR = "."
 FIELD_NAME_ESCAPED_CHARS = {FIELD_NAME_ESCAPE_CHAR, FIELD_NAME_SEGMENT_SEPARATOR}
@@ -49,12 +51,12 @@ def escape_field_name(field_name: str) -> str:
     return "".join(FIELD_NAME_ESCAPE_MAP.get(char, char) for char in field_name)
 
 
-def escape_field_names(field_names: list[str]) -> list[str]:
+def escape_field_names(field_names: Iterable[str]) -> list[str]:
     """
-    Escape a list of field-name path segments one by one.
+    Escape an iterable of field-name path segments one by one.
 
     Args:
-        field_names: a list of literal field-name path segments. Each identifies
+        field_names: an iterable of literal field-name path segments. Each identifies
         a single key in a JSON-like document. Example: ["top", "sub.key"]
 
     Returns:
@@ -69,12 +71,12 @@ def escape_field_names(field_names: list[str]) -> list[str]:
     return [escape_field_name(f_n) for f_n in field_names]
 
 
-def field_names_to_path(field_names: list[str]) -> str:
+def field_names_to_path(field_names: Iterable[str]) -> str:
     """
-    Convert a list of field-name path segments into a single string.
+    Convert an iterable of field-name path segments into a single string.
 
     Args:
-        field_names: a list of literal field-name path segments. Each identifies
+        field_names: an iterable of literal field-name path segments. Each identifies
         a single key in a JSON-like document. Example: ["top", "sub.key"]
 
     Returns:
