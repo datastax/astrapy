@@ -236,11 +236,82 @@ class TestTableDMLSync:
         exp_d_list_int = {1, 2, 3}
         assert set(d_list_int) == set(exp_d_list_int)
 
-        d_p_map_text_text = sync_empty_table_all_returns.distinct("p_map_text_text.a")
-        exp_d_p_map_text_text = {"va", "VA"}
-        assert set(d_p_map_text_text) == set(exp_d_p_map_text_text)
+        d_list_int_ind = sync_empty_table_all_returns.distinct("p_list_int.1")
+        exp_d_list_int_ind = {1}
+        assert set(d_list_int_ind) == set(exp_d_list_int_ind)
+
+        d_p_map_text_text = sync_empty_table_all_returns.distinct("p_map_text_text")
+        exp_d_p_map_text_text = [
+            {"a": "va", "b": "vb"},
+            {"b": "VB"},
+            {"a": "VA", "b": "VB"},
+            {},
+        ]
+        assert len(d_p_map_text_text) == len(exp_d_p_map_text_text)
+        for _exp in exp_d_p_map_text_text:
+            assert any(_d == _exp for _d in d_p_map_text_text)
+
+        d_p_map_text_text_a = sync_empty_table_all_returns.distinct("p_map_text_text.a")
+        exp_d_p_map_text_text_a = {"va", "VA"}
+        assert set(d_p_map_text_text_a) == set(exp_d_p_map_text_text_a)
 
         d_set_int = sync_empty_table_all_returns.distinct("p_set_int")
+        exp_d_set_int = {100, 200, 300}
+        assert set(d_set_int) == set(exp_d_set_int)
+
+    @pytest.mark.describe("test of table distinct key-as-list, sync")
+    def test_table_distinct_key_as_list_sync(
+        self,
+        sync_empty_table_all_returns: DefaultTable,
+    ) -> None:
+        sync_empty_table_all_returns.insert_many(DISTINCT_AR_ROWS)
+
+        d_float = sync_empty_table_all_returns.distinct(["p_float"])
+        exp_d_float = {0.1, 0.2, float("NaN")}
+        assert set(_repaint_NaNs(d_float)) == _repaint_NaNs(exp_d_float)
+
+        d_text = sync_empty_table_all_returns.distinct(["p_text"])
+        exp_d_text = {"a", "b", None}
+        assert set(d_text) == set(exp_d_text)
+
+        d_timestamp = sync_empty_table_all_returns.distinct(["p_timestamp"])
+        exp_d_timestamp = {
+            DataAPITimestamp.from_string("1111-01-01T01:01:01Z"),
+            DataAPITimestamp.from_string("1221-01-01T01:01:01Z"),
+            None,
+        }
+        assert set(d_timestamp) == set(exp_d_timestamp)
+
+        d_list_int = sync_empty_table_all_returns.distinct(["p_list_int"])
+        exp_d_list_int = {1, 2, 3}
+        assert set(d_list_int) == set(exp_d_list_int)
+
+        d_list_int_ind = sync_empty_table_all_returns.distinct(["p_list_int", 1])
+        exp_d_list_int_ind = {1}
+        assert set(d_list_int_ind) == set(exp_d_list_int_ind)
+
+        d_list_int_sind = sync_empty_table_all_returns.distinct(["p_list_int", "1"])
+        exp_d_list_int_sind: set[int] = set()
+        assert set(d_list_int_sind) == set(exp_d_list_int_sind)
+
+        d_p_map_text_text = sync_empty_table_all_returns.distinct(["p_map_text_text"])
+        exp_d_p_map_text_text = [
+            {"a": "va", "b": "vb"},
+            {"b": "VB"},
+            {"a": "VA", "b": "VB"},
+            {},
+        ]
+        assert len(d_p_map_text_text) == len(exp_d_p_map_text_text)
+        for _exp in exp_d_p_map_text_text:
+            assert any(_d == _exp for _d in d_p_map_text_text)
+
+        d_p_map_text_text_a = sync_empty_table_all_returns.distinct(
+            ["p_map_text_text", "a"]
+        )
+        exp_d_p_map_text_text_a = {"va", "VA"}
+        assert set(d_p_map_text_text_a) == set(exp_d_p_map_text_text_a)
+
+        d_set_int = sync_empty_table_all_returns.distinct(["p_set_int"])
         exp_d_set_int = {100, 200, 300}
         assert set(d_set_int) == set(exp_d_set_int)
 

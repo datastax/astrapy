@@ -32,7 +32,7 @@ from astrapy.constants import (
 from astrapy.data.info.table_descriptor.table_altering import AlterTableOperation
 from astrapy.data.utils.distinct_extractors import (
     _create_document_key_extractor,
-    _hash_document,
+    _hash_table_document,
     _reduce_distinct_key_to_shallow_safe,
 )
 from astrapy.data.utils.table_converters import _TableConverterAgent
@@ -2188,7 +2188,7 @@ class Table(Generic[ROW]):
         logger.info(f"running distinct() on '{self.name}'")
         for document in f_cursor:
             for item in _extractor(document):
-                _item_hash = _hash_document(
+                _item_hash = _hash_table_document(
                     item, options=self.api_options.serdes_options
                 )
                 if _item_hash not in _item_hashes:
@@ -4929,7 +4929,7 @@ class AsyncTable(Generic[ROW]):
         logger.info(f"running distinct() on '{self.name}'")
         async for document in f_cursor:
             for item in _extractor(document):
-                _item_hash = _hash_document(
+                _item_hash = _hash_table_document(
                     item, options=self.api_options.serdes_options
                 )
                 if _item_hash not in _item_hashes:

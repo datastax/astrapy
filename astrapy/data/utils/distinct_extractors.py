@@ -25,6 +25,7 @@ from typing import (
 )
 
 from astrapy.data.utils.collection_converters import preprocess_collection_payload_value
+from astrapy.data.utils.table_converters import preprocess_table_payload_value
 from astrapy.data_types import DataAPIMap, DataAPISet
 from astrapy.utils.api_options import FullSerdesOptions
 from astrapy.utils.document_paths import unescape_field_path
@@ -180,8 +181,21 @@ def _reduce_distinct_key_to_shallow_safe(
     return valid_portion[0]
 
 
-def _hash_document(document: dict[str, Any], options: FullSerdesOptions) -> str:
+def _hash_collection_document(
+    document: dict[str, Any], options: FullSerdesOptions
+) -> str:
     _normalized_item = preprocess_collection_payload_value(
+        path=[], value=document, options=options
+    )
+    _normalized_json = json.dumps(
+        _normalized_item, sort_keys=True, separators=(",", ":")
+    )
+    _item_hash = hashlib.md5(_normalized_json.encode()).hexdigest()
+    return _item_hash
+
+
+def _hash_table_document(document: dict[str, Any], options: FullSerdesOptions) -> str:
+    _normalized_item = preprocess_table_payload_value(
         path=[], value=document, options=options
     )
     _normalized_json = json.dumps(

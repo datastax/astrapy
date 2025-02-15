@@ -35,7 +35,7 @@ from astrapy.data.utils.collection_converters import (
 )
 from astrapy.data.utils.distinct_extractors import (
     _create_document_key_extractor,
-    _hash_document,
+    _hash_collection_document,
     _reduce_distinct_key_to_safe,
 )
 from astrapy.database import AsyncDatabase, Database
@@ -1393,7 +1393,7 @@ class Collection(Generic[DOC]):
         logger.info(f"running distinct() on '{self.name}'")
         for document in f_cursor:
             for item in _extractor(document):
-                _item_hash = _hash_document(
+                _item_hash = _hash_collection_document(
                     item, options=self.api_options.serdes_options
                 )
                 if _item_hash not in _item_hashes:
@@ -3968,7 +3968,7 @@ class AsyncCollection(Generic[DOC]):
         logger.info(f"running distinct() on '{self.name}'")
         async for document in f_cursor:
             for item in _extractor(document):
-                _item_hash = _hash_document(
+                _item_hash = _hash_collection_document(
                     item, options=self.api_options.serdes_options
                 )
                 if _item_hash not in _item_hashes:
