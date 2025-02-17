@@ -31,13 +31,14 @@ UNTERMINATED_ESCAPE_ERROR_MESSAGE_TEMPLATE = (
 )
 
 
-def escape_field_name(field_name: str) -> str:
+def escape_field_name(field_name: str | int) -> str:
     """
     Escape a single literal field-name path segment.
 
     Args:
         field_name: a literal field-name path segment, i.e. a single field name
-        identifying a key in a JSON-like document. Example: "sub.key&friends"
+            identifying a key in a JSON-like document. Example: "sub.key&friends".
+            Non-negative whole numbers (representing indexes in lists) become strings.
 
     Returns:
         a string expressing the input in escaped form, i.e. with the necessary
@@ -48,16 +49,17 @@ def escape_field_name(field_name: str) -> str:
         'sub&.key&&friends'
     """
 
-    return "".join(FIELD_NAME_ESCAPE_MAP.get(char, char) for char in field_name)
+    return "".join(FIELD_NAME_ESCAPE_MAP.get(char, char) for char in f"{field_name}")
 
 
-def escape_field_names(field_names: Iterable[str]) -> list[str]:
+def escape_field_names(field_names: Iterable[str | int]) -> list[str]:
     """
     Escape an iterable of field-name path segments one by one.
 
     Args:
         field_names: an iterable of literal field-name path segments. Each identifies
-        a single key in a JSON-like document. Example: ["top", "sub.key"]
+            a single key in a JSON-like document. Example: ["top", "sub.key"]
+            Non-negative whole numbers (representing indexes in lists) become strings.
 
     Returns:
         a list with the same length as the input, where each path segment
@@ -71,13 +73,14 @@ def escape_field_names(field_names: Iterable[str]) -> list[str]:
     return [escape_field_name(f_n) for f_n in field_names]
 
 
-def field_names_to_path(field_names: Iterable[str]) -> str:
+def field_names_to_path(field_names: Iterable[str | int]) -> str:
     """
     Convert an iterable of field-name path segments into a single string.
 
     Args:
         field_names: an iterable of literal field-name path segments. Each identifies
-        a single key in a JSON-like document. Example: ["top", "sub.key"]
+            a single key in a JSON-like document. Example: ["top", "sub.key"]
+            Non-negative whole numbers (representing indexes in lists) become strings.
 
     Returns:
         a single string expressing the path according to the dot-notation convention,
@@ -102,7 +105,9 @@ def unescape_field_path(field_path: str) -> list[str]:
             with escaping for special characters.
 
     Returns:
-        a list of literal field names.
+        a list of literal field names. Even "number-looking" fields, such as "0"
+        or "12", are returned as strings and it is up to the caller to interpret
+        these according to the context.
 
     Example:
         >>> unescape_field_path("a.b")
