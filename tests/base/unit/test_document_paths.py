@@ -94,7 +94,7 @@ class TestDocumentPaths:
         assert unescape_field_path(".".join(all_escs[:3])) == list(all_lits[:3])
         assert unescape_field_path(".".join(all_escs[3:6])) == list(all_lits[3:6])
 
-        assert unescape_field_path("") == [""]
+        assert unescape_field_path("") == []
 
         with pytest.raises(
             ValueError, match=ILLEGAL_ESCAPE_ERROR_MESSAGE_TEMPLATE[:24]

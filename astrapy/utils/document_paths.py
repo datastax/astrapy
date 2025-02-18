@@ -123,9 +123,12 @@ def unescape_field_path(field_path: str) -> list[str]:
         ['a.b', 'c&d']
     """
 
-    segments = []
+    segments: list[str] = []
     buffer = ""
     path_length = len(field_path)
+    if path_length == 0:
+        return segments
+
     char_i = 0
     while char_i < path_length:
         char = field_path[char_i]
