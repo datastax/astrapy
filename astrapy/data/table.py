@@ -1129,7 +1129,7 @@ class Table(Generic[ROW]):
         )
         io_payload = self._converter_agent.preprocess_payload(
             {"insertOne": {"document": row}},
-            row_paths=[["insertOne", "document"]],
+            map2tuple_paths=[["insertOne", "document"]],
         )
         logger.info(f"insertOne on '{self.name}'")
         io_response = self._api_commander.request(
@@ -1404,6 +1404,7 @@ class Table(Generic[ROW]):
                             "options": options,
                         },
                     },
+                    map2tuple_paths=[["insertMany", "documents", ""]],
                 )
                 logger.info(f"insertMany on '{self.name}'")
                 chunk_response = self._api_commander.request(
@@ -1460,6 +1461,7 @@ class Table(Generic[ROW]):
                                     "options": options,
                                 },
                             },
+                            map2tuple_paths=[["insertMany", "documents", ""]],
                         )
                         logger.info(f"insertMany(chunk) on '{self.name}'")
                         im_response = self._api_commander.request(
@@ -1491,6 +1493,7 @@ class Table(Generic[ROW]):
                                 "options": options,
                             },
                         },
+                        map2tuple_paths=[["insertMany", "documents", ""]],
                     )
                     logger.info(f"insertMany(chunk) on '{self.name}'")
                     im_response = self._api_commander.request(
@@ -2044,7 +2047,7 @@ class Table(Generic[ROW]):
                     if v is not None
                 }
             },
-            row_paths=[["findOne", "filter"]],
+            map2tuple_paths=[["findOne", "filter"]],
         )
         fo_response = self._api_commander.request(
             payload=fo_payload,
@@ -2445,16 +2448,23 @@ class Table(Generic[ROW]):
             request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
         )
-        uo_payload = {
-            "updateOne": {
-                k: v
-                for k, v in {
-                    "filter": filter,
-                    "update": self._converter_agent.preprocess_payload(update),
-                }.items()
-                if v is not None
-            }
-        }
+        uo_payload = self._converter_agent.preprocess_payload(
+            {
+                "updateOne": {
+                    k: v
+                    for k, v in {
+                        "filter": filter,
+                        "update": update,
+                    }.items()
+                    if v is not None
+                }
+            },
+            map2tuple_paths=[
+                ["updateOne", "filter"],
+                ["updateOne", "update", "$set"],
+                ["updateOne", "update", "$unset"],
+            ],
+        )
         logger.info(f"updateOne on '{self.name}'")
         uo_response = self._api_commander.request(
             payload=uo_payload,
@@ -2531,7 +2541,8 @@ class Table(Generic[ROW]):
                     }.items()
                     if v is not None
                 }
-            }
+            },
+            map2tuple_paths=[["deleteOne", "filter"]],
         )
         logger.info(f"deleteOne on '{self.name}'")
         do_response = self._api_commander.request(
@@ -2625,7 +2636,8 @@ class Table(Generic[ROW]):
                     }.items()
                     if v is not None
                 }
-            }
+            },
+            map2tuple_paths=[["deleteMany", "filter"]],
         )
         logger.info(f"deleteMany on '{self.name}'")
         dm_response = self._api_commander.request(
@@ -3858,7 +3870,8 @@ class AsyncTable(Generic[ROW]):
             timeout_ms=timeout_ms,
         )
         io_payload = self._converter_agent.preprocess_payload(
-            {"insertOne": {"document": row}}
+            {"insertOne": {"document": row}},
+            map2tuple_paths=[["insertOne", "document"]],
         )
         logger.info(f"insertOne on '{self.name}'")
         io_response = await self._api_commander.async_request(
@@ -4132,6 +4145,7 @@ class AsyncTable(Generic[ROW]):
                             "options": options,
                         },
                     },
+                    map2tuple_paths=[["insertMany", "documents", ""]],
                 )
                 logger.info(f"insertMany(chunk) on '{self.name}'")
                 chunk_response = await self._api_commander.async_request(
@@ -4189,6 +4203,7 @@ class AsyncTable(Generic[ROW]):
                                 "options": options,
                             },
                         },
+                        map2tuple_paths=[["insertMany", "documents", ""]],
                     )
                     logger.info(f"insertMany(chunk) on '{self.name}'")
                     im_response = await self._api_commander.async_request(
@@ -4785,7 +4800,8 @@ class AsyncTable(Generic[ROW]):
                     }.items()
                     if v is not None
                 }
-            }
+            },
+            map2tuple_paths=[["findOne", "filter"]],
         )
         fo_response = await self._api_commander.async_request(
             payload=fo_payload,
@@ -5197,16 +5213,23 @@ class AsyncTable(Generic[ROW]):
             request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
         )
-        uo_payload = {
-            "updateOne": {
-                k: v
-                for k, v in {
-                    "filter": filter,
-                    "update": self._converter_agent.preprocess_payload(update),
-                }.items()
-                if v is not None
-            }
-        }
+        uo_payload = self._converter_agent.preprocess_payload(
+            {
+                "updateOne": {
+                    k: v
+                    for k, v in {
+                        "filter": filter,
+                        "update": update,
+                    }.items()
+                    if v is not None
+                }
+            },
+            map2tuple_paths=[
+                ["updateOne", "filter"],
+                ["updateOne", "update", "$set"],
+                ["updateOne", "update", "$unset"],
+            ],
+        )
         logger.info(f"updateOne on '{self.name}'")
         uo_response = await self._api_commander.async_request(
             payload=uo_payload,
@@ -5289,7 +5312,8 @@ class AsyncTable(Generic[ROW]):
                     }.items()
                     if v is not None
                 }
-            }
+            },
+            map2tuple_paths=[["deleteOne", "filter"]],
         )
         logger.info(f"deleteOne on '{self.name}'")
         do_response = await self._api_commander.async_request(
@@ -5385,7 +5409,8 @@ class AsyncTable(Generic[ROW]):
                     }.items()
                     if v is not None
                 }
-            }
+            },
+            map2tuple_paths=[["deleteMany", "filter"]],
         )
         logger.info(f"deleteMany on '{self.name}'")
         dm_response = await self._api_commander.async_request(

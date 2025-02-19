@@ -566,7 +566,7 @@ def preprocess_table_payload_value(
     path: list[str],
     value: Any,
     options: FullSerdesOptions,
-    row_paths: list[list[str]],
+    map2tuple_paths: list[list[str]],
     force_maps_become_tuples: bool = False,
 ) -> Any:
     """
@@ -582,7 +582,7 @@ def preprocess_table_payload_value(
         else:
             maps_become_tuples = False
             path_len = len(path)
-            for rp in row_paths:
+            for rp in map2tuple_paths:
                 rp_len = len(rp)
                 if path_len > rp_len and path[:rp_len] == rp:
                     maps_become_tuples = True
@@ -595,14 +595,14 @@ def preprocess_table_payload_value(
                         path,
                         k,
                         options=options,
-                        row_paths=row_paths,
+                        map2tuple_paths=map2tuple_paths,
                         force_maps_become_tuples=True,
                     ),
                     preprocess_table_payload_value(
                         path + [k],
                         v,
                         options=options,
-                        row_paths=row_paths,
+                        map2tuple_paths=map2tuple_paths,
                         force_maps_become_tuples=True,
                     ),
                 ]
@@ -611,16 +611,16 @@ def preprocess_table_payload_value(
 
         return {
             preprocess_table_payload_value(
-                path, k, options=options, row_paths=row_paths
+                path, k, options=options, map2tuple_paths=map2tuple_paths
             ): preprocess_table_payload_value(
-                path + [k], v, options=options, row_paths=row_paths
+                path + [k], v, options=options, map2tuple_paths=map2tuple_paths
             )
             for k, v in value.items()
         }
     elif isinstance(value, (list, set, DataAPISet)):
         return [
             preprocess_table_payload_value(
-                path + [""], v, options=options, row_paths=row_paths
+                path + [""], v, options=options, map2tuple_paths=map2tuple_paths
             )
             for v in value
         ]
@@ -645,7 +645,7 @@ def preprocess_table_payload_value(
             # regular list of floats - which can contain non-numbers:
             return [
                 preprocess_table_payload_value(
-                    path + [""], fval, options=options, row_paths=row_paths
+                    path + [""], fval, options=options, map2tuple_paths=map2tuple_paths
                 )
                 for fval in value.data
             ]
@@ -708,7 +708,7 @@ def preprocess_table_payload_value(
         if isinstance(_value, list):
             return [
                 preprocess_table_payload_value(
-                    path + [""], v, options=options, row_paths=row_paths
+                    path + [""], v, options=options, map2tuple_paths=map2tuple_paths
                 )
                 for v in _value
             ]
@@ -721,7 +721,7 @@ def preprocess_table_payload_value(
 def preprocess_table_payload(
     payload: dict[str, Any] | None,
     options: FullSerdesOptions,
-    row_paths: list[list[str]],
+    map2tuple_paths: list[list[str]],
 ) -> dict[str, Any] | None:
     """
     Normalize a payload for API calls.
@@ -731,7 +731,7 @@ def preprocess_table_payload(
     Args:
         payload (dict[str, Any]): A dict expressing a payload for an API call
         options: a FullSerdesOptions setting the preprocessing configuration
-        row_paths: path-roots specifying where in the payload 'rows' are.
+        map2tuple_paths: path-roots specifying where in the payload 'rows' are.
 
     Returns:
         dict[str, Any]: a payload dict, pre-processed, ready for HTTP requests.
@@ -744,7 +744,7 @@ def preprocess_table_payload(
                 [],
                 payload,
                 options=options,
-                row_paths=row_paths,
+                map2tuple_paths=map2tuple_paths,
             ),
         )
     else:
@@ -823,12 +823,12 @@ class _TableConverterAgent(Generic[ROW]):
         return self.row_postprocessors[schema_cache_key]
 
     def preprocess_payload(
-        self, payload: dict[str, Any] | None, row_paths: list[list[str]]
+        self, payload: dict[str, Any] | None, map2tuple_paths: list[list[str]]
     ) -> dict[str, Any] | None:
         return preprocess_table_payload(
             payload,
             options=self.options,
-            row_paths=row_paths,
+            map2tuple_paths=map2tuple_paths,
         )
 
     def postprocess_key(

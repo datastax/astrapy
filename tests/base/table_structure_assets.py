@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from astrapy.constants import SortMode
 from astrapy.info import (
+    ColumnType,
     CreateTableDefinition,
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
@@ -78,7 +79,6 @@ TEST_ALL_RETURNS_TABLE_DEFINITION = CreateTableDefinition(
     ),
 )
 
-
 TEST_SIMPLE_TABLE_NAME = "test_table_simple"
 TEST_SIMPLE_TABLE_DEFINITION = CreateTableDefinition(
     columns={
@@ -100,7 +100,6 @@ TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN = "p_vector"
 TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS = TableVectorIndexOptions(
     metric="cosine",
 )
-
 
 TEST_COMPOSITE_TABLE_NAME = "test_table_composite"
 TEST_COMPOSITE_TABLE_DEFINITION = CreateTableDefinition(
@@ -125,6 +124,32 @@ TEST_COMPOSITE_TABLE_VECTOR_INDEX_OPTIONS = TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIO
 TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_NAME = "test_table_composite_p_boolean_idx"
 TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_COLUMN = "p_boolean"
 TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_OPTIONS = None
+
+TEST_ALLMAPS_TABLE_NAME = "test_table_allmaps"
+TEST_ALLMAPS_TABLE_DEFINITION = (
+    CreateTableDefinition.builder()
+    .add_column("id", ColumnType.TEXT)
+    .add_map_column("ascii_map", ColumnType.ASCII, ColumnType.ASCII)
+    .add_map_column("bigint_map", ColumnType.BIGINT, ColumnType.BIGINT)
+    .add_map_column("blob_map", ColumnType.BLOB, ColumnType.BLOB)
+    .add_map_column("boolean_map", ColumnType.BOOLEAN, ColumnType.BOOLEAN)
+    .add_map_column("date_map", ColumnType.DATE, ColumnType.DATE)
+    .add_map_column("decimal_map", ColumnType.DECIMAL, ColumnType.DECIMAL)
+    .add_map_column("double_map", ColumnType.DOUBLE, ColumnType.DOUBLE)
+    .add_map_column("duration_map", ColumnType.TEXT, ColumnType.DURATION)
+    .add_map_column("float_map", ColumnType.FLOAT, ColumnType.FLOAT)
+    .add_map_column("inet_map", ColumnType.INET, ColumnType.INET)
+    .add_map_column("int_map", ColumnType.INT, ColumnType.INT)
+    .add_map_column("smallint_map", ColumnType.SMALLINT, ColumnType.SMALLINT)
+    .add_map_column("text_map", ColumnType.TEXT, ColumnType.TEXT)
+    .add_map_column("time_map", ColumnType.TIME, ColumnType.TIME)
+    .add_map_column("timestamp_map", ColumnType.TIMESTAMP, ColumnType.TIMESTAMP)
+    .add_map_column("tinyint_map", ColumnType.TINYINT, ColumnType.TINYINT)
+    .add_map_column("uuid_map", ColumnType.UUID, ColumnType.UUID)
+    .add_map_column("varint_map", ColumnType.VARINT, ColumnType.VARINT)
+    .add_partition_by("id")
+    .build()
+)
 
 TEST_VECTORIZE_TABLE_NAME = "test_table_vectorize"
 TEST_VECTORIZE_TABLE_DEFINITION = CreateTableDefinition(

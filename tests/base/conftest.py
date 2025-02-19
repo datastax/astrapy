@@ -50,6 +50,8 @@ from ..conftest import (
 from .table_structure_assets import (
     TEST_ALL_RETURNS_TABLE_DEFINITION,
     TEST_ALL_RETURNS_TABLE_NAME,
+    TEST_ALLMAPS_TABLE_DEFINITION,
+    TEST_ALLMAPS_TABLE_NAME,
     TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_COLUMN,
     TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_NAME,
     TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_OPTIONS,
@@ -459,6 +461,46 @@ def async_empty_table_kms_vectorize(
 ) -> Iterable[DefaultAsyncTable]:
     """Emptied for each test function"""
     yield sync_empty_table_kms_vectorize.to_async()
+
+
+@pytest.fixture(scope="session")
+def sync_table_allmaps(
+    data_api_credentials_kwargs: DataAPICredentials,
+    sync_database: Database,
+) -> Iterable[DefaultTable]:
+    """An actual table on DB, in the main keyspace"""
+    table = sync_database.create_table(
+        TEST_ALLMAPS_TABLE_NAME,
+        definition=TEST_ALLMAPS_TABLE_DEFINITION,
+    )
+    yield table
+
+    sync_database.drop_table(TEST_ALLMAPS_TABLE_NAME)
+
+
+@pytest.fixture(scope="function")
+def sync_empty_table_allmaps(
+    sync_table_allmaps: DefaultTable,
+) -> Iterable[DefaultTable]:
+    """Emptied for each test function"""
+    sync_table_allmaps.delete_many({})
+    yield sync_table_allmaps
+
+
+@pytest.fixture(scope="function")
+def async_table_allmaps(
+    sync_table_allmaps: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """An actual table on DB, the same as the sync counterpart"""
+    yield sync_table_allmaps.to_async()
+
+
+@pytest.fixture(scope="function")
+def async_empty_table_allmaps(
+    sync_empty_table_allmaps: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """Emptied for each test function"""
+    yield sync_empty_table_allmaps.to_async()
 
 
 __all__ = [
