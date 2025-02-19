@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Iterable, overload
 
 FIELD_NAME_ESCAPE_CHAR = "&"
 FIELD_NAME_SEGMENT_SEPARATOR = "."
@@ -31,7 +31,7 @@ UNTERMINATED_ESCAPE_ERROR_MESSAGE_TEMPLATE = (
 )
 
 
-def escape_field_name(field_name: str | int) -> str:
+def _escape_field_name(field_name: str | int) -> str:
     """
     Escape a single literal field-name path segment.
 
@@ -52,46 +52,50 @@ def escape_field_name(field_name: str | int) -> str:
     return "".join(FIELD_NAME_ESCAPE_MAP.get(char, char) for char in f"{field_name}")
 
 
-def escape_field_names(field_names: Iterable[str | int]) -> list[str]:
+@overload
+def escape_field_names(field_names: Iterable[str | int]) -> str: ...
+
+
+@overload
+def escape_field_names(*field_names: str | int) -> str: ...
+
+
+# This mypy directive essentially hides the 'funny' call pattern of passing multiple iterators:
+def escape_field_names(*field_names: str | int | Iterable[str | int]) -> str:  # type: ignore[misc]
     """
-    Escape an iterable of field-name path segments one by one.
+    Escape one or more field-name path segments into a full string expression.
 
     Args:
-        field_names: an iterable of literal field-name path segments. Each identifies
+        TODO field_names: an iterable of literal field-name path segments. Each identifies
             a single key in a JSON-like document. Example: ["top", "sub.key"]
             Non-negative whole numbers (representing indexes in lists) become strings.
 
     Returns:
-        a list with the same length as the input, where each path segment
-        has been escaped conforming to the Data API escaping rules.
+        a single string resulting from dot-concatenation of the input segments, with
+        each path segment having been escaped conforming to the Data API escaping rules.
 
     Example:
         >>> escape_field_names(["top", "sub.key"])
         ['top', 'sub&.key']
     """
+    _field_names: Iterable[str | int]
+    # strings are iterables, so:
+    if len(field_names) == 1 and not isinstance(field_names[0], (str, int)):
+        _field_names = field_names[0]
+    else:
+        # user passing a list of string-or-ints.
+        # But secretly any arg may still be Iterable:
+        _field_names = [
+            segment
+            for field_name in field_names
+            for segment in (
+                [field_name] if isinstance(field_name, (str, int)) else field_name
+            )
+        ]
 
-    return [escape_field_name(f_n) for f_n in field_names]
-
-
-def field_names_to_path(field_names: Iterable[str | int]) -> str:
-    """
-    Convert an iterable of field-name path segments into a single string.
-
-    Args:
-        field_names: an iterable of literal field-name path segments. Each identifies
-            a single key in a JSON-like document. Example: ["top", "sub.key"]
-            Non-negative whole numbers (representing indexes in lists) become strings.
-
-    Returns:
-        a single string expressing the path according to the dot-notation convention,
-        including any escape that may be necessary.
-
-    Example:
-        >>> field_names_to_path(["top", "sub.key"])
-        'top.sub&.key'
-    """
-
-    return FIELD_NAME_SEGMENT_SEPARATOR.join(escape_field_names(field_names))
+    return FIELD_NAME_SEGMENT_SEPARATOR.join(
+        [_escape_field_name(f_n) for f_n in _field_names]
+    )
 
 
 def unescape_field_path(field_path: str) -> list[str]:
