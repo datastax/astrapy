@@ -1128,7 +1128,8 @@ class Table(Generic[ROW]):
             timeout_ms=timeout_ms,
         )
         io_payload = self._converter_agent.preprocess_payload(
-            {"insertOne": {"document": row}}
+            {"insertOne": {"document": row}},
+            row_paths=[["insertOne", "document"]],
         )
         logger.info(f"insertOne on '{self.name}'")
         io_response = self._api_commander.request(
@@ -2042,7 +2043,8 @@ class Table(Generic[ROW]):
                     }.items()
                     if v is not None
                 }
-            }
+            },
+            row_paths=[["findOne", "filter"]],
         )
         fo_response = self._api_commander.request(
             payload=fo_payload,
