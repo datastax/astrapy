@@ -1296,13 +1296,15 @@ class Collection(Generic[DOC]):
         in the collection that match the provided filter.
 
         Args:
-            TODO key: the name of the field whose value is inspected across documents.
-                Keys can use dot-notation to descend to deeper document levels.
-                Example of acceptable `key` values:
-                    "field"
-                    "field.subfield"
-                    "field.3"
-                    "field.3.subfield"
+            key: the name of the field whose value is inspected across documents.
+                Keys can be just field names (as is often the case), but
+                the dot-notation is also accepted to mean subkeys or indices
+                within lists (for example, "map_field.subkey" or "list_field.2").
+                If a field has literal dots or ampersands in its name, this
+                parameter must be escaped to be treated properly.
+                The key can also be a list of strings and numbers, in which case
+                no escape is necessary: each item in the list is a field name/index,
+                for example ["map_field", "subkey"] or ["list_field", 2].
                 If lists are encountered and no numeric index is specified,
                 all items in the list are visited.
             filter: a predicate expressed as a dictionary according to the
@@ -3861,13 +3863,15 @@ class AsyncCollection(Generic[DOC]):
         in the collection that match the provided filter.
 
         Args:
-            TODO key: the name of the field whose value is inspected across documents.
-                Keys can use dot-notation to descend to deeper document levels.
-                Example of acceptable `key` values:
-                    "field"
-                    "field.subfield"
-                    "field.3"
-                    "field.3.subfield"
+            key: the name of the field whose value is inspected across documents.
+                Keys can be just field names (as is often the case), but
+                the dot-notation is also accepted to mean subkeys or indices
+                within lists (for example, "map_field.subkey" or "list_field.2").
+                If a field has literal dots or ampersands in its name, this
+                parameter must be escaped to be treated properly.
+                The key can also be a list of strings and numbers, in which case
+                no escape is necessary: each item in the list is a field name/index,
+                for example ["map_field", "subkey"] or ["list_field", 2].
                 If lists are encountered and no numeric index is specified,
                 all items in the list are visited.
             filter: a predicate expressed as a dictionary according to the

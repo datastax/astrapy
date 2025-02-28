@@ -64,6 +64,10 @@ def _create_document_key_extractor(
     else:
         key_blocks0 = []
         for k_segment in key:
+            # This "either-like" behaviour is what implements the 'disambiguate'
+            # behaviour, whereby passing strings/numbers in a list 'key'
+            # means extracting only from maps/lists respectively
+            # (as opposed to dot-notation strings, which always try both).
             if isinstance(k_segment, str):
                 key_blocks0 += [(k_segment, None)]
             else:

@@ -2083,16 +2083,17 @@ class Table(Generic[ROW]):
         in the table that match the provided filter.
 
         Args:
-            TODO key: the name of the field whose value is inspected across rows.
-                Keys are typically just column names, although they can use
-                the dot notation to select particular entries in map columns.
+            key: the name of the field whose value is inspected across rows.
+                Keys can be just column names (as is typically the case), but
+                the dot-notation is also accepted to mean subkeys or indices
+                within lists (for example, "map_column.subkey" or "list_column.2").
+                If a column has literal dots or ampersands in its name, this
+                parameter must be escaped to be treated properly.
+                The key can also be a list of strings and numbers, in which case
+                no escape is necessary: each item in the list is a field name/index,
+                for example ["map_column", "subkey"] or ["list_column", 2].
                 For set and list columns, individual entries are "unrolled"
-                automatically; in particular, for lists, numeric indices
-                can be used in the key dot-notation syntax.
-                Example of acceptable `key` values:
-                    "a_column"
-                    "map_column.map_key"
-                    "list_column.2"
+                automatically.
             filter: a dictionary expressing which condition the inspected rows
                 must satisfy. The filter can use operators, such as "$eq" for equality,
                 and require columns to compare with literal values. Simple examples
@@ -4819,16 +4820,17 @@ class AsyncTable(Generic[ROW]):
         in the table that match the provided filter.
 
         Args:
-            TODO key: the name of the field whose value is inspected across rows.
-                Keys are typically just column names, although they can use
-                the dot notation to select particular entries in map columns.
+            key: the name of the field whose value is inspected across rows.
+                Keys can be just column names (as is typically the case), but
+                the dot-notation is also accepted to mean subkeys or indices
+                within lists (for example, "map_column.subkey" or "list_column.2").
+                If a column has literal dots or ampersands in its name, this
+                parameter must be escaped to be treated properly.
+                The key can also be a list of strings and numbers, in which case
+                no escape is necessary: each item in the list is a field name/index,
+                for example ["map_column", "subkey"] or ["list_column", 2].
                 For set and list columns, individual entries are "unrolled"
-                automatically; in particular, for lists, numeric indices
-                can be used in the key dot-notation syntax.
-                Example of acceptable `key` values:
-                    "a_column"
-                    "map_column.map_key"
-                    "list_column.2"
+                automatically.
             filter: a dictionary expressing which condition the inspected rows
                 must satisfy. The filter can use operators, such as "$eq" for equality,
                 and require columns to compare with literal values. Simple examples
