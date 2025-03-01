@@ -524,7 +524,7 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
                     },
                 },
             },
-            map2tuple_paths=[["find", "filter"]],
+            map2tuple_paths=[],
         )
 
         _page_str = page_state if page_state else "(empty page state)"
@@ -574,7 +574,7 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
                     },
                 },
             },
-            map2tuple_paths=[["find", "filter"]],
+            map2tuple_paths=[],
         )
 
         _page_str = page_state if page_state else "(empty page state)"

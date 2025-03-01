@@ -2047,7 +2047,7 @@ class Table(Generic[ROW]):
                     if v is not None
                 }
             },
-            map2tuple_paths=[["findOne", "filter"]],
+            map2tuple_paths=[],
         )
         fo_response = self._api_commander.request(
             payload=fo_payload,
@@ -2460,7 +2460,6 @@ class Table(Generic[ROW]):
                 }
             },
             map2tuple_paths=[
-                ["updateOne", "filter"],
                 ["updateOne", "update", "$set"],
                 ["updateOne", "update", "$unset"],
             ],
@@ -2542,7 +2541,7 @@ class Table(Generic[ROW]):
                     if v is not None
                 }
             },
-            map2tuple_paths=[["deleteOne", "filter"]],
+            map2tuple_paths=[],
         )
         logger.info(f"deleteOne on '{self.name}'")
         do_response = self._api_commander.request(
@@ -2637,7 +2636,7 @@ class Table(Generic[ROW]):
                     if v is not None
                 }
             },
-            map2tuple_paths=[["deleteMany", "filter"]],
+            map2tuple_paths=[],
         )
         logger.info(f"deleteMany on '{self.name}'")
         dm_response = self._api_commander.request(
@@ -4801,7 +4800,7 @@ class AsyncTable(Generic[ROW]):
                     if v is not None
                 }
             },
-            map2tuple_paths=[["findOne", "filter"]],
+            map2tuple_paths=[],
         )
         fo_response = await self._api_commander.async_request(
             payload=fo_payload,
@@ -5225,7 +5224,6 @@ class AsyncTable(Generic[ROW]):
                 }
             },
             map2tuple_paths=[
-                ["updateOne", "filter"],
                 ["updateOne", "update", "$set"],
                 ["updateOne", "update", "$unset"],
             ],
@@ -5313,7 +5311,7 @@ class AsyncTable(Generic[ROW]):
                     if v is not None
                 }
             },
-            map2tuple_paths=[["deleteOne", "filter"]],
+            map2tuple_paths=[],
         )
         logger.info(f"deleteOne on '{self.name}'")
         do_response = await self._api_commander.async_request(
@@ -5410,7 +5408,7 @@ class AsyncTable(Generic[ROW]):
                     if v is not None
                 }
             },
-            map2tuple_paths=[["deleteMany", "filter"]],
+            map2tuple_paths=[],
         )
         logger.info(f"deleteMany on '{self.name}'")
         dm_response = await self._api_commander.async_request(
