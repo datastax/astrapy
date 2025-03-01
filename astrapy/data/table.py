@@ -597,8 +597,8 @@ class Table(Generic[ROW]):
     def create_index(
         self,
         name: str,
-        *,
         column: str,
+        *,
         options: TableIndexOptions | dict[str, Any] | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
@@ -637,13 +637,13 @@ class Table(Generic[ROW]):
             >>> # create an index on a column
             >>> my_table.create_index(
             ...     "score_index",
-            ...     column="score",
+            ...     "score",
             ... )
             >>>
             >>> # create an index on a textual column, specifying indexing options
             >>> my_table.create_index(
             ...     "winner_index",
-            ...     column="winner",
+            ...     "winner",
             ...     options=TableIndexOptions(
             ...         ascii=False,
             ...         normalize=True,
@@ -670,8 +670,8 @@ class Table(Generic[ROW]):
     def create_vector_index(
         self,
         name: str,
-        *,
         column: str,
+        *,
         options: TableVectorIndexOptions | dict[str, Any] | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
@@ -713,7 +713,7 @@ class Table(Generic[ROW]):
             >>> # create a vector index with dot-product similarity
             >>> my_table.create_vector_index(
             ...     "m_vector_index",
-            ...     column="m_vector",
+            ...     "m_vector",
             ...     options=TableVectorIndexOptions(
             ...         metric=VectorMetric.DOT_PRODUCT,
             ...     ),
@@ -722,7 +722,7 @@ class Table(Generic[ROW]):
             >>> # succeeded, this will do nothing because of `if_not_exists`):
             >>> my_table.create_vector_index(
             ...     "m_vector_index",
-            ...     column="m_vector",
+            ...     "m_vector",
             ...     options=TableVectorIndexOptions(
             ...         metric=VectorMetric.DOT_PRODUCT,
             ...         source_model="nv-qa-4",
@@ -734,7 +734,7 @@ class Table(Generic[ROW]):
             >>> # succeeded, this will do nothing because of `if_not_exists`):
             >>> my_table.create_vector_index(
             ...     "m_vector_index",
-            ...     column="m_vector",
+            ...     "m_vector",
             ...     if_not_exists=True,
             ... )
         """
@@ -3311,8 +3311,8 @@ class AsyncTable(Generic[ROW]):
     async def create_index(
         self,
         name: str,
-        *,
         column: str,
+        *,
         options: TableIndexOptions | dict[str, Any] | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
@@ -3353,13 +3353,13 @@ class AsyncTable(Generic[ROW]):
             >>> # create an index on a column
             >>> await my_async_table.create_index(
             ...     "score_index",
-            ...     column="score",
+            ...     "score",
             ... )
             >>>
             >>> # create an index on a textual column, specifying indexing options
             >>> await my_async_table.create_index(
             ...     "winner_index",
-            ...     column="winner",
+            ...     "winner",
             ...     options=TableIndexOptions(
             ...         ascii=False,
             ...         normalize=True,
@@ -3386,8 +3386,8 @@ class AsyncTable(Generic[ROW]):
     async def create_vector_index(
         self,
         name: str,
-        *,
         column: str,
+        *,
         options: TableVectorIndexOptions | dict[str, Any] | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
@@ -3431,7 +3431,7 @@ class AsyncTable(Generic[ROW]):
             >>> # create a vector index with dot-product similarity
             >>> await my_async_table.create_vector_index(
             ...     "m_vector_index",
-            ...     column="m_vector",
+            ...     "m_vector",
             ...     options=TableVectorIndexOptions(
             ...         metric=VectorMetric.DOT_PRODUCT,
             ...     ),
@@ -3440,7 +3440,7 @@ class AsyncTable(Generic[ROW]):
             >>> # succeeded, this will do nothing because of `if_not_exists`):
             >>> await my_async_table.create_vector_index(
             ...     "m_vector_index",
-            ...     column="m_vector",
+            ...     "m_vector",
             ...     options=TableVectorIndexOptions(
             ...         metric=VectorMetric.DOT_PRODUCT,
             ...         source_model="nv-qa-4",
@@ -3452,7 +3452,7 @@ class AsyncTable(Generic[ROW]):
             >>> # succeeded, this will do nothing because of `if_not_exists`):
             >>> await my_async_table.create_vector_index(
             ...     "m_vector_index",
-            ...     column="m_vector",
+            ...     "m_vector",
             ...     if_not_exists=True,
             ... )
         """

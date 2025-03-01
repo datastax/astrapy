@@ -31,7 +31,6 @@ class TableIndexType(StrEnum):
     Enum to describe the index types for Table columns.
     """
 
-    COLLECTION = "collection"
     REGULAR = "regular"
     TEXT_ANALYSED = "text-analysed"
     UNKNOWN = "UNKNOWN"

@@ -265,7 +265,7 @@ class TestTableLifecycle:
 
         table.create_index(
             "tfi_idx_p_text",
-            column="p_text",
+            "p_text",
             options=TableIndexOptions(
                 ascii=False,
                 normalize=True,
@@ -274,18 +274,18 @@ class TestTableLifecycle:
         )
         table.create_index(
             "tfi_idx_p_int",
-            column="p_int",
+            "p_int",
         )
         table.create_vector_index(
             "tfi_idx_p_vector_sm",
-            column="p_vector_sm",
+            "p_vector_sm",
             options=TableVectorIndexOptions(
                 metric="cosine",
             ),
         )
         table.create_vector_index(
             "tfi_idx_p_vector",
-            column="p_vector",
+            "p_vector",
             options=TableVectorIndexOptions(
                 source_model="openai-v3-large",
             ),
