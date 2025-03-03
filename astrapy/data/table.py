@@ -2459,10 +2459,7 @@ class Table(Generic[ROW]):
                     if v is not None
                 }
             },
-            map2tuple_paths=[
-                ["updateOne", "update", "$set"],
-                ["updateOne", "update", "$unset"],
-            ],
+            map2tuple_paths=[["updateOne", "update", "$set"]],
         )
         logger.info(f"updateOne on '{self.name}'")
         uo_response = self._api_commander.request(
@@ -5223,10 +5220,7 @@ class AsyncTable(Generic[ROW]):
                     if v is not None
                 }
             },
-            map2tuple_paths=[
-                ["updateOne", "update", "$set"],
-                ["updateOne", "update", "$unset"],
-            ],
+            map2tuple_paths=[["updateOne", "update", "$set"]],
         )
         logger.info(f"updateOne on '{self.name}'")
         uo_response = await self._api_commander.async_request(
