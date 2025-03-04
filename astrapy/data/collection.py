@@ -1024,9 +1024,8 @@ class Collection(Generic[DOC]):
                 for lack of matching documents), nothing more is returned.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each
-                returned document. Can only be used for vector ANN search, i.e.
-                when either `vector` is supplied or the `sort` parameter has the
-                shape {"$vector": ...}.
+                returned document. It can be used meaningfully only in a vector
+                search (see `sort`).
             include_sort_vector: a boolean to request the search query vector.
                 If set to True (and if the invocation is a vector search), calling
                 the `get_sort_vector` method on the returned cursor will yield
@@ -1204,9 +1203,8 @@ class Collection(Generic[DOC]):
                 See the Data API documentation for more on projections.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in the
-                returned document. Can only be used for vector ANN search, i.e.
-                when either `vector` is supplied or the `sort` parameter has the
-                shape {"$vector": ...}.
+                returned document. It can be used meaningfully only in a vector
+                search (see `sort`).
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
                 Vector-based ANN sorting is achieved by providing a "$vector"
@@ -3561,9 +3559,8 @@ class AsyncCollection(Generic[DOC]):
                 for lack of matching documents), nothing more is returned.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each
-                returned document. Can only be used for vector ANN search, i.e.
-                when either `vector` is supplied or the `sort` parameter has the
-                shape {"$vector": ...}.
+                returned document. It can be used meaningfully only in a vector
+                search (see `sort`).
             include_sort_vector: a boolean to request the search query vector.
                 If set to True (and if the invocation is a vector search), calling
                 the `get_sort_vector` method on the returned cursor will yield
@@ -3753,9 +3750,8 @@ class AsyncCollection(Generic[DOC]):
                 See the Data API documentation for more on projections.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in the
-                returned document. Can only be used for vector ANN search, i.e.
-                when either `vector` is supplied or the `sort` parameter has the
-                shape {"$vector": ...}.
+                returned document. It can be used meaningfully only in a vector
+                search (see `sort`).
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
                 Vector-based ANN sorting is achieved by providing a "$vector"
