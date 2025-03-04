@@ -32,7 +32,7 @@ from astrapy.constants import (
 from astrapy.data.info.table_descriptor.table_altering import AlterTableOperation
 from astrapy.data.utils.distinct_extractors import (
     _create_document_key_extractor,
-    _hash_document,
+    _hash_table_document,
     _reduce_distinct_key_to_shallow_safe,
 )
 from astrapy.data.utils.table_converters import _TableConverterAgent
@@ -2071,7 +2071,7 @@ class Table(Generic[ROW]):
 
     def distinct(
         self,
-        key: str,
+        key: str | Iterable[str | int],
         *,
         filter: FilterType | None = None,
         general_method_timeout_ms: int | None = None,
@@ -2084,15 +2084,16 @@ class Table(Generic[ROW]):
 
         Args:
             key: the name of the field whose value is inspected across rows.
-                Keys are typically just column names, although they can use
-                the dot notation to select particular entries in map columns.
+                Keys can be just column names (as is typically the case), but
+                the dot-notation is also accepted to mean subkeys or indices
+                within lists (for example, "map_column.subkey" or "list_column.2").
+                If a column has literal dots or ampersands in its name, this
+                parameter must be escaped to be treated properly.
+                The key can also be a list of strings and numbers, in which case
+                no escape is necessary: each item in the list is a field name/index,
+                for example ["map_column", "subkey"] or ["list_column", 2].
                 For set and list columns, individual entries are "unrolled"
-                automatically; in particular, for lists, numeric indices
-                can be used in the key dot-notation syntax.
-                Example of acceptable `key` values:
-                    "a_column"
-                    "map_column.map_key"
-                    "list_column.2"
+                automatically.
             filter: a dictionary expressing which condition the inspected rows
                 must satisfy. The filter can use operators, such as "$eq" for equality,
                 and require columns to compare with literal values. Simple examples
@@ -2170,11 +2171,6 @@ class Table(Generic[ROW]):
         # preparing cursor:
         _extractor = _create_document_key_extractor(key)
         _key = _reduce_distinct_key_to_shallow_safe(key)
-        if _key == "":
-            raise ValueError(
-                "The 'key' parameter for distinct cannot be empty "
-                "or start with a list index."
-            )
         # relaxing the type hint (limited to within this method body)
         f_cursor: TableFindCursor[dict[str, Any], dict[str, Any]] = (
             TableFindCursor(
@@ -2193,7 +2189,7 @@ class Table(Generic[ROW]):
         logger.info(f"running distinct() on '{self.name}'")
         for document in f_cursor:
             for item in _extractor(document):
-                _item_hash = _hash_document(
+                _item_hash = _hash_table_document(
                     item, options=self.api_options.serdes_options
                 )
                 if _item_hash not in _item_hashes:
@@ -4812,7 +4808,7 @@ class AsyncTable(Generic[ROW]):
 
     async def distinct(
         self,
-        key: str,
+        key: str | Iterable[str | int],
         *,
         filter: FilterType | None = None,
         request_timeout_ms: int | None = None,
@@ -4825,15 +4821,16 @@ class AsyncTable(Generic[ROW]):
 
         Args:
             key: the name of the field whose value is inspected across rows.
-                Keys are typically just column names, although they can use
-                the dot notation to select particular entries in map columns.
+                Keys can be just column names (as is typically the case), but
+                the dot-notation is also accepted to mean subkeys or indices
+                within lists (for example, "map_column.subkey" or "list_column.2").
+                If a column has literal dots or ampersands in its name, this
+                parameter must be escaped to be treated properly.
+                The key can also be a list of strings and numbers, in which case
+                no escape is necessary: each item in the list is a field name/index,
+                for example ["map_column", "subkey"] or ["list_column", 2].
                 For set and list columns, individual entries are "unrolled"
-                automatically; in particular, for lists, numeric indices
-                can be used in the key dot-notation syntax.
-                Example of acceptable `key` values:
-                    "a_column"
-                    "map_column.map_key"
-                    "list_column.2"
+                automatically.
             filter: a dictionary expressing which condition the inspected rows
                 must satisfy. The filter can use operators, such as "$eq" for equality,
                 and require columns to compare with literal values. Simple examples
@@ -4916,11 +4913,6 @@ class AsyncTable(Generic[ROW]):
         # preparing cursor:
         _extractor = _create_document_key_extractor(key)
         _key = _reduce_distinct_key_to_shallow_safe(key)
-        if _key == "":
-            raise ValueError(
-                "The 'key' parameter for distinct cannot be empty "
-                "or start with a list index."
-            )
         # relaxing the type hint (limited to within this method body)
         f_cursor: AsyncTableFindCursor[dict[str, Any], dict[str, Any]] = (
             AsyncTableFindCursor(
@@ -4939,7 +4931,7 @@ class AsyncTable(Generic[ROW]):
         logger.info(f"running distinct() on '{self.name}'")
         async for document in f_cursor:
             for item in _extractor(document):
-                _item_hash = _hash_document(
+                _item_hash = _hash_table_document(
                     item, options=self.api_options.serdes_options
                 )
                 if _item_hash not in _item_hashes:

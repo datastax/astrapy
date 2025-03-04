@@ -35,7 +35,7 @@ from astrapy.data.utils.collection_converters import (
 )
 from astrapy.data.utils.distinct_extractors import (
     _create_document_key_extractor,
-    _hash_document,
+    _hash_collection_document,
     _reduce_distinct_key_to_safe,
 )
 from astrapy.database import AsyncDatabase, Database
@@ -1284,7 +1284,7 @@ class Collection(Generic[DOC]):
 
     def distinct(
         self,
-        key: str,
+        key: str | Iterable[str | int],
         *,
         filter: FilterType | None = None,
         general_method_timeout_ms: int | None = None,
@@ -1297,12 +1297,14 @@ class Collection(Generic[DOC]):
 
         Args:
             key: the name of the field whose value is inspected across documents.
-                Keys can use dot-notation to descend to deeper document levels.
-                Example of acceptable `key` values:
-                    "field"
-                    "field.subfield"
-                    "field.3"
-                    "field.3.subfield"
+                Keys can be just field names (as is often the case), but
+                the dot-notation is also accepted to mean subkeys or indices
+                within lists (for example, "map_field.subkey" or "list_field.2").
+                If a field has literal dots or ampersands in its name, this
+                parameter must be escaped to be treated properly.
+                The key can also be a list of strings and numbers, in which case
+                no escape is necessary: each item in the list is a field name/index,
+                for example ["map_field", "subkey"] or ["list_field", 2].
                 If lists are encountered and no numeric index is specified,
                 all items in the list are visited.
             filter: a predicate expressed as a dictionary according to the
@@ -1375,11 +1377,6 @@ class Collection(Generic[DOC]):
         # preparing cursor:
         _extractor = _create_document_key_extractor(key)
         _key = _reduce_distinct_key_to_safe(key)
-        if _key == "":
-            raise ValueError(
-                "The 'key' parameter for distinct cannot be empty "
-                "or start with a list index."
-            )
         # relaxing the type hint (limited to within this method body)
         f_cursor: CollectionFindCursor[dict[str, Any], dict[str, Any]] = (
             CollectionFindCursor(
@@ -1398,7 +1395,7 @@ class Collection(Generic[DOC]):
         logger.info(f"running distinct() on '{self.name}'")
         for document in f_cursor:
             for item in _extractor(document):
-                _item_hash = _hash_document(
+                _item_hash = _hash_collection_document(
                     item, options=self.api_options.serdes_options
                 )
                 if _item_hash not in _item_hashes:
@@ -3854,7 +3851,7 @@ class AsyncCollection(Generic[DOC]):
 
     async def distinct(
         self,
-        key: str,
+        key: str | Iterable[str | int],
         *,
         filter: FilterType | None = None,
         general_method_timeout_ms: int | None = None,
@@ -3867,12 +3864,14 @@ class AsyncCollection(Generic[DOC]):
 
         Args:
             key: the name of the field whose value is inspected across documents.
-                Keys can use dot-notation to descend to deeper document levels.
-                Example of acceptable `key` values:
-                    "field"
-                    "field.subfield"
-                    "field.3"
-                    "field.3.subfield"
+                Keys can be just field names (as is often the case), but
+                the dot-notation is also accepted to mean subkeys or indices
+                within lists (for example, "map_field.subkey" or "list_field.2").
+                If a field has literal dots or ampersands in its name, this
+                parameter must be escaped to be treated properly.
+                The key can also be a list of strings and numbers, in which case
+                no escape is necessary: each item in the list is a field name/index,
+                for example ["map_field", "subkey"] or ["list_field", 2].
                 If lists are encountered and no numeric index is specified,
                 all items in the list are visited.
             filter: a predicate expressed as a dictionary according to the
@@ -3955,11 +3954,6 @@ class AsyncCollection(Generic[DOC]):
         # preparing cursor:
         _extractor = _create_document_key_extractor(key)
         _key = _reduce_distinct_key_to_safe(key)
-        if _key == "":
-            raise ValueError(
-                "The 'key' parameter for distinct cannot be empty "
-                "or start with a list index."
-            )
         # relaxing the type hint (limited to within this method body)
         f_cursor: AsyncCollectionFindCursor[dict[str, Any], dict[str, Any]] = (
             AsyncCollectionFindCursor(
@@ -3978,7 +3972,7 @@ class AsyncCollection(Generic[DOC]):
         logger.info(f"running distinct() on '{self.name}'")
         async for document in f_cursor:
             for item in _extractor(document):
-                _item_hash = _hash_document(
+                _item_hash = _hash_collection_document(
                     item, options=self.api_options.serdes_options
                 )
                 if _item_hash not in _item_hashes:
