@@ -75,6 +75,11 @@ logger = logging.getLogger(__name__)
 
 NEW_ROW = TypeVar("NEW_ROW")
 
+# path presets for map-to-tuple automatic conversion of payloads
+MAP2TUPLE_PATHS_INSERT_MANY = [["insertMany", "documents", ""]]
+MAP2TUPLE_PATHS_INSERT_ONE = [["insertOne", "document"]]
+MAP2TUPLE_PATHS_UPDATE_ONE = [["updateOne", "update", "$set"]]
+
 
 class Table(Generic[ROW]):
     """
@@ -1129,7 +1134,7 @@ class Table(Generic[ROW]):
         )
         io_payload = self._converter_agent.preprocess_payload(
             {"insertOne": {"document": row}},
-            map2tuple_paths=[["insertOne", "document"]],
+            map2tuple_paths=MAP2TUPLE_PATHS_INSERT_ONE,
         )
         logger.info(f"insertOne on '{self.name}'")
         io_response = self._api_commander.request(
@@ -1404,7 +1409,7 @@ class Table(Generic[ROW]):
                             "options": options,
                         },
                     },
-                    map2tuple_paths=[["insertMany", "documents", ""]],
+                    map2tuple_paths=MAP2TUPLE_PATHS_INSERT_MANY,
                 )
                 logger.info(f"insertMany on '{self.name}'")
                 chunk_response = self._api_commander.request(
@@ -1461,7 +1466,7 @@ class Table(Generic[ROW]):
                                     "options": options,
                                 },
                             },
-                            map2tuple_paths=[["insertMany", "documents", ""]],
+                            map2tuple_paths=MAP2TUPLE_PATHS_INSERT_MANY,
                         )
                         logger.info(f"insertMany(chunk) on '{self.name}'")
                         im_response = self._api_commander.request(
@@ -1493,7 +1498,7 @@ class Table(Generic[ROW]):
                                 "options": options,
                             },
                         },
-                        map2tuple_paths=[["insertMany", "documents", ""]],
+                        map2tuple_paths=MAP2TUPLE_PATHS_INSERT_MANY,
                     )
                     logger.info(f"insertMany(chunk) on '{self.name}'")
                     im_response = self._api_commander.request(
@@ -2455,7 +2460,7 @@ class Table(Generic[ROW]):
                     if v is not None
                 }
             },
-            map2tuple_paths=[["updateOne", "update", "$set"]],
+            map2tuple_paths=MAP2TUPLE_PATHS_UPDATE_ONE,
         )
         logger.info(f"updateOne on '{self.name}'")
         uo_response = self._api_commander.request(
@@ -3863,7 +3868,7 @@ class AsyncTable(Generic[ROW]):
         )
         io_payload = self._converter_agent.preprocess_payload(
             {"insertOne": {"document": row}},
-            map2tuple_paths=[["insertOne", "document"]],
+            map2tuple_paths=MAP2TUPLE_PATHS_INSERT_ONE,
         )
         logger.info(f"insertOne on '{self.name}'")
         io_response = await self._api_commander.async_request(
@@ -4137,7 +4142,7 @@ class AsyncTable(Generic[ROW]):
                             "options": options,
                         },
                     },
-                    map2tuple_paths=[["insertMany", "documents", ""]],
+                    map2tuple_paths=MAP2TUPLE_PATHS_INSERT_MANY,
                 )
                 logger.info(f"insertMany(chunk) on '{self.name}'")
                 chunk_response = await self._api_commander.async_request(
@@ -4195,7 +4200,7 @@ class AsyncTable(Generic[ROW]):
                                 "options": options,
                             },
                         },
-                        map2tuple_paths=[["insertMany", "documents", ""]],
+                        map2tuple_paths=MAP2TUPLE_PATHS_INSERT_MANY,
                     )
                     logger.info(f"insertMany(chunk) on '{self.name}'")
                     im_response = await self._api_commander.async_request(
@@ -5212,7 +5217,7 @@ class AsyncTable(Generic[ROW]):
                     if v is not None
                 }
             },
-            map2tuple_paths=[["updateOne", "update", "$set"]],
+            map2tuple_paths=MAP2TUPLE_PATHS_UPDATE_ONE,
         )
         logger.info(f"updateOne on '{self.name}'")
         uo_response = await self._api_commander.async_request(
