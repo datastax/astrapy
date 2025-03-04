@@ -577,7 +577,9 @@ def preprocess_table_payload_value(
     # is this a nesting structure?
     if isinstance(value, (dict, DataAPIMap)):
         maps_become_tuples: bool
-        if force_maps_become_tuples:
+        if not options.encode_maps_as_lists_in_tables:
+            maps_become_tuples = False
+        elif force_maps_become_tuples:
             maps_become_tuples = True
         else:
             maps_become_tuples = False

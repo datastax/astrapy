@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from astrapy.api_options import APIOptions, SerdesOptions
@@ -22,21 +24,32 @@ from ..conftest import DefaultTable
 from .table_row_assets import (
     ALLMAPS_CUSTOMTYPES_ROW,
     ALLMAPS_STDLIB_ROW,
+    DISTINCT_AR_ROWS,
 )
 
+MAP2TUPLES_OPTIONS = APIOptions(
+    serdes_options=SerdesOptions(encode_maps_as_lists_in_tables=True)
+)
 STDLIB_OPTIONS = APIOptions(
     serdes_options=SerdesOptions(custom_datatypes_in_reading=False)
 )
 
 
+@pytest.mark.skipif(
+    "ASTRAPY_TEST_MAP2TUPLES" not in os.environ,
+    reason="Disabled except on bleeding-edge main so far",
+)
 class TestTableMapsAsTuplesSync:
     @pytest.mark.describe("test of table maps-as-tuples, insert one and find one, sync")
     def test_table_mapsastuples_insert_one_find_one_sync(
         self,
         sync_empty_table_allmaps: DefaultTable,
     ) -> None:
-        customdt_table = sync_empty_table_allmaps
-        stdlib_table = sync_empty_table_allmaps.with_options(api_options=STDLIB_OPTIONS)
+        tuplified_table = sync_empty_table_allmaps.with_options(
+            api_options=MAP2TUPLES_OPTIONS
+        )
+        customdt_table = tuplified_table
+        stdlib_table = tuplified_table.with_options(api_options=STDLIB_OPTIONS)
 
         # custom types and corresponding serdes options
         cd_io_res = customdt_table.insert_one(ALLMAPS_CUSTOMTYPES_ROW)
@@ -59,8 +72,11 @@ class TestTableMapsAsTuplesSync:
         self,
         sync_empty_table_allmaps: DefaultTable,
     ) -> None:
-        customdt_table = sync_empty_table_allmaps
-        stdlib_table = sync_empty_table_allmaps.with_options(api_options=STDLIB_OPTIONS)
+        tuplified_table = sync_empty_table_allmaps.with_options(
+            api_options=MAP2TUPLES_OPTIONS
+        )
+        customdt_table = tuplified_table
+        stdlib_table = tuplified_table.with_options(api_options=STDLIB_OPTIONS)
 
         # custom types and corresponding serdes options I: ordered insert
         cd_im_res = customdt_table.insert_many([ALLMAPS_CUSTOMTYPES_ROW], ordered=True)
@@ -105,8 +121,11 @@ class TestTableMapsAsTuplesSync:
         self,
         sync_empty_table_allmaps: DefaultTable,
     ) -> None:
-        customdt_table = sync_empty_table_allmaps
-        stdlib_table = sync_empty_table_allmaps.with_options(api_options=STDLIB_OPTIONS)
+        tuplified_table = sync_empty_table_allmaps.with_options(
+            api_options=MAP2TUPLES_OPTIONS
+        )
+        customdt_table = tuplified_table
+        stdlib_table = tuplified_table.with_options(api_options=STDLIB_OPTIONS)
 
         # custom types and corresponding serdes options
         customdt_table.insert_one({"id": ALLMAPS_CUSTOMTYPES_ROW["id"]})
@@ -135,3 +154,14 @@ class TestTableMapsAsTuplesSync:
         )
         stdlib_table.delete_one({"id": ALLMAPS_STDLIB_ROW["id"]})
         assert stdlib_table.find_one({"id": ALLMAPS_STDLIB_ROW["id"]}) is None
+
+    @pytest.mark.describe("test of table maps-as-tuples with ordinary rows, sync")
+    def test_table_mapsastuples_ordinary_rows_sync(
+        self,
+        sync_empty_table_all_returns: DefaultTable,
+    ) -> None:
+        tuplified_table = sync_empty_table_all_returns.with_options(
+            api_options=MAP2TUPLES_OPTIONS
+        )
+        tuplified_table.insert_many(DISTINCT_AR_ROWS)
+        assert len(tuplified_table.find({}).to_list()) == len(DISTINCT_AR_ROWS)

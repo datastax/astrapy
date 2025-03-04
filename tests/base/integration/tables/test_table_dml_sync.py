@@ -233,7 +233,7 @@ class TestTableDMLSync:
         assert set(d_timestamp) == set(exp_d_timestamp)
 
         d_list_int = sync_empty_table_all_returns.distinct("p_list_int")
-        exp_d_list_int = {1, 2, 3}
+        exp_d_list_int = {1, 2, 3, 9999}  # FIXME remove 9999 when #1906 resolved
         assert set(d_list_int) == set(exp_d_list_int)
 
         d_list_int_ind = sync_empty_table_all_returns.distinct("p_list_int.1")
@@ -256,7 +256,7 @@ class TestTableDMLSync:
         assert set(d_p_map_text_text_a) == set(exp_d_p_map_text_text_a)
 
         d_set_int = sync_empty_table_all_returns.distinct("p_set_int")
-        exp_d_set_int = {100, 200, 300}
+        exp_d_set_int = {100, 200, 300, 9999}  # FIXME remove 9999 when #1906 resolved
         assert set(d_set_int) == set(exp_d_set_int)
 
     @pytest.mark.describe("test of table distinct key-as-list, sync")
@@ -283,7 +283,7 @@ class TestTableDMLSync:
         assert set(d_timestamp) == set(exp_d_timestamp)
 
         d_list_int = sync_empty_table_all_returns.distinct(["p_list_int"])
-        exp_d_list_int = {1, 2, 3}
+        exp_d_list_int = {1, 2, 3, 9999}  # FIXME remove 9999 when #1906 resolved
         assert set(d_list_int) == set(exp_d_list_int)
 
         d_list_int_ind = sync_empty_table_all_returns.distinct(["p_list_int", 1])
@@ -312,7 +312,7 @@ class TestTableDMLSync:
         assert set(d_p_map_text_text_a) == set(exp_d_p_map_text_text_a)
 
         d_set_int = sync_empty_table_all_returns.distinct(["p_set_int"])
-        exp_d_set_int = {100, 200, 300}
+        exp_d_set_int = {100, 200, 300, 9999}  # FIXME remove 9999 when #1906 resolved
         assert set(d_set_int) == set(exp_d_set_int)
 
     @pytest.mark.describe("test of table insert_many, sync")

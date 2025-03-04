@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from astrapy.api_options import APIOptions, SerdesOptions
@@ -22,13 +24,21 @@ from ..conftest import DefaultAsyncTable
 from .table_row_assets import (
     ALLMAPS_CUSTOMTYPES_ROW,
     ALLMAPS_STDLIB_ROW,
+    DISTINCT_AR_ROWS,
 )
 
+MAP2TUPLES_OPTIONS = APIOptions(
+    serdes_options=SerdesOptions(encode_maps_as_lists_in_tables=True)
+)
 STDLIB_OPTIONS = APIOptions(
     serdes_options=SerdesOptions(custom_datatypes_in_reading=False)
 )
 
 
+@pytest.mark.skipif(
+    "ASTRAPY_TEST_MAP2TUPLES" not in os.environ,
+    reason="Disabled except on bleeding-edge main so far",
+)
 class TestTableMapsAsTuplesAsync:
     @pytest.mark.describe(
         "test of table maps-as-tuples, insert one and find one, async"
@@ -37,10 +47,11 @@ class TestTableMapsAsTuplesAsync:
         self,
         async_empty_table_allmaps: DefaultAsyncTable,
     ) -> None:
-        customdt_atable = async_empty_table_allmaps
-        stdlib_atable = async_empty_table_allmaps.with_options(
-            api_options=STDLIB_OPTIONS
+        tuplified_atable = async_empty_table_allmaps.with_options(
+            api_options=MAP2TUPLES_OPTIONS
         )
+        customdt_atable = tuplified_atable
+        stdlib_atable = tuplified_atable.with_options(api_options=STDLIB_OPTIONS)
 
         # custom types and corresponding serdes options
         cd_io_res = await customdt_atable.insert_one(ALLMAPS_CUSTOMTYPES_ROW)
@@ -63,10 +74,11 @@ class TestTableMapsAsTuplesAsync:
         self,
         async_empty_table_allmaps: DefaultAsyncTable,
     ) -> None:
-        customdt_atable = async_empty_table_allmaps
-        stdlib_atable = async_empty_table_allmaps.with_options(
-            api_options=STDLIB_OPTIONS
+        tuplified_atable = async_empty_table_allmaps.with_options(
+            api_options=MAP2TUPLES_OPTIONS
         )
+        customdt_atable = tuplified_atable
+        stdlib_atable = tuplified_atable.with_options(api_options=STDLIB_OPTIONS)
 
         # custom types and corresponding serdes options I: ordered insert
         cd_im_res = await customdt_atable.insert_many(
@@ -115,10 +127,11 @@ class TestTableMapsAsTuplesAsync:
         self,
         async_empty_table_allmaps: DefaultAsyncTable,
     ) -> None:
-        customdt_atable = async_empty_table_allmaps
-        stdlib_atable = async_empty_table_allmaps.with_options(
-            api_options=STDLIB_OPTIONS
+        tuplified_atable = async_empty_table_allmaps.with_options(
+            api_options=MAP2TUPLES_OPTIONS
         )
+        customdt_atable = tuplified_atable
+        stdlib_atable = tuplified_atable.with_options(api_options=STDLIB_OPTIONS)
 
         # custom types and corresponding serdes options
         await customdt_atable.insert_one({"id": ALLMAPS_CUSTOMTYPES_ROW["id"]})
@@ -150,3 +163,14 @@ class TestTableMapsAsTuplesAsync:
         )
         await stdlib_atable.delete_one({"id": ALLMAPS_STDLIB_ROW["id"]})
         assert await stdlib_atable.find_one({"id": ALLMAPS_STDLIB_ROW["id"]}) is None
+
+    @pytest.mark.describe("test of table maps-as-tuples with ordinary rows, async")
+    async def test_table_mapsastuples_ordinary_rows_async(
+        self,
+        async_empty_table_all_returns: DefaultAsyncTable,
+    ) -> None:
+        tuplified_atable = async_empty_table_all_returns.with_options(
+            api_options=MAP2TUPLES_OPTIONS
+        )
+        await tuplified_atable.insert_many(DISTINCT_AR_ROWS)
+        assert len(await tuplified_atable.find({}).to_list()) == len(DISTINCT_AR_ROWS)
