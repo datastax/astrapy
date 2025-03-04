@@ -200,7 +200,10 @@ def _hash_collection_document(
 
 def _hash_table_document(document: dict[str, Any], options: FullSerdesOptions) -> str:
     _normalized_item = preprocess_table_payload_value(
-        path=[], value=document, options=options
+        path=[],
+        value=document,
+        options=options,
+        map2tuple_paths=[],
     )
     _normalized_json = json.dumps(
         _normalized_item, sort_keys=True, separators=(",", ":")

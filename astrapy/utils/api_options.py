@@ -36,6 +36,7 @@ from astrapy.settings.defaults import (
     DEFAULT_CUSTOM_DATATYPES_IN_READING,
     DEFAULT_DATABASE_ADMIN_TIMEOUT_MS,
     DEFAULT_DATETIME_TZINFO,
+    DEFAULT_ENCODE_MAPS_AS_LISTS_IN_TABLES,
     DEFAULT_GENERAL_METHOD_TIMEOUT_MS,
     DEFAULT_KEYSPACE_ADMIN_TIMEOUT_MS,
     DEFAULT_REQUEST_TIMEOUT_MS,
@@ -331,6 +332,14 @@ class SerdesOptions:
             fact that every number is then returned as an instance of `Decimal` when
             reading from collections, an additional performance cost is required to
             manage the serialization/deserialization of objects exchanged with the API.
+        encode_maps_as_lists_in_tables: Write-Path. Controls whether 'maps' (`dict` and
+            `DataAPIMap` objects alike) are automatically converted into association
+            lists if they are found in suitable portions of the write payload for Table
+            operations, i.e. if they represent parts of a row (including updates, etc).
+            If set to True, where rows or portions of a row are expected, conversions
+            such as the following occur automatically:
+            * `{10: "ten"} ==> [[10, "ten"]]`
+            * `DataAPIMap([('a', 1), ('b', 2)]) ==> [["a", 1], ["b", 2]]`
         accept_naive_datetimes: Write-Path. Python datetimes can be either "naive" or
             "aware" of a timezone/offset information. Only the latter type can be
             translated unambiguously and without implied assumptions into a well-defined
@@ -355,6 +364,7 @@ class SerdesOptions:
     custom_datatypes_in_reading: bool | UnsetType = _UNSET
     unroll_iterables_to_lists: bool | UnsetType = _UNSET
     use_decimals_in_collections: bool | UnsetType = _UNSET
+    encode_maps_as_lists_in_tables: bool | UnsetType = _UNSET
     accept_naive_datetimes: bool | UnsetType = _UNSET
     datetime_tzinfo: datetime.timezone | None | UnsetType = _UNSET
 
@@ -438,6 +448,14 @@ class FullSerdesOptions(SerdesOptions):
             fact that every number is then returned as an instance of `Decimal` when
             reading from collections, an additional performance cost is required to
             manage the serialization/deserialization of objects exchanged with the API.
+        encode_maps_as_lists_in_tables: Write-Path. Controls whether 'maps' (`dict` and
+            `DataAPIMap` objects alike) are automatically converted into association
+            lists if they are found in suitable portions of the write payload for Table
+            operations, i.e. if they represent parts of a row (including updates, etc).
+            If set to True, where rows or portions of a row are expected, conversions
+            such as the following occur automatically:
+            * `{10: "ten"} ==> [[10, "ten"]]`
+            * `DataAPIMap([('a', 1), ('b', 2)]) ==> [["a", 1], ["b", 2]]`
         accept_naive_datetimes: Write-Path. Python datetimes can be either "naive" or
             "aware" of a timezone/offset information. Only the latter type can be
             translated unambiguously and without implied assumptions into a well-defined
@@ -462,6 +480,7 @@ class FullSerdesOptions(SerdesOptions):
     custom_datatypes_in_reading: bool
     unroll_iterables_to_lists: bool
     use_decimals_in_collections: bool
+    encode_maps_as_lists_in_tables: bool
     accept_naive_datetimes: bool
     datetime_tzinfo: datetime.timezone | None
 
@@ -472,6 +491,7 @@ class FullSerdesOptions(SerdesOptions):
         custom_datatypes_in_reading: bool,
         unroll_iterables_to_lists: bool,
         use_decimals_in_collections: bool,
+        encode_maps_as_lists_in_tables: bool,
         accept_naive_datetimes: bool,
         datetime_tzinfo: datetime.timezone | None,
     ) -> None:
@@ -481,6 +501,7 @@ class FullSerdesOptions(SerdesOptions):
             custom_datatypes_in_reading=custom_datatypes_in_reading,
             unroll_iterables_to_lists=unroll_iterables_to_lists,
             use_decimals_in_collections=use_decimals_in_collections,
+            encode_maps_as_lists_in_tables=encode_maps_as_lists_in_tables,
             accept_naive_datetimes=accept_naive_datetimes,
             datetime_tzinfo=datetime_tzinfo,
         )
@@ -515,6 +536,11 @@ class FullSerdesOptions(SerdesOptions):
                 other.use_decimals_in_collections
                 if not isinstance(other.use_decimals_in_collections, UnsetType)
                 else self.use_decimals_in_collections
+            ),
+            encode_maps_as_lists_in_tables=(
+                other.encode_maps_as_lists_in_tables
+                if not isinstance(other.encode_maps_as_lists_in_tables, UnsetType)
+                else self.encode_maps_as_lists_in_tables
             ),
             accept_naive_datetimes=(
                 other.accept_naive_datetimes
@@ -1210,6 +1236,7 @@ defaultSerdesOptions = FullSerdesOptions(
     custom_datatypes_in_reading=DEFAULT_CUSTOM_DATATYPES_IN_READING,
     unroll_iterables_to_lists=DEFAULT_UNROLL_ITERABLES_TO_LISTS,
     use_decimals_in_collections=DEFAULT_USE_DECIMALS_IN_COLLECTIONS,
+    encode_maps_as_lists_in_tables=DEFAULT_ENCODE_MAPS_AS_LISTS_IN_TABLES,
     accept_naive_datetimes=DEFAULT_ACCEPT_NAIVE_DATETIMES,
     datetime_tzinfo=DEFAULT_DATETIME_TZINFO,
 )

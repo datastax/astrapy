@@ -731,7 +731,8 @@ def preprocess_table_payload(
     Args:
         payload (dict[str, Any]): A dict expressing a payload for an API call
         options: a FullSerdesOptions setting the preprocessing configuration
-        map2tuple_paths: path-roots specifying where in the payload 'rows' are.
+        map2tuple_paths: path-roots specifying where in the payload 'row-like'
+            parts are: this is used to auto-convert maps into association lists.
 
     Returns:
         dict[str, Any]: a payload dict, pre-processed, ready for HTTP requests.
