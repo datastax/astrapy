@@ -290,7 +290,7 @@ def sync_table_simple(
     )
     table.create_vector_index(
         TEST_SIMPLE_TABLE_VECTOR_INDEX_NAME,
-        column=TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN,
+        TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN,
         options=TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS,
     )
     yield table
@@ -335,12 +335,12 @@ def sync_table_composite(
     )
     table.create_vector_index(
         TEST_COMPOSITE_TABLE_VECTOR_INDEX_NAME,
-        column=TEST_COMPOSITE_TABLE_VECTOR_INDEX_COLUMN,
+        TEST_COMPOSITE_TABLE_VECTOR_INDEX_COLUMN,
         options=TEST_COMPOSITE_TABLE_VECTOR_INDEX_OPTIONS,
     )
     table.create_index(
         TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_NAME,
-        column=TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_COLUMN,
+        TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_COLUMN,
         options=TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_OPTIONS,
     )
     yield table
@@ -385,7 +385,7 @@ def sync_table_vectorize(
     )
     table.create_vector_index(
         TEST_VECTORIZE_TABLE_VECTOR_INDEX_NAME,
-        column=TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN,
+        TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN,
         options=TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS,
     )
     yield table
@@ -430,7 +430,7 @@ def sync_table_kms_vectorize(
     )
     table.create_vector_index(
         TEST_KMS_VECTORIZE_TABLE_VECTOR_INDEX_NAME,
-        column=TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN,
+        TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN,
         options=TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS,
     )
     yield table

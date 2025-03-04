@@ -676,6 +676,7 @@ class TestCollectionDMLAsync:
         async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
+        the_datimestamp = DataAPITimestamp.from_string("2000-01-01T12:00:00.000Z")
         documents: list[dict[str, Any]] = [
             {},
             {"f": 1},
@@ -685,7 +686,7 @@ class TestCollectionDMLAsync:
             {"f": [10, 11]},
             {"f": [11, 10]},
             {"f": [10]},
-            {"f": datetime(2000, 1, 1, 12, 0, 0, tzinfo=timezone.utc)},
+            {"f": the_datimestamp},
             {"f": None},
         ]
         await acol.insert_many(documents * 2)
@@ -697,9 +698,6 @@ class TestCollectionDMLAsync:
                 if isinstance(doc["f"], list):
                     for item in doc["f"]:
                         assert item in d_items
-                elif isinstance(doc["f"], datetime):
-                    da_ts = DataAPITimestamp.from_datetime(doc["f"])
-                    assert da_ts in d_items
                 else:
                     assert doc["f"] in d_items
 
@@ -716,10 +714,58 @@ class TestCollectionDMLAsync:
                 if isinstance(doc["f"], list):
                     for item in doc["f"]:
                         assert item in d_items_noncustom
-                elif isinstance(doc["f"], datetime):
-                    assert doc["f"] in d_items_noncustom
+                elif isinstance(doc["f"], DataAPITimestamp):
+                    assert doc["f"].to_datetime(tz=timezone.utc) in d_items_noncustom
                 else:
                     assert doc["f"] in d_items_noncustom
+
+    @pytest.mark.describe("test of distinct with key as list, async")
+    async def test_collection_distinct_key_as_list_async(
+        self,
+        async_empty_collection: DefaultAsyncCollection,
+    ) -> None:
+        acol = async_empty_collection
+        the_datimestamp = DataAPITimestamp.from_string("2000-01-01T12:00:00.000Z")
+        documents: list[dict[str, Any]] = [
+            {},
+            {"f": 1},
+            {"f": "a"},
+            {"f": {"subf": 99}},
+            {"f": {"subf": 99, "another": {"subsubf": [True, False]}}},
+            {"f": [10, 11]},
+            {"f": [11, 10]},
+            {"f": [10]},
+            {"f": the_datimestamp},
+            {"f": None},
+        ]
+        await acol.insert_many(documents * 2)
+
+        assert await acol.distinct("f") == await acol.distinct(["f"])
+
+        await acol.insert_one({"x": [{"y": "Y", "0": "ZERO"}]})
+
+        await acol.delete_many({})
+        await acol.insert_one({"x": [{"y": "Y", "0": "ZERO"}]})
+
+        assert await acol.distinct(["x", "y"]) == ["Y"]
+        # these expose int-vs-str subtleties (listindex/mapkey issues)
+        assert await acol.distinct(["x", "0"]) == ["ZERO"]
+        assert await acol.distinct(["x", 0]) == [{"y": "Y", "0": "ZERO"}]
+        assert await acol.distinct(["x", "0", "y"]) == []
+        assert await acol.distinct(["x", 0, "y"]) == ["Y"]
+        assert await acol.distinct(["x", "0", "0"]) == []
+        assert await acol.distinct(["x", "0", 0]) == []
+        assert await acol.distinct(["x", 0, "0"]) == ["ZERO"]
+        assert await acol.distinct(["x", 0, 0]) == []
+
+        with pytest.raises(ValueError):
+            await async_empty_collection.distinct(["root", "1", "", "subf"])
+        with pytest.raises(ValueError):
+            await async_empty_collection.distinct(["root", "", "1", "subf"])
+        with pytest.raises(ValueError):
+            await async_empty_collection.distinct(["root", "", "subf", "subsubf"])
+        with pytest.raises(ValueError):
+            await async_empty_collection.distinct(["root", "subf", "", "subsubf"])
 
     @pytest.mark.describe("test of usage of projection in distinct, async")
     async def test_collection_projections_distinct_async(

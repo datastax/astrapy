@@ -3,6 +3,9 @@ main
 Exceptions
     - `DataAPIResponseException.error_descriptors` is a property (computed from detailed_error_descriptors)
     - better string representation of `DataAPIDetailedErrorDescriptor`
+Arbitrary field names and dot-escaping:
+    - offering utilities `astrapy.utils.document_paths.escape_field_names/unescape_field_path`
+    - `distinct` methods can accept a list of (literal) str|int as well as a(n escaped) identifier string
 Spawner methods for databases/admins standardized; they don't issue DevOps API calls.
     - removed `normalize_region_for_id` utility method, not used anymore.
     - `AstraDBAdmin.get_[async]_database()`:
@@ -18,7 +21,9 @@ Spawner methods for databases/admins standardized; they don't issue DevOps API c
         - `region` now required if `id` passed instead of endpoint.
 Support for Astra DB "custom domain" endpoints for database
     - in which case: `.id`, `.region`, `.get_database_admin()`, `.info()` and `.name()` aren't available.
-Support for the `indexType` field to describe table indexes (for compatibility, said field is not mandatory).
+Table indexes:
+    - Support for the `indexType` field to describe table indexes (for compatibility, said field is not mandatory).
+    - 'column' argument for create[Vector]Index table metods is now positional (after index name)
 Collections write path now obeys the binary-encoding API Option (which in turn defaults to True. Formerly bin-encoding was always turned off.)
 DataAPITime: support for "hh:mm" no-seconds format.
 DataAPIDuration: improved parse performance by caching regexpes.
