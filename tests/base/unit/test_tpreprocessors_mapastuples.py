@@ -16,13 +16,13 @@ from __future__ import annotations
 
 import pytest
 
-from astrapy.utils.api_options import defaultSerdesOptions, SerdesOptions
-from astrapy.data.utils.table_converters import preprocess_table_payload
 from astrapy.data.table import (
     MAP2TUPLE_PATHS_INSERT_MANY,
     MAP2TUPLE_PATHS_INSERT_ONE,
     MAP2TUPLE_PATHS_UPDATE_ONE,
 )
+from astrapy.data.utils.table_converters import preprocess_table_payload
+from astrapy.utils.api_options import SerdesOptions, defaultSerdesOptions
 
 MAP2TUPLE_OPTIONS = defaultSerdesOptions.with_override(
     SerdesOptions(encode_maps_as_lists_in_tables=True)
@@ -32,7 +32,7 @@ MAP2TUPLE_OPTIONS = defaultSerdesOptions.with_override(
 class TestTPreprocessorsMapsAsTuples:
     @pytest.mark.describe("test of tuple conversion as in insert_one")
     def test_map2tuple_conversion_insertone(self) -> None:
-        payload = {"insertOne": {"document": {"a": {1:"x"}}}}
+        payload = {"insertOne": {"document": {"a": {1: "x"}}}}
         expected = {"insertOne": {"document": {"a": [[1, "x"]]}}}
         converted = preprocess_table_payload(
             payload,
@@ -43,7 +43,7 @@ class TestTPreprocessorsMapsAsTuples:
 
     @pytest.mark.describe("test of tuple conversion as in insert_many")
     def test_map2tuple_conversion_insertmany(self) -> None:
-        payload = {"insertMany": {"documents": [{"a": {1:"x"}}]}}
+        payload = {"insertMany": {"documents": [{"a": {1: "x"}}]}}
         expected = {"insertMany": {"documents": [{"a": [[1, "x"]]}]}}
         converted = preprocess_table_payload(
             payload,
@@ -54,20 +54,24 @@ class TestTPreprocessorsMapsAsTuples:
 
     @pytest.mark.describe("test of tuple conversion as in update_one")
     def test_map2tuple_conversion_updateone(self) -> None:
-        payload = {"updateOne": {
-            "filter": {"f": {1:"g"}},
-            "update": {
-                "$set": {"s": {10: "t"}},
-                "$unset": {"u": {10: "v"}},
-            },
-        }}
-        expected = {"updateOne": {
-            "filter": {"f": {1:"g"}},
-            "update": {
-                "$set": {"s": [[10, "t"]]},
-                "$unset": {"u": {10: "v"}},
-            },
-        }}
+        payload = {
+            "updateOne": {
+                "filter": {"f": {1: "g"}},
+                "update": {
+                    "$set": {"s": {10: "t"}},
+                    "$unset": {"u": {10: "v"}},
+                },
+            }
+        }
+        expected = {
+            "updateOne": {
+                "filter": {"f": {1: "g"}},
+                "update": {
+                    "$set": {"s": [[10, "t"]]},
+                    "$unset": {"u": {10: "v"}},
+                },
+            }
+        }
         converted = preprocess_table_payload(
             payload,
             MAP2TUPLE_OPTIONS,
