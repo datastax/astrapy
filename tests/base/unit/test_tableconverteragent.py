@@ -30,6 +30,7 @@ class TestTableConverterAgent:
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,
             use_decimals_in_collections=False,
+            encode_maps_as_lists_in_tables=False,
             accept_naive_datetimes=False,
             datetime_tzinfo=None,
         )
@@ -84,6 +85,7 @@ class TestTableConverterAgent:
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,
             use_decimals_in_collections=False,
+            encode_maps_as_lists_in_tables=False,
             accept_naive_datetimes=False,
             datetime_tzinfo=None,
         )
@@ -117,6 +119,7 @@ class TestTableConverterAgent:
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,
             use_decimals_in_collections=False,
+            encode_maps_as_lists_in_tables=False,
             accept_naive_datetimes=False,
             datetime_tzinfo=None,
         )
