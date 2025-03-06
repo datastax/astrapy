@@ -566,7 +566,7 @@ def preprocess_table_payload_value(
     path: list[str],
     value: Any,
     options: FullSerdesOptions,
-    map2tuple_paths: list[list[str]],
+    map2tuple_checker: Callable[[list[str]], bool] | None,
     force_maps_become_tuples: bool = False,
 ) -> Any:
     """
@@ -581,14 +581,10 @@ def preprocess_table_payload_value(
             maps_become_tuples = False
         elif force_maps_become_tuples:
             maps_become_tuples = True
-        else:
+        elif map2tuple_checker is None:
             maps_become_tuples = False
-            path_len = len(path)
-            for rp in map2tuple_paths:
-                rp_len = len(rp)
-                if path_len > rp_len and path[:rp_len] == rp:
-                    maps_become_tuples = True
-                    break
+        else:
+            maps_become_tuples = map2tuple_checker(path)
 
         if maps_become_tuples:
             return [
@@ -597,14 +593,14 @@ def preprocess_table_payload_value(
                         path,
                         k,
                         options=options,
-                        map2tuple_paths=map2tuple_paths,
+                        map2tuple_checker=map2tuple_checker,
                         force_maps_become_tuples=True,
                     ),
                     preprocess_table_payload_value(
                         path + [k],
                         v,
                         options=options,
-                        map2tuple_paths=map2tuple_paths,
+                        map2tuple_checker=map2tuple_checker,
                         force_maps_become_tuples=True,
                     ),
                 ]
@@ -613,16 +609,16 @@ def preprocess_table_payload_value(
 
         return {
             preprocess_table_payload_value(
-                path, k, options=options, map2tuple_paths=map2tuple_paths
+                path, k, options=options, map2tuple_checker=map2tuple_checker
             ): preprocess_table_payload_value(
-                path + [k], v, options=options, map2tuple_paths=map2tuple_paths
+                path + [k], v, options=options, map2tuple_checker=map2tuple_checker
             )
             for k, v in value.items()
         }
     elif isinstance(value, (list, set, DataAPISet)):
         return [
             preprocess_table_payload_value(
-                path + [""], v, options=options, map2tuple_paths=map2tuple_paths
+                path + [""], v, options=options, map2tuple_checker=map2tuple_checker
             )
             for v in value
         ]
@@ -647,7 +643,10 @@ def preprocess_table_payload_value(
             # regular list of floats - which can contain non-numbers:
             return [
                 preprocess_table_payload_value(
-                    path + [""], fval, options=options, map2tuple_paths=map2tuple_paths
+                    path + [""],
+                    fval,
+                    options=options,
+                    map2tuple_checker=map2tuple_checker,
                 )
                 for fval in value.data
             ]
@@ -710,7 +709,7 @@ def preprocess_table_payload_value(
         if isinstance(_value, list):
             return [
                 preprocess_table_payload_value(
-                    path + [""], v, options=options, map2tuple_paths=map2tuple_paths
+                    path + [""], v, options=options, map2tuple_checker=map2tuple_checker
                 )
                 for v in _value
             ]
@@ -723,7 +722,7 @@ def preprocess_table_payload_value(
 def preprocess_table_payload(
     payload: dict[str, Any] | None,
     options: FullSerdesOptions,
-    map2tuple_paths: list[list[str]],
+    map2tuple_checker: Callable[[list[str]], bool] | None,
 ) -> dict[str, Any] | None:
     """
     Normalize a payload for API calls.
@@ -733,8 +732,10 @@ def preprocess_table_payload(
     Args:
         payload (dict[str, Any]): A dict expressing a payload for an API call
         options: a FullSerdesOptions setting the preprocessing configuration
-        map2tuple_paths: path-roots specifying where in the payload 'row-like'
-            parts are: this is used to auto-convert maps into association lists.
+        map2tuple_checker: a boolean function of a path in the doc, that returns
+            True for "doc-like" portions of a payload, i.e. whose maps/DataAPIMaps
+            can be converted into association lists, if such autoconversion is
+            turned on. If this parameter is None, no paths are autoconverted.
 
     Returns:
         dict[str, Any]: a payload dict, pre-processed, ready for HTTP requests.
@@ -747,7 +748,7 @@ def preprocess_table_payload(
                 [],
                 payload,
                 options=options,
-                map2tuple_paths=map2tuple_paths,
+                map2tuple_checker=map2tuple_checker,
             ),
         )
     else:
@@ -826,12 +827,14 @@ class _TableConverterAgent(Generic[ROW]):
         return self.row_postprocessors[schema_cache_key]
 
     def preprocess_payload(
-        self, payload: dict[str, Any] | None, map2tuple_paths: list[list[str]]
+        self,
+        payload: dict[str, Any] | None,
+        map2tuple_checker: Callable[[list[str]], bool] | None,
     ) -> dict[str, Any] | None:
         return preprocess_table_payload(
             payload,
             options=self.options,
-            map2tuple_paths=map2tuple_paths,
+            map2tuple_checker=map2tuple_checker,
         )
 
     def postprocess_key(

@@ -17,9 +17,9 @@ from __future__ import annotations
 import pytest
 
 from astrapy.data.table import (
-    MAP2TUPLE_PATHS_INSERT_MANY,
-    MAP2TUPLE_PATHS_INSERT_ONE,
-    MAP2TUPLE_PATHS_UPDATE_ONE,
+    map2tuple_checker_insert_many,
+    map2tuple_checker_insert_one,
+    map2tuple_checker_update_one,
 )
 from astrapy.data.utils.table_converters import preprocess_table_payload
 from astrapy.utils.api_options import SerdesOptions, defaultSerdesOptions
@@ -37,7 +37,7 @@ class TestTPreprocessorsMapsAsTuples:
         converted = preprocess_table_payload(
             payload,
             MAP2TUPLE_OPTIONS,
-            map2tuple_paths=MAP2TUPLE_PATHS_INSERT_ONE,
+            map2tuple_checker=map2tuple_checker_insert_one,
         )
         assert expected == converted
 
@@ -48,7 +48,7 @@ class TestTPreprocessorsMapsAsTuples:
         converted = preprocess_table_payload(
             payload,
             MAP2TUPLE_OPTIONS,
-            map2tuple_paths=MAP2TUPLE_PATHS_INSERT_MANY,
+            map2tuple_checker=map2tuple_checker_insert_many,
         )
         assert expected == converted
 
@@ -75,6 +75,6 @@ class TestTPreprocessorsMapsAsTuples:
         converted = preprocess_table_payload(
             payload,
             MAP2TUPLE_OPTIONS,
-            map2tuple_paths=MAP2TUPLE_PATHS_UPDATE_ONE,
+            map2tuple_checker=map2tuple_checker_update_one,
         )
         assert expected == converted

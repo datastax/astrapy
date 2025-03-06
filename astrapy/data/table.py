@@ -75,10 +75,30 @@ logger = logging.getLogger(__name__)
 
 NEW_ROW = TypeVar("NEW_ROW")
 
-# path presets for map-to-tuple automatic conversion of payloads
-MAP2TUPLE_PATHS_INSERT_MANY = [["insertMany", "documents", ""]]
-MAP2TUPLE_PATHS_INSERT_ONE = [["insertOne", "document"]]
-MAP2TUPLE_PATHS_UPDATE_ONE = [["updateOne", "update", "$set"]]
+
+# path checkers for map-to-tuple automatic conversion of payloads
+def map2tuple_checker_insert_many(path: list[str]) -> bool:
+    _lp = len(path)
+    if _lp >= 4:
+        return path[:3] == ["insertMany", "documents", ""]
+    else:
+        return False
+
+
+def map2tuple_checker_insert_one(path: list[str]) -> bool:
+    _lp = len(path)
+    if _lp >= 3:
+        return path[:2] == ["insertOne", "document"]
+    else:
+        return False
+
+
+def map2tuple_checker_update_one(path: list[str]) -> bool:
+    _lp = len(path)
+    if _lp >= 4:
+        return path[:3] == ["updateOne", "update", "$set"]
+    else:
+        return False
 
 
 class Table(Generic[ROW]):
@@ -1134,7 +1154,7 @@ class Table(Generic[ROW]):
         )
         io_payload = self._converter_agent.preprocess_payload(
             {"insertOne": {"document": row}},
-            map2tuple_paths=MAP2TUPLE_PATHS_INSERT_ONE,
+            map2tuple_checker=map2tuple_checker_insert_one,
         )
         logger.info(f"insertOne on '{self.name}'")
         io_response = self._api_commander.request(
@@ -1409,7 +1429,7 @@ class Table(Generic[ROW]):
                             "options": options,
                         },
                     },
-                    map2tuple_paths=MAP2TUPLE_PATHS_INSERT_MANY,
+                    map2tuple_checker=map2tuple_checker_insert_many,
                 )
                 logger.info(f"insertMany on '{self.name}'")
                 chunk_response = self._api_commander.request(
@@ -1466,7 +1486,7 @@ class Table(Generic[ROW]):
                                     "options": options,
                                 },
                             },
-                            map2tuple_paths=MAP2TUPLE_PATHS_INSERT_MANY,
+                            map2tuple_checker=map2tuple_checker_insert_many,
                         )
                         logger.info(f"insertMany(chunk) on '{self.name}'")
                         im_response = self._api_commander.request(
@@ -1498,7 +1518,7 @@ class Table(Generic[ROW]):
                                 "options": options,
                             },
                         },
-                        map2tuple_paths=MAP2TUPLE_PATHS_INSERT_MANY,
+                        map2tuple_checker=map2tuple_checker_insert_many,
                     )
                     logger.info(f"insertMany(chunk) on '{self.name}'")
                     im_response = self._api_commander.request(
@@ -2052,7 +2072,7 @@ class Table(Generic[ROW]):
                     if v is not None
                 }
             },
-            map2tuple_paths=[],
+            map2tuple_checker=None,
         )
         fo_response = self._api_commander.request(
             payload=fo_payload,
@@ -2460,7 +2480,7 @@ class Table(Generic[ROW]):
                     if v is not None
                 }
             },
-            map2tuple_paths=MAP2TUPLE_PATHS_UPDATE_ONE,
+            map2tuple_checker=map2tuple_checker_update_one,
         )
         logger.info(f"updateOne on '{self.name}'")
         uo_response = self._api_commander.request(
@@ -2539,7 +2559,7 @@ class Table(Generic[ROW]):
                     if v is not None
                 }
             },
-            map2tuple_paths=[],
+            map2tuple_checker=None,
         )
         logger.info(f"deleteOne on '{self.name}'")
         do_response = self._api_commander.request(
@@ -2634,7 +2654,7 @@ class Table(Generic[ROW]):
                     if v is not None
                 }
             },
-            map2tuple_paths=[],
+            map2tuple_checker=None,
         )
         logger.info(f"deleteMany on '{self.name}'")
         dm_response = self._api_commander.request(
@@ -3868,7 +3888,7 @@ class AsyncTable(Generic[ROW]):
         )
         io_payload = self._converter_agent.preprocess_payload(
             {"insertOne": {"document": row}},
-            map2tuple_paths=MAP2TUPLE_PATHS_INSERT_ONE,
+            map2tuple_checker=map2tuple_checker_insert_one,
         )
         logger.info(f"insertOne on '{self.name}'")
         io_response = await self._api_commander.async_request(
@@ -4142,7 +4162,7 @@ class AsyncTable(Generic[ROW]):
                             "options": options,
                         },
                     },
-                    map2tuple_paths=MAP2TUPLE_PATHS_INSERT_MANY,
+                    map2tuple_checker=map2tuple_checker_insert_many,
                 )
                 logger.info(f"insertMany(chunk) on '{self.name}'")
                 chunk_response = await self._api_commander.async_request(
@@ -4200,7 +4220,7 @@ class AsyncTable(Generic[ROW]):
                                 "options": options,
                             },
                         },
-                        map2tuple_paths=MAP2TUPLE_PATHS_INSERT_MANY,
+                        map2tuple_checker=map2tuple_checker_insert_many,
                     )
                     logger.info(f"insertMany(chunk) on '{self.name}'")
                     im_response = await self._api_commander.async_request(
@@ -4798,7 +4818,7 @@ class AsyncTable(Generic[ROW]):
                     if v is not None
                 }
             },
-            map2tuple_paths=[],
+            map2tuple_checker=None,
         )
         fo_response = await self._api_commander.async_request(
             payload=fo_payload,
@@ -5217,7 +5237,7 @@ class AsyncTable(Generic[ROW]):
                     if v is not None
                 }
             },
-            map2tuple_paths=MAP2TUPLE_PATHS_UPDATE_ONE,
+            map2tuple_checker=map2tuple_checker_update_one,
         )
         logger.info(f"updateOne on '{self.name}'")
         uo_response = await self._api_commander.async_request(
@@ -5302,7 +5322,7 @@ class AsyncTable(Generic[ROW]):
                     if v is not None
                 }
             },
-            map2tuple_paths=[],
+            map2tuple_checker=None,
         )
         logger.info(f"deleteOne on '{self.name}'")
         do_response = await self._api_commander.async_request(
@@ -5399,7 +5419,7 @@ class AsyncTable(Generic[ROW]):
                     if v is not None
                 }
             },
-            map2tuple_paths=[],
+            map2tuple_checker=None,
         )
         logger.info(f"deleteMany on '{self.name}'")
         dm_response = await self._api_commander.async_request(

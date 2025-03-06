@@ -203,7 +203,7 @@ def _hash_table_document(document: dict[str, Any], options: FullSerdesOptions) -
         path=[],
         value=document,
         options=options,
-        map2tuple_paths=[],
+        map2tuple_checker=None,
     )
     _normalized_json = json.dumps(
         _normalized_item, sort_keys=True, separators=(",", ":")
