@@ -20,7 +20,10 @@ from dataclasses import dataclass
 from typing import Any
 
 from astrapy.data.info.table_descriptor.table_columns import TableColumnTypeDescriptor
-from astrapy.data.utils.table_types import TableKeyValuedColumnType
+from astrapy.data.utils.table_types import (
+    TableKeyValuedColumnType,
+    TableValuedColumnType,
+)
 from astrapy.utils.parsing import _warn_residual_keys
 from astrapy.utils.str_enum import StrEnum
 from astrapy.utils.unset import _UNSET, UnsetType
@@ -234,7 +237,8 @@ class TableBaseIndexDefinition(ABC):
     see the appropriate subclass for more details.
 
     Attributes:
-        column: TODO DOCSTRING the name of the indexed column.
+        column: the name of the indexed column. For an index on a map column,
+            it can be an object in a format such as {"column": "$values"} and similar.
     """
 
     column: str | dict[str, str]
@@ -277,7 +281,8 @@ class TableIndexDefinition(TableBaseIndexDefinition):
     including the name of the indexed column and the index options.
 
     Attributes:
-        column: the name of the indexed column. TODO DOCSTRING
+        column: the name of the indexed column. For an index on a map column,
+            it can be an object in a format such as {"column": "$values"} and similar.
         options: a `TableIndexOptions` detailing the index configuration.
     """
 
@@ -301,8 +306,12 @@ class TableIndexDefinition(TableBaseIndexDefinition):
         """Recast this object into a dictionary."""
 
         return {
-            "column": _serialize_index_column_spec(self.column),
-            "options": self.options.as_dict(),
+            k: v
+            for k, v in {
+                "column": _serialize_index_column_spec(self.column),
+                "options": self.options.as_dict(),
+            }.items()
+            if v
         }
 
     @classmethod
@@ -318,12 +327,15 @@ class TableIndexDefinition(TableBaseIndexDefinition):
         """
 
         # Handling 'col_name' becoming either 'col_name' / {'col_name': '$entries'}:
+
         col_spec = raw_dict["column"]
         recast_column: str | dict[str, str]
         if isinstance(col_spec, str) and col_spec in columns:
-            column = columns[col_spec]
-            if isinstance(column, TableKeyValuedColumnType):
+            column_type = columns[col_spec].column_type
+            if isinstance(column_type, TableKeyValuedColumnType):
                 recast_column = {col_spec: "$entries"}
+            elif isinstance(column_type, TableValuedColumnType):
+                recast_column = {col_spec: "$values"}
             else:
                 recast_column = col_spec
         else:
@@ -332,7 +344,7 @@ class TableIndexDefinition(TableBaseIndexDefinition):
         _warn_residual_keys(cls, raw_dict, {"column", "options"})
         return TableIndexDefinition(
             column=recast_column,
-            options=TableIndexOptions.coerce(raw_dict["options"]),
+            options=TableIndexOptions.coerce(raw_dict.get("options") or {}),
         )
 
     @classmethod
@@ -403,7 +415,7 @@ class TableVectorIndexDefinition(TableBaseIndexDefinition):
         _warn_residual_keys(cls, raw_dict, {"column", "options"})
         return TableVectorIndexDefinition(
             column=raw_dict["column"],
-            options=TableVectorIndexOptions.coerce(raw_dict["options"]),
+            options=TableVectorIndexOptions.coerce(raw_dict.get("options") or {}),
         )
 
     @classmethod
@@ -592,6 +604,19 @@ class TableIndexDescriptor:
             self.index_type = self.definition._index_type
         else:
             self.index_type = TableIndexType.coerce(index_type)
+
+    def __repr__(self) -> str:
+        not_null_pieces = [
+            pc
+            for pc in (
+                self.name,
+                f"definition={self.definition}",
+                f"index_type={self.index_type.value}",
+            )
+            if pc is not None
+        ]
+        inner_desc = ", ".join(not_null_pieces)
+        return f"{self.__class__.__name__}({inner_desc})"
 
     def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""

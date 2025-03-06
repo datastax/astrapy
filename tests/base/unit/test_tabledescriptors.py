@@ -334,6 +334,18 @@ UNSUPPORTED_INDEX_DEFINITION_DICT = {
     },
 }
 
+COLLECTIONTABLE_COLUMNS = CreateTableDefinition.coerce(
+    {
+        "columns": {
+            "the_map": {"type": "map", "keyType": "text", "valueType": "text"},
+            "the_list": {"type": "list", "valueType": "text"},
+            "the_set": {"type": "set", "valueType": "text"},
+            "the_text": "text",
+        },
+        "primaryKey": "text",
+    }
+).columns
+
 
 class TestListTableDescriptors:
     @pytest.mark.describe("test of parsing list-table descriptors, fully dict")
@@ -508,6 +520,55 @@ class TestListTableDescriptors:
             columns={},
         )
         assert INDEX_DEFINITION_DICT_MINIMAL == ti_coerceable_minimal.as_dict()
+
+    @pytest.mark.describe("test of parsing of map index definitions")
+    def test_map_indexdefinition_parsing(self) -> None:
+        assert TableIndexDefinition.coerce(
+            {"column": "the_text"}, columns=COLLECTIONTABLE_COLUMNS
+        ) == TableIndexDefinition(column="the_text", options=TableIndexOptions())
+        assert TableIndexDefinition.coerce(
+            {"column": "missing_col"}, columns=COLLECTIONTABLE_COLUMNS
+        ) == TableIndexDefinition(column="missing_col", options=TableIndexOptions())
+        assert TableIndexDefinition.coerce(
+            {"column": "the_map"}, columns=COLLECTIONTABLE_COLUMNS
+        ) == TableIndexDefinition(
+            column={"the_map": "$entries"}, options=TableIndexOptions()
+        )
+        assert TableIndexDefinition.coerce(
+            {"column": {"the_map": "$entries"}}, columns=COLLECTIONTABLE_COLUMNS
+        ) == TableIndexDefinition(
+            column={"the_map": "$entries"}, options=TableIndexOptions()
+        )
+        assert TableIndexDefinition.coerce(
+            {"column": {"the_map": "$keys"}}, columns=COLLECTIONTABLE_COLUMNS
+        ) == TableIndexDefinition(
+            column={"the_map": "$keys"}, options=TableIndexOptions()
+        )
+        assert TableIndexDefinition.coerce(
+            {"column": {"the_map": "$values"}}, columns=COLLECTIONTABLE_COLUMNS
+        ) == TableIndexDefinition(
+            column={"the_map": "$values"}, options=TableIndexOptions()
+        )
+        assert TableIndexDefinition.coerce(
+            {"column": "the_list"}, columns=COLLECTIONTABLE_COLUMNS
+        ) == TableIndexDefinition(
+            column={"the_list": "$values"}, options=TableIndexOptions()
+        )
+        assert TableIndexDefinition.coerce(
+            {"column": {"the_list": "$values"}}, columns=COLLECTIONTABLE_COLUMNS
+        ) == TableIndexDefinition(
+            column={"the_list": "$values"}, options=TableIndexOptions()
+        )
+        assert TableIndexDefinition.coerce(
+            {"column": "the_set"}, columns=COLLECTIONTABLE_COLUMNS
+        ) == TableIndexDefinition(
+            column={"the_set": "$values"}, options=TableIndexOptions()
+        )
+        assert TableIndexDefinition.coerce(
+            {"column": {"the_set": "$values"}}, columns=COLLECTIONTABLE_COLUMNS
+        ) == TableIndexDefinition(
+            column={"the_set": "$values"}, options=TableIndexOptions()
+        )
 
     @pytest.mark.describe("test of parsing of vector index definitions")
     def test_vectorindexdefinition_parsing(self) -> None:
