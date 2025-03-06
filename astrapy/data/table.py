@@ -622,7 +622,7 @@ class Table(Generic[ROW]):
     def create_index(
         self,
         name: str,
-        column: str,
+        column: str | dict[str, str],
         *,
         options: TableIndexOptions | dict[str, Any] | None = None,
         if_not_exists: bool | None = None,
@@ -641,6 +641,8 @@ class Table(Generic[ROW]):
         Args:
             name: the name of the index. Index names must be unique across the keyspace.
             column: the table column on which the index is to be created.
+                For a map column, besides a simple string, it can be an object
+                in one of the two formats {"column": "$values"}, {"column": "$keys"},
             options: if passed, it must be an instance of `TableIndexOptions`,
                 or an equivalent dictionary, which specifies index settings
                 such as -- for a text column -- case-sensitivity and so on.
@@ -828,7 +830,7 @@ class Table(Generic[ROW]):
             logger.info("finished listIndexes")
             return li_response["status"]["indexes"]  # type: ignore[no-any-return]
 
-    def list_indexes(
+    def _list_indexes(
         self,
         *,
         table_admin_timeout_ms: int | None = None,
@@ -837,6 +839,8 @@ class Table(Generic[ROW]):
     ) -> list[TableIndexDescriptor]:
         """
         List the full definitions of all indexes existing on this table.
+
+        WARNING: method not public yet, pending completion of its API.
 
         Args:
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
@@ -874,6 +878,12 @@ class Table(Generic[ROW]):
                 request_ms=_table_admin_timeout_ms, label=_ta_label
             ),
         )
+        columns = self.definition(
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        ).columns
+
         if "indexes" not in li_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
                 text="Faulty response from listIndexes API command.",
@@ -882,7 +892,7 @@ class Table(Generic[ROW]):
         else:
             logger.info("finished listIndexes")
             return [
-                TableIndexDescriptor.coerce(index_object)
+                TableIndexDescriptor.coerce(index_object, columns=columns)
                 for index_object in li_response["status"]["indexes"]
             ]
 
@@ -3342,7 +3352,7 @@ class AsyncTable(Generic[ROW]):
     async def create_index(
         self,
         name: str,
-        column: str,
+        column: str | dict[str, str],
         *,
         options: TableIndexOptions | dict[str, Any] | None = None,
         if_not_exists: bool | None = None,
@@ -3361,6 +3371,8 @@ class AsyncTable(Generic[ROW]):
         Args:
             name: the name of the index. Index names must be unique across the keyspace.
             column: the table column on which the index is to be created.
+                For a map column, besides a simple string, it can be an object
+                in one of the two formats {"column": "$values"}, {"column": "$keys"},
             options: if passed, it must be an instance of `TableIndexOptions`,
                 or an equivalent dictionary, which specifies index settings
                 such as -- for a text column -- case-sensitivity and so on.
@@ -3554,7 +3566,7 @@ class AsyncTable(Generic[ROW]):
             logger.info("finished listIndexes")
             return li_response["status"]["indexes"]  # type: ignore[no-any-return]
 
-    async def list_indexes(
+    async def _list_indexes(
         self,
         *,
         table_admin_timeout_ms: int | None = None,
@@ -3563,6 +3575,8 @@ class AsyncTable(Generic[ROW]):
     ) -> list[TableIndexDescriptor]:
         """
         List the full definitions of all indexes existing on this table.
+
+        WARNING: method not public yet, pending completion of its API.
 
         Args:
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
@@ -3603,6 +3617,14 @@ class AsyncTable(Generic[ROW]):
                 request_ms=_table_admin_timeout_ms, label=_ta_label
             ),
         )
+        columns = (
+            await self.definition(
+                table_admin_timeout_ms=table_admin_timeout_ms,
+                request_timeout_ms=request_timeout_ms,
+                timeout_ms=timeout_ms,
+            )
+        ).columns
+
         if "indexes" not in li_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
                 text="Faulty response from listIndexes API command.",
@@ -3611,7 +3633,7 @@ class AsyncTable(Generic[ROW]):
         else:
             logger.info("finished listIndexes")
             return [
-                TableIndexDescriptor.coerce(index_object)
+                TableIndexDescriptor.coerce(index_object, columns=columns)
                 for index_object in li_response["status"]["indexes"]
             ]
 
