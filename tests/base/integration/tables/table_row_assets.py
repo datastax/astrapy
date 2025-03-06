@@ -81,9 +81,9 @@ DISTINCT_AR_ROWS = [
         #
         "p_float": float("NaN"),
         "p_text": "a",
-        "p_list_int": [],
+        "p_list_int": [9999],  # FIXME back to [] once issue #1906 resolved
         "p_map_text_text": {"b": "VB"},
-        "p_set_int": set(),
+        "p_set_int": set([9999]),  # FIXME back to set() once issue #1906 resolved
     },
     {
         "p_ascii": "A",
