@@ -484,45 +484,62 @@ class TestListTableDescriptors:
 
     @pytest.mark.describe("test of parsing of index definitions")
     def test_indexdefinition_parsing(self) -> None:
-        ti_full = TableIndexDefinition.coerce(INDEX_DEFINITION_DICT_FULL)
+        ti_full = TableIndexDefinition.coerce(
+            INDEX_DEFINITION_DICT_FULL,
+            columns={},
+        )
         assert INDEX_DEFINITION_DICT_FULL == ti_full.as_dict()
         assert ti_full == INDEX_DEFINITION_FULL
 
-        ti_partial = TableIndexDefinition.coerce(INDEX_DEFINITION_DICT_PARTIAL)
+        ti_partial = TableIndexDefinition.coerce(
+            INDEX_DEFINITION_DICT_PARTIAL,
+            columns={},
+        )
         assert INDEX_DEFINITION_DICT_PARTIAL == ti_partial.as_dict()
 
-        ti_minimal = TableIndexDefinition.coerce(INDEX_DEFINITION_DICT_MINIMAL)
+        ti_minimal = TableIndexDefinition.coerce(
+            INDEX_DEFINITION_DICT_MINIMAL,
+            columns={},
+        )
         assert INDEX_DEFINITION_DICT_MINIMAL == ti_minimal.as_dict()
 
         ti_coerceable_minimal = TableIndexDefinition.coerce(
-            INDEX_DEFINITION_DICT_COERCEABLE_MINIMAL
+            INDEX_DEFINITION_DICT_COERCEABLE_MINIMAL,
+            columns={},
         )
         assert INDEX_DEFINITION_DICT_MINIMAL == ti_coerceable_minimal.as_dict()
 
     @pytest.mark.describe("test of parsing of vector index definitions")
     def test_vectorindexdefinition_parsing(self) -> None:
-        tvi_full = TableVectorIndexDefinition.coerce(VECTOR_INDEX_DEFINITION_DICT_FULL)
+        tvi_full = TableVectorIndexDefinition.coerce(
+            VECTOR_INDEX_DEFINITION_DICT_FULL,
+            columns={},
+        )
         assert VECTOR_INDEX_DEFINITION_DICT_FULL == tvi_full.as_dict()
         assert tvi_full == VECTOR_INDEX_DEFINITION_FULL
 
         tvi_partial = TableVectorIndexDefinition.coerce(
-            VECTOR_INDEX_DEFINITION_DICT_PARTIAL
+            VECTOR_INDEX_DEFINITION_DICT_PARTIAL,
+            columns={},
         )
         assert VECTOR_INDEX_DEFINITION_DICT_PARTIAL == tvi_partial.as_dict()
         tvi_minimal = TableVectorIndexDefinition.coerce(
-            VECTOR_INDEX_DEFINITION_DICT_MINIMAL
+            VECTOR_INDEX_DEFINITION_DICT_MINIMAL,
+            columns={},
         )
         assert VECTOR_INDEX_DEFINITION_DICT_MINIMAL == tvi_minimal.as_dict()
 
         tvi_coerceable_minimal = TableVectorIndexDefinition.coerce(
-            VECTOR_INDEX_DEFINITION_DICT_COERCEABLE_MINIMAL
+            VECTOR_INDEX_DEFINITION_DICT_COERCEABLE_MINIMAL,
+            columns={},
         )
         assert VECTOR_INDEX_DEFINITION_DICT_MINIMAL == tvi_coerceable_minimal.as_dict()
 
     @pytest.mark.describe("test of parsing of unsupported index definitions")
     def test_unsupportedindexdefinition_parsing(self) -> None:
         tui_full = TableUnsupportedIndexDefinition.coerce(
-            UNSUPPORTED_INDEX_DEFINITION_DICT
+            UNSUPPORTED_INDEX_DEFINITION_DICT,
+            columns={},
         )
         assert UNSUPPORTED_INDEX_DEFINITION_DICT == tui_full.as_dict()
         assert tui_full == UNSUPPORTED_INDEX_DEFINITION
