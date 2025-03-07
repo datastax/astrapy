@@ -396,8 +396,12 @@ class TableVectorIndexDefinition(TableBaseIndexDefinition):
         """Recast this object into a dictionary."""
 
         return {
-            "column": self.column,
-            "options": self.options.as_dict(),
+            k: v
+            for k, v in {
+                "column": self.column,
+                "options": self.options.as_dict(),
+            }.items()
+            if v
         }
 
     @classmethod
