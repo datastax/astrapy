@@ -282,13 +282,8 @@ INDEX_DEFINITION_DICT_PARTIAL = {
         "normalize": True,
     },
 }
-INDEX_DEFINITION_DICT_MINIMAL = {
-    "column": "the_column",
-    "options": {},
-}
-INDEX_DEFINITION_DICT_COERCEABLE_MINIMAL = {
-    "column": "the_column",
-}
+INDEX_DEFINITION_DICT_MINIMAL = {"column": "the_column"}
+INDEX_DEFINITION_DICT_COERCEABLE_MINIMAL = {"column": "the_column"}
 
 VECTOR_INDEX_DEFINITION_FULL = TableVectorIndexDefinition(
     column="the_v_column",
@@ -310,13 +305,8 @@ VECTOR_INDEX_DEFINITION_DICT_PARTIAL = {
         "sourceModel": "the_source_model",
     },
 }
-VECTOR_INDEX_DEFINITION_DICT_MINIMAL = {
-    "column": "the_v_column",
-    "options": {},
-}
-VECTOR_INDEX_DEFINITION_DICT_COERCEABLE_MINIMAL = {
-    "column": "the_v_column",
-}
+VECTOR_INDEX_DEFINITION_DICT_MINIMAL = {"column": "the_v_column"}
+VECTOR_INDEX_DEFINITION_DICT_COERCEABLE_MINIMAL = {"column": "the_v_column"}
 UNSUPPORTED_INDEX_DEFINITION = TableUnsupportedIndexDefinition(
     column="UNKNOWN",
     api_support=TableAPIIndexSupportDescriptor(
