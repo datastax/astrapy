@@ -19,12 +19,15 @@ from astrapy.data.info.collection_descriptor import (
     CollectionDefinition,
     CollectionDescriptor,
     CollectionInfo,
+    CollectionLexicalOptions,
+    CollectionRerankingOptions,
     CollectionVectorOptions,
 )
 from astrapy.data.info.database_info import (
     AstraDBAdminDatabaseInfo,
     AstraDBDatabaseInfo,
 )
+from astrapy.data.info.reranking import RerankingServiceOptions
 from astrapy.data.info.table_descriptor.table_altering import (
     AlterTableAddColumns,
     AlterTableAddVectorize,
@@ -85,6 +88,8 @@ __all__ = [
     "CollectionDefinition",
     "CollectionDescriptor",
     "CollectionInfo",
+    "CollectionLexicalOptions",
+    "CollectionRerankingOptions",
     "CollectionVectorOptions",
     "ColumnType",
     "CreateTableDefinition",
@@ -96,6 +101,7 @@ __all__ = [
     "FindEmbeddingProvidersResult",
     "ListTableDefinition",
     "ListTableDescriptor",
+    "RerankingServiceOptions",
     "TableAPIIndexSupportDescriptor",
     "TableAPISupportDescriptor",
     "TableBaseIndexDefinition",

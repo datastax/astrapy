@@ -1,5 +1,8 @@
 main
 ====
+Support for findAndRerank in collections:
+    - new classes `CollectionLexicalOptions`, `CollectionRerankingOptions`, `RerankingServiceOptions`
+    - new `lexical` and `reranking` entries in CollectionDefinition (+builder interface management)
 Maps for tables expressed as list of pairs (association lists):
     - support for automatic handling of dicts and DataAPIMaps in the proper table payload portions
     - introduced serdes option `encode_maps_as_lists_in_tables` (default to False) to control
