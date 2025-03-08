@@ -136,9 +136,10 @@ class CursorState(Enum):
     CLOSED = "closed"
 
 
-class FindCursor(Generic[TRAW]):
+class FindCursor(ABC, Generic[TRAW]):
     """
     A cursor obtained from a `find` invocation over a table or a collection.
+    TODO DOCSTRING TODO
     This is the main interface to scroll through the results (resp. rows or documents).
 
     This class is not meant to be directly instantiated by the user, rather it
@@ -327,7 +328,7 @@ class _QueryEngine(ABC, Generic[TRAW]):
         ...
 
 
-class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
+class _CollectionFindQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
     collection: Collection[TRAW] | None
     async_collection: AsyncCollection[TRAW] | None
     f_r_subpayload: dict[str, Any]
@@ -460,7 +461,7 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         return (p_documents, n_p_state, p_r_status)
 
 
-class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
+class _TableFindQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
     table: Table[TRAW] | None
     async_table: AsyncTable[TRAW] | None
     include_similarity: bool | None
@@ -640,7 +641,7 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         {'seq': 11}
     """
 
-    _query_engine: _CollectionQueryEngine[TRAW]
+    _query_engine: _CollectionFindQueryEngine[TRAW]
     _request_timeout_ms: int | None
     _overall_timeout_ms: int | None
     _request_timeout_label: str | None
@@ -684,7 +685,7 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         self._overall_timeout_ms = overall_timeout_ms
         self._request_timeout_label = request_timeout_label
         self._overall_timeout_label = overall_timeout_label
-        self._query_engine = _CollectionQueryEngine(
+        self._query_engine = _CollectionFindQueryEngine(
             collection=collection,
             async_collection=None,
             filter=self._filter,
@@ -1317,7 +1318,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
     to the documentation for `CollectionFindCursor` for examples and details.
     """
 
-    _query_engine: _CollectionQueryEngine[TRAW]
+    _query_engine: _CollectionFindQueryEngine[TRAW]
     _request_timeout_ms: int | None
     _overall_timeout_ms: int | None
     _request_timeout_label: str | None
@@ -1361,7 +1362,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         self._overall_timeout_ms = overall_timeout_ms
         self._request_timeout_label = request_timeout_label
         self._overall_timeout_label = overall_timeout_label
-        self._query_engine = _CollectionQueryEngine(
+        self._query_engine = _CollectionFindQueryEngine(
             collection=None,
             async_collection=collection,
             filter=self._filter,
@@ -1923,7 +1924,7 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         {'winner': 'Helen'}
     """
 
-    _query_engine: _TableQueryEngine[TRAW]
+    _query_engine: _TableFindQueryEngine[TRAW]
     _request_timeout_ms: int | None
     _overall_timeout_ms: int | None
     _request_timeout_label: str | None
@@ -1967,7 +1968,7 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         self._overall_timeout_ms = overall_timeout_ms
         self._request_timeout_label = request_timeout_label
         self._overall_timeout_label = overall_timeout_label
-        self._query_engine = _TableQueryEngine(
+        self._query_engine = _TableFindQueryEngine(
             table=table,
             async_table=None,
             filter=self._filter,
@@ -2598,7 +2599,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
     to the documentation for `TableFindCursor` for examples and details.
     """
 
-    _query_engine: _TableQueryEngine[TRAW]
+    _query_engine: _TableFindQueryEngine[TRAW]
     _request_timeout_ms: int | None
     _overall_timeout_ms: int | None
     _request_timeout_label: str | None
@@ -2642,7 +2643,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         self._overall_timeout_ms = overall_timeout_ms
         self._request_timeout_label = request_timeout_label
         self._overall_timeout_label = overall_timeout_label
-        self._query_engine = _TableQueryEngine(
+        self._query_engine = _TableFindQueryEngine(
             table=None,
             async_table=table,
             filter=self._filter,
