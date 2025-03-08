@@ -269,9 +269,9 @@ class TestCollectionCursorSync:
         rwcur.rewind()
         assert await rwcur.__anext__() == mints[0]
 
-        # clone strips the mapping
+        # clone rewinds
         cl_unmapped = rwcur.clone()
-        assert await cl_unmapped.__anext__() == base_rows[0]
+        assert await cl_unmapped.__anext__() == mint(base_rows[0])
 
     @pytest.mark.describe("test of collection cursors, for_each and to_list, async")
     async def test_collection_cursors_collective_methods_async(

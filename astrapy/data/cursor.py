@@ -811,11 +811,10 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             raise RuntimeError("Query engine has no collection.")
         return self._query_engine.collection
 
-    def clone(self) -> CollectionFindCursor[TRAW, TRAW]:
+    def clone(self) -> CollectionFindCursor[TRAW, T]:
         """
         Create a copy of this cursor with:
         - the same parameters (timeouts, filter, projection, etc)
-        - *except* any mapping is removed
         - and the cursor is rewound to its pristine IDLE state.
 
         Returns:
@@ -856,7 +855,7 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
-            mapper=None,
+            mapper=self._mapper,
         )
 
     def filter(self, filter: FilterType | None) -> CollectionFindCursor[TRAW, T]:
@@ -1494,11 +1493,10 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             raise RuntimeError("Query engine has no async collection.")
         return self._query_engine.async_collection
 
-    def clone(self) -> AsyncCollectionFindCursor[TRAW, TRAW]:
+    def clone(self) -> AsyncCollectionFindCursor[TRAW, T]:
         """
         Create a copy of this cursor with:
         - the same parameters (timeouts, filter, projection, etc)
-        - *except* any mapping is removed
         - and the cursor is rewound to its pristine IDLE state.
 
         For usage examples, please refer to the same method of the
@@ -1525,7 +1523,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
-            mapper=None,
+            mapper=self._mapper,
         )
 
     def filter(self, filter: FilterType | None) -> AsyncCollectionFindCursor[TRAW, T]:
@@ -2096,11 +2094,10 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             raise RuntimeError("Query engine has no table.")
         return self._query_engine.table
 
-    def clone(self) -> TableFindCursor[TRAW, TRAW]:
+    def clone(self) -> TableFindCursor[TRAW, T]:
         """
         Create a copy of this cursor with:
         - the same parameters (timeouts, filter, projection, etc)
-        - *except* any mapping is removed
         - and the cursor is rewound to its pristine IDLE state.
 
         Returns:
@@ -2141,7 +2138,7 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
-            mapper=None,
+            mapper=self._mapper,
         )
 
     def filter(self, filter: FilterType | None) -> TableFindCursor[TRAW, T]:
@@ -2776,11 +2773,10 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             raise RuntimeError("Query engine has no async table.")
         return self._query_engine.async_table
 
-    def clone(self) -> AsyncTableFindCursor[TRAW, TRAW]:
+    def clone(self) -> AsyncTableFindCursor[TRAW, T]:
         """
         Create a copy of this cursor with:
         - the same parameters (timeouts, filter, projection, etc)
-        - *except* any mapping is removed
         - and the cursor is rewound to its pristine IDLE state.
 
         For usage examples, please refer to the same method of the
@@ -2807,7 +2803,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
-            mapper=None,
+            mapper=self._mapper,
         )
 
     def filter(self, filter: FilterType | None) -> AsyncTableFindCursor[TRAW, T]:

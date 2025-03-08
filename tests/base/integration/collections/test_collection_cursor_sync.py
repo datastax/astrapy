@@ -267,9 +267,9 @@ class TestCollectionCursorSync:
         rwcur.rewind()
         assert next(rwcur) == mints[0]
 
-        # clone strips the mapping
+        # clone rewinds
         cl_unmapped = rwcur.clone()
-        assert next(cl_unmapped) == base_rows[0]
+        assert next(cl_unmapped) == mint(base_rows[0])
 
     @pytest.mark.describe("test of collection cursors, for_each and to_list, sync")
     def test_collection_cursors_collective_methods_sync(

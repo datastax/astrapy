@@ -8,6 +8,7 @@ Cursor class hierarchy edited to accommodate for FindAndRerank:
 Maps for tables expressed as list of pairs (association lists):
     - support for automatic handling of dicts and DataAPIMaps in the proper table payload portions
     - introduced serdes option `encode_maps_as_lists_in_tables` (default to False) to control
+Cursors, `clone` method does not strip the mapping anymore, rather retains it
 Exceptions
     - `DataAPIResponseException.error_descriptors` is a property (computed from detailed_error_descriptors)
     - better string representation of `DataAPIDetailedErrorDescriptor`

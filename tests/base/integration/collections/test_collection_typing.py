@@ -271,15 +271,12 @@ class TestCollectionTyping:
         assert gt_doc3 is not None
         gu_a3: str
         gu_x3: int
-        gu_a3 = gu_doc3["p_ascii"]  # noqa: F841
-        gu_x3 = gu_doc3["p_ascii"]  # noqa: F841
+        gu_a3 = gu_doc3  # noqa: F841
+        gu_x3 = gu_doc3  # type: ignore[assignment] # noqa: F841
         gt_a3: str
         gt_x3: int
-        gt_y3: float
-        gt_a3 = gt_doc3["p_ascii"]  # noqa: F841
-        gt_x3 = gt_doc3["p_ascii"]  # type: ignore[assignment]  # noqa: F841
-        with pytest.raises(KeyError):
-            gt_y3 = gt_doc3["c"]  # type: ignore[typeddict-item]  # noqa: F841
+        gt_a3 = gt_doc3  # noqa: F841
+        gt_x3 = gt_doc3  # type: ignore[assignment]  # noqa: F841
 
         # reading the buffer
         u_cur_4rb = g_co_untyped.find().map(u_mapper)
@@ -534,15 +531,12 @@ class TestCollectionTyping:
         assert gt_doc3 is not None
         gu_a3: str
         gu_x3: int
-        gu_a3 = gu_doc3["p_ascii"]  # noqa: F841
-        gu_x3 = gu_doc3["p_ascii"]  # noqa: F841
+        gu_a3 = gu_doc3  # noqa: F841
+        gu_x3 = gu_doc3  # type: ignore[assignment] # noqa: F841
         gt_a3: str
         gt_x3: int
-        gt_y3: float
-        gt_a3 = gt_doc3["p_ascii"]  # noqa: F841
-        gt_x3 = gt_doc3["p_ascii"]  # type: ignore[assignment]  # noqa: F841
-        with pytest.raises(KeyError):
-            gt_y3 = gt_doc3["c"]  # type: ignore[typeddict-item]  # noqa: F841
+        gt_a3 = gt_doc3  # noqa: F841
+        gt_x3 = gt_doc3  # type: ignore[assignment]  # noqa: F841
 
         # reading the buffer
         u_cur_4rb = ag_co_untyped.find().map(u_mapper)

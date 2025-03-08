@@ -644,12 +644,11 @@ class TestCollectionDMLAsync:
         assert "T2/20" in items2_maps
         assert all(isinstance(itm, str) for itm in items2_maps)
 
-        # clone (map-stripping, rewinding)
+        # clone (rewinding)
         cloned_2 = cur2_maps.clone()
         from_cl = await cloned_2.__anext__()
-        assert isinstance(from_cl, dict)
-        assert "seq" in from_cl
-        assert "ternary" in from_cl
+        assert isinstance(from_cl, str)
+        assert "/" in from_cl
 
         # for each
         accum: list[int] = []
