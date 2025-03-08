@@ -96,7 +96,7 @@ def test_imports() -> None:
     from astrapy.cursors import (
         AsyncCollectionFindCursor,
         CollectionFindCursor,
-        FindCursorState,
+        CursorState,
     )
     from astrapy.data_types import (
         DataAPIDate,

@@ -16,8 +16,8 @@ from astrapy.data.cursor import (
     AsyncCollectionFindCursor,
     AsyncTableFindCursor,
     CollectionFindCursor,
+    CursorState,
     FindCursor,
-    FindCursorState,
     TableFindCursor,
 )
 
@@ -25,7 +25,7 @@ __all__ = [
     "AsyncCollectionFindCursor",
     "AsyncTableFindCursor",
     "CollectionFindCursor",
-    "FindCursorState",
+    "CursorState",
     "FindCursor",
     "TableFindCursor",
 ]

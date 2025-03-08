@@ -118,7 +118,7 @@ def _revise_timeouts_for_cursor_copy(
     return (_new_request_timeout_ms, _general_method_timeout_ms)
 
 
-class FindCursorState(Enum):
+class CursorState(Enum):
     """
     This enum expresses the possible states for a `FindCursor`.
 
@@ -152,7 +152,7 @@ class FindCursor(Generic[TRAW]):
     be necessary.
     """
 
-    _state: FindCursorState
+    _state: CursorState
     _buffer: list[TRAW]
     _pages_retrieved: int
     _consumed: int
@@ -179,19 +179,19 @@ class FindCursor(Generic[TRAW]):
             )
 
     def _ensure_idle(self) -> None:
-        if self._state != FindCursorState.IDLE:
+        if self._state != CursorState.IDLE:
             raise CursorException(
                 text="Cursor is not idle anymore.",
                 cursor_state=self._state.value,
             )
 
     @property
-    def state(self) -> FindCursorState:
+    def state(self) -> CursorState:
         """
         The current state of this cursor.
 
         Returns:
-            a value in `astrapy.cursors.FindCursorState`.
+            a value in `astrapy.cursors.CursorState`.
         """
 
         return self._state
@@ -205,7 +205,7 @@ class FindCursor(Generic[TRAW]):
             alive, a boolean value. If True, the cursor *may* return more items.
         """
 
-        return self._state != FindCursorState.CLOSED
+        return self._state != CursorState.CLOSED
 
     @property
     def consumed(self) -> int:
@@ -253,7 +253,7 @@ class FindCursor(Generic[TRAW]):
         This is an in-place modification of the cursor.
         """
 
-        self._state = FindCursorState.CLOSED
+        self._state = CursorState.CLOSED
         self._buffer = []
 
     def rewind(self) -> None:
@@ -268,7 +268,7 @@ class FindCursor(Generic[TRAW]):
 
         This is an in-place modification of the cursor.
         """
-        self._state = FindCursorState.IDLE
+        self._state = CursorState.IDLE
         self._buffer = []
         self._pages_retrieved = 0
         self._consumed = 0
@@ -755,10 +755,10 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         This method never changes the cursor state.
         """
 
-        if self._state == FindCursorState.CLOSED:
+        if self._state == CursorState.CLOSED:
             return
         if not self._buffer:
-            if self._next_page_state is not None or self._state == FindCursorState.IDLE:
+            if self._next_page_state is not None or self._state == CursorState.IDLE:
                 new_buffer, next_page_state, resp_status = (
                     self._query_engine._fetch_page(
                         page_state=self._next_page_state,
@@ -789,9 +789,9 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             raise StopIteration
         self._try_ensure_fill_buffer()
         if not self._buffer:
-            self._state = FindCursorState.CLOSED
+            self._state = CursorState.CLOSED
             raise StopIteration
-        self._state = FindCursorState.STARTED
+        self._state = CursorState.STARTED
         # consume one item from buffer
         traw0, rest_buffer = self._buffer[0], self._buffer[1:]
         self._buffer = rest_buffer
@@ -1260,7 +1260,7 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
                 cursor).
         """
 
-        if self._state == FindCursorState.CLOSED:
+        if self._state == CursorState.CLOSED:
             return False
         self._try_ensure_fill_buffer()
         return len(self._buffer) > 0
@@ -1433,10 +1433,10 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         This method never changes the cursor state.
         """
 
-        if self._state == FindCursorState.CLOSED:
+        if self._state == CursorState.CLOSED:
             return
         if not self._buffer:
-            if self._next_page_state is not None or self._state == FindCursorState.IDLE:
+            if self._next_page_state is not None or self._state == CursorState.IDLE:
                 (
                     new_buffer,
                     next_page_state,
@@ -1471,9 +1471,9 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             raise StopAsyncIteration
         await self._try_ensure_fill_buffer()
         if not self._buffer:
-            self._state = FindCursorState.CLOSED
+            self._state = CursorState.CLOSED
             raise StopAsyncIteration
-        self._state = FindCursorState.STARTED
+        self._state = CursorState.STARTED
         # consume one item from buffer
         traw0, rest_buffer = self._buffer[0], self._buffer[1:]
         self._buffer = rest_buffer
@@ -1856,7 +1856,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
                 cursor).
         """
 
-        if self._state == FindCursorState.CLOSED:
+        if self._state == CursorState.CLOSED:
             return False
         await self._try_ensure_fill_buffer()
         return len(self._buffer) > 0
@@ -2040,10 +2040,10 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         This method never changes the cursor state.
         """
 
-        if self._state == FindCursorState.CLOSED:
+        if self._state == CursorState.CLOSED:
             return
         if not self._buffer:
-            if self._next_page_state is not None or self._state == FindCursorState.IDLE:
+            if self._next_page_state is not None or self._state == CursorState.IDLE:
                 new_buffer, next_page_state, resp_status = (
                     self._query_engine._fetch_page(
                         page_state=self._next_page_state,
@@ -2074,9 +2074,9 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             raise StopIteration
         self._try_ensure_fill_buffer()
         if not self._buffer:
-            self._state = FindCursorState.CLOSED
+            self._state = CursorState.CLOSED
             raise StopIteration
-        self._state = FindCursorState.STARTED
+        self._state = CursorState.STARTED
         # consume one item from buffer
         traw0, rest_buffer = self._buffer[0], self._buffer[1:]
         self._buffer = rest_buffer
@@ -2543,7 +2543,7 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
                 cursor).
         """
 
-        if self._state == FindCursorState.CLOSED:
+        if self._state == CursorState.CLOSED:
             return False
         self._try_ensure_fill_buffer()
         return len(self._buffer) > 0
@@ -2716,10 +2716,10 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         This method never changes the cursor state.
         """
 
-        if self._state == FindCursorState.CLOSED:
+        if self._state == CursorState.CLOSED:
             return
         if not self._buffer:
-            if self._next_page_state is not None or self._state == FindCursorState.IDLE:
+            if self._next_page_state is not None or self._state == CursorState.IDLE:
                 (
                     new_buffer,
                     next_page_state,
@@ -2754,9 +2754,9 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             raise StopAsyncIteration
         await self._try_ensure_fill_buffer()
         if not self._buffer:
-            self._state = FindCursorState.CLOSED
+            self._state = CursorState.CLOSED
             raise StopAsyncIteration
-        self._state = FindCursorState.STARTED
+        self._state = CursorState.STARTED
         # consume one item from buffer
         traw0, rest_buffer = self._buffer[0], self._buffer[1:]
         self._buffer = rest_buffer
@@ -3138,7 +3138,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
                 cursor).
         """
 
-        if self._state == FindCursorState.CLOSED:
+        if self._state == CursorState.CLOSED:
             return False
         await self._try_ensure_fill_buffer()
         return len(self._buffer) > 0
