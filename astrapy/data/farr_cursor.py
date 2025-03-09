@@ -23,6 +23,7 @@ from typing_extensions import override
 from astrapy import AsyncCollection, Collection
 from astrapy.constants import (
     FilterType,
+    FindAndRerankSortType,
     ProjectionType,
     normalize_optional_projection,
 )
@@ -48,6 +49,28 @@ from astrapy.exceptions import (
 )
 from astrapy.utils.unset import _UNSET, UnsetType
 
+# TODO: remove this (setting + function) once API testable
+MOCK_FARR_API = True
+
+
+def mock_farr_documents(pl: dict[str, Any] | None) -> list[dict[str, Any]]:
+    return [
+        {
+            "_id": f"doc_{doc_i}",
+            "pl": str(pl).replace(" ", ""),
+            "$hybrid": {
+                "passage": f"bla bla {doc_i}",
+                "passageSource": "$vectorize",
+                "scores": {
+                    "$rerank": (6 - doc_i) / 8,
+                    "$vector": (7 - doc_i) / 9,
+                    "$lexical": (8 - doc_i) / 10,
+                },
+            },
+        }
+        for doc_i in range(5)
+    ]
+
 
 class _CollectionFindAndRerankQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
     collection: Collection[TRAW] | None
@@ -62,7 +85,7 @@ class _CollectionFindAndRerankQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         async_collection: AsyncCollection[TRAW] | None,
         filter: FilterType | None,
         projection: ProjectionType | None,
-        sort: dict[str, str | dict[str, str | list[float]]] | None,
+        sort: FindAndRerankSortType | None,
         limit: int | None,
         hybrid_limits: int | dict[str, int] | None,
         hybrid_projection: str | None,
@@ -114,6 +137,14 @@ class _CollectionFindAndRerankQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
 
         _page_str = page_state if page_state else "(empty page state)"
         _coll_name = self.collection.name if self.collection else "(none)"
+
+        if MOCK_FARR_API:
+            logger.info("MOCKING FARR API: '%s'", str(converted_f_payload))
+            mock_p_documents = mock_farr_documents(converted_f_payload)
+            mock_n_p_state = None
+            mock_p_r_status = {"mocked": "OH_YEAH"}
+            return (mock_p_documents, mock_n_p_state, mock_p_r_status)  # type: ignore[return-value]
+
         logger.info(f"cursor fetching a page: {_page_str} from {_coll_name}")
         raw_f_response = self.collection._api_commander.request(
             payload=converted_f_payload,
@@ -158,6 +189,14 @@ class _CollectionFindAndRerankQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
 
         _page_str = page_state if page_state else "(empty page state)"
         _coll_name = self.async_collection.name if self.async_collection else "(none)"
+
+        if MOCK_FARR_API:
+            logger.info("MOCKING FARR API: '%s'", str(converted_f_payload))
+            mock_p_documents = mock_farr_documents(converted_f_payload)
+            mock_n_p_state = None
+            mock_p_r_status = {"mocked": "OH_YEAH"}
+            return (mock_p_documents, mock_n_p_state, mock_p_r_status)  # type: ignore[return-value]
+
         logger.info(f"cursor fetching a page: {_page_str} from {_coll_name}, async")
         raw_f_response = await self.async_collection._api_commander.async_request(
             payload=converted_f_payload,
@@ -225,7 +264,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     _timeout_manager: MultiCallTimeoutManager
     _filter: FilterType | None
     _projection: ProjectionType | None
-    _sort: dict[str, str | dict[str, str | list[float]]] | None
+    _sort: FindAndRerankSortType | None
     _limit: int | None
     _hybrid_limits: int | dict[str, int] | None
     _hybrid_projection: str | None
@@ -242,7 +281,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         overall_timeout_label: str | None = None,
         filter: FilterType | None = None,
         projection: ProjectionType | None = None,
-        sort: dict[str, str | dict[str, str | list[float]]] | None = None,
+        sort: FindAndRerankSortType | None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
         hybrid_projection: str | None = None,
@@ -490,7 +529,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         return self._copy(projection=projection)
 
     def sort(
-        self, sort: dict[str, str | dict[str, str | list[float]]] | None
+        self, sort: FindAndRerankSortType | None
     ) -> CollectionFindAndRerankCursor[TRAW, T]:
         """
         Return a copy of this cursor with a new sort setting.
@@ -883,7 +922,7 @@ class AsyncCollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW])
     _timeout_manager: MultiCallTimeoutManager
     _filter: FilterType | None
     _projection: ProjectionType | None
-    _sort: dict[str, str | dict[str, str | list[float]]] | None
+    _sort: FindAndRerankSortType | None
     _limit: int | None
     _hybrid_limits: int | dict[str, int] | None
     _hybrid_projection: str | None
@@ -900,7 +939,7 @@ class AsyncCollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW])
         overall_timeout_label: str | None = None,
         filter: FilterType | None = None,
         projection: ProjectionType | None = None,
-        sort: dict[str, str | dict[str, str | list[float]]] | None = None,
+        sort: FindAndRerankSortType | None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
         hybrid_projection: str | None = None,
@@ -1135,7 +1174,7 @@ class AsyncCollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW])
         return self._copy(projection=projection)
 
     def sort(
-        self, sort: dict[str, str | dict[str, str | list[float]]] | None
+        self, sort: FindAndRerankSortType | None
     ) -> AsyncCollectionFindAndRerankCursor[TRAW, T]:
         """
         Return a copy of this cursor with a new sort setting.

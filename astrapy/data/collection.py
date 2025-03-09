@@ -24,6 +24,7 @@ from astrapy.constants import (
     DOC,
     DOC2,
     FilterType,
+    FindAndRerankSortType,
     ProjectionType,
     ReturnDocument,
     SortType,
@@ -70,7 +71,12 @@ from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
     from astrapy.authentication import EmbeddingHeadersProvider
-    from astrapy.cursors import AsyncCollectionFindCursor, CollectionFindCursor
+    from astrapy.cursors import (
+        AsyncCollectionFindAndRerankCursor,
+        AsyncCollectionFindCursor,
+        CollectionFindAndRerankCursor,
+        CollectionFindCursor,
+    )
 
 
 logger = logging.getLogger(__name__)
@@ -1401,6 +1407,80 @@ class Collection(Generic[DOC]):
                     distinct_items.append(item)
         logger.info(f"finished running distinct() on '{self.name}'")
         return distinct_items
+
+    @overload
+    def find_and_rerank(
+        self,
+        sort: FindAndRerankSortType,
+        *,
+        filter: FilterType | None = None,
+        projection: ProjectionType | None = None,
+        document_type: None = None,
+        limit: int | None = None,
+        hybrid_limits: int | dict[str, int] | None = None,
+        hybrid_projection: str | None = None,
+        rerank_field: str | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> CollectionFindAndRerankCursor[DOC, DOC]: ...
+
+    @overload
+    def find_and_rerank(
+        self,
+        sort: FindAndRerankSortType,
+        *,
+        filter: FilterType | None = None,
+        projection: ProjectionType | None = None,
+        document_type: type[DOC2],
+        limit: int | None = None,
+        hybrid_limits: int | dict[str, int] | None = None,
+        hybrid_projection: str | None = None,
+        rerank_field: str | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> CollectionFindAndRerankCursor[DOC, DOC2]: ...
+
+    def find_and_rerank(
+        self,
+        sort: FindAndRerankSortType,
+        *,
+        filter: FilterType | None = None,
+        projection: ProjectionType | None = None,
+        document_type: type[DOC2] | None = None,
+        limit: int | None = None,
+        hybrid_limits: int | dict[str, int] | None = None,
+        hybrid_projection: str | None = None,
+        rerank_field: str | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> CollectionFindAndRerankCursor[DOC, DOC2]:
+        """
+        TODO DOCSTRING TODO
+        """
+
+        # lazy-import here to avoid circular import issues
+        from astrapy.cursors import CollectionFindAndRerankCursor
+
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        )
+        return (
+            CollectionFindAndRerankCursor(
+                collection=self,
+                request_timeout_ms=_request_timeout_ms,
+                overall_timeout_ms=None,
+                request_timeout_label=_rt_label,
+            )
+            .filter(filter)
+            .project(projection)
+            .limit(limit)
+            .sort(sort)
+            .hybrid_limits(hybrid_limits)
+            .hybrid_projection(hybrid_projection)
+            .rerank_field(rerank_field)
+        )
 
     def count_documents(
         self,
@@ -3976,6 +4056,80 @@ class AsyncCollection(Generic[DOC]):
                     distinct_items.append(item)
         logger.info(f"finished running distinct() on '{self.name}'")
         return distinct_items
+
+    @overload
+    def find_and_rerank(
+        self,
+        sort: FindAndRerankSortType,
+        *,
+        filter: FilterType | None = None,
+        projection: ProjectionType | None = None,
+        document_type: None = None,
+        limit: int | None = None,
+        hybrid_limits: int | dict[str, int] | None = None,
+        hybrid_projection: str | None = None,
+        rerank_field: str | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> AsyncCollectionFindAndRerankCursor[DOC, DOC]: ...
+
+    @overload
+    def find_and_rerank(
+        self,
+        sort: FindAndRerankSortType,
+        *,
+        filter: FilterType | None = None,
+        projection: ProjectionType | None = None,
+        document_type: type[DOC2],
+        limit: int | None = None,
+        hybrid_limits: int | dict[str, int] | None = None,
+        hybrid_projection: str | None = None,
+        rerank_field: str | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> AsyncCollectionFindAndRerankCursor[DOC, DOC2]: ...
+
+    def find_and_rerank(
+        self,
+        sort: FindAndRerankSortType,
+        *,
+        filter: FilterType | None = None,
+        projection: ProjectionType | None = None,
+        document_type: type[DOC2] | None = None,
+        limit: int | None = None,
+        hybrid_limits: int | dict[str, int] | None = None,
+        hybrid_projection: str | None = None,
+        rerank_field: str | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> AsyncCollectionFindAndRerankCursor[DOC, DOC2]:
+        """
+        TODO DOCSTRING TODO
+        """
+
+        # lazy-import here to avoid circular import issues
+        from astrapy.cursors import AsyncCollectionFindAndRerankCursor
+
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        )
+        return (
+            AsyncCollectionFindAndRerankCursor(
+                collection=self,
+                request_timeout_ms=_request_timeout_ms,
+                overall_timeout_ms=None,
+                request_timeout_label=_rt_label,
+            )
+            .filter(filter)
+            .project(projection)
+            .limit(limit)
+            .sort(sort)
+            .hybrid_limits(hybrid_limits)
+            .hybrid_projection(hybrid_projection)
+            .rerank_field(rerank_field)
+        )
 
     async def count_documents(
         self,

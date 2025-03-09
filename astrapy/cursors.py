@@ -20,10 +20,16 @@ from astrapy.data.cursor import (
     CursorState,
     TableFindCursor,
 )
+from astrapy.data.farr_cursor import (
+    AsyncCollectionFindAndRerankCursor,
+    CollectionFindAndRerankCursor,
+)
 
 __all__ = [
+    "AsyncCollectionFindAndRerankCursor",
     "AsyncCollectionFindCursor",
     "AsyncTableFindCursor",
+    "CollectionFindAndRerankCursor",
     "CollectionFindCursor",
     "AbstractCursor",
     "CursorState",

@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Optional, Tuple, TypeVar, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, TypeVar, Union
 
 from astrapy.settings.defaults import (
     DATA_API_ENVIRONMENT_CASSANDRA,
@@ -32,6 +32,7 @@ ProjectionType = Union[
     Iterable[str], Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]
 ]
 SortType = Dict[str, Any]
+FindAndRerankSortType = Dict[str, Union[str, Dict[str, Union[str, List[float]]]]]
 FilterType = Dict[str, Any]
 CallerType = Tuple[Optional[str], Optional[str]]
 
