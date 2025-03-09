@@ -173,7 +173,7 @@ class AbstractCursor(ABC, Generic[TRAW]):
         other._last_response_status = self._last_response_status
 
     def _ensure_alive(self) -> None:
-        if not self.alive:
+        if self._state == CursorState.CLOSED:
             raise CursorException(
                 text="Cursor is stopped.",
                 cursor_state=self._state.value,
@@ -196,17 +196,6 @@ class AbstractCursor(ABC, Generic[TRAW]):
         """
 
         return self._state
-
-    @property
-    def alive(self) -> bool:
-        """
-        Whether the cursor has the potential to yield more data.
-
-        Returns:
-            alive, a boolean value. If True, the cursor *may* return more items.
-        """
-
-        return self._state != CursorState.CLOSED
 
     @property
     def consumed(self) -> int:
@@ -786,7 +775,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         return self
 
     def __next__(self) -> T:
-        if not self.alive:
+        if self._state == CursorState.CLOSED:
             raise StopIteration
         self._try_ensure_fill_buffer()
         if not self._buffer:
@@ -1132,7 +1121,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             -> 4
             -> 15
             >>>
-            >>> if cursor.alive:
+            >>> if cursor.state != CursorState.CLOSED:
             ...     print(f"alive: {list(cursor)}")
             ... else:
             ...     print("(closed)")
@@ -1151,7 +1140,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             -> 1
             -> 4
             >>>
-            >>> if cursor2.alive:
+            >>> if cursor2.state != CursorState.CLOSED:
             ...     print(f"alive: {list(cursor2)}")
             ... else:
             ...     print("(closed)")
@@ -1467,7 +1456,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         return self
 
     async def __anext__(self) -> T:
-        if not self.alive:
+        if self._state == CursorState.CLOSED:
             raise StopAsyncIteration
         await self._try_ensure_fill_buffer()
         if not self._buffer:
@@ -2069,7 +2058,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         return self
 
     def __next__(self) -> T:
-        if not self.alive:
+        if self._state == CursorState.CLOSED:
             raise StopIteration
         self._try_ensure_fill_buffer()
         if not self._buffer:
@@ -2413,7 +2402,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             -> Erick
             -> Fiona
             >>>
-            >>> if cursor.alive:
+            >>> if cursor.state != CursorState.CLOSED:
             ...     print(f"alive: {list(cursor)}")
             ... else:
             ...     print("(closed)")
@@ -2432,7 +2421,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             -> Donna
             -> Erick
             >>>
-            >>> if cursor2.alive:
+            >>> if cursor2.state != CursorState.CLOSED:
             ...     print(f"alive: {list(cursor2)}")
             ... else:
             ...     print("(closed)")
@@ -2748,7 +2737,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         return self
 
     async def __anext__(self) -> T:
-        if not self.alive:
+        if self._state == CursorState.CLOSED:
             raise StopAsyncIteration
         await self._try_ensure_fill_buffer()
         if not self._buffer:

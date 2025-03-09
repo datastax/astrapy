@@ -20,7 +20,7 @@ from typing import Any
 import pytest
 
 from astrapy.constants import DefaultDocumentType, ReturnDocument, SortMode
-from astrapy.cursors import AsyncCollectionFindCursor
+from astrapy.cursors import AsyncCollectionFindCursor, CursorState
 from astrapy.data_types import DataAPITimestamp, DataAPIVector
 from astrapy.exceptions import CollectionInsertManyException, DataAPIResponseException
 from astrapy.ids import UUID, ObjectId
@@ -577,23 +577,23 @@ class TestCollectionDMLAsync:
         assert isinstance(cursor1.cursor_id, int)
         assert cursor1.data_source == async_empty_collection
 
-        # clone, alive
+        # clone
         cursor2 = async_empty_collection.find()
-        assert cursor2.alive is True
+        assert cursor2.state != CursorState.CLOSED
         for _ in range(8):
             await cursor2.__anext__()
-        assert cursor2.alive is True
+        assert cursor2.state != CursorState.CLOSED  # type: ignore[comparison-overlap]
         cursor3 = cursor2.clone()
         assert len(await _alist(cursor2)) == 2
         assert len(await _alist(cursor3)) == 10
-        assert cursor2.alive is False
+        assert cursor2.state == CursorState.CLOSED  # type: ignore[comparison-overlap]
 
         # close
         cursor4 = async_empty_collection.find()
         for _ in range(8):
             await cursor4.__anext__()
         cursor4.close()
-        assert cursor4.alive is False
+        assert cursor4.state == CursorState.CLOSED
         with pytest.raises(StopAsyncIteration):
             await cursor4.__anext__()
 

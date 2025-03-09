@@ -6,10 +6,12 @@ Support for findAndRerank in collections:
 Cursor class hierarchy edited to accommodate for FindAndRerank:
     - renamed the 'FindCursorState' enum to `CursorState`
     - renamed the abstract ur-class 'FindCursor' => `AbstractCursor`
+Cursors:
+    - `clone` method does not strip the mapping anymore, rather retains it
+    - removed the `alive` sugar property (use `cursors.state != CursorState.CLOSED`)
 Maps for tables expressed as list of pairs (association lists):
     - support for automatic handling of dicts and DataAPIMaps in the proper table payload portions
     - introduced serdes option `encode_maps_as_lists_in_tables` (default to False) to control
-Cursors, `clone` method does not strip the mapping anymore, rather retains it
 Exceptions
     - `DataAPIResponseException.error_descriptors` is a property (computed from detailed_error_descriptors)
     - better string representation of `DataAPIDetailedErrorDescriptor`

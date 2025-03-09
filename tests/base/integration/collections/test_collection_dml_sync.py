@@ -20,6 +20,7 @@ from typing import Any
 import pytest
 
 from astrapy.constants import DefaultDocumentType, ReturnDocument, SortMode
+from astrapy.cursors import CursorState
 from astrapy.data_types import DataAPITimestamp, DataAPIVector
 from astrapy.exceptions import CollectionInsertManyException, DataAPIResponseException
 from astrapy.ids import UUID, ObjectId
@@ -511,23 +512,23 @@ class TestCollectionDMLSync:
         assert isinstance(cursor1.cursor_id, int)
         assert cursor1.data_source == sync_empty_collection
 
-        # clone, alive
+        # clone
         cursor2 = sync_empty_collection.find()
-        assert cursor2.alive is True
+        assert cursor2.state != CursorState.CLOSED
         for _ in range(8):
             cursor2.__next__()
-        assert cursor2.alive is True
+        assert cursor2.state != CursorState.CLOSED  # type: ignore[comparison-overlap]
         cursor3 = cursor2.clone()
         assert len(list(cursor2)) == 2
         assert len(list(cursor3)) == 10
-        assert cursor2.alive is False
+        assert cursor2.state == CursorState.CLOSED  # type: ignore[comparison-overlap]
 
         # close
         cursor4 = sync_empty_collection.find()
         for _ in range(8):
             cursor4.__next__()
         cursor4.close()
-        assert cursor4.alive is False
+        assert cursor4.state == CursorState.CLOSED
         with pytest.raises(StopIteration):
             cursor4.__next__()
 

@@ -366,7 +366,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         return self
 
     def __next__(self) -> T:
-        if not self.alive:
+        if self.state == CursorState.CLOSED:
             raise StopIteration
         self._try_ensure_fill_buffer()
         if not self._buffer:
@@ -716,7 +716,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             -> 4
             -> 15
             >>>
-            >>> if cursor.alive:
+            >>> if cursor.state != CursorState.CLOSED:
             ...     print(f"alive: {list(cursor)}")
             ... else:
             ...     print("(closed)")
@@ -735,7 +735,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             -> 1
             -> 4
             >>>
-            >>> if cursor2.alive:
+            >>> if cursor2.state != CursorState.CLOSED:
             ...     print(f"alive: {list(cursor2)}")
             ... else:
             ...     print("(closed)")
@@ -1026,7 +1026,7 @@ class AsyncCollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW])
         return self
 
     async def __anext__(self) -> T:
-        if not self.alive:
+        if self.state == CursorState.CLOSED:
             raise StopAsyncIteration
         await self._try_ensure_fill_buffer()
         if not self._buffer:
