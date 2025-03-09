@@ -5,6 +5,7 @@ Support for findAndRerank in collections:
     - new `lexical` and `reranking` entries in CollectionDefinition (+builder interface management)
 Cursor class hierarchy edited to accommodate for FindAndRerank:
     - renamed the 'FindCursorState' enum to `CursorState`
+    - renamed the abstract ur-class 'FindCursor' => `AbstractCursor`
 Maps for tables expressed as list of pairs (association lists):
     - support for automatic handling of dicts and DataAPIMaps in the proper table payload portions
     - introduced serdes option `encode_maps_as_lists_in_tables` (default to False) to control

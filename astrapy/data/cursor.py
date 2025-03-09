@@ -120,7 +120,7 @@ def _revise_timeouts_for_cursor_copy(
 
 class CursorState(Enum):
     """
-    This enum expresses the possible states for a `FindCursor`.
+    This enum expresses the possible states for a `Cursor`.
 
     Values:
         IDLE: Iteration over results has not started yet (alive=T, started=F)
@@ -136,10 +136,10 @@ class CursorState(Enum):
     CLOSED = "closed"
 
 
-class FindCursor(ABC, Generic[TRAW]):
+class AbstractCursor(ABC, Generic[TRAW]):
     """
-    A cursor obtained from a `find` invocation over a table or a collection.
-    TODO DOCSTRING TODO
+    A cursor obtained from the invocation of a find-type method over a table or
+    a collection.
     This is the main interface to scroll through the results (resp. rows or documents).
 
     This class is not meant to be directly instantiated by the user, rather it
@@ -163,7 +163,7 @@ class FindCursor(ABC, Generic[TRAW]):
     def __init__(self) -> None:
         self.rewind()
 
-    def _imprint_internal_state(self, other: FindCursor[TRAW]) -> None:
+    def _imprint_internal_state(self, other: AbstractCursor[TRAW]) -> None:
         """Mutably copy the internal state of this cursor onto another one."""
         other._state = self._state
         other._buffer = self._buffer
@@ -607,7 +607,7 @@ class _TableFindQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         return (p_documents, n_p_state, p_r_status)
 
 
-class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
+class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     """
     A synchronous cursor over documents, as returned by a `find` invocation on
     a Collection. A cursor can be iterated over, materialized into a list,
@@ -623,7 +623,7 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
     items after the optional mapping function (see the `.map()` method). If there is
     no mapping, TRAW = T. In general, consuming a cursor returns items of type T,
     except for the `consume_buffer` primitive that draws directly from the buffer
-    and always returns items of type T.
+    and always returns items of type TRAW.
 
     Example:
         >>> cursor = collection.find(
@@ -696,7 +696,7 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
         )
-        FindCursor.__init__(self)
+        AbstractCursor.__init__(self)
         self._timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=self._overall_timeout_ms,
             timeout_label=self._overall_timeout_label,
@@ -819,8 +819,8 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         - and the cursor is rewound to its pristine IDLE state.
 
         Returns:
-            a new CollectionFindCursor, similar to this one but without mapping
-            and rewound to its initial state.
+            a new CollectionFindCursor, similar to this one but
+            rewound to its initial state.
 
         Example:
             >>> cursor = collection.find(
@@ -1295,7 +1295,7 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             return None
 
 
-class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
+class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     """
     An asynchronous cursor over documents, as returned by a `find` invocation on
     an AsyncCollection. A cursor can be iterated over, materialized into a list,
@@ -1311,7 +1311,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
     items after the optional mapping function (see the `.map()` method). If there is
     no mapping, TRAW = T. In general, consuming a cursor returns items of type T,
     except for the `consume_buffer` primitive that draws directly from the buffer
-    and always returns items of type T.
+    and always returns items of type TRAW.
 
     This class is the async counterpart of the CollectionFindCursor, for use with
     asyncio. Other than the async interface, its behavior is identical: please refer
@@ -1373,7 +1373,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
         )
-        FindCursor.__init__(self)
+        AbstractCursor.__init__(self)
         self._timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=self._overall_timeout_ms,
             timeout_label=self._overall_timeout_label,
@@ -1505,8 +1505,8 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         adaptations to the async interface.
 
         Returns:
-            a new AsyncCollectionFindCursor, similar to this one but without mapping
-            and rewound to its initial state.
+            a new AsyncCollectionFindCursor, similar to this one but
+            rewound to its initial state.
         """
 
         if self._query_engine.async_collection is None:
@@ -1890,7 +1890,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             return None
 
 
-class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
+class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     """
     A synchronous cursor over rows, as returned by a `find` invocation on
     a Table. A cursor can be iterated over, materialized into a list,
@@ -1906,7 +1906,7 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
     items after the optional mapping function (see the `.map()` method). If there is
     no mapping, TRAW = T. In general, consuming a cursor returns items of type T,
     except for the `consume_buffer` primitive that draws directly from the buffer
-    and always returns items of type T.
+    and always returns items of type TRAW.
 
     Example:
         >>> cursor = my_table.find(
@@ -1979,7 +1979,7 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
         )
-        FindCursor.__init__(self)
+        AbstractCursor.__init__(self)
         self._timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=self._overall_timeout_ms,
             timeout_label=self._overall_timeout_label,
@@ -2102,8 +2102,8 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         - and the cursor is rewound to its pristine IDLE state.
 
         Returns:
-            a new TableFindCursor, similar to this one but without mapping
-            and rewound to its initial state.
+            a new TableFindCursor, similar to this one but
+            rewound to its initial state.
 
         Example:
             >>> cursor = my_table.find(
@@ -2576,7 +2576,7 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             return None
 
 
-class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
+class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     """
     A synchronous cursor over rows, as returned by a `find` invocation on
     an AsyncTable. A cursor can be iterated over, materialized into a list,
@@ -2592,7 +2592,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
     items after the optional mapping function (see the `.map()` method). If there is
     no mapping, TRAW = T. In general, consuming a cursor returns items of type T,
     except for the `consume_buffer` primitive that draws directly from the buffer
-    and always returns items of type T.
+    and always returns items of type TRAW.
 
     This class is the async counterpart of the TableFindCursor, for use with
     asyncio. Other than the async interface, its behavior is identical: please refer
@@ -2654,7 +2654,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
         )
-        FindCursor.__init__(self)
+        AbstractCursor.__init__(self)
         self._timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=self._overall_timeout_ms,
             timeout_label=self._overall_timeout_label,
@@ -2785,8 +2785,8 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         adaptations to the async interface.
 
         Returns:
-            a new AsyncTableFindCursor, similar to this one but without mapping
-            and rewound to its initial state.
+            a new AsyncTableFindCursor, similar to this one but
+            rewound to its initial state.
         """
 
         if self._query_engine.async_table is None:

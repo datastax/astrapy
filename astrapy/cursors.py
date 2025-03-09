@@ -13,11 +13,11 @@
 # limitations under the License.
 
 from astrapy.data.cursor import (
+    AbstractCursor,
     AsyncCollectionFindCursor,
     AsyncTableFindCursor,
     CollectionFindCursor,
     CursorState,
-    FindCursor,
     TableFindCursor,
 )
 
@@ -25,7 +25,7 @@ __all__ = [
     "AsyncCollectionFindCursor",
     "AsyncTableFindCursor",
     "CollectionFindCursor",
+    "AbstractCursor",
     "CursorState",
-    "FindCursor",
     "TableFindCursor",
 ]
