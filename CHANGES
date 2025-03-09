@@ -3,6 +3,7 @@ main
 Support for findAndRerank in collections:
     - new classes `CollectionLexicalOptions`, `CollectionRerankingOptions`, `RerankingServiceOptions`
     - new `lexical` and `reranking` entries in CollectionDefinition (+builder interface management)
+    - `find_and_rerank` method for collections
 Cursor class hierarchy edited to accommodate for FindAndRerank:
     - renamed the 'FindCursorState' enum to `CursorState`
     - renamed the abstract ur-class 'FindCursor' => `AbstractCursor`
