@@ -24,7 +24,7 @@ from astrapy.constants import (
     DOC,
     DOC2,
     FilterType,
-    FindAndRerankSortType,
+    HybridSortType,
     ProjectionType,
     ReturnDocument,
     SortType,
@@ -1411,9 +1411,9 @@ class Collection(Generic[DOC]):
     @overload
     def find_and_rerank(
         self,
-        sort: FindAndRerankSortType,
-        *,
         filter: FilterType | None = None,
+        *,
+        sort: HybridSortType,
         projection: ProjectionType | None = None,
         document_type: None = None,
         limit: int | None = None,
@@ -1427,9 +1427,9 @@ class Collection(Generic[DOC]):
     @overload
     def find_and_rerank(
         self,
-        sort: FindAndRerankSortType,
-        *,
         filter: FilterType | None = None,
+        *,
+        sort: HybridSortType,
         projection: ProjectionType | None = None,
         document_type: type[DOC2],
         limit: int | None = None,
@@ -1442,9 +1442,9 @@ class Collection(Generic[DOC]):
 
     def find_and_rerank(
         self,
-        sort: FindAndRerankSortType,
-        *,
         filter: FilterType | None = None,
+        *,
+        sort: HybridSortType,
         projection: ProjectionType | None = None,
         document_type: type[DOC2] | None = None,
         limit: int | None = None,
@@ -4060,9 +4060,9 @@ class AsyncCollection(Generic[DOC]):
     @overload
     def find_and_rerank(
         self,
-        sort: FindAndRerankSortType,
-        *,
         filter: FilterType | None = None,
+        *,
+        sort: HybridSortType,
         projection: ProjectionType | None = None,
         document_type: None = None,
         limit: int | None = None,
@@ -4076,9 +4076,9 @@ class AsyncCollection(Generic[DOC]):
     @overload
     def find_and_rerank(
         self,
-        sort: FindAndRerankSortType,
-        *,
         filter: FilterType | None = None,
+        *,
+        sort: HybridSortType,
         projection: ProjectionType | None = None,
         document_type: type[DOC2],
         limit: int | None = None,
@@ -4091,9 +4091,9 @@ class AsyncCollection(Generic[DOC]):
 
     def find_and_rerank(
         self,
-        sort: FindAndRerankSortType,
-        *,
         filter: FilterType | None = None,
+        *,
+        sort: HybridSortType,
         projection: ProjectionType | None = None,
         document_type: type[DOC2] | None = None,
         limit: int | None = None,

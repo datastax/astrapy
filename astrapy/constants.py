@@ -32,7 +32,7 @@ ProjectionType = Union[
     Iterable[str], Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]
 ]
 SortType = Dict[str, Any]
-FindAndRerankSortType = Dict[str, Union[str, Dict[str, Union[str, List[float]]]]]
+HybridSortType = Dict[str, Union[str, Dict[str, Union[str, List[float]]]]]
 FilterType = Dict[str, Any]
 CallerType = Tuple[Optional[str], Optional[str]]
 

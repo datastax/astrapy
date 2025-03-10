@@ -23,7 +23,7 @@ from typing_extensions import override
 from astrapy import AsyncCollection, Collection
 from astrapy.constants import (
     FilterType,
-    FindAndRerankSortType,
+    HybridSortType,
     ProjectionType,
     normalize_optional_projection,
 )
@@ -85,7 +85,7 @@ class _CollectionFindAndRerankQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         async_collection: AsyncCollection[TRAW] | None,
         filter: FilterType | None,
         projection: ProjectionType | None,
-        sort: FindAndRerankSortType | None,
+        sort: HybridSortType | None,
         limit: int | None,
         hybrid_limits: int | dict[str, int] | None,
         hybrid_projection: str | None,
@@ -264,7 +264,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     _timeout_manager: MultiCallTimeoutManager
     _filter: FilterType | None
     _projection: ProjectionType | None
-    _sort: FindAndRerankSortType | None
+    _sort: HybridSortType | None
     _limit: int | None
     _hybrid_limits: int | dict[str, int] | None
     _hybrid_projection: str | None
@@ -281,7 +281,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         overall_timeout_label: str | None = None,
         filter: FilterType | None = None,
         projection: ProjectionType | None = None,
-        sort: FindAndRerankSortType | None = None,
+        sort: HybridSortType | None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
         hybrid_projection: str | None = None,
@@ -529,7 +529,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         return self._copy(projection=projection)
 
     def sort(
-        self, sort: FindAndRerankSortType | None
+        self, sort: HybridSortType | None
     ) -> CollectionFindAndRerankCursor[TRAW, T]:
         """
         Return a copy of this cursor with a new sort setting.
@@ -922,7 +922,7 @@ class AsyncCollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW])
     _timeout_manager: MultiCallTimeoutManager
     _filter: FilterType | None
     _projection: ProjectionType | None
-    _sort: FindAndRerankSortType | None
+    _sort: HybridSortType | None
     _limit: int | None
     _hybrid_limits: int | dict[str, int] | None
     _hybrid_projection: str | None
@@ -939,7 +939,7 @@ class AsyncCollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW])
         overall_timeout_label: str | None = None,
         filter: FilterType | None = None,
         projection: ProjectionType | None = None,
-        sort: FindAndRerankSortType | None = None,
+        sort: HybridSortType | None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
         hybrid_projection: str | None = None,
@@ -1174,7 +1174,7 @@ class AsyncCollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW])
         return self._copy(projection=projection)
 
     def sort(
-        self, sort: FindAndRerankSortType | None
+        self, sort: HybridSortType | None
     ) -> AsyncCollectionFindAndRerankCursor[TRAW, T]:
         """
         Return a copy of this cursor with a new sort setting.
