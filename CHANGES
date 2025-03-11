@@ -1,15 +1,16 @@
 main
 ====
+Cursors (class hierarchy revised for findAndRerank, plus other changes):
+    - renamed the 'FindCursorState' enum to `CursorState`
+    - renamed the abstract ur-class 'FindCursor' => `AbstractCursor`
+    - `clone` method does not strip the mapping anymore, rather retains it
+    - removed the `alive` sugar property (use `cursors.state != CursorState.CLOSED`)
 Support for findAndRerank in collections:
     - new classes `CollectionLexicalOptions`, `CollectionRerankingOptions`, `RerankingServiceOptions`
     - new `lexical` and `reranking` entries in CollectionDefinition (+builder interface management)
     - `find_and_rerank` method for collections
-Cursor class hierarchy edited to accommodate for FindAndRerank:
-    - renamed the 'FindCursorState' enum to `CursorState`
-    - renamed the abstract ur-class 'FindCursor' => `AbstractCursor`
-Cursors:
-    - `clone` method does not strip the mapping anymore, rather retains it
-    - removed the `alive` sugar property (use `cursors.state != CursorState.CLOSED`)
+    - cursor classes `[Async]CollectionFindAndRerankCursor` added
+    - findAndRerank cursors return the new `RerankedResult` construct by default (modulo custom mappings)
 Maps for tables expressed as list of pairs (association lists):
     - support for automatic handling of dicts and DataAPIMaps in the proper table payload portions
     - introduced serdes option `encode_maps_as_lists_in_tables` (default to False) to control
