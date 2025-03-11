@@ -1419,7 +1419,7 @@ class Collection(Generic[DOC]):
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
         hybrid_projection: str | None = None,
-        rerank_field: str | None = None,
+        rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> CollectionFindAndRerankCursor[DOC, DOC]: ...
@@ -1435,7 +1435,7 @@ class Collection(Generic[DOC]):
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
         hybrid_projection: str | None = None,
-        rerank_field: str | None = None,
+        rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> CollectionFindAndRerankCursor[DOC, DOC2]: ...
@@ -1450,7 +1450,7 @@ class Collection(Generic[DOC]):
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
         hybrid_projection: str | None = None,
-        rerank_field: str | None = None,
+        rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> CollectionFindAndRerankCursor[DOC, DOC2]:
@@ -1479,7 +1479,7 @@ class Collection(Generic[DOC]):
             .sort(sort)
             .hybrid_limits(hybrid_limits)
             .hybrid_projection(hybrid_projection)
-            .rerank_field(rerank_field)
+            .rerank_on(rerank_on)
         )
 
     def count_documents(
@@ -4068,7 +4068,7 @@ class AsyncCollection(Generic[DOC]):
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
         hybrid_projection: str | None = None,
-        rerank_field: str | None = None,
+        rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> AsyncCollectionFindAndRerankCursor[DOC, DOC]: ...
@@ -4084,7 +4084,7 @@ class AsyncCollection(Generic[DOC]):
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
         hybrid_projection: str | None = None,
-        rerank_field: str | None = None,
+        rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> AsyncCollectionFindAndRerankCursor[DOC, DOC2]: ...
@@ -4099,7 +4099,7 @@ class AsyncCollection(Generic[DOC]):
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
         hybrid_projection: str | None = None,
-        rerank_field: str | None = None,
+        rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> AsyncCollectionFindAndRerankCursor[DOC, DOC2]:
@@ -4128,7 +4128,7 @@ class AsyncCollection(Generic[DOC]):
             .sort(sort)
             .hybrid_limits(hybrid_limits)
             .hybrid_projection(hybrid_projection)
-            .rerank_field(rerank_field)
+            .rerank_on(rerank_on)
         )
 
     async def count_documents(

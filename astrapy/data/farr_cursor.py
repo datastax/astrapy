@@ -15,8 +15,9 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import dataclass
 from inspect import iscoroutinefunction
-from typing import Any, Awaitable, Callable, Generic, cast
+from typing import Any, Awaitable, Callable, Generic, TypeVar, cast
 
 from typing_extensions import override
 
@@ -49,47 +50,78 @@ from astrapy.exceptions import (
 )
 from astrapy.utils.unset import _UNSET, UnsetType
 
+FARR_TRAW = TypeVar("FARR_TRAW")
+
 # TODO: remove this (setting + function) once API testable
 MOCK_FARR_API = True
 
 
-def mock_farr_documents(pl: dict[str, Any] | None) -> list[dict[str, Any]]:
-    return [
+def mock_farr_response(pl: dict[str, Any] | None) -> dict[str, Any]:
+    docs = [
         {
             "_id": f"doc_{doc_i}",
             "pl": str(pl).replace(" ", ""),
-            "$hybrid": {
-                "passage": f"bla bla {doc_i}",
-                "passageSource": "$vectorize",
-                "scores": {
-                    "$rerank": (6 - doc_i) / 8,
-                    "$vector": (7 - doc_i) / 9,
-                    "$lexical": (8 - doc_i) / 10,
-                },
+            "content": f"content {doc_i}",
+            "$vectorize": f"vectorize {doc_i}",
+            "metadata": {"m": f"d<{doc_i}>"},
+        }
+        for doc_i in range(5)
+    ]
+    doc_responses = [
+        {
+            "_id": f"doc_{doc_i}",
+            "scores": {
+                "$rerank": (6 - doc_i) / 8,
+                "$vector": (7 - doc_i) / 9,
+                "$lexical": (8 - doc_i) / 10,
             },
         }
         for doc_i in range(5)
     ]
 
+    return {
+        "data": {
+            "documents": docs,
+            "nextPageState": None,
+        },
+        "status": {
+            "documentResponses": doc_responses,
+        },
+    }
 
-class _CollectionFindAndRerankQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
-    collection: Collection[TRAW] | None
-    async_collection: AsyncCollection[TRAW] | None
+    return []
+
+
+@dataclass
+class RerankedResult(Generic[FARR_TRAW]):
+    """
+    TODO DOCSTRING TODO
+    """
+
+    document: FARR_TRAW
+    scores: dict[str, float]
+
+
+class _CollectionFindAndRerankQueryEngine(
+    Generic[FARR_TRAW], _QueryEngine[RerankedResult[FARR_TRAW]]
+):
+    collection: Collection[FARR_TRAW] | None
+    async_collection: AsyncCollection[FARR_TRAW] | None
     f_r_subpayload: dict[str, Any]
     f_options0: dict[str, Any]
 
     def __init__(
         self,
         *,
-        collection: Collection[TRAW] | None,
-        async_collection: AsyncCollection[TRAW] | None,
+        collection: Collection[FARR_TRAW] | None,
+        async_collection: AsyncCollection[FARR_TRAW] | None,
         filter: FilterType | None,
         projection: ProjectionType | None,
         sort: HybridSortType | None,
         limit: int | None,
         hybrid_limits: int | dict[str, int] | None,
         hybrid_projection: str | None,
-        rerank_field: str | None,
+        rerank_on: str | None,
     ) -> None:
         self.collection = collection
         self.async_collection = async_collection
@@ -107,7 +139,7 @@ class _CollectionFindAndRerankQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
             for k, v in {
                 "limit": limit if limit != 0 else None,
                 "hybridLimits": hybrid_limits if hybrid_limits != 0 else None,
-                "rerankField": rerank_field,
+                "rerankOn": rerank_on,
                 "hybridProjection": hybrid_projection,
             }.items()
             if v is not None
@@ -119,7 +151,7 @@ class _CollectionFindAndRerankQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         *,
         page_state: str | None,
         timeout_context: _TimeoutContext,
-    ) -> tuple[list[TRAW], str | None, dict[str, Any] | None]:
+    ) -> tuple[list[RerankedResult[FARR_TRAW]], str | None, dict[str, Any] | None]:
         if self.collection is None:
             raise RuntimeError("Query engine has no sync collection.")
         f_payload = {
@@ -138,29 +170,44 @@ class _CollectionFindAndRerankQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         _page_str = page_state if page_state else "(empty page state)"
         _coll_name = self.collection.name if self.collection else "(none)"
 
+        f_response: dict[str, Any]
         if MOCK_FARR_API:
             logger.info("MOCKING FARR API: '%s'", str(converted_f_payload))
-            mock_p_documents = mock_farr_documents(converted_f_payload)
-            mock_n_p_state = None
-            mock_p_r_status = {"mocked": "OH_YEAH"}
-            return (mock_p_documents, mock_n_p_state, mock_p_r_status)  # type: ignore[return-value]
+            f_response = mock_farr_response(converted_f_payload)
+        else:
+            logger.info(f"cursor fetching a page: {_page_str} from {_coll_name}")
+            raw_f_response = self.collection._api_commander.request(
+                payload=converted_f_payload,
+                timeout_context=timeout_context,
+            )
+            logger.info(
+                f"cursor finished fetching a page: {_page_str} from {_coll_name}"
+            )
+            f_response = postprocess_collection_response(
+                raw_f_response, options=self.collection.api_options.serdes_options
+            )
 
-        logger.info(f"cursor fetching a page: {_page_str} from {_coll_name}")
-        raw_f_response = self.collection._api_commander.request(
-            payload=converted_f_payload,
-            timeout_context=timeout_context,
-        )
-        logger.info(f"cursor finished fetching a page: {_page_str} from {_coll_name}")
-
-        f_response = postprocess_collection_response(
-            raw_f_response, options=self.collection.api_options.serdes_options
-        )
         if "documents" not in f_response.get("data", {}):
             raise UnexpectedDataAPIResponseException(
                 text="Faulty response from findAndRerank API command (no 'documents').",
                 raw_response=f_response,
             )
-        p_documents = f_response["data"]["documents"]
+        if "documentResponses" not in f_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from findAndRerank API command (no 'documentResponses').",
+                raw_response=f_response,
+            )
+        p_documents: list[RerankedResult[FARR_TRAW]]
+        if f_response["data"]["documents"]:
+            p_documents = [
+                RerankedResult(document=document, scores=doc_response["scores"])
+                for document, doc_response in zip(
+                    f_response["data"]["documents"],
+                    f_response["status"]["documentResponses"],
+                )
+            ]
+        else:
+            p_documents = []
         n_p_state = f_response["data"]["nextPageState"]
         p_r_status = f_response.get("status")
         return (p_documents, n_p_state, p_r_status)
@@ -171,7 +218,7 @@ class _CollectionFindAndRerankQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         *,
         page_state: str | None,
         timeout_context: _TimeoutContext,
-    ) -> tuple[list[TRAW], str | None, dict[str, Any] | None]:
+    ) -> tuple[list[RerankedResult[FARR_TRAW]], str | None, dict[str, Any] | None]:
         if self.async_collection is None:
             raise RuntimeError("Query engine has no async collection.")
         f_payload = {
@@ -190,38 +237,53 @@ class _CollectionFindAndRerankQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         _page_str = page_state if page_state else "(empty page state)"
         _coll_name = self.async_collection.name if self.async_collection else "(none)"
 
+        f_response: dict[str, Any]
         if MOCK_FARR_API:
             logger.info("MOCKING FARR API: '%s'", str(converted_f_payload))
-            mock_p_documents = mock_farr_documents(converted_f_payload)
-            mock_n_p_state = None
-            mock_p_r_status = {"mocked": "OH_YEAH"}
-            return (mock_p_documents, mock_n_p_state, mock_p_r_status)  # type: ignore[return-value]
+            f_response = mock_farr_response(converted_f_payload)
+        else:
+            logger.info(f"cursor fetching a page: {_page_str} from {_coll_name}, async")
+            raw_f_response = await self.async_collection._api_commander.async_request(
+                payload=converted_f_payload,
+                timeout_context=timeout_context,
+            )
+            logger.info(
+                f"cursor finished fetching a page: {_page_str} from {_coll_name}, async"
+            )
+            f_response = postprocess_collection_response(
+                raw_f_response,
+                options=self.async_collection.api_options.serdes_options,
+            )
 
-        logger.info(f"cursor fetching a page: {_page_str} from {_coll_name}, async")
-        raw_f_response = await self.async_collection._api_commander.async_request(
-            payload=converted_f_payload,
-            timeout_context=timeout_context,
-        )
-        logger.info(
-            f"cursor finished fetching a page: {_page_str} from {_coll_name}, async"
-        )
-
-        f_response = postprocess_collection_response(
-            raw_f_response,
-            options=self.async_collection.api_options.serdes_options,
-        )
         if "documents" not in f_response.get("data", {}):
             raise UnexpectedDataAPIResponseException(
                 text="Faulty response from findAndRerank API command (no 'documents').",
                 raw_response=f_response,
             )
-        p_documents = f_response["data"]["documents"]
+        if "documentResponses" not in f_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from findAndRerank API command (no 'documentResponses').",
+                raw_response=f_response,
+            )
+        p_documents: list[RerankedResult[FARR_TRAW]]
+        if f_response["data"]["documents"]:
+            p_documents = [
+                RerankedResult(document=document, scores=doc_response["scores"])
+                for document, doc_response in zip(
+                    f_response["data"]["documents"],
+                    f_response["status"]["documentResponses"],
+                )
+            ]
+        else:
+            p_documents = []
         n_p_state = f_response["data"]["nextPageState"]
         p_r_status = f_response.get("status")
         return (p_documents, n_p_state, p_r_status)
 
 
-class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
+class CollectionFindAndRerankCursor(
+    Generic[FARR_TRAW, T], AbstractCursor[RerankedResult[FARR_TRAW]]
+):
     """
     A synchronous cursor over documents, as returned by a `find_and_rerank` invocation
     on a Collection. A cursor can be iterated over, materialized into a list,
@@ -256,7 +318,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         {'seq': 11}
     """
 
-    _query_engine: _CollectionFindAndRerankQueryEngine[TRAW]
+    _query_engine: _CollectionFindAndRerankQueryEngine[FARR_TRAW]
     _request_timeout_ms: int | None
     _overall_timeout_ms: int | None
     _request_timeout_label: str | None
@@ -268,13 +330,13 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     _limit: int | None
     _hybrid_limits: int | dict[str, int] | None
     _hybrid_projection: str | None
-    _rerank_field: str | None
-    _mapper: Callable[[TRAW], T] | None
+    _rerank_on: str | None
+    _mapper: Callable[[RerankedResult[FARR_TRAW]], T] | None
 
     def __init__(
         self,
         *,
-        collection: Collection[TRAW],
+        collection: Collection[FARR_TRAW],
         request_timeout_ms: int | None,
         overall_timeout_ms: int | None,
         request_timeout_label: str | None = None,
@@ -285,8 +347,8 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
         hybrid_projection: str | None = None,
-        rerank_field: str | None = None,
-        mapper: Callable[[TRAW], T] | None = None,
+        rerank_on: str | None = None,
+        mapper: Callable[[RerankedResult[FARR_TRAW]], T] | None = None,
     ) -> None:
         self._filter = deepcopy(filter)
         self._projection = projection
@@ -294,7 +356,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         self._limit = limit
         self._hybrid_limits = hybrid_limits
         self._hybrid_projection = hybrid_projection
-        self._rerank_field = rerank_field
+        self._rerank_on = rerank_on
         self._mapper = mapper
         self._request_timeout_ms = request_timeout_ms
         self._overall_timeout_ms = overall_timeout_ms
@@ -309,7 +371,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
             hybrid_projection=self._hybrid_projection,
-            rerank_field=self._rerank_field,
+            rerank_on=self._rerank_on,
         )
         AbstractCursor.__init__(self)
         self._timeout_manager = MultiCallTimeoutManager(
@@ -318,7 +380,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         )
 
     def _copy(
-        self: CollectionFindAndRerankCursor[TRAW, T],
+        self: CollectionFindAndRerankCursor[FARR_TRAW, T],
         *,
         request_timeout_ms: int | None | UnsetType = _UNSET,
         overall_timeout_ms: int | None | UnsetType = _UNSET,
@@ -330,8 +392,8 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         limit: int | None | UnsetType = _UNSET,
         hybrid_limits: int | dict[str, int] | None | UnsetType = _UNSET,
         hybrid_projection: str | None | UnsetType = _UNSET,
-        rerank_field: str | None | UnsetType = _UNSET,
-    ) -> CollectionFindAndRerankCursor[TRAW, T]:
+        rerank_on: str | None | UnsetType = _UNSET,
+    ) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
         if self._query_engine.collection is None:
             raise RuntimeError("Query engine has no collection.")
         return CollectionFindAndRerankCursor(
@@ -360,9 +422,9 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             hybrid_projection=self._hybrid_projection
             if isinstance(hybrid_projection, UnsetType)
             else hybrid_projection,
-            rerank_field=self._rerank_field
-            if isinstance(rerank_field, UnsetType)
-            else rerank_field,
+            rerank_on=self._rerank_on
+            if isinstance(rerank_on, UnsetType)
+            else rerank_on,
             mapper=self._mapper,
         )
 
@@ -399,8 +461,8 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         )
 
     def __iter__(
-        self: CollectionFindAndRerankCursor[TRAW, T],
-    ) -> CollectionFindAndRerankCursor[TRAW, T]:
+        self: CollectionFindAndRerankCursor[FARR_TRAW, T],
+    ) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
         self._ensure_alive()
         return self
 
@@ -419,7 +481,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         return cast(T, self._mapper(traw0) if self._mapper is not None else traw0)
 
     @property
-    def data_source(self) -> Collection[TRAW]:
+    def data_source(self) -> Collection[FARR_TRAW]:
         """
         The Collection object that originated this cursor through a `find_and_rerank`
         operation.
@@ -432,7 +494,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             raise RuntimeError("Query engine has no collection.")
         return self._query_engine.collection
 
-    def clone(self) -> CollectionFindAndRerankCursor[TRAW, T]:
+    def clone(self) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
         """
         Create a copy of this cursor with:
         - the same parameters (timeouts, filter, projection, etc)
@@ -476,13 +538,13 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
             hybrid_projection=self._hybrid_projection,
-            rerank_field=self._rerank_field,
+            rerank_on=self._rerank_on,
             mapper=self._mapper,
         )
 
     def filter(
         self, filter: FilterType | None
-    ) -> CollectionFindAndRerankCursor[TRAW, T]:
+    ) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
         """
         Return a copy of this cursor with a new filter setting.
         This operation is allowed only if the cursor state is still IDLE.
@@ -503,7 +565,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
 
     def project(
         self, projection: ProjectionType | None
-    ) -> CollectionFindAndRerankCursor[TRAW, T]:
+    ) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
         """
         Return a copy of this cursor with a new projection setting.
         This operation is allowed only if the cursor state is still IDLE and if
@@ -530,7 +592,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
 
     def sort(
         self, sort: HybridSortType | None
-    ) -> CollectionFindAndRerankCursor[TRAW, T]:
+    ) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
         """
         Return a copy of this cursor with a new sort setting.
         This operation is allowed only if the cursor state is still IDLE.
@@ -549,7 +611,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         self._ensure_idle()
         return self._copy(sort=sort)
 
-    def limit(self, limit: int | None) -> CollectionFindAndRerankCursor[TRAW, T]:
+    def limit(self, limit: int | None) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
         """
         Return a copy of this cursor with a new limit setting.
         This operation is allowed only if the cursor state is still IDLE.
@@ -570,7 +632,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
 
     def hybrid_limits(
         self, hybrid_limits: int | dict[str, int] | None
-    ) -> CollectionFindAndRerankCursor[TRAW, T]:
+    ) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
         """
         Return a copy of this cursor with a new hybrid_limits setting.
         This operation is allowed only if the cursor state is still IDLE.
@@ -591,7 +653,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
 
     def hybrid_projection(
         self, hybrid_projection: str | None
-    ) -> CollectionFindAndRerankCursor[TRAW, T]:
+    ) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
         """
         Return a copy of this cursor with a new hybrid_projection setting.
         This operation is allowed only if the cursor state is still IDLE.
@@ -610,30 +672,30 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         self._ensure_idle()
         return self._copy(hybrid_projection=hybrid_projection)
 
-    def rerank_field(
-        self, rerank_field: str | None
-    ) -> CollectionFindAndRerankCursor[TRAW, T]:
+    def rerank_on(
+        self, rerank_on: str | None
+    ) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
         """
-        Return a copy of this cursor with a new rerank_field setting.
+        Return a copy of this cursor with a new rerank_on setting.
         This operation is allowed only if the cursor state is still IDLE.
 
         Instead of explicitly invoking this method, the typical usage consists
         in passing arguments to the Collection `find_and_rerank` method.
 
         Args:
-            rerank_field: a new setting to apply to the returned new cursor.
+            rerank_on: a new setting to apply to the returned new cursor.
 
         Returns:
             a new CollectionFindAndRerankCursor with the same settings as this one,
-                except for `rerank_field` which is the provided value.
+                except for `rerank_on` which is the provided value.
         """
 
         self._ensure_idle()
-        return self._copy(rerank_field=rerank_field)
+        return self._copy(rerank_on=rerank_on)
 
     def map(
         self, mapper: Callable[[T], TNEW]
-    ) -> CollectionFindAndRerankCursor[TRAW, TNEW]:
+    ) -> CollectionFindAndRerankCursor[FARR_TRAW, TNEW]:
         """
         Return a copy of this cursor with a mapping function to transform
         the returned items. Calling this method on a cursor with a mapping
@@ -686,15 +748,15 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         self._ensure_idle()
         if self._query_engine.collection is None:
             raise RuntimeError("Query engine has no collection.")
-        composite_mapper: Callable[[TRAW], TNEW]
+        composite_mapper: Callable[[RerankedResult[FARR_TRAW]], TNEW]
         if self._mapper is not None:
 
-            def _composite(document: TRAW) -> TNEW:
+            def _composite(document: RerankedResult[FARR_TRAW]) -> TNEW:
                 return mapper(self._mapper(document))  # type: ignore[misc]
 
             composite_mapper = _composite
         else:
-            composite_mapper = cast(Callable[[TRAW], TNEW], mapper)
+            composite_mapper = cast(Callable[[RerankedResult[FARR_TRAW]], TNEW], mapper)
         return CollectionFindAndRerankCursor(
             collection=self._query_engine.collection,
             request_timeout_ms=self._request_timeout_ms,
@@ -707,7 +769,7 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
             hybrid_projection=self._hybrid_projection,
-            rerank_field=self._rerank_field,
+            rerank_on=self._rerank_on,
             mapper=composite_mapper,
         )
 
@@ -890,7 +952,9 @@ class CollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         return len(self._buffer) > 0
 
 
-class AsyncCollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
+class AsyncCollectionFindAndRerankCursor(
+    Generic[TRAW, T], AbstractCursor[RerankedResult[TRAW]]
+):
     """
     An asynchronous cursor over documents, as returned by a `find_and_rerank` invocation
     on an AsyncCollection. A cursor can be iterated over, materialized into a list,
@@ -926,8 +990,8 @@ class AsyncCollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW])
     _limit: int | None
     _hybrid_limits: int | dict[str, int] | None
     _hybrid_projection: str | None
-    _rerank_field: str | None
-    _mapper: Callable[[TRAW], T] | None
+    _rerank_on: str | None
+    _mapper: Callable[[RerankedResult[TRAW]], T] | None
 
     def __init__(
         self,
@@ -943,8 +1007,8 @@ class AsyncCollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW])
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
         hybrid_projection: str | None = None,
-        rerank_field: str | None = None,
-        mapper: Callable[[TRAW], T] | None = None,
+        rerank_on: str | None = None,
+        mapper: Callable[[RerankedResult[TRAW]], T] | None = None,
     ) -> None:
         self._filter = deepcopy(filter)
         self._projection = projection
@@ -952,7 +1016,7 @@ class AsyncCollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW])
         self._limit = limit
         self._hybrid_limits = hybrid_limits
         self._hybrid_projection = hybrid_projection
-        self._rerank_field = rerank_field
+        self._rerank_on = rerank_on
         self._mapper = mapper
         self._request_timeout_ms = request_timeout_ms
         self._overall_timeout_ms = overall_timeout_ms
@@ -967,7 +1031,7 @@ class AsyncCollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW])
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
             hybrid_projection=self._hybrid_projection,
-            rerank_field=self._rerank_field,
+            rerank_on=self._rerank_on,
         )
         AbstractCursor.__init__(self)
         self._timeout_manager = MultiCallTimeoutManager(
@@ -988,7 +1052,7 @@ class AsyncCollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW])
         limit: int | None | UnsetType = _UNSET,
         hybrid_limits: int | dict[str, int] | None | UnsetType = _UNSET,
         hybrid_projection: str | None | UnsetType = _UNSET,
-        rerank_field: str | None | UnsetType = _UNSET,
+        rerank_on: str | None | UnsetType = _UNSET,
     ) -> AsyncCollectionFindAndRerankCursor[TRAW, T]:
         if self._query_engine.async_collection is None:
             raise RuntimeError("Query engine has no async collection.")
@@ -1018,9 +1082,9 @@ class AsyncCollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW])
             hybrid_projection=self._hybrid_projection
             if isinstance(hybrid_projection, UnsetType)
             else hybrid_projection,
-            rerank_field=self._rerank_field
-            if isinstance(rerank_field, UnsetType)
-            else rerank_field,
+            rerank_on=self._rerank_on
+            if isinstance(rerank_on, UnsetType)
+            else rerank_on,
             mapper=self._mapper,
         )
 
@@ -1121,7 +1185,7 @@ class AsyncCollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW])
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
             hybrid_projection=self._hybrid_projection,
-            rerank_field=self._rerank_field,
+            rerank_on=self._rerank_on,
             mapper=self._mapper,
         )
 
@@ -1255,26 +1319,26 @@ class AsyncCollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW])
         self._ensure_idle()
         return self._copy(hybrid_projection=hybrid_projection)
 
-    def rerank_field(
-        self, rerank_field: str | None
+    def rerank_on(
+        self, rerank_on: str | None
     ) -> AsyncCollectionFindAndRerankCursor[TRAW, T]:
         """
-        Return a copy of this cursor with a new rerank_field setting.
+        Return a copy of this cursor with a new rerank_on setting.
         This operation is allowed only if the cursor state is still IDLE.
 
         Instead of explicitly invoking this method, the typical usage consists
         in passing arguments to the AsyncCollection `find_and_rerank` method.
 
         Args:
-            rerank_field: a new setting to apply to the returned new cursor.
+            rerank_on: a new setting to apply to the returned new cursor.
 
         Returns:
             a new AsyncCollectionFindAndRerankCursor with the same settings as this one,
-                except for `rerank_field` which is the provided value.
+                except for `rerank_on` which is the provided value.
         """
 
         self._ensure_idle()
-        return self._copy(rerank_field=rerank_field)
+        return self._copy(rerank_on=rerank_on)
 
     def map(
         self, mapper: Callable[[T], TNEW]
@@ -1301,15 +1365,15 @@ class AsyncCollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW])
         self._ensure_idle()
         if self._query_engine.async_collection is None:
             raise RuntimeError("Query engine has no async collection.")
-        composite_mapper: Callable[[TRAW], TNEW]
+        composite_mapper: Callable[[RerankedResult[TRAW]], TNEW]
         if self._mapper is not None:
 
-            def _composite(document: TRAW) -> TNEW:
+            def _composite(document: RerankedResult[TRAW]) -> TNEW:
                 return mapper(self._mapper(document))  # type: ignore[misc]
 
             composite_mapper = _composite
         else:
-            composite_mapper = cast(Callable[[TRAW], TNEW], mapper)
+            composite_mapper = cast(Callable[[RerankedResult[TRAW]], TNEW], mapper)
         return AsyncCollectionFindAndRerankCursor(
             collection=self._query_engine.async_collection,
             request_timeout_ms=self._request_timeout_ms,
@@ -1322,7 +1386,7 @@ class AsyncCollectionFindAndRerankCursor(Generic[TRAW, T], AbstractCursor[TRAW])
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
             hybrid_projection=self._hybrid_projection,
-            rerank_field=self._rerank_field,
+            rerank_on=self._rerank_on,
             mapper=composite_mapper,
         )
 

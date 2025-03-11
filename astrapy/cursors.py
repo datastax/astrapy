@@ -23,6 +23,7 @@ from astrapy.data.cursor import (
 from astrapy.data.farr_cursor import (
     AsyncCollectionFindAndRerankCursor,
     CollectionFindAndRerankCursor,
+    RerankedResult,
 )
 
 __all__ = [
@@ -33,5 +34,6 @@ __all__ = [
     "CollectionFindCursor",
     "AbstractCursor",
     "CursorState",
+    "RerankedResult",
     "TableFindCursor",
 ]
