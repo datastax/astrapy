@@ -76,6 +76,7 @@ if TYPE_CHECKING:
         AsyncCollectionFindCursor,
         CollectionFindAndRerankCursor,
         CollectionFindCursor,
+        RerankedResult,
     )
 
 
@@ -1422,7 +1423,7 @@ class Collection(Generic[DOC]):
         rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> CollectionFindAndRerankCursor[DOC, DOC]: ...
+    ) -> CollectionFindAndRerankCursor[DOC, RerankedResult[DOC]]: ...
 
     @overload
     def find_and_rerank(
@@ -1438,7 +1439,7 @@ class Collection(Generic[DOC]):
         rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> CollectionFindAndRerankCursor[DOC, DOC2]: ...
+    ) -> CollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]: ...
 
     def find_and_rerank(
         self,
@@ -1453,7 +1454,7 @@ class Collection(Generic[DOC]):
         rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> CollectionFindAndRerankCursor[DOC, DOC2]:
+    ) -> CollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]:
         """
         TODO DOCSTRING TODO
         """
@@ -4071,7 +4072,7 @@ class AsyncCollection(Generic[DOC]):
         rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> AsyncCollectionFindAndRerankCursor[DOC, DOC]: ...
+    ) -> AsyncCollectionFindAndRerankCursor[DOC, RerankedResult[DOC]]: ...
 
     @overload
     def find_and_rerank(
@@ -4087,7 +4088,7 @@ class AsyncCollection(Generic[DOC]):
         rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> AsyncCollectionFindAndRerankCursor[DOC, DOC2]: ...
+    ) -> AsyncCollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]: ...
 
     def find_and_rerank(
         self,
@@ -4102,7 +4103,7 @@ class AsyncCollection(Generic[DOC]):
         rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> AsyncCollectionFindAndRerankCursor[DOC, DOC2]:
+    ) -> AsyncCollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]:
         """
         TODO DOCSTRING TODO
         """
