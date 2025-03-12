@@ -80,6 +80,22 @@ class CollectionInsertManyException(DataAPIException):
     inserted_ids: list[Any]
     exceptions: Sequence[Exception]
 
+    def __str__(self) -> str:
+        num_ids = len(self.inserted_ids)
+        if self.exceptions:
+            exc_desc: str
+            excs_strs = [exc.__str__() for exc in self.exceptions[:8]]
+            if len(self.exceptions) > 8:
+                exc_desc = ", ".join(excs_strs) + " ... (more exceptions)"
+            else:
+                exc_desc = ", ".join(excs_strs)
+            return (
+                f"{self.__class__.__name__}({exc_desc} "
+                f"[with {num_ids} inserted ids])"
+            )
+        else:
+            return f"{self.__class__.__name__}()"
+
 
 @dataclass
 class CollectionDeleteManyException(DataAPIException):
@@ -106,6 +122,9 @@ class CollectionDeleteManyException(DataAPIException):
     partial_result: CollectionDeleteResult
     cause: Exception
 
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}({self.cause.__str__()})"
+
 
 @dataclass
 class CollectionUpdateManyException(DataAPIException):
@@ -131,3 +150,6 @@ class CollectionUpdateManyException(DataAPIException):
 
     partial_result: CollectionUpdateResult
     cause: Exception
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}({self.cause.__str__()})"
