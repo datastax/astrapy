@@ -26,7 +26,6 @@ from astrapy.exceptions.collection_exceptions import (
     TooManyDocumentsToCountException,
 )
 from astrapy.exceptions.data_api_exceptions import (
-    CumulativeOperationException,
     CursorException,
     DataAPIDetailedErrorDescriptor,
     DataAPIErrorDescriptor,
@@ -524,7 +523,6 @@ __all__ = [
     "CollectionInsertManyException",
     "CollectionDeleteManyException",
     "CollectionUpdateManyException",
-    "CumulativeOperationException",
     "MultiCallTimeoutManager",
     "TooManyRowsToCountException",
     "TableInsertManyException",

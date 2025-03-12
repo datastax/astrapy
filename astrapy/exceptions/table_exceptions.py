@@ -18,8 +18,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from astrapy.exceptions.data_api_exceptions import (
-    CumulativeOperationException,
     DataAPIException,
+    DataAPIResponseException,
 )
 
 if TYPE_CHECKING:
@@ -51,7 +51,7 @@ class TooManyRowsToCountException(DataAPIException):
 
 
 @dataclass
-class TableInsertManyException(CumulativeOperationException):
+class TableInsertManyException(DataAPIResponseException):
     """
     An exception of type DataAPIResponseException (see) occurred
     during an insert_many (that in general spans several requests).

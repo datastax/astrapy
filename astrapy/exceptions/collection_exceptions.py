@@ -18,8 +18,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from astrapy.exceptions.data_api_exceptions import (
-    CumulativeOperationException,
     DataAPIException,
+    DataAPIResponseException,
 )
 
 if TYPE_CHECKING:
@@ -59,7 +59,7 @@ class TooManyDocumentsToCountException(DataAPIException):
 
 
 @dataclass
-class CollectionInsertManyException(CumulativeOperationException):
+class CollectionInsertManyException(DataAPIResponseException):
     """
     An exception of type DataAPIResponseException (see) occurred
     during an insert_many (that in general spans several requests).
@@ -94,7 +94,7 @@ class CollectionInsertManyException(CumulativeOperationException):
 
 
 @dataclass
-class CollectionDeleteManyException(CumulativeOperationException):
+class CollectionDeleteManyException(DataAPIResponseException):
     """
     An exception of type DataAPIResponseException (see) occurred
     during a delete_many (that in general spans several requests).
@@ -128,7 +128,7 @@ class CollectionDeleteManyException(CumulativeOperationException):
 
 
 @dataclass
-class CollectionUpdateManyException(CumulativeOperationException):
+class CollectionUpdateManyException(DataAPIResponseException):
     """
     An exception of type DataAPIResponseException (see) occurred
     during an update_many (that in general spans several requests).

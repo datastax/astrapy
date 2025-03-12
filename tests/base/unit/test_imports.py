@@ -111,7 +111,6 @@ def test_imports() -> None:
         CollectionDeleteManyException,
         CollectionInsertManyException,
         CollectionUpdateManyException,
-        CumulativeOperationException,
         CursorException,
         DataAPIDetailedErrorDescriptor,
         DataAPIErrorDescriptor,

@@ -6,6 +6,7 @@ Maps for tables expressed as list of pairs (association lists):
 Exceptions
     - `DataAPIResponseException.error_descriptors` is a property (computed from detailed_error_descriptors)
     - better string representation of `DataAPIDetailedErrorDescriptor`
+    - 'CumulativeOperationException` removed. These four classes now inherit directly from `DataAPIResponseException`: `CollectionInsertManyException`, `CollectionUpdateManyException`, `CollectionDeleteManyException`, `TableInsertManyException`
 Arbitrary field names and dot-escaping:
     - offering utilities `astrapy.utils.document_paths.escape_field_names/unescape_field_path`
     - `distinct` methods can accept a list of (literal) str|int as well as a(n escaped) identifier string
