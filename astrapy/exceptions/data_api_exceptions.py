@@ -134,6 +134,9 @@ class DataAPIErrorDescriptor:
                 return ""
 
 
+DataAPIWarningDescriptor = DataAPIErrorDescriptor
+
+
 @dataclass
 class DataAPIResponseException(DataAPIException):
     """
@@ -160,7 +163,7 @@ class DataAPIResponseException(DataAPIException):
     command: dict[str, Any] | None
     raw_response: dict[str, Any]
     error_descriptors: list[DataAPIErrorDescriptor]
-    warning_descriptors: list[DataAPIErrorDescriptor]
+    warning_descriptors: list[DataAPIWarningDescriptor]
 
     def __init__(
         self,
@@ -169,7 +172,7 @@ class DataAPIResponseException(DataAPIException):
         command: dict[str, Any] | None,
         raw_response: dict[str, Any],
         error_descriptors: list[DataAPIErrorDescriptor],
-        warning_descriptors: list[DataAPIErrorDescriptor],
+        warning_descriptors: list[DataAPIWarningDescriptor],
     ) -> None:
         super().__init__(text)
         self.text = text
@@ -192,7 +195,7 @@ class DataAPIResponseException(DataAPIException):
             for error_dict in raw_response.get("errors") or []
         ]
         warning_descriptors = [
-            DataAPIErrorDescriptor(error_dict)
+            DataAPIWarningDescriptor(error_dict)
             for error_dict in raw_response.get("warnings") or []
         ]
 
