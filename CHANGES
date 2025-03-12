@@ -14,9 +14,12 @@ Support for findAndRerank in collections:
 Maps for tables expressed as list of pairs (association lists):
     - support for automatic handling of dicts and DataAPIMaps in the proper table payload portions
     - introduced serdes option `encode_maps_as_lists_in_tables` (default to False) to control
-Exceptions
+Exceptions, major rework of `[Table|Collection]InsertManyException`, `CollectionUpdateManyException` and `CollectionDeleteManyException`
     - `DataAPIResponseException.error_descriptors` is a property (computed from detailed_error_descriptors)
     - better string representation of `DataAPIDetailedErrorDescriptor`
+    - 'CumulativeOperationException` removed. These four classes now inherit directly from `DataAPIResponseException`: `CollectionInsertManyException`, `CollectionUpdateManyException`, `CollectionDeleteManyException`, `TableInsertManyException`
+    - new semantics and class hierarchy for errors in cumulative operations
+    - `DataAPIDetailedErrorDescriptor` removed
 Arbitrary field names and dot-escaping:
     - offering utilities `astrapy.utils.document_paths.escape_field_names/unescape_field_path`
     - `distinct` methods can accept a list of (literal) str|int as well as a(n escaped) identifier string

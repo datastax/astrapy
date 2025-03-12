@@ -15,15 +15,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any, Sequence
 
-from astrapy.exceptions.data_api_exceptions import (
-    CumulativeOperationException,
-    DataAPIException,
-)
-
-if TYPE_CHECKING:
-    from astrapy.results import TableInsertManyResult
+from astrapy.exceptions.data_api_exceptions import DataAPIException
 
 
 @dataclass
@@ -51,9 +45,11 @@ class TooManyRowsToCountException(DataAPIException):
 
 
 @dataclass
-class TableInsertManyException(CumulativeOperationException):
+class TableInsertManyException(DataAPIException):
     """
-    An exception of type DataAPIResponseException (see) occurred
+    TODO DOCSTRING TODO
+
+    An exception of type DataAPIException (see) occurred
     during an insert_many (that in general spans several requests).
     As such, besides information on the error, it may have accumulated
     a partial result from past successful Data API requests.
@@ -72,14 +68,22 @@ class TableInsertManyException(CumulativeOperationException):
             completely.
     """
 
-    partial_result: TableInsertManyResult
+    inserted_ids: list[Any]
+    inserted_id_tuples: list[tuple[Any, ...]]
+    exceptions: Sequence[Exception]
 
-    def __init__(
-        self,
-        text: str,
-        partial_result: TableInsertManyResult,
-        *pargs: Any,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(text, *pargs, **kwargs)
-        self.partial_result = partial_result
+    def __str__(self) -> str:
+        num_ids = len(self.inserted_ids)
+        if self.exceptions:
+            exc_desc: str
+            excs_strs = [exc.__str__() for exc in self.exceptions[:8]]
+            if len(self.exceptions) > 8:
+                exc_desc = ", ".join(excs_strs) + " ... (more exceptions)"
+            else:
+                exc_desc = ", ".join(excs_strs)
+            return (
+                f"{self.__class__.__name__}({exc_desc} "
+                f"[with {num_ids} inserted ids])"
+            )
+        else:
+            return f"{self.__class__.__name__}()"
