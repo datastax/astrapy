@@ -2165,6 +2165,7 @@ class Collection(Generic[DOC]):
             logger.info(f"updateMany on '{self.name}'")
             this_um_response = self._converted_request(
                 payload=this_um_payload,
+                raise_api_errors=False,
                 timeout_context=timeout_manager.remaining_timeout(
                     cap_time_ms=_request_timeout_ms,
                     cap_timeout_label=_rt_label,
@@ -2180,11 +2181,13 @@ class Collection(Generic[DOC]):
                     raw_results=um_responses,
                     update_info=partial_update_info,
                 )
-                all_um_responses = um_responses + [this_um_response]
-                raise CollectionUpdateManyException.from_responses(
-                    commands=[None for _ in all_um_responses],
-                    raw_responses=all_um_responses,
+                cause_exception = DataAPIResponseException.from_response(
+                    command=this_um_payload,
+                    raw_response=this_um_response,
+                )
+                raise CollectionUpdateManyException(
                     partial_result=partial_result,
+                    cause=cause_exception,
                 )
             else:
                 if "status" not in this_um_response:
@@ -2501,11 +2504,13 @@ class Collection(Generic[DOC]):
                     deleted_count=deleted_count,
                     raw_results=dm_responses,
                 )
-                all_dm_responses = dm_responses + [this_dm_response]
-                raise CollectionDeleteManyException.from_responses(
-                    commands=[None for _ in all_dm_responses],
-                    raw_responses=all_dm_responses,
+                cause_exception = DataAPIResponseException.from_response(
+                    command=this_dm_payload,
+                    raw_response=this_dm_response,
+                )
+                raise CollectionDeleteManyException(
                     partial_result=partial_result,
+                    cause=cause_exception,
                 )
             else:
                 this_dc = this_dm_response.get("status", {}).get("deletedCount")
@@ -4825,6 +4830,7 @@ class AsyncCollection(Generic[DOC]):
             logger.info(f"updateMany on '{self.name}'")
             this_um_response = await self._converted_request(
                 payload=this_um_payload,
+                raise_api_errors=False,
                 timeout_context=timeout_manager.remaining_timeout(
                     cap_time_ms=_request_timeout_ms,
                     cap_timeout_label=_rt_label,
@@ -4840,11 +4846,13 @@ class AsyncCollection(Generic[DOC]):
                     raw_results=um_responses,
                     update_info=partial_update_info,
                 )
-                all_um_responses = um_responses + [this_um_response]
-                raise CollectionUpdateManyException.from_responses(
-                    commands=[None for _ in all_um_responses],
-                    raw_responses=all_um_responses,
+                cause_exception = DataAPIResponseException.from_response(
+                    command=this_um_payload,
+                    raw_response=this_um_response,
+                )
+                raise CollectionUpdateManyException(
                     partial_result=partial_result,
+                    cause=cause_exception,
                 )
             else:
                 if "status" not in this_um_response:
@@ -5184,11 +5192,13 @@ class AsyncCollection(Generic[DOC]):
                     deleted_count=deleted_count,
                     raw_results=dm_responses,
                 )
-                all_dm_responses = dm_responses + [this_dm_response]
-                raise CollectionDeleteManyException.from_responses(
-                    commands=[None for _ in all_dm_responses],
-                    raw_responses=all_dm_responses,
+                cause_exception = DataAPIResponseException.from_response(
+                    command=this_dm_payload,
+                    raw_response=this_dm_response,
+                )
+                raise CollectionDeleteManyException(
                     partial_result=partial_result,
+                    cause=cause_exception,
                 )
             else:
                 this_dc = this_dm_response.get("status", {}).get("deletedCount")

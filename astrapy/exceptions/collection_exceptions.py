@@ -104,16 +104,7 @@ class CollectionDeleteManyException(DataAPIException):
     """
 
     partial_result: CollectionDeleteResult
-
-    def __init__(
-        self,
-        text: str,
-        partial_result: CollectionDeleteResult,
-        *pargs: Any,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(text, *pargs, **kwargs)
-        self.partial_result = partial_result
+    cause: Exception
 
 
 @dataclass
@@ -139,13 +130,4 @@ class CollectionUpdateManyException(DataAPIException):
     """
 
     partial_result: CollectionUpdateResult
-
-    def __init__(
-        self,
-        text: str,
-        partial_result: CollectionUpdateResult,
-        *pargs: Any,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(text, *pargs, **kwargs)
-        self.partial_result = partial_result
+    cause: Exception
