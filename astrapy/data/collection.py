@@ -733,6 +733,7 @@ class Collection(Generic[DOC]):
             document sequence is important.
 
         Note:
+            TODO DOCSTRING TODO
             A failure mode for this command is related to certain faulty documents
             found among those to insert: a document may have the an `_id` already
             present on the collection, or its vector dimension may not
@@ -3288,6 +3289,7 @@ class AsyncCollection(Generic[DOC]):
             document sequence is important.
 
         Note:
+            TODO DOCSTRING TODO
             A failure mode for this command is related to certain faulty documents
             found among those to insert: a document may have the an `_id` already
             present on the collection, or its vector dimension may not
@@ -3372,6 +3374,7 @@ class AsyncCollection(Generic[DOC]):
                 ]
                 inserted_ids += chunk_inserted_ids
                 raw_results += [chunk_response]
+                im_payloads += [im_payload]
                 # if errors, quit early
                 if chunk_response.get("errors", []):
                     response_exception = DataAPIResponseException.from_response(
@@ -3453,7 +3456,7 @@ class AsyncCollection(Generic[DOC]):
             # check-raise
             response_exceptions = [
                 DataAPIResponseException.from_response(
-                    command=im_payload,
+                    command=chunk_payload,
                     raw_response=chunk_response,
                 )
                 for chunk_payload, chunk_response in zip(im_payloads, raw_results)

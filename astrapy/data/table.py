@@ -38,6 +38,7 @@ from astrapy.data.utils.distinct_extractors import (
 from astrapy.data.utils.table_converters import _TableConverterAgent
 from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
+    DataAPIResponseException,
     MultiCallTimeoutManager,
     TableInsertManyException,
     TooManyRowsToCountException,
@@ -1390,6 +1391,7 @@ class Table(Generic[ROW]):
             been successfully inserted.
             It is possible to capture such a scenario, and inspect which rows
             actually got inserted, by catching an error of type
+            TODO DOCSTRING TODO
             `astrapy.exceptions.TableInsertManyException`: its `partial_result`
             attribute is precisely a `TableInsertManyResult`, encoding details
             on the successful writes.
@@ -1423,6 +1425,7 @@ class Table(Generic[ROW]):
         _rows = list(rows)
         logger.info(f"inserting {len(_rows)} rows in '{self.name}'")
         raw_results: list[dict[str, Any]] = []
+        im_payloads: list[dict[str, Any] | None] = []
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_general_method_timeout_ms,
             timeout_label=_gmt_label,
@@ -1458,17 +1461,17 @@ class Table(Generic[ROW]):
                 inserted_ids += chunk_inserted_ids
                 inserted_id_tuples += chunk_inserted_ids_tuples
                 raw_results += [chunk_response]
+                im_payloads += [im_payload]
                 # if errors, quit early
                 if chunk_response.get("errors", []):
-                    partial_result = TableInsertManyResult(
-                        raw_results=raw_results,
+                    response_exception = DataAPIResponseException.from_response(
+                        command=im_payload,
+                        raw_response=chunk_response,
+                    )
+                    raise TableInsertManyException(
                         inserted_ids=inserted_ids,
                         inserted_id_tuples=inserted_id_tuples,
-                    )
-                    raise TableInsertManyException.from_response(
-                        command=None,
-                        raw_response=chunk_response,
-                        partial_result=partial_result,
+                        exceptions=[response_exception],
                     )
 
             # return
@@ -1488,7 +1491,7 @@ class Table(Generic[ROW]):
 
                     def _chunk_insertor(
                         row_chunk: list[dict[str, Any]],
-                    ) -> dict[str, Any]:
+                    ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
                         im_payload = self._converter_agent.preprocess_payload(
                             {
                                 "insertMany": {
@@ -1508,9 +1511,9 @@ class Table(Generic[ROW]):
                             ),
                         )
                         logger.info(f"finished insertMany(chunk) on '{self.name}'")
-                        return im_response
+                        return im_payload, im_response
 
-                    raw_results = list(
+                    raw_pl_results_pairs = list(
                         executor.map(
                             _chunk_insertor,
                             (
@@ -1519,6 +1522,11 @@ class Table(Generic[ROW]):
                             ),
                         )
                     )
+                    if raw_pl_results_pairs:
+                        im_payloads, raw_results = list(zip(*raw_pl_results_pairs))
+                    else:
+                        im_payloads, raw_results = [], []
+
             else:
                 for i in range(0, len(_rows), _chunk_size):
                     im_payload = self._converter_agent.preprocess_payload(
@@ -1541,6 +1549,7 @@ class Table(Generic[ROW]):
                     )
                     logger.info(f"finished insertMany(chunk) on '{self.name}'")
                     raw_results.append(im_response)
+                    im_payloads.append(im_payload)
             # recast raw_results. Each response has its schema: unfold appropriately
             ids_and_tuples_per_chunk = [
                 self._prepare_keys_from_status(chunk_response.get("status"))
@@ -1557,18 +1566,19 @@ class Table(Generic[ROW]):
                 for inserted_id_tuple in chunk_id_tuples
             ]
             # check-raise
-            if any(
-                [chunk_response.get("errors", []) for chunk_response in raw_results]
-            ):
-                partial_result = TableInsertManyResult(
-                    raw_results=raw_results,
+            response_exceptions = [
+                DataAPIResponseException.from_response(
+                    command=chunk_payload,
+                    raw_response=chunk_response,
+                )
+                for chunk_payload, chunk_response in zip(im_payloads, raw_results)
+                if chunk_response.get("errors", [])
+            ]
+            if response_exceptions:
+                raise TableInsertManyException(
                     inserted_ids=inserted_ids,
                     inserted_id_tuples=inserted_id_tuples,
-                )
-                raise TableInsertManyException.from_responses(
-                    commands=[None for _ in raw_results],
-                    raw_responses=raw_results,
-                    partial_result=partial_result,
+                    exceptions=response_exceptions,
                 )
 
             # return
@@ -4135,6 +4145,7 @@ class AsyncTable(Generic[ROW]):
             been successfully inserted.
             It is possible to capture such a scenario, and inspect which rows
             actually got inserted, by catching an error of type
+            TODO DOCSTRING TODO
             `astrapy.exceptions.TableInsertManyException`: its `partial_result`
             attribute is precisely a `TableInsertManyResult`, encoding details
             on the successful writes.
@@ -4168,6 +4179,7 @@ class AsyncTable(Generic[ROW]):
         _rows = list(rows)
         logger.info(f"inserting {len(_rows)} rows in '{self.name}'")
         raw_results: list[dict[str, Any]] = []
+        im_payloads: list[dict[str, Any] | None] = []
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_general_method_timeout_ms,
             timeout_label=_gmt_label,
@@ -4205,15 +4217,14 @@ class AsyncTable(Generic[ROW]):
                 raw_results += [chunk_response]
                 # if errors, quit early
                 if chunk_response.get("errors", []):
-                    partial_result = TableInsertManyResult(
-                        raw_results=raw_results,
+                    response_exception = DataAPIResponseException.from_response(
+                        command=im_payload,
+                        raw_response=chunk_response,
+                    )
+                    raise TableInsertManyException(
                         inserted_ids=inserted_ids,
                         inserted_id_tuples=inserted_id_tuples,
-                    )
-                    raise TableInsertManyException.from_response(
-                        command=None,
-                        raw_response=chunk_response,
-                        partial_result=partial_result,
+                        exceptions=[response_exception],
                     )
 
             # return
@@ -4233,7 +4244,7 @@ class AsyncTable(Generic[ROW]):
 
             async def concurrent_insert_chunk(
                 row_chunk: list[ROW],
-            ) -> dict[str, Any]:
+            ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
                 async with sem:
                     im_payload = self._converter_agent.preprocess_payload(
                         {
@@ -4254,8 +4265,9 @@ class AsyncTable(Generic[ROW]):
                         ),
                     )
                     logger.info(f"finished insertMany(chunk) on '{self.name}'")
-                    return im_response
+                    return im_payload, im_response
 
+            raw_pl_results_pairs: list[tuple[dict[str, Any] | None, dict[str, Any]]]
             if _concurrency > 1:
                 tasks = [
                     asyncio.create_task(
@@ -4263,12 +4275,17 @@ class AsyncTable(Generic[ROW]):
                     )
                     for i in range(0, len(_rows), _chunk_size)
                 ]
-                raw_results = await asyncio.gather(*tasks)
+                raw_pl_results_pairs = await asyncio.gather(*tasks)
             else:
-                raw_results = [
+                raw_pl_results_pairs = [
                     await concurrent_insert_chunk(_rows[i : i + _chunk_size])
                     for i in range(0, len(_rows), _chunk_size)
                 ]
+
+            if raw_pl_results_pairs:
+                im_payloads, raw_results = list(zip(*raw_pl_results_pairs))
+            else:
+                im_payloads, raw_results = [], []
 
             # recast raw_results. Each response has its schema: unfold appropriately
             ids_and_tuples_per_chunk = [
@@ -4285,19 +4302,21 @@ class AsyncTable(Generic[ROW]):
                 for _, chunk_id_tuples in ids_and_tuples_per_chunk
                 for inserted_id_tuple in chunk_id_tuples
             ]
+
             # check-raise
-            if any(
-                [chunk_response.get("errors", []) for chunk_response in raw_results]
-            ):
-                partial_result = TableInsertManyResult(
-                    raw_results=raw_results,
+            response_exceptions = [
+                DataAPIResponseException.from_response(
+                    command=chunk_payload,
+                    raw_response=chunk_response,
+                )
+                for chunk_payload, chunk_response in zip(im_payloads, raw_results)
+                if chunk_response.get("errors", [])
+            ]
+            if response_exceptions:
+                raise TableInsertManyException(
                     inserted_ids=inserted_ids,
                     inserted_id_tuples=inserted_id_tuples,
-                )
-                raise TableInsertManyException.from_responses(
-                    commands=[None for _ in raw_results],
-                    raw_responses=raw_results,
-                    partial_result=partial_result,
+                    exceptions=response_exceptions,
                 )
 
             # return

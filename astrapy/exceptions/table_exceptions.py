@@ -15,12 +15,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any, Sequence
 
 from astrapy.exceptions.data_api_exceptions import DataAPIException
-
-if TYPE_CHECKING:
-    from astrapy.results import TableInsertManyResult
 
 
 @dataclass
@@ -71,14 +68,6 @@ class TableInsertManyException(DataAPIException):
             completely.
     """
 
-    partial_result: TableInsertManyResult
-
-    def __init__(
-        self,
-        text: str,
-        partial_result: TableInsertManyResult,
-        *pargs: Any,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(text, *pargs, **kwargs)
-        self.partial_result = partial_result
+    inserted_ids: list[Any]
+    inserted_id_tuples: list[tuple[Any, ...]]
+    exceptions: Sequence[Exception]
