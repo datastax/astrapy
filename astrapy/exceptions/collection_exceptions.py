@@ -15,17 +15,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Sequence
 
-from astrapy.exceptions.data_api_exceptions import (
-    DataAPIException,
-    DataAPIResponseException,
-)
+from astrapy.exceptions.data_api_exceptions import DataAPIException
 
 if TYPE_CHECKING:
     from astrapy.results import (
         CollectionDeleteResult,
-        CollectionInsertManyResult,
         CollectionUpdateResult,
     )
 
@@ -59,9 +55,10 @@ class TooManyDocumentsToCountException(DataAPIException):
 
 
 @dataclass
-class CollectionInsertManyException(DataAPIResponseException):
+class CollectionInsertManyException(DataAPIException):
     """
-    An exception of type DataAPIResponseException (see) occurred
+    TODO DOCSTRING TODO
+    An exception of type DataAPIException (see) occurred
     during an insert_many (that in general spans several requests).
     As such, besides information on the error, it may have accumulated
     a partial result from past successful Data API requests.
@@ -80,23 +77,15 @@ class CollectionInsertManyException(DataAPIResponseException):
             completely.
     """
 
-    partial_result: CollectionInsertManyResult
-
-    def __init__(
-        self,
-        text: str,
-        partial_result: CollectionInsertManyResult,
-        *pargs: Any,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(text, *pargs, **kwargs)
-        self.partial_result = partial_result
+    inserted_ids: list[Any]
+    exceptions: Sequence[Exception]
 
 
 @dataclass
-class CollectionDeleteManyException(DataAPIResponseException):
+class CollectionDeleteManyException(DataAPIException):
     """
-    An exception of type DataAPIResponseException (see) occurred
+    TODO DOCSTRING TODO
+    An exception of type DataAPIException (see) occurred
     during a delete_many (that in general spans several requests).
     As such, besides information on the error, it may have accumulated
     a partial result from past successful Data API requests.
@@ -128,9 +117,10 @@ class CollectionDeleteManyException(DataAPIResponseException):
 
 
 @dataclass
-class CollectionUpdateManyException(DataAPIResponseException):
+class CollectionUpdateManyException(DataAPIException):
     """
-    An exception of type DataAPIResponseException (see) occurred
+    TODO DOCSTRING TODO
+    An exception of type DataAPIException (see) occurred
     during an update_many (that in general spans several requests).
     As such, besides information on the error, it may have accumulated
     a partial result from past successful Data API requests.

@@ -36,6 +36,7 @@ class DataAPIException(ValueError):
 @dataclass
 class DataAPIErrorDescriptor:
     """
+    TODO DOCSTRING
     An object representing a single error returned from the Data API,
     typically with an error code and a text message.
     An API request would return with an HTTP 200 success error code,
@@ -69,16 +70,25 @@ class DataAPIErrorDescriptor:
         "id",
     }
 
-    def __init__(self, error_dict: dict[str, str]) -> None:
-        self.title = error_dict.get("title")
-        self.error_code = error_dict.get("errorCode")
-        self.message = error_dict.get("message")
-        self.family = error_dict.get("family")
-        self.scope = error_dict.get("scope")
-        self.id = error_dict.get("id")
-        self.attributes = {
-            k: v for k, v in error_dict.items() if k not in self._known_dict_fields
-        }
+    def __init__(self, error_dict: dict[str, str] | str) -> None:
+        if isinstance(error_dict, str):
+            self.message = error_dict
+            self.title = None
+            self.error_code = None
+            self.family = None
+            self.scope = None
+            self.id = None
+            self.attributes = {}
+        else:
+            self.title = error_dict.get("title")
+            self.error_code = error_dict.get("errorCode")
+            self.message = error_dict.get("message")
+            self.family = error_dict.get("family")
+            self.scope = error_dict.get("scope")
+            self.id = error_dict.get("id")
+            self.attributes = {
+                k: v for k, v in error_dict.items() if k not in self._known_dict_fields
+            }
 
     def __repr__(self) -> str:
         pieces = [
@@ -125,41 +135,10 @@ class DataAPIErrorDescriptor:
 
 
 @dataclass
-class DataAPIDetailedErrorDescriptor:
-    """
-    An object representing an errorful response from the Data API.
-    Errors specific to the Data API (as opposed to e.g. network failures)
-    would result in an HTTP 200 success response code but coming with
-    one or more DataAPIErrorDescriptor objects.
-
-    This object corresponds to one response, and as such its attributes
-    are a single request payload, a single response, but a list of
-    DataAPIErrorDescriptor instances.
-
-    Attributes:
-        error_descriptors: a list of DataAPIErrorDescriptor objects.
-        command: the raw payload of the API request.
-        raw_response: the full API response in the form of a dict.
-    """
-
-    error_descriptors: list[DataAPIErrorDescriptor]
-    command: dict[str, Any] | None
-    raw_response: dict[str, Any]
-
-    def __repr__(self) -> str:
-        pieces = [
-            f"error_descriptors={self.error_descriptors.__repr__()}"
-            if self.error_descriptors
-            else None,
-            "command=..." if self.command else None,
-            "raw_response=..." if self.raw_response else None,
-        ]
-        return f"{self.__class__.__name__}({', '.join(pc for pc in pieces if pc)})"
-
-
-@dataclass
 class DataAPIResponseException(DataAPIException):
     """
+    TODO DOCSTRING TODO
+
     The Data API returned an HTTP 200 success response, which however
     reports about API-specific error(s), possibly alongside partial successes.
 
@@ -178,74 +157,47 @@ class DataAPIResponseException(DataAPIException):
     """
 
     text: str | None
-    detailed_error_descriptors: list[DataAPIDetailedErrorDescriptor]
+    command: dict[str, Any] | None
+    raw_response: dict[str, Any]
+    error_descriptors: list[DataAPIErrorDescriptor]
+    warning_descriptors: list[DataAPIErrorDescriptor]
 
     def __init__(
         self,
         text: str | None,
         *,
-        detailed_error_descriptors: list[DataAPIDetailedErrorDescriptor],
+        command: dict[str, Any] | None,
+        raw_response: dict[str, Any],
+        error_descriptors: list[DataAPIErrorDescriptor],
+        warning_descriptors: list[DataAPIErrorDescriptor],
     ) -> None:
         super().__init__(text)
         self.text = text
-        self.detailed_error_descriptors = detailed_error_descriptors
+        self.command = command
+        self.raw_response = raw_response
+        self.error_descriptors = error_descriptors
+        self.warning_descriptors = warning_descriptors
 
-    @property
-    def error_descriptors(self) -> list[DataAPIErrorDescriptor]:
-        """Return a flattened list of all individual DataAPIErrorDescriptor objects."""
-
-        return [
-            error_descriptor
-            for d_e_d in self.detailed_error_descriptors
-            for error_descriptor in d_e_d.error_descriptors
-        ]
-
-    @classmethod
+    @staticmethod
     def from_response(
-        cls,
+        *,
         command: dict[str, Any] | None,
         raw_response: dict[str, Any],
         **kwargs: Any,
     ) -> DataAPIResponseException:
         """Parse a raw response from the API into this exception."""
 
-        return cls.from_responses(
-            commands=[command],
-            raw_responses=[raw_response],
-            **kwargs,
-        )
-
-    @classmethod
-    def from_responses(
-        cls,
-        commands: list[dict[str, Any] | None],
-        raw_responses: list[dict[str, Any]],
-        **kwargs: Any,
-    ) -> DataAPIResponseException:
-        """Parse a list of raw responses from the API into this exception."""
-
-        detailed_error_descriptors: list[DataAPIDetailedErrorDescriptor] = []
-        for command, raw_response in zip(commands, raw_responses):
-            if raw_response.get("errors", []):
-                error_descriptors = [
-                    DataAPIErrorDescriptor(error_dict)
-                    for error_dict in raw_response["errors"]
-                ]
-                detailed_error_descriptor = DataAPIDetailedErrorDescriptor(
-                    error_descriptors=error_descriptors,
-                    command=command,
-                    raw_response=raw_response,
-                )
-                detailed_error_descriptors.append(detailed_error_descriptor)
-
-        flat_error_descriptors = [
-            error_descriptor
-            for d_e_d in detailed_error_descriptors
-            for error_descriptor in d_e_d.error_descriptors
+        error_descriptors = [
+            DataAPIErrorDescriptor(error_dict)
+            for error_dict in raw_response.get("errors") or []
+        ]
+        warning_descriptors = [
+            DataAPIErrorDescriptor(error_dict)
+            for error_dict in raw_response.get("warnings") or []
         ]
 
-        if flat_error_descriptors:
-            summaries = [e_d.summary() for e_d in flat_error_descriptors]
+        if error_descriptors:
+            summaries = [e_d.summary() for e_d in error_descriptors]
             if len(summaries) == 1:
                 text = summaries[0]
             else:
@@ -257,19 +209,22 @@ class DataAPIResponseException(DataAPIException):
         else:
             text = ""
 
-        return cls(
+        return DataAPIResponseException(
             text,
-            detailed_error_descriptors=detailed_error_descriptors,
+            command=command,
+            raw_response=raw_response,
+            error_descriptors=error_descriptors,
+            warning_descriptors=warning_descriptors,
             **kwargs,
         )
 
-    def data_api_response_exception(self) -> DataAPIResponseException:
-        """Cast the exception, whatever the subclass, into this parent superclass."""
+    # def data_api_response_exception(self) -> DataAPIResponseException:
+    #     """Cast the exception, whatever the subclass, into this parent superclass."""
 
-        return DataAPIResponseException(
-            text=self.text,
-            detailed_error_descriptors=self.detailed_error_descriptors,
-        )
+    #     return DataAPIResponseException(
+    #         text=self.text,
+    #         detailed_error_descriptors=self.detailed_error_descriptors,
+    #     )
 
 
 @dataclass

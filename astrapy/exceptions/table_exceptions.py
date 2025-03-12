@@ -17,10 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from astrapy.exceptions.data_api_exceptions import (
-    DataAPIException,
-    DataAPIResponseException,
-)
+from astrapy.exceptions.data_api_exceptions import DataAPIException
 
 if TYPE_CHECKING:
     from astrapy.results import TableInsertManyResult
@@ -51,9 +48,11 @@ class TooManyRowsToCountException(DataAPIException):
 
 
 @dataclass
-class TableInsertManyException(DataAPIResponseException):
+class TableInsertManyException(DataAPIException):
     """
-    An exception of type DataAPIResponseException (see) occurred
+    TODO DOCSTRING TODO
+
+    An exception of type DataAPIException (see) occurred
     during an insert_many (that in general spans several requests).
     As such, besides information on the error, it may have accumulated
     a partial result from past successful Data API requests.

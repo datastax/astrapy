@@ -43,6 +43,7 @@ from astrapy.exceptions import (
     CollectionDeleteManyException,
     CollectionInsertManyException,
     CollectionUpdateManyException,
+    DataAPIResponseException,
     MultiCallTimeoutManager,
     TooManyDocumentsToCountException,
     UnexpectedDataAPIResponseException,
@@ -781,6 +782,7 @@ class Collection(Generic[DOC]):
         _documents = list(documents)
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: list[dict[str, Any]] = []
+        im_payloads: list[dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_general_method_timeout_ms,
             timeout_label=_gmt_label,
@@ -815,16 +817,15 @@ class Collection(Generic[DOC]):
                 ]
                 inserted_ids += chunk_inserted_ids
                 raw_results += [chunk_response]
+                im_payloads += [im_payload]
                 # if errors, quit early
                 if chunk_response.get("errors", []):
-                    partial_result = CollectionInsertManyResult(
-                        raw_results=raw_results,
-                        inserted_ids=inserted_ids,
-                    )
-                    raise CollectionInsertManyException.from_response(
-                        command=None,
+                    response_exception = DataAPIResponseException.from_response(
+                        command=im_payload,
                         raw_response=chunk_response,
-                        partial_result=partial_result,
+                    )
+                    raise CollectionInsertManyException(
+                        inserted_ids=inserted_ids, exceptions=[response_exception]
                     )
 
             # return
@@ -845,7 +846,7 @@ class Collection(Generic[DOC]):
 
                     def _chunk_insertor(
                         document_chunk: list[dict[str, Any]],
-                    ) -> dict[str, Any]:
+                    ) -> tuple[dict[str, Any], dict[str, Any]]:
                         im_payload = {
                             "insertMany": {
                                 "documents": document_chunk,
@@ -862,9 +863,9 @@ class Collection(Generic[DOC]):
                             ),
                         )
                         logger.info(f"finished insertMany(chunk) on '{self.name}'")
-                        return im_response
+                        return im_payload, im_response
 
-                    raw_results = list(
+                    raw_pl_results_pairs = list(
                         executor.map(
                             _chunk_insertor,
                             (
@@ -873,6 +874,11 @@ class Collection(Generic[DOC]):
                             ),
                         )
                     )
+                    if raw_pl_results_pairs:
+                        im_payloads, raw_results = list(zip(*raw_pl_results_pairs))
+                    else:
+                        im_payloads, raw_results = [], []
+
             else:
                 for i in range(0, len(_documents), _chunk_size):
                     im_payload = {
@@ -892,6 +898,7 @@ class Collection(Generic[DOC]):
                     )
                     logger.info(f"finished insertMany(chunk) on '{self.name}'")
                     raw_results.append(im_response)
+                    im_payloads.append(im_payload)
             # recast raw_results
             inserted_ids = [
                 doc_resp["_id"]
@@ -903,17 +910,18 @@ class Collection(Generic[DOC]):
             ]
 
             # check-raise
-            if any(
-                [chunk_response.get("errors", []) for chunk_response in raw_results]
-            ):
-                partial_result = CollectionInsertManyResult(
-                    raw_results=raw_results,
-                    inserted_ids=inserted_ids,
+            response_exceptions = [
+                DataAPIResponseException.from_response(
+                    command=chunk_payload,
+                    raw_response=chunk_response,
                 )
-                raise CollectionInsertManyException.from_responses(
-                    commands=[None for _ in raw_results],
-                    raw_responses=raw_results,
-                    partial_result=partial_result,
+                for chunk_payload, chunk_response in zip(im_payloads, raw_results)
+                if chunk_response.get("errors", [])
+            ]
+            if response_exceptions:
+                raise CollectionInsertManyException(
+                    inserted_ids=inserted_ids,
+                    exceptions=response_exceptions,
                 )
 
             # return
@@ -3329,6 +3337,7 @@ class AsyncCollection(Generic[DOC]):
         _documents = list(documents)
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: list[dict[str, Any]] = []
+        im_payloads: list[dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_general_method_timeout_ms,
             timeout_label=_gmt_label,
@@ -3365,14 +3374,12 @@ class AsyncCollection(Generic[DOC]):
                 raw_results += [chunk_response]
                 # if errors, quit early
                 if chunk_response.get("errors", []):
-                    partial_result = CollectionInsertManyResult(
-                        raw_results=raw_results,
-                        inserted_ids=inserted_ids,
-                    )
-                    raise CollectionInsertManyException.from_response(
-                        command=None,
+                    response_exception = DataAPIResponseException.from_response(
+                        command=im_payload,
                         raw_response=chunk_response,
-                        partial_result=partial_result,
+                    )
+                    raise CollectionInsertManyException(
+                        inserted_ids=inserted_ids, exceptions=[response_exception]
                     )
 
             # return
@@ -3393,7 +3400,7 @@ class AsyncCollection(Generic[DOC]):
 
             async def concurrent_insert_chunk(
                 document_chunk: list[DOC],
-            ) -> dict[str, Any]:
+            ) -> tuple[dict[str, Any], dict[str, Any]]:
                 async with sem:
                     im_payload = {
                         "insertMany": {
@@ -3411,8 +3418,9 @@ class AsyncCollection(Generic[DOC]):
                         ),
                     )
                     logger.info(f"finished insertMany(chunk) on '{self.name}'")
-                    return im_response
+                    return im_payload, im_response
 
+            raw_pl_results_pairs: list[tuple[dict[str, Any], dict[str, Any]]]
             if _concurrency > 1:
                 tasks = [
                     asyncio.create_task(
@@ -3420,12 +3428,17 @@ class AsyncCollection(Generic[DOC]):
                     )
                     for i in range(0, len(_documents), _chunk_size)
                 ]
-                raw_results = await asyncio.gather(*tasks)
+                raw_pl_results_pairs = await asyncio.gather(*tasks)
             else:
-                raw_results = [
+                raw_pl_results_pairs = [
                     await concurrent_insert_chunk(_documents[i : i + _chunk_size])
                     for i in range(0, len(_documents), _chunk_size)
                 ]
+
+            if raw_pl_results_pairs:
+                im_payloads, raw_results = list(zip(*raw_pl_results_pairs))
+            else:
+                im_payloads, raw_results = [], []
 
             # recast raw_results
             inserted_ids = [
@@ -3438,17 +3451,18 @@ class AsyncCollection(Generic[DOC]):
             ]
 
             # check-raise
-            if any(
-                [chunk_response.get("errors", []) for chunk_response in raw_results]
-            ):
-                partial_result = CollectionInsertManyResult(
-                    raw_results=raw_results,
-                    inserted_ids=inserted_ids,
+            response_exceptions = [
+                DataAPIResponseException.from_response(
+                    command=im_payload,
+                    raw_response=chunk_response,
                 )
-                raise CollectionInsertManyException.from_responses(
-                    commands=[None for _ in raw_results],
-                    raw_responses=raw_results,
-                    partial_result=partial_result,
+                for chunk_payload, chunk_response in zip(im_payloads, raw_results)
+                if chunk_response.get("errors", [])
+            ]
+            if response_exceptions:
+                raise CollectionInsertManyException(
+                    inserted_ids=inserted_ids,
+                    exceptions=response_exceptions,
                 )
 
             # return

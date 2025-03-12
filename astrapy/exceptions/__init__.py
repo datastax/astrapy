@@ -27,7 +27,6 @@ from astrapy.exceptions.collection_exceptions import (
 )
 from astrapy.exceptions.data_api_exceptions import (
     CursorException,
-    DataAPIDetailedErrorDescriptor,
     DataAPIErrorDescriptor,
     DataAPIException,
     DataAPIHttpException,
