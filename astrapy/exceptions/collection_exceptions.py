@@ -57,24 +57,17 @@ class TooManyDocumentsToCountException(DataAPIException):
 @dataclass
 class CollectionInsertManyException(DataAPIException):
     """
-    TODO DOCSTRING TODO
-    An exception of type DataAPIException (see) occurred
-    during an insert_many (that in general spans several requests).
-    As such, besides information on the error, it may have accumulated
-    a partial result from past successful Data API requests.
+    An exception occurring within an insert_many (an operation that can span
+    several requests). As such, it represents both the root error(s) that happened
+    and information on the portion of the documents that were successfully inserted.
+
+    The behaviour of insert_many (concurrency and the `ordered` setting) make it
+    possible that more than one "root errors" are collected.
 
     Attributes:
-        text: a text message about the exception.
-        error_descriptors: a list of all DataAPIErrorDescriptor objects
-            found across all requests involved in this exception, which are
-            possibly more than one.
-        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
-            objects, one for each of the requests performed during this operation.
-            For single-request methods, such as insert_one, this list always
-            has a single element.
-        partial_result: a CollectionInsertManyResult object, just like the one
-            that would be the return value of the operation, had it succeeded
-            completely.
+        inserted_ids: a list of the document IDs that have been successfully inserted.
+        exceptions: a list of the root exceptions leading to this error. The list,
+            under normal circumstances, is not empty.
     """
 
     inserted_ids: list[Any]
@@ -100,23 +93,15 @@ class CollectionInsertManyException(DataAPIException):
 @dataclass
 class CollectionDeleteManyException(DataAPIException):
     """
-    TODO DOCSTRING TODO
-    An exception of type DataAPIException (see) occurred
-    during a delete_many (that in general spans several requests).
-    As such, besides information on the error, it may have accumulated
-    a partial result from past successful Data API requests.
+    An exception occurring during a delete_many (an operation that can span
+    several requests). As such, besides information on the root-cause error,
+    there may be a partial result about the part that succeeded.
 
     Attributes:
-        text: a text message about the exception.
-        error_descriptors: a list of all DataAPIErrorDescriptor objects
-            found across all requests involved in this exception, which are
-            possibly more than one.
-        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
-            objects, one for each of the requests performed during this operation.
-            For single-request methods, such as insert_one, this list always
-            has a single element.
         partial_result: a CollectionDeleteResult object, just like the one that would
             be the return value of the operation, had it succeeded completely.
+        cause: a root exception that happened during the delete_many, causing
+            the method call to stop and raise this error.
     """
 
     partial_result: CollectionDeleteResult
@@ -129,23 +114,15 @@ class CollectionDeleteManyException(DataAPIException):
 @dataclass
 class CollectionUpdateManyException(DataAPIException):
     """
-    TODO DOCSTRING TODO
-    An exception of type DataAPIException (see) occurred
-    during an update_many (that in general spans several requests).
-    As such, besides information on the error, it may have accumulated
-    a partial result from past successful Data API requests.
+    An exception occurring during an update_many (an operation that can span
+    several requests). As such, besides information on the root-cause error,
+    there may be a partial result about the part that succeeded.
 
     Attributes:
-        text: a text message about the exception.
-        error_descriptors: a list of all DataAPIErrorDescriptor objects
-            found across all requests involved in this exception, which are
-            possibly more than one.
-        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
-            objects, one for each of the requests performed during this operation.
-            For single-request methods, such as insert_one, this list always
-            has a single element.
         partial_result: a CollectionUpdateResult object, just like the one that would
             be the return value of the operation, had it succeeded completely.
+        cause: a root exception that happened during the update_many, causing
+            the method call to stop and raise this error.
     """
 
     partial_result: CollectionUpdateResult

@@ -47,25 +47,20 @@ class TooManyRowsToCountException(DataAPIException):
 @dataclass
 class TableInsertManyException(DataAPIException):
     """
-    TODO DOCSTRING TODO
+    An exception occurring within an insert_many (an operation that can span
+    several requests). As such, it represents both the root error(s) that happened
+    and information on the portion of the row that were successfully inserted.
 
-    An exception of type DataAPIException (see) occurred
-    during an insert_many (that in general spans several requests).
-    As such, besides information on the error, it may have accumulated
-    a partial result from past successful Data API requests.
+    The behaviour of insert_many (concurrency and the `ordered` setting) make it
+    possible that more than one "root errors" are collected.
 
     Attributes:
-        text: a text message about the exception.
-        error_descriptors: a list of all DataAPIErrorDescriptor objects
-            found across all requests involved in this exception, which are
-            possibly more than one.
-        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
-            objects, one for each of the requests performed during this operation.
-            For single-request methods, such as insert_one, this list always
-            has a single element.
-        partial_result: a TableInsertManyResult object, just like the one
-            that would be the return value of the operation, had it succeeded
-            completely.
+        inserted_ids: a list of the row IDs that have been successfully inserted,
+            in the form of a dictionary matching the table primary key).
+        inserted_id_tuples: the same information as for `inserted_ids` (in the same
+            order), but in form of a tuples for each ID.
+        exceptions: a list of the root exceptions leading to this error. The list,
+            under normal circumstances, is not empty.
     """
 
     inserted_ids: list[Any]
