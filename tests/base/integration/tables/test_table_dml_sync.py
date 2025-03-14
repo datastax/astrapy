@@ -21,7 +21,11 @@ import pytest
 from astrapy.api_options import APIOptions, SerdesOptions
 from astrapy.constants import SortMode
 from astrapy.data_types import DataAPITimestamp, DataAPIVector
-from astrapy.exceptions import DataAPIException, TableInsertManyException
+from astrapy.exceptions import (
+    DataAPIException,
+    DataAPIResponseException,
+    TableInsertManyException,
+)
 from astrapy.results import TableInsertManyResult
 
 from ..conftest import (
@@ -345,7 +349,8 @@ class TestTableDMLSync:
             }
 
         def _assert_consistency(
-            p_text_values: list[str], ins_result: TableInsertManyResult
+            p_text_values: list[str],
+            ins_result: TableInsertManyResult | TableInsertManyException,
         ) -> None:
             assert _pkeys() == set(p_text_values)
             assert ins_result.inserted_id_tuples == [(pk,) for pk in p_text_values]
@@ -364,7 +369,7 @@ class TestTableDMLSync:
             sync_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F2, ordered=True, chunk_size=2
             )
-        _assert_consistency([], exc.value.partial_result)
+        _assert_consistency([], exc.value)
 
         # ordered, failing later batch
         sync_table_simple.delete_many({})
@@ -372,7 +377,7 @@ class TestTableDMLSync:
             sync_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F4, ordered=True, chunk_size=2
             )
-        _assert_consistency(["p1", "p2"], exc.value.partial_result)
+        _assert_consistency(["p1", "p2"], exc.value)
 
         # unordered/concurrency=1, good rows
         sync_table_simple.delete_many({})
@@ -387,9 +392,7 @@ class TestTableDMLSync:
             sync_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F2, ordered=False, chunk_size=2, concurrency=1
             )
-        _assert_consistency(
-            ["p1", "p3", "p4", "p5", "p6", "p7"], exc.value.partial_result
-        )
+        _assert_consistency(["p1", "p3", "p4", "p5", "p6", "p7"], exc.value)
 
         # unordered/concurrency=1, failing later batch
         sync_table_simple.delete_many({})
@@ -397,9 +400,7 @@ class TestTableDMLSync:
             sync_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F4, ordered=False, chunk_size=2, concurrency=1
             )
-        _assert_consistency(
-            ["p1", "p2", "p3", "p5", "p6", "p7"], exc.value.partial_result
-        )
+        _assert_consistency(["p1", "p2", "p3", "p5", "p6", "p7"], exc.value)
 
         # unordered/concurrency=2, good rows
         sync_table_simple.delete_many({})
@@ -414,9 +415,7 @@ class TestTableDMLSync:
             sync_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F2, ordered=False, chunk_size=2, concurrency=2
             )
-        _assert_consistency(
-            ["p1", "p3", "p4", "p5", "p6", "p7"], exc.value.partial_result
-        )
+        _assert_consistency(["p1", "p3", "p4", "p5", "p6", "p7"], exc.value)
 
         # unordered/concurrency=2, failing later batch
         sync_table_simple.delete_many({})
@@ -424,9 +423,7 @@ class TestTableDMLSync:
             sync_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F4, ordered=False, chunk_size=2, concurrency=2
             )
-        _assert_consistency(
-            ["p1", "p2", "p3", "p5", "p6", "p7"], exc.value.partial_result
-        )
+        _assert_consistency(["p1", "p2", "p3", "p5", "p6", "p7"], exc.value)
 
         # with massive amount of rows:
         many_rows = [{"p_text": f"r_{i}", "p_int": i} for i in range(200)]
@@ -477,8 +474,10 @@ class TestTableDMLSync:
         except TableInsertManyException as e:
             err2 = e
         assert err2 is not None
-        assert len(err2.error_descriptors) == 1
-        assert err2.partial_result.inserted_id_tuples == [(f"{2 * N}",)]
+        assert len(err2.exceptions) == 1
+        assert isinstance(err2.exceptions[0], DataAPIResponseException)
+        assert len(err2.exceptions[0].error_descriptors) == 1
+        assert err2.inserted_id_tuples == [(f"{2 * N}",)]
 
         # unordered insertion [bad, bad]
         err3: TableInsertManyException | None = None
@@ -487,8 +486,10 @@ class TestTableDMLSync:
         except TableInsertManyException as e:
             err3 = e
         assert err3 is not None
-        assert len(err3.error_descriptors) == 2
-        assert err3.partial_result.inserted_id_tuples == []
+        assert len(err3.exceptions) == 1
+        assert isinstance(err3.exceptions[0], DataAPIResponseException)
+        assert len(err3.exceptions[0].error_descriptors) == 2
+        assert err3.inserted_id_tuples == []
 
         # ordered insertion [good, bad, good_skipped]
         # Tables do not insert anything in this case! (as opposed to Collections)
@@ -501,8 +502,10 @@ class TestTableDMLSync:
         except TableInsertManyException as e:
             err4 = e
         assert err4 is not None
-        assert len(err4.error_descriptors) == 1
-        assert err4.partial_result.inserted_ids == []
+        assert len(err4.exceptions) == 1
+        assert isinstance(err4.exceptions[0], DataAPIResponseException)
+        assert len(err4.exceptions[0].error_descriptors) == 1
+        assert err4.inserted_id_tuples == []
 
     @pytest.mark.describe("test of table update_one, sync")
     def test_table_update_one_sync(

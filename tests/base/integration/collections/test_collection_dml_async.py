@@ -1133,8 +1133,10 @@ class TestCollectionDMLAsync:
         except CollectionInsertManyException as e:
             err2 = e
         assert err2 is not None
-        assert len(err2.error_descriptors) == 1
-        assert err2.partial_result.inserted_ids == [2 * N]
+        assert len(err2.exceptions) == 1
+        assert isinstance(err2.exceptions[0], DataAPIResponseException)
+        assert len(err2.exceptions[0].error_descriptors) == 1
+        assert err2.inserted_ids == [2 * N]
 
         # ordered insertion [good, bad, good_skipped]
         err3: CollectionInsertManyException | None = None
@@ -1146,8 +1148,10 @@ class TestCollectionDMLAsync:
         except CollectionInsertManyException as e:
             err3 = e
         assert err3 is not None
-        assert len(err3.error_descriptors) == 1
-        assert err3.partial_result.inserted_ids == [2 * N + 1]
+        assert len(err3.exceptions) == 1
+        assert isinstance(err3.exceptions[0], DataAPIResponseException)
+        assert len(err3.exceptions[0].error_descriptors) == 1
+        assert err3.inserted_ids == [2 * N + 1]
 
     @pytest.mark.describe("test of collection find_one, async")
     async def test_collection_find_one_async(
