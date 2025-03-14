@@ -15,273 +15,30 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import dataclass
 from inspect import iscoroutinefunction
 from typing import Any, Awaitable, Callable, Generic, cast
-
-from typing_extensions import override
 
 from astrapy import AsyncCollection, Collection
 from astrapy.constants import (
     FilterType,
     HybridSortType,
     ProjectionType,
-    normalize_optional_projection,
 )
-from astrapy.data.cursor import (
+from astrapy.data.cursors.cursor import (
     TNEW,
     TRAW,
     AbstractCursor,
     CursorState,
     T,
-    _QueryEngine,
     _revise_timeouts_for_cursor_copy,
-    logger,
 )
-from astrapy.data.utils.collection_converters import (
-    postprocess_collection_response,
-    preprocess_collection_payload,
-)
+from astrapy.data.cursors.query_engine import _CollectionFindAndRerankQueryEngine
+from astrapy.data.cursors.reranked_result import RerankedResult
 from astrapy.exceptions import (
     CursorException,
     MultiCallTimeoutManager,
-    UnexpectedDataAPIResponseException,
-    _TimeoutContext,
 )
 from astrapy.utils.unset import _UNSET, UnsetType
-
-# TODO: remove this (setting + function) once API testable
-MOCK_FARR_API = True
-
-
-def mock_farr_response(pl: dict[str, Any] | None) -> dict[str, Any]:
-    docs = [
-        {
-            "_id": f"doc_{doc_i}",
-            "pl": str(pl).replace(" ", ""),
-            "content": f"content {doc_i}",
-            "$vectorize": f"vectorize {doc_i}",
-            "metadata": {"m": f"d<{doc_i}>"},
-        }
-        for doc_i in range(5)
-    ]
-    doc_responses = [
-        {
-            "_id": f"doc_{doc_i}",
-            "scores": {
-                "$rerank": (6 - doc_i) / 8,
-                "$vector": (7 - doc_i) / 9,
-                "$lexical": (8 - doc_i) / 10,
-            },
-        }
-        for doc_i in range(5)
-    ]
-
-    return {
-        "data": {
-            "documents": docs,
-            "nextPageState": None,
-        },
-        "status": {
-            "documentResponses": doc_responses,
-        },
-    }
-
-    return []
-
-
-@dataclass
-class RerankedResult(Generic[TRAW]):
-    """
-    A single result coming `find_and_rerank` command, i.e. an item from DB with scores.
-
-    Attributes:
-        document: a collection/row as returned by `find_and_rerank` API command.
-        scores: a dictionary of score labels to score float values, such as
-            `{"$rerank": 0.87, "$vector" : 0.65, "$lexical" : 0.91}`.
-    """
-
-    document: TRAW
-    scores: dict[str, float]
-
-
-class _CollectionFindAndRerankQueryEngine(
-    Generic[TRAW], _QueryEngine[RerankedResult[TRAW]]
-):
-    collection: Collection[TRAW] | None
-    async_collection: AsyncCollection[TRAW] | None
-    f_r_subpayload: dict[str, Any]
-    f_options0: dict[str, Any]
-
-    def __init__(
-        self,
-        *,
-        collection: Collection[TRAW] | None,
-        async_collection: AsyncCollection[TRAW] | None,
-        filter: FilterType | None,
-        projection: ProjectionType | None,
-        sort: HybridSortType | None,
-        limit: int | None,
-        hybrid_limits: int | dict[str, int] | None,
-        hybrid_projection: str | None,
-        rerank_on: str | None,
-    ) -> None:
-        self.collection = collection
-        self.async_collection = async_collection
-        self.f_r_subpayload = {
-            k: v
-            for k, v in {
-                "filter": filter,
-                "projection": normalize_optional_projection(projection),
-                "sort": sort,
-            }.items()
-            if v is not None
-        }
-        self.f_options0 = {
-            k: v
-            for k, v in {
-                "limit": limit if limit != 0 else None,
-                "hybridLimits": hybrid_limits if hybrid_limits != 0 else None,
-                "rerankOn": rerank_on,
-                "hybridProjection": hybrid_projection,
-            }.items()
-            if v is not None
-        }
-
-    @override
-    def _fetch_page(
-        self,
-        *,
-        page_state: str | None,
-        timeout_context: _TimeoutContext,
-    ) -> tuple[list[RerankedResult[TRAW]], str | None, dict[str, Any] | None]:
-        if self.collection is None:
-            raise RuntimeError("Query engine has no sync collection.")
-        f_payload = {
-            "findAndRerank": {
-                **self.f_r_subpayload,
-                "options": {
-                    **self.f_options0,
-                    **({"pageState": page_state} if page_state else {}),
-                },
-            },
-        }
-        converted_f_payload = preprocess_collection_payload(
-            f_payload, options=self.collection.api_options.serdes_options
-        )
-
-        _page_str = page_state if page_state else "(empty page state)"
-        _coll_name = self.collection.name if self.collection else "(none)"
-
-        f_response: dict[str, Any]
-        if MOCK_FARR_API:
-            logger.info("MOCKING FARR API: '%s'", str(converted_f_payload))
-            f_response = mock_farr_response(converted_f_payload)
-        else:
-            logger.info(f"cursor fetching a page: {_page_str} from {_coll_name}")
-            raw_f_response = self.collection._api_commander.request(
-                payload=converted_f_payload,
-                timeout_context=timeout_context,
-            )
-            logger.info(
-                f"cursor finished fetching a page: {_page_str} from {_coll_name}"
-            )
-            f_response = postprocess_collection_response(
-                raw_f_response, options=self.collection.api_options.serdes_options
-            )
-
-        if "documents" not in f_response.get("data", {}):
-            raise UnexpectedDataAPIResponseException(
-                text="Faulty response from findAndRerank API command (no 'documents').",
-                raw_response=f_response,
-            )
-        if "documentResponses" not in f_response.get("status", {}):
-            raise UnexpectedDataAPIResponseException(
-                text="Faulty response from findAndRerank API command (no 'documentResponses').",
-                raw_response=f_response,
-            )
-        p_documents: list[RerankedResult[TRAW]]
-        if f_response["data"]["documents"]:
-            p_documents = [
-                RerankedResult(document=document, scores=doc_response["scores"])
-                for document, doc_response in zip(
-                    f_response["data"]["documents"],
-                    f_response["status"]["documentResponses"],
-                )
-            ]
-        else:
-            p_documents = []
-        n_p_state = f_response["data"]["nextPageState"]
-        p_r_status = f_response.get("status")
-        return (p_documents, n_p_state, p_r_status)
-
-    @override
-    async def _async_fetch_page(
-        self,
-        *,
-        page_state: str | None,
-        timeout_context: _TimeoutContext,
-    ) -> tuple[list[RerankedResult[TRAW]], str | None, dict[str, Any] | None]:
-        if self.async_collection is None:
-            raise RuntimeError("Query engine has no async collection.")
-        f_payload = {
-            "findAndRerank": {
-                **self.f_r_subpayload,
-                "options": {
-                    **self.f_options0,
-                    **({"pageState": page_state} if page_state else {}),
-                },
-            },
-        }
-        converted_f_payload = preprocess_collection_payload(
-            f_payload, options=self.async_collection.api_options.serdes_options
-        )
-
-        _page_str = page_state if page_state else "(empty page state)"
-        _coll_name = self.async_collection.name if self.async_collection else "(none)"
-
-        f_response: dict[str, Any]
-        if MOCK_FARR_API:
-            logger.info("MOCKING FARR API: '%s'", str(converted_f_payload))
-            f_response = mock_farr_response(converted_f_payload)
-        else:
-            logger.info(f"cursor fetching a page: {_page_str} from {_coll_name}, async")
-            raw_f_response = await self.async_collection._api_commander.async_request(
-                payload=converted_f_payload,
-                timeout_context=timeout_context,
-            )
-            logger.info(
-                f"cursor finished fetching a page: {_page_str} from {_coll_name}, async"
-            )
-            f_response = postprocess_collection_response(
-                raw_f_response,
-                options=self.async_collection.api_options.serdes_options,
-            )
-
-        if "documents" not in f_response.get("data", {}):
-            raise UnexpectedDataAPIResponseException(
-                text="Faulty response from findAndRerank API command (no 'documents').",
-                raw_response=f_response,
-            )
-        if "documentResponses" not in f_response.get("status", {}):
-            raise UnexpectedDataAPIResponseException(
-                text="Faulty response from findAndRerank API command (no 'documentResponses').",
-                raw_response=f_response,
-            )
-        p_documents: list[RerankedResult[TRAW]]
-        if f_response["data"]["documents"]:
-            p_documents = [
-                RerankedResult(document=document, scores=doc_response["scores"])
-                for document, doc_response in zip(
-                    f_response["data"]["documents"],
-                    f_response["status"]["documentResponses"],
-                )
-            ]
-        else:
-            p_documents = []
-        n_p_state = f_response["data"]["nextPageState"]
-        p_r_status = f_response.get("status")
-        return (p_documents, n_p_state, p_r_status)
 
 
 class CollectionFindAndRerankCursor(

@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.data.cursor import (
+from astrapy.data.cursors.cursor import (
     AbstractCursor,
+    CursorState,
+)
+from astrapy.data.cursors.farr_cursor import (
+    AsyncCollectionFindAndRerankCursor,
+    CollectionFindAndRerankCursor,
+)
+from astrapy.data.cursors.find_cursor import (
     AsyncCollectionFindCursor,
     AsyncTableFindCursor,
     CollectionFindCursor,
-    CursorState,
     TableFindCursor,
 )
-from astrapy.data.farr_cursor import (
-    AsyncCollectionFindAndRerankCursor,
-    CollectionFindAndRerankCursor,
-    RerankedResult,
-)
+from astrapy.data.cursors.reranked_result import RerankedResult
 
 __all__ = [
     "AsyncCollectionFindAndRerankCursor",
