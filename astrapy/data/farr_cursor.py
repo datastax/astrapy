@@ -17,7 +17,7 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass
 from inspect import iscoroutinefunction
-from typing import Any, Awaitable, Callable, Generic, TypeVar, cast
+from typing import Any, Awaitable, Callable, Generic, cast
 
 from typing_extensions import override
 
@@ -49,8 +49,6 @@ from astrapy.exceptions import (
     _TimeoutContext,
 )
 from astrapy.utils.unset import _UNSET, UnsetType
-
-FARR_TRAW = TypeVar("FARR_TRAW")
 
 # TODO: remove this (setting + function) once API testable
 MOCK_FARR_API = True
@@ -93,28 +91,33 @@ def mock_farr_response(pl: dict[str, Any] | None) -> dict[str, Any]:
 
 
 @dataclass
-class RerankedResult(Generic[FARR_TRAW]):
+class RerankedResult(Generic[TRAW]):
     """
-    TODO DOCSTRING TODO
+    A single result coming `find_and_rerank` command, i.e. an item from DB with scores.
+
+    Attributes:
+        document: a collection/row as returned by `find_and_rerank` API command.
+        scores: a dictionary of score labels to score float values, such as
+            `{"$rerank": 0.87, "$vector" : 0.65, "$lexical" : 0.91}`.
     """
 
-    document: FARR_TRAW
+    document: TRAW
     scores: dict[str, float]
 
 
 class _CollectionFindAndRerankQueryEngine(
-    Generic[FARR_TRAW], _QueryEngine[RerankedResult[FARR_TRAW]]
+    Generic[TRAW], _QueryEngine[RerankedResult[TRAW]]
 ):
-    collection: Collection[FARR_TRAW] | None
-    async_collection: AsyncCollection[FARR_TRAW] | None
+    collection: Collection[TRAW] | None
+    async_collection: AsyncCollection[TRAW] | None
     f_r_subpayload: dict[str, Any]
     f_options0: dict[str, Any]
 
     def __init__(
         self,
         *,
-        collection: Collection[FARR_TRAW] | None,
-        async_collection: AsyncCollection[FARR_TRAW] | None,
+        collection: Collection[TRAW] | None,
+        async_collection: AsyncCollection[TRAW] | None,
         filter: FilterType | None,
         projection: ProjectionType | None,
         sort: HybridSortType | None,
@@ -151,7 +154,7 @@ class _CollectionFindAndRerankQueryEngine(
         *,
         page_state: str | None,
         timeout_context: _TimeoutContext,
-    ) -> tuple[list[RerankedResult[FARR_TRAW]], str | None, dict[str, Any] | None]:
+    ) -> tuple[list[RerankedResult[TRAW]], str | None, dict[str, Any] | None]:
         if self.collection is None:
             raise RuntimeError("Query engine has no sync collection.")
         f_payload = {
@@ -197,7 +200,7 @@ class _CollectionFindAndRerankQueryEngine(
                 text="Faulty response from findAndRerank API command (no 'documentResponses').",
                 raw_response=f_response,
             )
-        p_documents: list[RerankedResult[FARR_TRAW]]
+        p_documents: list[RerankedResult[TRAW]]
         if f_response["data"]["documents"]:
             p_documents = [
                 RerankedResult(document=document, scores=doc_response["scores"])
@@ -218,7 +221,7 @@ class _CollectionFindAndRerankQueryEngine(
         *,
         page_state: str | None,
         timeout_context: _TimeoutContext,
-    ) -> tuple[list[RerankedResult[FARR_TRAW]], str | None, dict[str, Any] | None]:
+    ) -> tuple[list[RerankedResult[TRAW]], str | None, dict[str, Any] | None]:
         if self.async_collection is None:
             raise RuntimeError("Query engine has no async collection.")
         f_payload = {
@@ -265,7 +268,7 @@ class _CollectionFindAndRerankQueryEngine(
                 text="Faulty response from findAndRerank API command (no 'documentResponses').",
                 raw_response=f_response,
             )
-        p_documents: list[RerankedResult[FARR_TRAW]]
+        p_documents: list[RerankedResult[TRAW]]
         if f_response["data"]["documents"]:
             p_documents = [
                 RerankedResult(document=document, scores=doc_response["scores"])
@@ -282,7 +285,7 @@ class _CollectionFindAndRerankQueryEngine(
 
 
 class CollectionFindAndRerankCursor(
-    Generic[FARR_TRAW, T], AbstractCursor[RerankedResult[FARR_TRAW]]
+    Generic[TRAW, T], AbstractCursor[RerankedResult[TRAW]]
 ):
     """
     A synchronous cursor over documents, as returned by a `find_and_rerank` invocation
@@ -294,31 +297,24 @@ class CollectionFindAndRerankCursor(
     for the various methods and the Collection `find_and_rerank` method for more details
     and usage patterns.
 
-    A cursor has two type parameters: TRAW and T. The first is the type of the "raw"
-    documents as they are obtained from the Data API, the second is the type of the
-    items after the optional mapping function (see the `.map()` method). If there is
-    no mapping, TRAW = T. In general, consuming a cursor returns items of type T,
-    except for the `consume_buffer` primitive that draws directly from the buffer
-    and always returns items of type TRAW.
+    This cursor has two type parameters: TRAW and T. The first is the type
+    of the "raw" documents as they are found on the collection, the second
+    is the type of the items after the optional mapping function (see the `.map()`
+    method).
+    If no mapping is specified, `T = RerankedResult[TRAW]`: the items yielded by
+    the cursor are a `RerankedResult` wrapping the type (possibly after projection)
+    of the documents found on the collection: in other words, such a cursor returns
+    the documents, as they come back from the API, with their associated scores
+    from the find-and-rerank operation.
+    In general, consuming a cursor returns items of type T, except for the
+    `consume_buffer` primitive that draws directly from the buffer and always
+    returns items of type RerankedResult[TRAW].
 
     Example:
-        TODO DOCSTRING
-        >>> cursor = collection.find_and_rerank(
-        ...     {},
-        ...     projection={"seq": True, "_id": False},
-        ...     limit=5,
-        ... )
-        >>> for document in cursor:
-        ...     print(document)
-        ...
-        {'seq': 1}
-        {'seq': 4}
-        {'seq': 15}
-        {'seq': 22}
-        {'seq': 11}
+        >>> TODO: code examples
     """
 
-    _query_engine: _CollectionFindAndRerankQueryEngine[FARR_TRAW]
+    _query_engine: _CollectionFindAndRerankQueryEngine[TRAW]
     _request_timeout_ms: int | None
     _overall_timeout_ms: int | None
     _request_timeout_label: str | None
@@ -331,12 +327,12 @@ class CollectionFindAndRerankCursor(
     _hybrid_limits: int | dict[str, int] | None
     _hybrid_projection: str | None
     _rerank_on: str | None
-    _mapper: Callable[[RerankedResult[FARR_TRAW]], T] | None
+    _mapper: Callable[[RerankedResult[TRAW]], T] | None
 
     def __init__(
         self,
         *,
-        collection: Collection[FARR_TRAW],
+        collection: Collection[TRAW],
         request_timeout_ms: int | None,
         overall_timeout_ms: int | None,
         request_timeout_label: str | None = None,
@@ -348,7 +344,7 @@ class CollectionFindAndRerankCursor(
         hybrid_limits: int | dict[str, int] | None = None,
         hybrid_projection: str | None = None,
         rerank_on: str | None = None,
-        mapper: Callable[[RerankedResult[FARR_TRAW]], T] | None = None,
+        mapper: Callable[[RerankedResult[TRAW]], T] | None = None,
     ) -> None:
         self._filter = deepcopy(filter)
         self._projection = projection
@@ -380,7 +376,7 @@ class CollectionFindAndRerankCursor(
         )
 
     def _copy(
-        self: CollectionFindAndRerankCursor[FARR_TRAW, T],
+        self: CollectionFindAndRerankCursor[TRAW, T],
         *,
         request_timeout_ms: int | None | UnsetType = _UNSET,
         overall_timeout_ms: int | None | UnsetType = _UNSET,
@@ -393,7 +389,7 @@ class CollectionFindAndRerankCursor(
         hybrid_limits: int | dict[str, int] | None | UnsetType = _UNSET,
         hybrid_projection: str | None | UnsetType = _UNSET,
         rerank_on: str | None | UnsetType = _UNSET,
-    ) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
+    ) -> CollectionFindAndRerankCursor[TRAW, T]:
         if self._query_engine.collection is None:
             raise RuntimeError("Query engine has no collection.")
         return CollectionFindAndRerankCursor(
@@ -461,8 +457,8 @@ class CollectionFindAndRerankCursor(
         )
 
     def __iter__(
-        self: CollectionFindAndRerankCursor[FARR_TRAW, T],
-    ) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
+        self: CollectionFindAndRerankCursor[TRAW, T],
+    ) -> CollectionFindAndRerankCursor[TRAW, T]:
         self._ensure_alive()
         return self
 
@@ -481,7 +477,7 @@ class CollectionFindAndRerankCursor(
         return cast(T, self._mapper(traw0) if self._mapper is not None else traw0)
 
     @property
-    def data_source(self) -> Collection[FARR_TRAW]:
+    def data_source(self) -> Collection[TRAW]:
         """
         The Collection object that originated this cursor through a `find_and_rerank`
         operation.
@@ -494,7 +490,7 @@ class CollectionFindAndRerankCursor(
             raise RuntimeError("Query engine has no collection.")
         return self._query_engine.collection
 
-    def clone(self) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
+    def clone(self) -> CollectionFindAndRerankCursor[TRAW, T]:
         """
         Create a copy of this cursor with:
         - the same parameters (timeouts, filter, projection, etc)
@@ -505,23 +501,7 @@ class CollectionFindAndRerankCursor(
             and rewound to its initial state.
 
         Example:
-            TODO DOCSTRING TODO
-            >>> cursor = collection.find(
-            ...     {},
-            ...     projection={"seq": True, "_id": False},
-            ...     limit=2,
-            ... ).map(lambda doc: doc["seq"])
-            >>> for value in cursor:
-            ...     print(value)
-            ...
-            1
-            4
-            >>> cloned_cursor = cursor.clone()
-            >>> for document in cloned_cursor:
-            ...     print(document)
-            ...
-            {'seq': 1}
-            {'seq': 4}
+            >>> TODO: code examples
         """
 
         if self._query_engine.collection is None:
@@ -544,7 +524,7 @@ class CollectionFindAndRerankCursor(
 
     def filter(
         self, filter: FilterType | None
-    ) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
+    ) -> CollectionFindAndRerankCursor[TRAW, T]:
         """
         Return a copy of this cursor with a new filter setting.
         This operation is allowed only if the cursor state is still IDLE.
@@ -565,7 +545,7 @@ class CollectionFindAndRerankCursor(
 
     def project(
         self, projection: ProjectionType | None
-    ) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
+    ) -> CollectionFindAndRerankCursor[TRAW, T]:
         """
         Return a copy of this cursor with a new projection setting.
         This operation is allowed only if the cursor state is still IDLE and if
@@ -592,7 +572,7 @@ class CollectionFindAndRerankCursor(
 
     def sort(
         self, sort: HybridSortType | None
-    ) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
+    ) -> CollectionFindAndRerankCursor[TRAW, T]:
         """
         Return a copy of this cursor with a new sort setting.
         This operation is allowed only if the cursor state is still IDLE.
@@ -611,7 +591,7 @@ class CollectionFindAndRerankCursor(
         self._ensure_idle()
         return self._copy(sort=sort)
 
-    def limit(self, limit: int | None) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
+    def limit(self, limit: int | None) -> CollectionFindAndRerankCursor[TRAW, T]:
         """
         Return a copy of this cursor with a new limit setting.
         This operation is allowed only if the cursor state is still IDLE.
@@ -632,7 +612,7 @@ class CollectionFindAndRerankCursor(
 
     def hybrid_limits(
         self, hybrid_limits: int | dict[str, int] | None
-    ) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
+    ) -> CollectionFindAndRerankCursor[TRAW, T]:
         """
         Return a copy of this cursor with a new hybrid_limits setting.
         This operation is allowed only if the cursor state is still IDLE.
@@ -653,7 +633,7 @@ class CollectionFindAndRerankCursor(
 
     def hybrid_projection(
         self, hybrid_projection: str | None
-    ) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
+    ) -> CollectionFindAndRerankCursor[TRAW, T]:
         """
         Return a copy of this cursor with a new hybrid_projection setting.
         This operation is allowed only if the cursor state is still IDLE.
@@ -674,7 +654,7 @@ class CollectionFindAndRerankCursor(
 
     def rerank_on(
         self, rerank_on: str | None
-    ) -> CollectionFindAndRerankCursor[FARR_TRAW, T]:
+    ) -> CollectionFindAndRerankCursor[TRAW, T]:
         """
         Return a copy of this cursor with a new rerank_on setting.
         This operation is allowed only if the cursor state is still IDLE.
@@ -695,7 +675,7 @@ class CollectionFindAndRerankCursor(
 
     def map(
         self, mapper: Callable[[T], TNEW]
-    ) -> CollectionFindAndRerankCursor[FARR_TRAW, TNEW]:
+    ) -> CollectionFindAndRerankCursor[TRAW, TNEW]:
         """
         Return a copy of this cursor with a mapping function to transform
         the returned items. Calling this method on a cursor with a mapping
@@ -706,57 +686,29 @@ class CollectionFindAndRerankCursor(
         Args:
             mapper: a function transforming the objects returned by the cursor
                 into something else (i.e. a function T => TNEW).
+                If the map is imposed on a cursor without mapping yet, its input
+                argument must be a `RerankedResult[TRAW]`, where TRAW
+                stands for the type of the documents from the collection.
 
         Returns:
             a new CollectionFindAndRerankCursor with a new mapping function on the results,
                 possibly composed with any pre-existing mapping function.
 
         Example:
-            TODO DOCSTRING TODO
-            >>> cursor = collection.find(
-            ...     {},
-            ...     projection={"seq": True, "_id": False},
-            ...     limit=2,
-            ... )
-            >>> for doc in cursor:
-            ...     print(doc)
-            ...
-            {'seq': 1}
-            {'seq': 4}
-            >>> cursor_mapped = collection.find(
-            ...     {},
-            ...     projection={"seq": True, "_id": False},
-            ...     limit=2,
-            ... ).map(lambda doc: doc["seq"])
-            >>> for value in cursor_mapped:
-            ...     print(value)
-            ...
-            1
-            4
-            >>>
-            >>> cursor_mapped_twice = collection.find(
-            ...     {},
-            ...     projection={"seq": True, "_id": False},
-            ...     limit=2,
-            ... ).map(lambda doc: doc["seq"]).map(lambda num: "x" * num)
-            >>> for value in cursor_mapped_twice:
-            ...     print(value)
-            ...
-            x
-            xxxx
+            >>> TODO: code examples
         """
         self._ensure_idle()
         if self._query_engine.collection is None:
             raise RuntimeError("Query engine has no collection.")
-        composite_mapper: Callable[[RerankedResult[FARR_TRAW]], TNEW]
+        composite_mapper: Callable[[RerankedResult[TRAW]], TNEW]
         if self._mapper is not None:
 
-            def _composite(document: RerankedResult[FARR_TRAW]) -> TNEW:
+            def _composite(document: RerankedResult[TRAW]) -> TNEW:
                 return mapper(self._mapper(document))  # type: ignore[misc]
 
             composite_mapper = _composite
         else:
-            composite_mapper = cast(Callable[[RerankedResult[FARR_TRAW]], TNEW], mapper)
+            composite_mapper = cast(Callable[[RerankedResult[TRAW]], TNEW], mapper)
         return CollectionFindAndRerankCursor(
             collection=self._query_engine.collection,
             request_timeout_ms=self._request_timeout_ms,
@@ -790,7 +742,7 @@ class CollectionFindAndRerankCursor(
         discarded, with the following exception: if the function returns the boolean
         `False`, it is taken to signify that the method should quit early, leaving the
         cursor half-consumed (ACTIVE state). If this does not occur, this method
-        results in the cursor entering CLOSED state.
+        results in the cursor entering CLOSED state once it is exhausted.
 
         Args:
             function: a callback function whose only parameter is of the type returned
@@ -803,45 +755,7 @@ class CollectionFindAndRerankCursor(
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Example:
-            TODO DOCSTRING TODO
-            >>> cursor = collection.find(
-            ...     {},
-            ...     projection={"seq": True, "_id": False},
-            ...     limit=3,
-            ... )
-            >>> def printer(doc):
-            ...     print(f"-> {doc['seq']}")
-            ...
-            >>> cursor.for_each(printer)
-            -> 1
-            -> 4
-            -> 15
-            >>>
-            >>> if cursor.state != CursorState.CLOSED:
-            ...     print(f"alive: {list(cursor)}")
-            ... else:
-            ...     print("(closed)")
-            ...
-            (closed)
-            >>> cursor2 = collection.find(
-            ...     {},
-            ...     projection={"seq": True, "_id": False},
-            ...     limit=3,
-            ... )
-            >>> def checker(doc):
-            ...     print(f"-> {doc['seq']}")
-            ...     return doc['seq'] != 4
-            ...
-            >>> cursor2.for_each(checker)
-            -> 1
-            -> 4
-            >>>
-            >>> if cursor2.state != CursorState.CLOSED:
-            ...     print(f"alive: {list(cursor2)}")
-            ... else:
-            ...     print("(closed)")
-            ...
-            alive: [{'seq': 15}]
+            >>> TODO: code examples
         """
 
         self._ensure_alive()
@@ -893,23 +807,7 @@ class CollectionFindAndRerankCursor(
                 to be consumed on the cursor when `to_list` is called.
 
         Example:
-            TODO DOCSTRING TODO
-            >>> collection.find(
-            ...     {},
-            ...     projection={"seq": True, "_id": False},
-            ...     limit=3,
-            ... ).to_list()
-            [{'seq': 1}, {'seq': 4}, {'seq': 15}]
-            >>>
-            >>> cursor = collection.find(
-            ...     {},
-            ...     projection={"seq": True, "_id": False},
-            ...     limit=5,
-            ... ).map(lambda doc: doc["seq"])
-            >>>
-            >>> first_value = cursor.__next__()
-            >>> cursor.to_list()
-            [4, 15, 22, 11]
+            >>> TODO: code examples
         """
 
         self._ensure_alive()
@@ -965,12 +863,18 @@ class AsyncCollectionFindAndRerankCursor(
     for the various methods and the AsyncCollection `find_and_rerank` method for more
     details and usage patterns.
 
-    A cursor has two type parameters: TRAW and T. The first is the type of the "raw"
-    documents as they are obtained from the Data API, the second is the type of the
-    items after the optional mapping function (see the `.map()` method). If there is
-    no mapping, TRAW = T. In general, consuming a cursor returns items of type T,
-    except for the `consume_buffer` primitive that draws directly from the buffer
-    and always returns items of type TRAW.
+    This cursor has two type parameters: TRAW and T. The first is the type
+    of the "raw" documents as they are found on the collection, the second
+    is the type of the items after the optional mapping function (see the `.map()`
+    method).
+    If no mapping is specified, `T = RerankedResult[TRAW]`: the items yielded by
+    the cursor are a `RerankedResult` wrapping the type (possibly after projection)
+    of the documents found on the collection: in other words, such a cursor returns
+    the documents, as they come back from the API, with their associated scores
+    from the find-and-rerank operation.
+    In general, consuming a cursor returns items of type T, except for the
+    `consume_buffer` primitive that draws directly from the buffer and always
+    returns items of type RerankedResult[TRAW].
 
     This class is the async counterpart of the CollectionFindAndRerankCursor, for use
     with asyncio. Other than the async interface, its behavior is identical: please
@@ -1357,6 +1261,9 @@ class AsyncCollectionFindAndRerankCursor(
         Args:
             mapper: a function transforming the objects returned by the cursor
                 into something else (i.e. a function T => TNEW).
+                If the map is imposed on a cursor without mapping yet, its input
+                argument must be a `RerankedResult[TRAW]`, where TRAW
+                stands for the type of the documents from the collection.
 
         Returns:
             a new AsyncCollectionFindAndRerankCursor with a new mapping function on the
@@ -1407,7 +1314,7 @@ class AsyncCollectionFindAndRerankCursor(
         discarded, with the following exception: if the function returns the boolean
         `False`, it is taken to signify that the method should quit early, leaving the
         cursor half-consumed (ACTIVE state). If this does not occur, this method
-        results in the cursor entering CLOSED state.
+        results in the cursor entering CLOSED state once it is exhausted.
 
         For usage examples, please refer to the same method of the
         equivalent synchronous CollectionFindCursor class, and apply the necessary

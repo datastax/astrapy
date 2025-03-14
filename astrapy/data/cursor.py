@@ -1095,7 +1095,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         discarded, with the following exception: if the function returns the boolean
         `False`, it is taken to signify that the method should quit early, leaving the
         cursor half-consumed (ACTIVE state). If this does not occur, this method
-        results in the cursor entering CLOSED state.
+        results in the cursor entering CLOSED state once it is exhausted.
 
         Args:
             function: a callback function whose only parameter is of the type returned
@@ -1735,7 +1735,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         discarded, with the following exception: if the function returns the boolean
         `False`, it is taken to signify that the method should quit early, leaving the
         cursor half-consumed (ACTIVE state). If this does not occur, this method
-        results in the cursor entering CLOSED state.
+        results in the cursor entering CLOSED state once it is exhausted.
 
         For usage examples, please refer to the same method of the
         equivalent synchronous CollectionFindCursor class, and apply the necessary
@@ -2376,7 +2376,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         discarded, with the following exception: if the function returns the boolean
         `False`, it is taken to signify that the method should quit early, leaving the
         cursor half-consumed (ACTIVE state). If this does not occur, this method
-        results in the cursor entering CLOSED state.
+        results in the cursor entering CLOSED state once it is exhausted.
 
         Args:
             function: a callback function whose only parameter is of the type returned
@@ -3015,7 +3015,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         discarded, with the following exception: if the function returns the boolean
         `False`, it is taken to signify that the method should quit early, leaving the
         cursor half-consumed (ACTIVE state). If this does not occur, this method
-        results in the cursor entering CLOSED state.
+        results in the cursor entering CLOSED state once it is exhausted.
 
         For usage examples, please refer to the same method of the
         equivalent synchronous TableFindCursor class, and apply the necessary

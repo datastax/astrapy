@@ -21,7 +21,16 @@ from typing import Any
 @dataclass
 class RerankingServiceOptions:
     """
-    TODO DOCSTRING TODO
+    The "rerank.service" component of the collection options.
+    See the Data API specifications for allowed values.
+
+    Attributes:
+        provider: the name of a service provider for reranking.
+        model_name: the name of a specific model for use by the service.
+        authentication: a key-value dictionary for the "authentication" specification,
+            if any, in the reranking service options.
+        parameters: a key-value dictionary for the "parameters" specification, if any,
+            in the reranking service options.
     """
 
     provider: str | None

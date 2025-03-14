@@ -142,7 +142,14 @@ class CollectionVectorOptions:
 @dataclass
 class CollectionLexicalOptions:
     """
-    TODO DOCSTRING TODO
+    The "lexical" component of the collection options.
+    See the Data API specifications for allowed values.
+
+    Attributes:
+        enabled: use this flag to programmatically set 'lexical' to on/off.
+        analyzer: either a string (e.g. "standard") or a full dictionary
+            specifying a more customized configuration for the text analyzer.
+            See the Data API documentation for more on the dictionary form.
     """
 
     enabled: bool
@@ -188,7 +195,12 @@ class CollectionLexicalOptions:
 @dataclass
 class CollectionRerankingOptions:
     """
-    TODO DOCSTRING TODO
+    The "rerank" component of the collection options.
+    See the Data API specifications for allowed values.
+
+    Attributes:
+        enabled: use this flag to programmatically set 'rerank' to on/off.
+        service: A `RerankingServiceOptions` object describing the desired reranker.
     """
 
     enabled: bool
@@ -246,8 +258,10 @@ class CollectionDefinition:
 
     Attributes:
         vector: an optional CollectionVectorOptions object.
-        lexical: TODO DOCSTRING TODO
-        reranking: TODO DOCSTRING TODO
+        lexical: A `CollectionLexicalOptions` object encoding the desired
+            "lexical" settings. If omitted, the Data API defaults apply.
+        reranking: A `CollectionRerankingOptions` object encoding the desired
+            "reranking" settings. If omitted, the Data API defaults apply.
         indexing: an optional dictionary with the "indexing" collection properties.
             This is in the form of a dictionary such as `{"deny": [...]}`
             or `{"allow": [...]}`, with a list of document paths, or alternatively
@@ -729,7 +743,7 @@ class CollectionDefinition:
                 as the collection reranking configuration; or (3) it can be None,
                 to signify removal of the entire reranking setting; alternatively,
                 (4) it can be a string, the reranking provider name as seen in the
-                response from the database's `TODO DOCSTRING TODO find Rer Prov` method. In the
+                response from the database's `find_rerank_providers` method. In the
                 latter case, the other parameters should also be provided as needed.
                 See the examples below for an illustration of these usage patterns.
             model_name: a string, the name of the reranker model to use (must be
@@ -741,7 +755,7 @@ class CollectionDefinition:
             parameters: a free-form key-value mapping providing additional,
                 model-dependent configuration settings. The allowed parameters for
                 a given model are specified in the response of the Database
-                `TODO DOCSTRING TODO find Rer Prov` method.
+                `find_rerank_providers` method.
             enabled: if passed, this flag is used in the reranking definition
                 for the collection. If omitted, defaults to True.
 
