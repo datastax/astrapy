@@ -90,29 +90,57 @@ class TestCollectionDDLAsync:
         )
         lc_response = await async_database.list_collections()
         #
-        expected_coll_descriptor = CollectionDescriptor._from_dict(
-            {
-                "name": TEST_LOCAL_COLLECTION_NAME,
-                "options": {
-                    "vector": {
-                        "dimension": 123,
-                        "metric": "euclidean",
-                        "sourceModel": "other",
+        # TODO: remove this ambiguity once lexical is a full citizen
+        expected_coll_descriptors = [
+            CollectionDescriptor._from_dict(
+                {
+                    "name": TEST_LOCAL_COLLECTION_NAME,
+                    "options": {
+                        "vector": {
+                            "dimension": 123,
+                            "metric": "euclidean",
+                            "sourceModel": "other",
+                        },
+                        "indexing": {"deny": ["a", "b", "c"]},
                     },
-                    "indexing": {"deny": ["a", "b", "c"]},
                 },
-            },
-        )
-        expected_coll_descriptor_b = CollectionDescriptor._from_dict(
-            {
-                "name": TEST_LOCAL_COLLECTION_NAME_B,
-                "options": {
-                    "indexing": {"allow": ["z"]},
+            ),
+            CollectionDescriptor._from_dict(
+                {
+                    "name": TEST_LOCAL_COLLECTION_NAME,
+                    "options": {
+                        "vector": {
+                            "dimension": 123,
+                            "metric": "euclidean",
+                            "sourceModel": "other",
+                        },
+                        "indexing": {"deny": ["a", "b", "c"]},
+                        "lexical": {"enabled": True, "analyzer": "standard"},
+                    },
                 },
-            },
-        )
-        assert expected_coll_descriptor in lc_response
-        assert expected_coll_descriptor_b in lc_response
+            ),
+        ]
+        expected_coll_descriptors_b = [
+            CollectionDescriptor._from_dict(
+                {
+                    "name": TEST_LOCAL_COLLECTION_NAME_B,
+                    "options": {
+                        "indexing": {"allow": ["z"]},
+                    },
+                },
+            ),
+            CollectionDescriptor._from_dict(
+                {
+                    "name": TEST_LOCAL_COLLECTION_NAME_B,
+                    "options": {
+                        "indexing": {"allow": ["z"]},
+                        "lexical": {"enabled": True, "analyzer": "standard"},
+                    },
+                },
+            ),
+        ]
+        assert any(coll_dsc in lc_response for coll_dsc in expected_coll_descriptors)
+        assert any(coll_dsc in lc_response for coll_dsc in expected_coll_descriptors_b)
         #
         col2 = async_database.get_collection(TEST_LOCAL_COLLECTION_NAME)
         assert col1 == col2

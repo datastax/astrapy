@@ -1717,7 +1717,7 @@ class Table(Generic[ROW]):
 
         Returns:
             a TableFindCursor object, that can be iterated over (and manipulated
-            in several ways), that if needed handles pagination under the hood
+            in several ways). The cursor, if needed, handles pagination under the hood
             as the rows are consumed.
 
         Note:
@@ -4390,7 +4390,7 @@ class AsyncTable(Generic[ROW]):
         Find rows on the table matching the provided filters
         and according to sorting criteria including vector similarity.
 
-        The returned TableFindCursor object, representing the stream of results,
+        The returned AsyncTableFindCursor object, representing the stream of results,
         can be iterated over, or consumed and manipulated in several other ways
         (see the examples below and the `TableFindCursor` documentation for details).
         Since the amount of returned items can be large, TableFindCursor is a lazy
@@ -4460,8 +4460,8 @@ class AsyncTable(Generic[ROW]):
             timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            a TableFindCursor object, that can be iterated over (and manipulated
-            in several ways), that if needed handles pagination under the hood
+            a AsyncTableFindCursor object, that can be iterated over (and manipulated
+            in several ways). The cursor, if needed, handles pagination under the hood
             as the rows are consumed.
 
         Note:

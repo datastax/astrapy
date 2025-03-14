@@ -990,7 +990,7 @@ class Collection(Generic[DOC]):
         """
         Find documents on the collection, matching a certain provided filter.
 
-        The method returns a Cursor that can then be iterated over. Depending
+        The method returns a cursor that can then be iterated over. Depending
         on the method call pattern, the iteration over all documents can reflect
         collection mutations occurred since the `find` method was called, or not.
         In cases where the cursor reflects mutations in real-time, it will iterate
@@ -1025,9 +1025,9 @@ class Collection(Generic[DOC]):
             document_type: this parameter acts a formal specifier for the type checker.
                 If omitted, the resulting cursor is implicitly a
                 `CollectionFindCursor[DOC, DOC]`, i.e. maintains the same type for
-                the items it returns as that for the documents in the table. Strictly
-                typed code may want to specify this parameter especially when a
-                projection is given.
+                the items it returns as that for the documents in the collection.
+                Strictly typed code may want to specify this parameter especially when
+                a projection is given.
             skip: with this integer parameter, what would be the first `skip`
                 documents returned by the query are discarded, and the results
                 start from the (skip+1)-th document.
@@ -1057,9 +1057,9 @@ class Collection(Generic[DOC]):
             timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            a Cursor object representing iterations over the matching documents
-            (see the Cursor object for how to use it. The simplest thing is to
-            run a for loop: `for document in collection.sort(...):`).
+            a CollectionFindCursor object, that can be iterated over (and manipulated
+            in several ways). The cursor, if needed, handles pagination under the hood
+            as the documents are consumed.
 
         Examples:
             >>> filter = {"seq": {"$exists": True}}
@@ -1464,7 +1464,80 @@ class Collection(Generic[DOC]):
         timeout_ms: int | None = None,
     ) -> CollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]:
         """
-        TODO DOCSTRING TODO
+        Find relevant documents, combining vector and lexical matches through reranking.
+
+        The method returns a cursor that can then be iterated over, which yields
+        the resulting documents, generally paired with accompanying information
+        such as scores.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
+                See the Data API documentation for the full set of operators.
+            sort: a clause specifying the criteria for selecting the top matching
+                documents. This must provide enough information for both a lexical
+                and a vector similarity to be performed (the latter either query text
+                or by query vector, depending on the collection configuration).
+                Examples are: `sort={"$hybrid": "xyz"}`,
+                `sort={"$hybrid": {"$vectorize": "xyz", "$lexical": "abc"}}`,
+                `sort={"$hybrid": {"$vector": DataAPIVector(...), "$lexical": "abc"}}`.
+                Note this differs from the `sort` parameter for the `find` method.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` and other special fields, which can be
+                associated to both True or False independently of the rest
+                of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection (used if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
+            document_type: this parameter acts a formal specifier for the type checker.
+                If omitted, the resulting cursor is implicitly a
+                `CollectionFindAndRerankCursor[DOC, DOC]`, i.e. maintains the same type
+                for the items it returns as that for the documents in the collection.
+                Strictly typed code may want to specify this parameter especially when
+                a projection is given.
+            limit: maximum number of documents to return as the result of the final
+                rerank step.
+            hybrid_limits: this controls the amount of documents that are fetched by
+                each of the individual retrieval operations that are combined in the
+                rerank step. It can be either a number or a dictionary of strings to
+                numbers, the latter case expressing different counts for the different
+                retrievals. For example: `hybrid_limits=50`,
+                `hybrid_limits={"$vectorize": 20, "$lexical": 10}`,
+                `hybrid_limits={"$vector": 20, "$lexical": 10}`.
+                In case of a dictionary parameter, consult the Data API documentation
+                about the string to use for keys according to the configuration of the
+                collection.
+            hybrid_projection: the amount of additional information that should be
+                returned along with the resulting documents. Values are: "none",
+                "passage" or "scores" (see the Data API documentation for details).
+            rerank_on: for collections without a vectorize (server-side embeddings)
+                service, this is used to specify the field name that is then used
+                during reranking.
+            request_timeout_ms: a timeout, in milliseconds, for each single one
+                of the underlying HTTP requests used to fetch documents as the
+                cursor is iterated over.
+                If not passed, the collection-level setting is used instead.
+            timeout_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            a CollectionFindAndRerankCursor object, that can be iterated over (and
+            manipulated in several ways).
+
+        Examples:
+            >>> TODO: code examples
         """
 
         # lazy-import here to avoid circular import issues
@@ -3611,7 +3684,7 @@ class AsyncCollection(Generic[DOC]):
         """
         Find documents on the collection, matching a certain provided filter.
 
-        The method returns a Cursor that can then be iterated over. Depending
+        The method returns a cursor that can then be iterated over. Depending
         on the method call pattern, the iteration over all documents can reflect
         collection mutations occurred since the `find` method was called, or not.
         In cases where the cursor reflects mutations in real-time, it will iterate
@@ -3646,9 +3719,9 @@ class AsyncCollection(Generic[DOC]):
             document_type: this parameter acts a formal specifier for the type checker.
                 If omitted, the resulting cursor is implicitly an
                 `AsyncCollectionFindCursor[DOC, DOC]`, i.e. maintains the same type for
-                the items it returns as that for the documents in the table. Strictly
-                typed code may want to specify this parameter especially when a
-                projection is given.
+                the items it returns as that for the documents in the collection.
+                Strictly typed code may want to specify this parameter especially when
+                a projection is given.
             skip: with this integer parameter, what would be the first `skip`
                 documents returned by the query are discarded, and the results
                 start from the (skip+1)-th document.
@@ -3678,9 +3751,9 @@ class AsyncCollection(Generic[DOC]):
             timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            an AsyncCursor object representing iterations over the matching documents
-            (see the AsyncCursor object for how to use it. The simplest thing is to
-            run a for loop: `for document in collection.sort(...):`).
+            a AsyncCollectionFindCursor object, that can be iterated over (and
+            manipulated in several ways). The cursor, if needed, handles pagination
+            under the hood as the documents are consumed.
 
         Examples:
             >>> # NOTE: may require slight adaptation to an async context.
@@ -4125,7 +4198,80 @@ class AsyncCollection(Generic[DOC]):
         timeout_ms: int | None = None,
     ) -> AsyncCollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]:
         """
-        TODO DOCSTRING TODO
+        Find relevant documents, combining vector and lexical matches through reranking.
+
+        The method returns a cursor that can then be iterated over, which yields
+        the resulting documents, generally paired with accompanying information
+        such as scores.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
+                See the Data API documentation for the full set of operators.
+            sort: a clause specifying the criteria for selecting the top matching
+                documents. This must provide enough information for both a lexical
+                and a vector similarity to be performed (the latter either query text
+                or by query vector, depending on the collection configuration).
+                Examples are: `sort={"$hybrid": "xyz"}`,
+                `sort={"$hybrid": {"$vectorize": "xyz", "$lexical": "abc"}}`,
+                `sort={"$hybrid": {"$vector": DataAPIVector(...), "$lexical": "abc"}}`.
+                Note this differs from the `sort` parameter for the `find` method.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` and other special fields, which can be
+                associated to both True or False independently of the rest
+                of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection (used if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
+            document_type: this parameter acts a formal specifier for the type checker.
+                If omitted, the resulting cursor is implicitly a
+                `AsyncCollectionFindAndRerankCursor[DOC, DOC]`, i.e. maintains the same
+                type for the items it returns as that for the documents in the
+                collection. Strictly typed code may want to specify this parameter
+                especially when a projection is given.
+            limit: maximum number of documents to return as the result of the final
+                rerank step.
+            hybrid_limits: this controls the amount of documents that are fetched by
+                each of the individual retrieval operations that are combined in the
+                rerank step. It can be either a number or a dictionary of strings to
+                numbers, the latter case expressing different counts for the different
+                retrievals. For example: `hybrid_limits=50`,
+                `hybrid_limits={"$vectorize": 20, "$lexical": 10}`,
+                `hybrid_limits={"$vector": 20, "$lexical": 10}`.
+                In case of a dictionary parameter, consult the Data API documentation
+                about the string to use for keys according to the configuration of the
+                collection.
+            hybrid_projection: the amount of additional information that should be
+                returned along with the resulting documents. Values are: "none",
+                "passage" or "scores" (see the Data API documentation for details).
+            rerank_on: for collections without a vectorize (server-side embeddings)
+                service, this is used to specify the field name that is then used
+                during reranking.
+            request_timeout_ms: a timeout, in milliseconds, for each single one
+                of the underlying HTTP requests used to fetch documents as the
+                cursor is iterated over.
+                If not passed, the collection-level setting is used instead.
+            timeout_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            an AsyncCollectionFindAndRerankCursor object, that can be iterated over
+            (and manipulated in several ways).
+
+        Examples:
+            >>> TODO: code examples
         """
 
         # lazy-import here to avoid circular import issues
