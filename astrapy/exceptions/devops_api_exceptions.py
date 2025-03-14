@@ -26,7 +26,7 @@ class DevOpsAPIException(Exception):
     """
 
     def __init__(self, text: str | None = None):
-        super().__init__(text or "")
+        Exception.__init__(self, text or "")
 
 
 @dataclass

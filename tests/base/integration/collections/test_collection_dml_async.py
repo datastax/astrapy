@@ -22,7 +22,11 @@ import pytest
 from astrapy.constants import DefaultDocumentType, ReturnDocument, SortMode
 from astrapy.cursors import AsyncCollectionFindCursor
 from astrapy.data_types import DataAPITimestamp, DataAPIVector
-from astrapy.exceptions import CollectionInsertManyException, DataAPIResponseException
+from astrapy.exceptions import (
+    CollectionInsertManyException,
+    DataAPIResponseException,
+    TooManyDocumentsToCountException,
+)
 from astrapy.ids import UUID, ObjectId
 from astrapy.results import CollectionDeleteResult, CollectionInsertOneResult
 from astrapy.utils.api_options import APIOptions, SerdesOptions
@@ -87,19 +91,13 @@ class TestCollectionDMLAsync:
             await async_empty_collection.count_documents(filter={}, upper_bound=2000)
             == 900
         )
-        with pytest.raises(ValueError):
-            await async_empty_collection.count_documents(
-                filter={}, upper_bound=100
-            ) == 900
+        with pytest.raises(TooManyDocumentsToCountException):
+            await async_empty_collection.count_documents(filter={}, upper_bound=100)
         await async_empty_collection.insert_many([{"b": i} for i in range(200)])
-        with pytest.raises(ValueError):
-            assert await async_empty_collection.count_documents(
-                filter={}, upper_bound=100
-            )
-        with pytest.raises(ValueError):
-            assert await async_empty_collection.count_documents(
-                filter={}, upper_bound=2000
-            )
+        with pytest.raises(TooManyDocumentsToCountException):
+            await async_empty_collection.count_documents(filter={}, upper_bound=100)
+        with pytest.raises(TooManyDocumentsToCountException):
+            await async_empty_collection.count_documents(filter={}, upper_bound=2000)
 
     @pytest.mark.describe("test of collection insert_one, async")
     async def test_collection_insert_one_async(
@@ -821,6 +819,17 @@ class TestCollectionDMLAsync:
             )
         ]
         assert [hit["tag"] for hit in hits] == ["A", "B", "C"]
+
+        with pytest.raises(DataAPIResponseException):
+            [
+                itm
+                async for itm in async_empty_collection.find(
+                    {},
+                    projection=["tag"],
+                    sort={"$vector": q_vector, "tag": SortMode.DESCENDING},
+                    limit=3,
+                )
+            ]
 
         top_doc = await async_empty_collection.find_one({}, sort={"$vector": [1, 0]})
         assert top_doc is not None

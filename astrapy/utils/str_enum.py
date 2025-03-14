@@ -34,14 +34,20 @@ class StrEnum(Enum):
         if isinstance(value, cls):
             return value
         elif isinstance(value, str):
-            try:
+            v_upper = value.upper()
+            uvalue_map = {k: v.value.upper() for k, v in cls._member_map_.items()}
+            if v_upper in uvalue_map:
                 return cls[value.upper()]
-            except KeyError:
-                raise ValueError(
-                    f"Invalid value '{value}' for {cls.__name__}. "
-                    f"Allowed values are: {[e.name.lower() for e in cls]}"
-                )
+            # try *value* lookup
+            keys = [k for k, v in uvalue_map.items() if v == v_upper]
+            if keys:
+                return cls[keys[0]]
+            # no matches
+            raise ValueError(
+                f"Invalid value '{value}' for {cls.__name__}. "
+                f"Allowed values are: {[e.value for e in cls]}"
+            )
         raise ValueError(
             f"Invalid value '{value}' for {cls.__name__}. "
-            f"Allowed values are: {[e.name.lower() for e in cls]}"
+            f"Allowed values are: {[e.value for e in cls]}"
         )

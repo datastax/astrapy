@@ -14,6 +14,7 @@ Exceptions, major rework of `[Table|Collection]InsertManyException`, `Collection
 Arbitrary field names and dot-escaping:
     - offering utilities `astrapy.utils.document_paths.escape_field_names/unescape_field_path`
     - `distinct` methods can accept a list of (literal) str|int as well as a(n escaped) identifier string
+Improved StrEnum matching for e.g. better coercion of TableIndexType (and future enum with e.g. dashes in values)
 Spawner methods for databases/admins standardized; they don't issue DevOps API calls.
     - removed `normalize_region_for_id` utility method, not used anymore.
     - `AstraDBAdmin.get_[async]_database()`:

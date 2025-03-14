@@ -21,7 +21,11 @@ import pytest
 
 from astrapy.constants import DefaultDocumentType, ReturnDocument, SortMode
 from astrapy.data_types import DataAPITimestamp, DataAPIVector
-from astrapy.exceptions import CollectionInsertManyException, DataAPIResponseException
+from astrapy.exceptions import (
+    CollectionInsertManyException,
+    DataAPIResponseException,
+    TooManyDocumentsToCountException,
+)
 from astrapy.ids import UUID, ObjectId
 from astrapy.results import CollectionDeleteResult, CollectionInsertOneResult
 from astrapy.utils.api_options import APIOptions, SerdesOptions
@@ -68,12 +72,12 @@ class TestCollectionDMLSync:
         sync_empty_collection.insert_many([{"a": i} for i in range(900)])
         assert sync_empty_collection.count_documents(filter={}, upper_bound=950) == 900
         assert sync_empty_collection.count_documents(filter={}, upper_bound=2000) == 900
-        with pytest.raises(ValueError):
+        with pytest.raises(TooManyDocumentsToCountException):
             sync_empty_collection.count_documents(filter={}, upper_bound=100) == 900
         sync_empty_collection.insert_many([{"b": i} for i in range(200)])
-        with pytest.raises(ValueError):
+        with pytest.raises(TooManyDocumentsToCountException):
             assert sync_empty_collection.count_documents(filter={}, upper_bound=100)
-        with pytest.raises(ValueError):
+        with pytest.raises(TooManyDocumentsToCountException):
             assert sync_empty_collection.count_documents(filter={}, upper_bound=2000)
 
     @pytest.mark.describe("test of collection insert_one, sync")
@@ -755,7 +759,7 @@ class TestCollectionDMLSync:
         )
         assert [hit["tag"] for hit in hits] == ["A", "B", "C"]
 
-        with pytest.raises(ValueError):
+        with pytest.raises(DataAPIResponseException):
             list(
                 sync_empty_collection.find(
                     {},
