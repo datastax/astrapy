@@ -36,20 +36,23 @@ class DataAPIException(ValueError):
 @dataclass
 class DataAPIErrorDescriptor:
     """
-    TODO DOCSTRING
-    An object representing a single error returned from the Data API,
-    typically with an error code and a text message.
-    An API request would return with an HTTP 200 success error code,
-    but contain a nonzero amount of these.
+    An object representing a single error, or warning, as returned from the Data API,
+    typically with an error code, a text message and other properties.
 
-    A single response from the Data API may return zero, one or more of these.
-    Moreover, some operations, such as an insert_many, may partally succeed
-    yet return these errors about the rest of the operation (such as,
-    some of the input documents could not be inserted).
+    This object is used to describe errors/warnings received from the Data API,
+    in the form of HTTP-200 ("success") responses containing errors
+    (and possibly warnings).
+    Depending on the API command semantics, responses may express partial successes
+    with some errors (for instance, an insertMany command inserting most of the
+    documents/rows, but failing on a couple of incompatible inputs).
 
     Attributes:
         error_code: a string code as found in the API "error" item.
         message: the text found in the API "error" item.
+        title:  the text found in the API "title" item.
+        family:  the text found in the API "family" item.
+        scope:  the text found in the API "scope" item.
+        id:  the text found in the API "id" item.
         attributes: a dict with any further key-value pairs returned by the API.
     """
 
@@ -140,23 +143,17 @@ DataAPIWarningDescriptor = DataAPIErrorDescriptor
 @dataclass
 class DataAPIResponseException(DataAPIException):
     """
-    TODO DOCSTRING TODO
-
-    The Data API returned an HTTP 200 success response, which however
-    reports about API-specific error(s), possibly alongside partial successes.
-
-    This exception is related to an operation that can have spanned several
-    HTTP requests in sequence (e.g. a chunked insert_many). For this
-    reason, it should be not thought as being in a 1:1 relation with
-    actual API requests, rather with operations invoked by the user,
-    such as the methods of the Collection object.
+    The Data API returned an HTTP 200 ("success") response, which however
+    reports API-specific error(s), possibly alongside partial successes.
 
     Attributes:
         text: a text message about the exception.
-        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
-            objects, one for each of the requests performed during this operation.
-            For single-request methods, such as insert_one, this list always
-            has a single element.
+        command: the payload to the API that led to the response.
+        raw_response: the full response from the API.
+        error_descriptors: a list of DataAPIErrorDescriptor, one for each
+            item in the API response's "errors" field.
+        warning_descriptors: a list of DataAPIWarningDescriptor, one for each
+            item in the API response's "warnings" field (if there are any).
     """
 
     text: str | None

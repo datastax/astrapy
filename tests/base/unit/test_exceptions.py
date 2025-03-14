@@ -27,7 +27,6 @@ from astrapy.constants import Environment
 from astrapy.exceptions import (
     CollectionDeleteManyException,
     CollectionInsertManyException,
-    DataAPIDetailedErrorDescriptor,
     DataAPIErrorDescriptor,
     DataAPIHttpException,
     DataAPIResponseException,

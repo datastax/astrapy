@@ -112,7 +112,6 @@ def test_imports() -> None:
         CollectionInsertManyException,
         CollectionUpdateManyException,
         CursorException,
-        DataAPIDetailedErrorDescriptor,
         DataAPIErrorDescriptor,
         DataAPIException,
         DataAPIHttpException,
