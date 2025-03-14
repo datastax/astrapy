@@ -516,9 +516,26 @@ Constants for data-related use:
 from astrapy.constants import (
     DefaultIdType,
     Environment,
+    MapEncodingMode,
     ReturnDocument,
     SortMode,
     VectorMetric,
+)
+```
+
+Cursor for find-like operations:
+
+```python
+from astrapy.cursors import (
+  AbstractCursor,
+  AsyncCollectionFindAndRerankCursor,
+  AsyncCollectionFindCursor,
+  AsyncTableFindCursor,
+  CollectionFindAndRerankCursor,
+  CollectionFindCursor,
+  CursorState,
+  RerankedResult,
+  TableFindCursor,
 )
 ```
 
@@ -574,6 +591,8 @@ from astrapy.info import (
     AlterTableDropVectorize,
     CollectionDefaultIDOptions,
     CollectionDefinition,
+    CollectionLexicalOptions,
+    CollectionRerankingOptions,
     CollectionVectorOptions,
     ColumnType,
     CreateTableDefinition,
@@ -582,6 +601,7 @@ from astrapy.info import (
     EmbeddingProviderModel,
     EmbeddingProviderParameter,
     EmbeddingProviderToken,
+    RerankingServiceOptions,
     TableBaseIndexDefinition,
     TableIndexDefinition,
     TableIndexOptions,

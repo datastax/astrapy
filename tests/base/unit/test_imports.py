@@ -89,14 +89,21 @@ def test_imports() -> None:
     from astrapy.constants import (
         DefaultIdType,
         Environment,
+        MapEncodingMode,
         ReturnDocument,
         SortMode,
         VectorMetric,
     )
     from astrapy.cursors import (
+        AbstractCursor,
+        AsyncCollectionFindAndRerankCursor,
         AsyncCollectionFindCursor,
+        AsyncTableFindCursor,
+        CollectionFindAndRerankCursor,
         CollectionFindCursor,
         CursorState,
+        RerankedResult,
+        TableFindCursor,
     )
     from astrapy.data_types import (
         DataAPIDate,
@@ -151,6 +158,8 @@ def test_imports() -> None:
         CollectionDefinition,
         CollectionDescriptor,
         CollectionInfo,
+        CollectionLexicalOptions,
+        CollectionRerankingOptions,
         CollectionVectorOptions,
         ColumnType,
         CreateTableDefinition,
@@ -162,6 +171,7 @@ def test_imports() -> None:
         FindEmbeddingProvidersResult,
         ListTableDefinition,
         ListTableDescriptor,
+        RerankingServiceOptions,
         TableAPIIndexSupportDescriptor,
         TableAPISupportDescriptor,
         TableBaseIndexDefinition,
