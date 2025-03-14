@@ -733,10 +733,9 @@ class Collection(Generic[DOC]):
             document sequence is important.
 
         Note:
-            TODO DOCSTRING TODO
             A failure mode for this command is related to certain faulty documents
-            found among those to insert: a document may have the an `_id` already
-            present on the collection, or its vector dimension may not
+            found among those to insert: for example, a document may have an ID
+            already found on the collection, or its vector dimension may not
             match the collection setting.
 
             For an ordered insertion, the method will raise an exception at
@@ -748,11 +747,11 @@ class Collection(Generic[DOC]):
             an exception is raised -- and all insertable documents will have been
             written to the database, including those "after" the troublesome ones.
 
-            If, on the other hand, there are errors not related to individual
-            documents (such as a network connectivity error), the whole
-            `insert_many` operation will stop in mid-way, an exception will be raised,
-            and only a certain amount of the input documents will
-            have made their way to the database.
+            Errors occurring during an insert_many operation, for that reason,
+            may result in a `CollectionInsertManyException` being raised.
+            This exception allows to inspect the list of document IDs that were
+            successfully inserted, while accessing at the same time the underlying
+            "root errors" that made the full method call to fail.
         """
 
         _general_method_timeout_ms, _gmt_label = _first_valid_timeout(
@@ -3294,10 +3293,9 @@ class AsyncCollection(Generic[DOC]):
             document sequence is important.
 
         Note:
-            TODO DOCSTRING TODO
             A failure mode for this command is related to certain faulty documents
-            found among those to insert: a document may have the an `_id` already
-            present on the collection, or its vector dimension may not
+            found among those to insert: for example, a document may have an ID
+            already found on the collection, or its vector dimension may not
             match the collection setting.
 
             For an ordered insertion, the method will raise an exception at
@@ -3309,11 +3307,11 @@ class AsyncCollection(Generic[DOC]):
             an exception is raised -- and all insertable documents will have been
             written to the database, including those "after" the troublesome ones.
 
-            If, on the other hand, there are errors not related to individual
-            documents (such as a network connectivity error), the whole
-            `insert_many` operation will stop in mid-way, an exception will be raised,
-            and only a certain amount of the input documents will
-            have made their way to the database.
+            Errors occurring during an insert_many operation, for that reason,
+            may result in a `CollectionInsertManyException` being raised.
+            This exception allows to inspect the list of document IDs that were
+            successfully inserted, while accessing at the same time the underlying
+            "root errors" that made the full method call to fail.
         """
 
         _general_method_timeout_ms, _gmt_label = _first_valid_timeout(

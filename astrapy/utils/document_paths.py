@@ -66,17 +66,30 @@ def escape_field_names(*field_names: str | int | Iterable[str | int]) -> str:  #
     Escape one or more field-name path segments into a full string expression.
 
     Args:
-        TODO field_names: an iterable of literal field-name path segments. Each identifies
-            a single key in a JSON-like document. Example: ["top", "sub.key"]
-            Non-negative whole numbers (representing indexes in lists) become strings.
+        field_names: the function accepts any number of string or integer (non-negative)
+            arguments - or, equivalently, a single argument with an iterable of them.
+            In either case, the input(s) is a literal, unescaped specification for
+            a path in a document.
 
     Returns:
         a single string resulting from dot-concatenation of the input segments, with
         each path segment having been escaped conforming to the Data API escaping rules.
 
     Example:
-        >>> escape_field_names(["top", "sub.key"])
-        ['top', 'sub&.key']
+        >>> escape_field_names()
+        ''
+        >>> escape_field_names("f")
+        'f'
+        >>> escape_field_names(123)
+        '123'
+        >>> escape_field_names("f", 123, "tom&jerry")
+        'f.123.tom&&jerry'
+        >>> escape_field_names(["f"])
+        'f'
+        >>> escape_field_names(123)
+        '123'
+        >>> escape_field_names(["f", 123, "tom&jerry"])
+        'f.123.tom&&jerry'
     """
     _field_names: Iterable[str | int]
     # strings are iterables, so:

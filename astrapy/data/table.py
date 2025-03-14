@@ -1383,18 +1383,24 @@ class Table(Generic[ROW]):
             row sequence is important.
 
         Note:
-            If some of the rows are unsuitable for insertion, for instance
-            have the wrong data type for a column or lack the primary key,
-            the Data API validation check will fail for those specific requests
-            that contain the faulty rows. Depending on concurrency and the value
-            of the `ordered` parameter, a number of rows in general could have
-            been successfully inserted.
-            It is possible to capture such a scenario, and inspect which rows
-            actually got inserted, by catching an error of type
-            TODO DOCSTRING TODO
-            `astrapy.exceptions.TableInsertManyException`: its `partial_result`
-            attribute is precisely a `TableInsertManyResult`, encoding details
-            on the successful writes.
+            A failure mode for this command is related to certain faulty rows
+            found among those to insert: validation may fail, for example, if the
+            vector length does not match the table schema.
+
+            For an ordered insertion, the method will raise an exception at
+            the first such faulty row -- nevertheless, all rows processed
+            until then will end up being written to the database.
+
+            For unordered insertions, if the error stems from faulty rows
+            the insertion proceeds until exhausting the input rows: then,
+            an exception is raised -- and all insertable rows will have been
+            written to the database, including those "after" the troublesome ones.
+
+            Errors occurring during an insert_many operation, for that reason,
+            may result in a `TableInsertManyException` being raised.
+            This exception allows to inspect the list of row IDs that were
+            successfully inserted, while accessing at the same time the underlying
+            "root errors" that made the full method call to fail.
         """
 
         _general_method_timeout_ms, _gmt_label = _first_valid_timeout(
@@ -4137,18 +4143,24 @@ class AsyncTable(Generic[ROW]):
             row sequence is important.
 
         Note:
-            If some of the rows are unsuitable for insertion, for instance
-            have the wrong data type for a column or lack the primary key,
-            the Data API validation check will fail for those specific requests
-            that contain the faulty rows. Depending on concurrency and the value
-            of the `ordered` parameter, a number of rows in general could have
-            been successfully inserted.
-            It is possible to capture such a scenario, and inspect which rows
-            actually got inserted, by catching an error of type
-            TODO DOCSTRING TODO
-            `astrapy.exceptions.TableInsertManyException`: its `partial_result`
-            attribute is precisely a `TableInsertManyResult`, encoding details
-            on the successful writes.
+            A failure mode for this command is related to certain faulty rows
+            found among those to insert: validation may fail, for example, if the
+            vector length does not match the table schema.
+
+            For an ordered insertion, the method will raise an exception at
+            the first such faulty row -- nevertheless, all rows processed
+            until then will end up being written to the database.
+
+            For unordered insertions, if the error stems from faulty rows
+            the insertion proceeds until exhausting the input rows: then,
+            an exception is raised -- and all insertable rows will have been
+            written to the database, including those "after" the troublesome ones.
+
+            Errors occurring during an insert_many operation, for that reason,
+            may result in a `TableInsertManyException` being raised.
+            This exception allows to inspect the list of row IDs that were
+            successfully inserted, while accessing at the same time the underlying
+            "root errors" that made the full method call to fail.
         """
 
         _general_method_timeout_ms, _gmt_label = _first_valid_timeout(
