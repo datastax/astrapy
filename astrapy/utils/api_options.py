@@ -26,7 +26,7 @@ from astrapy.authentication import (
     coerce_possible_embedding_headers_provider,
     coerce_possible_token_provider,
 )
-from astrapy.constants import CallerType, Environment
+from astrapy.constants import CallerType, Environment, MapEncodingMode
 from astrapy.settings.defaults import (
     API_PATH_ENV_MAP,
     API_VERSION_ENV_MAP,
@@ -332,14 +332,17 @@ class SerdesOptions:
             fact that every number is then returned as an instance of `Decimal` when
             reading from collections, an additional performance cost is required to
             manage the serialization/deserialization of objects exchanged with the API.
-        encode_maps_as_lists_in_tables: Write-Path. Controls whether 'maps' (`dict` and
+        encode_maps_as_lists_in_tables: Write-Path. Whether 'maps' (`dict` and/or
             `DataAPIMap` objects alike) are automatically converted into association
             lists if they are found in suitable portions of the write payload for Table
             operations, i.e. if they represent parts of a row (including updates, etc).
-            If set to True, where rows or portions of a row are expected, conversions
-            such as the following occur automatically:
+            Takes values in the `astrapy.constants.MapEncodingMode` enum: for "NEVER",
+            no such conversion occurs; for "DATAAPIMAPS" it takes place only for
+            instances of `DataAPIMap`, for "ALWAYS" also `dict` objects are transformed.
+            When (and where) enabled, the automatic conversions have the following form:
             * `{10: "ten"} ==> [[10, "ten"]]`
-            * `DataAPIMap([('a', 1), ('b', 2)]) ==> [["a", 1], ["b", 2]]`
+            * `DataAPIMap([('a', 1), ('b', 2)]) ==> [["a", 1], ["b", 2]]`.
+            Defaults to "NEVER".
         accept_naive_datetimes: Write-Path. Python datetimes can be either "naive" or
             "aware" of a timezone/offset information. Only the latter type can be
             translated unambiguously and without implied assumptions into a well-defined
@@ -360,13 +363,37 @@ class SerdesOptions:
             to None results in naive datetimes being returned (not recommended).
     """
 
-    binary_encode_vectors: bool | UnsetType = _UNSET
-    custom_datatypes_in_reading: bool | UnsetType = _UNSET
-    unroll_iterables_to_lists: bool | UnsetType = _UNSET
-    use_decimals_in_collections: bool | UnsetType = _UNSET
-    encode_maps_as_lists_in_tables: bool | UnsetType = _UNSET
-    accept_naive_datetimes: bool | UnsetType = _UNSET
-    datetime_tzinfo: datetime.timezone | None | UnsetType = _UNSET
+    binary_encode_vectors: bool | UnsetType
+    custom_datatypes_in_reading: bool | UnsetType
+    unroll_iterables_to_lists: bool | UnsetType
+    use_decimals_in_collections: bool | UnsetType
+    encode_maps_as_lists_in_tables: MapEncodingMode | UnsetType
+    accept_naive_datetimes: bool | UnsetType
+    datetime_tzinfo: datetime.timezone | None | UnsetType
+
+    def __init__(
+        self,
+        *,
+        binary_encode_vectors: bool | UnsetType = _UNSET,
+        custom_datatypes_in_reading: bool | UnsetType = _UNSET,
+        unroll_iterables_to_lists: bool | UnsetType = _UNSET,
+        use_decimals_in_collections: bool | UnsetType = _UNSET,
+        encode_maps_as_lists_in_tables: str | MapEncodingMode | UnsetType = _UNSET,
+        accept_naive_datetimes: bool | UnsetType = _UNSET,
+        datetime_tzinfo: datetime.timezone | None | UnsetType = _UNSET,
+    ) -> None:
+        self.binary_encode_vectors = binary_encode_vectors
+        self.custom_datatypes_in_reading = custom_datatypes_in_reading
+        self.unroll_iterables_to_lists = unroll_iterables_to_lists
+        self.use_decimals_in_collections = use_decimals_in_collections
+        if isinstance(encode_maps_as_lists_in_tables, str):
+            self.encode_maps_as_lists_in_tables = MapEncodingMode.coerce(
+                encode_maps_as_lists_in_tables
+            )
+        else:
+            self.encode_maps_as_lists_in_tables = encode_maps_as_lists_in_tables
+        self.accept_naive_datetimes = accept_naive_datetimes
+        self.datetime_tzinfo = datetime_tzinfo
 
 
 @dataclass
@@ -448,14 +475,17 @@ class FullSerdesOptions(SerdesOptions):
             fact that every number is then returned as an instance of `Decimal` when
             reading from collections, an additional performance cost is required to
             manage the serialization/deserialization of objects exchanged with the API.
-        encode_maps_as_lists_in_tables: Write-Path. Controls whether 'maps' (`dict` and
+        encode_maps_as_lists_in_tables: Write-Path. Whether 'maps' (`dict` and/or
             `DataAPIMap` objects alike) are automatically converted into association
             lists if they are found in suitable portions of the write payload for Table
             operations, i.e. if they represent parts of a row (including updates, etc).
-            If set to True, where rows or portions of a row are expected, conversions
-            such as the following occur automatically:
+            Takes values in the `astrapy.constants.MapEncodingMode` enum: for "NEVER",
+            no such conversion occurs; for "DATAAPIMAPS" it takes place only for
+            instances of `DataAPIMap`, for "ALWAYS" also `dict` objects are transformed.
+            When (and where) enabled, the automatic conversions have the following form:
             * `{10: "ten"} ==> [[10, "ten"]]`
-            * `DataAPIMap([('a', 1), ('b', 2)]) ==> [["a", 1], ["b", 2]]`
+            * `DataAPIMap([('a', 1), ('b', 2)]) ==> [["a", 1], ["b", 2]]`.
+            Defaults to "NEVER".
         accept_naive_datetimes: Write-Path. Python datetimes can be either "naive" or
             "aware" of a timezone/offset information. Only the latter type can be
             translated unambiguously and without implied assumptions into a well-defined
@@ -480,7 +510,7 @@ class FullSerdesOptions(SerdesOptions):
     custom_datatypes_in_reading: bool
     unroll_iterables_to_lists: bool
     use_decimals_in_collections: bool
-    encode_maps_as_lists_in_tables: bool
+    encode_maps_as_lists_in_tables: MapEncodingMode
     accept_naive_datetimes: bool
     datetime_tzinfo: datetime.timezone | None
 
@@ -491,7 +521,7 @@ class FullSerdesOptions(SerdesOptions):
         custom_datatypes_in_reading: bool,
         unroll_iterables_to_lists: bool,
         use_decimals_in_collections: bool,
-        encode_maps_as_lists_in_tables: bool,
+        encode_maps_as_lists_in_tables: str | MapEncodingMode,
         accept_naive_datetimes: bool,
         datetime_tzinfo: datetime.timezone | None,
     ) -> None:
