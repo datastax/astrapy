@@ -20,7 +20,7 @@ from typing import Any
 import httpx
 
 
-class DevOpsAPIException(ValueError):
+class DevOpsAPIException(Exception):
     """
     An exception specific to issuing requests to the DevOps API.
     """
