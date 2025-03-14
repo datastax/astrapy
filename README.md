@@ -393,6 +393,25 @@ my_collection.update_one(
 my_collection.insert_one({"_id": uuid8()})
 ```
 
+### Escaping field names
+
+Field names containing special characters (`.` and `&`) must be correctly escaped
+in certain Data API commands. It is a responsibility of the user to ensure escaping
+is done when needed; however, AstraPy offers utilities to escape sequences of "path
+segments" and -- should it ever be needed -- unescape path-strings back into
+literal segments:
+
+```python
+from astrapy.utils.document_paths import escape_field_names, unescape_field_path
+
+print(escape_field_names("f1", "f2", 12, "g.&3"))
+# prints: f1.f2.12.g&.&&3
+print(escape_field_names(["f1", "f2", 12, "g.&3"]))
+# prints: f1.f2.12.g&.&&3
+print(unescape_field_path("a&&&.b.c.d.12"))
+# prints: ['a&.b', 'c', 'd', '12']
+```
+
 ## For contributors
 
 First install poetry with `pip install poetry` and then the project dependencies with `poetry install --with dev`.

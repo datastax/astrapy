@@ -270,7 +270,7 @@ class TestCollectionVectorizeMethodsAsync:
         except CollectionInsertManyException as e:
             err = e
         assert err is not None
-        assert err.partial_result.inserted_ids == []
+        assert err.inserted_ids == []
 
     @pytest.mark.describe(
         "test of database create_collection dimension-mismatch failure, async"

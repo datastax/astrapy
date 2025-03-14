@@ -28,7 +28,7 @@ from .table_row_assets import (
 )
 
 MAP2TUPLES_OPTIONS = APIOptions(
-    serdes_options=SerdesOptions(encode_maps_as_lists_in_tables=True)
+    serdes_options=SerdesOptions(encode_maps_as_lists_in_tables="ALWAYS")
 )
 STDLIB_OPTIONS = APIOptions(
     serdes_options=SerdesOptions(custom_datatypes_in_reading=False)

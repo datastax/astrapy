@@ -248,7 +248,7 @@ def _first_valid_timeout(
         return 0, None
 
 
-class InvalidEnvironmentException(ValueError):
+class InvalidEnvironmentException(Exception):
     """
     An operation was attempted, that is not available on the specified
     environment. For example, trying to get an AstraDBAdmin from a client

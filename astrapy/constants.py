@@ -25,6 +25,7 @@ from astrapy.settings.defaults import (
     DATA_API_ENVIRONMENT_PROD,
     DATA_API_ENVIRONMENT_TEST,
 )
+from astrapy.utils.str_enum import StrEnum
 
 DefaultDocumentType = Dict[str, Any]
 DefaultRowType = Dict[str, Any]
@@ -137,9 +138,21 @@ class Environment:
     astra_db_values = {PROD, DEV, TEST}
 
 
+class MapEncodingMode(StrEnum):
+    """
+    Enum for the possible values of the setting controlling whether to encode
+    dicts/DataAPIMaps as lists of pairs ("association lists") in table payloads.
+    """
+
+    NEVER = "NEVER"
+    DATAAPIMAPS = "DATAAPIMAPS"
+    ALWAYS = "ALWAYS"
+
+
 __all__ = [
     "DefaultIdType",
     "Environment",
+    "MapEncodingMode",
     "ReturnDocument",
     "SortMode",
     "VectorMetric",

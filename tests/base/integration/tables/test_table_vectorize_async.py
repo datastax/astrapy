@@ -124,7 +124,7 @@ class TestTableVectorizeAsync:
         except TableInsertManyException as e:
             err = e
         assert err is not None
-        assert err.partial_result.inserted_ids == []
+        assert err.inserted_ids == []
 
     @pytest.mark.skipif(
         not IS_ASTRA_DB,

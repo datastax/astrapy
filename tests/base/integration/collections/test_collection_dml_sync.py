@@ -22,7 +22,11 @@ import pytest
 from astrapy.constants import DefaultDocumentType, ReturnDocument, SortMode
 from astrapy.cursors import CursorState
 from astrapy.data_types import DataAPITimestamp, DataAPIVector
-from astrapy.exceptions import CollectionInsertManyException, DataAPIResponseException
+from astrapy.exceptions import (
+    CollectionInsertManyException,
+    DataAPIResponseException,
+    TooManyDocumentsToCountException,
+)
 from astrapy.ids import UUID, ObjectId
 from astrapy.results import CollectionDeleteResult, CollectionInsertOneResult
 from astrapy.utils.api_options import APIOptions, SerdesOptions
@@ -69,12 +73,12 @@ class TestCollectionDMLSync:
         sync_empty_collection.insert_many([{"a": i} for i in range(900)])
         assert sync_empty_collection.count_documents(filter={}, upper_bound=950) == 900
         assert sync_empty_collection.count_documents(filter={}, upper_bound=2000) == 900
-        with pytest.raises(ValueError):
+        with pytest.raises(TooManyDocumentsToCountException):
             sync_empty_collection.count_documents(filter={}, upper_bound=100) == 900
         sync_empty_collection.insert_many([{"b": i} for i in range(200)])
-        with pytest.raises(ValueError):
+        with pytest.raises(TooManyDocumentsToCountException):
             assert sync_empty_collection.count_documents(filter={}, upper_bound=100)
-        with pytest.raises(ValueError):
+        with pytest.raises(TooManyDocumentsToCountException):
             assert sync_empty_collection.count_documents(filter={}, upper_bound=2000)
 
     @pytest.mark.describe("test of collection insert_one, sync")
@@ -755,7 +759,7 @@ class TestCollectionDMLSync:
         )
         assert [hit["tag"] for hit in hits] == ["A", "B", "C"]
 
-        with pytest.raises(ValueError):
+        with pytest.raises(DataAPIResponseException):
             list(
                 sync_empty_collection.find(
                     {},
@@ -1069,8 +1073,10 @@ class TestCollectionDMLSync:
         except CollectionInsertManyException as e:
             err2 = e
         assert err2 is not None
-        assert len(err2.error_descriptors) == 1
-        assert err2.partial_result.inserted_ids == [2 * N]
+        assert len(err2.exceptions) == 1
+        assert isinstance(err2.exceptions[0], DataAPIResponseException)
+        assert len(err2.exceptions[0].error_descriptors) == 1
+        assert err2.inserted_ids == [2 * N]
 
         # ordered insertion [good, bad, good_skipped]
         err3: CollectionInsertManyException | None = None
@@ -1082,8 +1088,10 @@ class TestCollectionDMLSync:
         except CollectionInsertManyException as e:
             err3 = e
         assert err3 is not None
-        assert len(err3.error_descriptors) == 1
-        assert err3.partial_result.inserted_ids == [2 * N + 1]
+        assert len(err3.exceptions) == 1
+        assert isinstance(err3.exceptions[0], DataAPIResponseException)
+        assert len(err3.exceptions[0].error_descriptors) == 1
+        assert err3.inserted_ids == [2 * N + 1]
 
     @pytest.mark.describe("test of collection find_one, sync")
     def test_collection_find_one_sync(

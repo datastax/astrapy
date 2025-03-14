@@ -20,7 +20,7 @@ from typing import Any
 import httpx
 
 
-class DataAPIException(ValueError):
+class DataAPIException(Exception):
     """
     Any exception occurred while issuing requests to the Data API
     and specific to it, such as:
@@ -217,14 +217,6 @@ class DataAPIResponseException(DataAPIException):
             warning_descriptors=warning_descriptors,
             **kwargs,
         )
-
-    # def data_api_response_exception(self) -> DataAPIResponseException:
-    #     """Cast the exception, whatever the subclass, into this parent superclass."""
-
-    #     return DataAPIResponseException(
-    #         text=self.text,
-    #         detailed_error_descriptors=self.detailed_error_descriptors,
-    #     )
 
 
 @dataclass

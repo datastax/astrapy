@@ -20,13 +20,13 @@ from typing import Any
 import httpx
 
 
-class DevOpsAPIException(ValueError):
+class DevOpsAPIException(Exception):
     """
     An exception specific to issuing requests to the DevOps API.
     """
 
     def __init__(self, text: str | None = None):
-        super().__init__(text or "")
+        Exception.__init__(self, text or "")
 
 
 @dataclass

@@ -23,7 +23,7 @@ import json
 import math
 from typing import Any, Callable, Dict, Generic, cast
 
-from astrapy.constants import ROW
+from astrapy.constants import ROW, MapEncodingMode
 from astrapy.data.info.table_descriptor.table_columns import (
     TableColumnTypeDescriptor,
     TableKeyValuedColumnTypeDescriptor,
@@ -567,7 +567,6 @@ def preprocess_table_payload_value(
     value: Any,
     options: FullSerdesOptions,
     map2tuple_checker: Callable[[list[str]], bool] | None,
-    force_maps_become_tuples: bool = False,
 ) -> Any:
     """
     Walk a payload for Tables and apply the necessary and required conversions
@@ -576,15 +575,23 @@ def preprocess_table_payload_value(
 
     # is this a nesting structure?
     if isinstance(value, (dict, DataAPIMap)):
-        maps_become_tuples: bool
-        if not options.encode_maps_as_lists_in_tables:
-            maps_become_tuples = False
-        elif force_maps_become_tuples:
-            maps_become_tuples = True
-        elif map2tuple_checker is None:
-            maps_become_tuples = False
+        maps_can_become_tuples: bool
+        if options.encode_maps_as_lists_in_tables == MapEncodingMode.NEVER:
+            maps_can_become_tuples = False
+        elif options.encode_maps_as_lists_in_tables == MapEncodingMode.DATAAPIMAPS:
+            maps_can_become_tuples = isinstance(value, DataAPIMap)
         else:
-            maps_become_tuples = map2tuple_checker(path)
+            # 'ALWAYS' setting
+            maps_can_become_tuples = True
+
+        maps_become_tuples: bool
+        if maps_can_become_tuples:
+            if map2tuple_checker is None:
+                maps_become_tuples = False
+            else:
+                maps_become_tuples = map2tuple_checker(path)
+        else:
+            maps_become_tuples = False
 
         if maps_become_tuples:
             return [
@@ -594,14 +601,12 @@ def preprocess_table_payload_value(
                         k,
                         options=options,
                         map2tuple_checker=map2tuple_checker,
-                        force_maps_become_tuples=True,
                     ),
                     preprocess_table_payload_value(
                         path + [k],
                         v,
                         options=options,
                         map2tuple_checker=map2tuple_checker,
-                        force_maps_become_tuples=True,
                     ),
                 ]
                 for k, v in value.items()
