@@ -5,9 +5,9 @@ Cursors (class hierarchy revised to accommodate `find_and_rerank`, plus other ch
     - renamed the abstract ur-class 'FindCursor' => `AbstractCursor`
     - `clone` method does not strip the mapping anymore, rather retains it
     - removed the `alive` sugar property (use `cursors.state != CursorState.CLOSED`)
-Support for `find_reranking_providers` method of Database Admin classes:
+Support for "findRerankingProviders" API command in Database Admin classes:
     - classes class hierarchy: `RerankingProviderParameter`, `RerankingProviderModel`, `RerankingProviderToken`, `RerankingProviderAuthentication`, `RerankingProvider`, `FindRerankingProvidersResult` to express the response
-    - TODO method implementation
+    - database admin `find_reranking_providers`/`async_find_reranking_providers` methods implemented.
 Support for findAndRerank in collections:
     - new classes `CollectionLexicalOptions`, `CollectionRerankingOptions`, `RerankingServiceOptions` for create_collection
     - new `lexical` and `reranking` entries in CollectionDefinition (+builder interface management)

@@ -44,6 +44,7 @@ from astrapy.info import (
     AstraDBAdminDatabaseInfo,
     AstraDBDatabaseInfo,
     FindEmbeddingProvidersResult,
+    FindRerankingProvidersResult,
 )
 from astrapy.settings.defaults import (
     DEFAULT_DATA_API_AUTH_HEADER,
@@ -1884,11 +1885,28 @@ class DatabaseAdmin(ABC):
         ...
 
     @abstractmethod
+    def find_reranking_providers(
+        self, *pargs: Any, **kwargs: Any
+    ) -> FindRerankingProvidersResult:
+        """Query the Data API for the available reranking providers."""
+        ...
+
+    @abstractmethod
     async def async_find_embedding_providers(
         self, *pargs: Any, **kwargs: Any
     ) -> FindEmbeddingProvidersResult:
         """
         Query the Data API for the available embedding providers.
+        (Async version of the method.)
+        """
+        ...
+
+    @abstractmethod
+    async def async_find_reranking_providers(
+        self, *pargs: Any, **kwargs: Any
+    ) -> FindRerankingProvidersResult:
+        """
+        Query the Data API for the available reranking providers.
         (Async version of the method.)
         """
         ...
@@ -3117,9 +3135,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             returned by the API about available embedding providers
 
         Example (output abridged and indented for clarity):
-            >>> admin_for_my_db.find_embedding_providers()
+            >>> asyncio.run(admin_for_my_db.find_embedding_providers())
             FindEmbeddingProvidersResult(embedding_providers=..., openai, ...)
-            >>> admin_for_my_db.find_embedding_providers().embedding_providers
+            >>> asyncio.run(
+            ...     admin_for_my_db.find_embedding_providers()
+            ... ).embedding_providers
             {
                 'openai': EmbeddingProvider(
                     display_name='OpenAI',
@@ -3153,6 +3173,137 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         else:
             logger.info("finished findEmbeddingProviders, async")
             return FindEmbeddingProvidersResult._from_dict(fe_response["status"])
+
+    def find_reranking_providers(
+        self,
+        *,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> FindRerankingProvidersResult:
+        """
+        Query the API for the full information on available reranking providers.
+
+        Args:
+            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `database_admin_timeout_ms`.
+            timeout_ms: an alias for `database_admin_timeout_ms`.
+
+        Returns:
+            A `FindRerankingProvidersResult` object with the complete information
+            returned by the API about available reranking providers
+
+        Example (output abridged and indented for clarity):
+            >>> admin_for_my_db.find_reranking_providers()
+            FindRerankingProvidersResult(reranking_providers=nvidia)
+            >>> admin_for_my_db.find_reranking_providers().reranking_providers
+            {
+                'nvidia': RerankingProvider(
+                    <Default>
+                    display_name='Nvidia',
+                    models=[
+                        RerankingProviderModel(
+                            <Default>
+                            name='nvidia/llama-3.2-nv-rerankqa-1b-v2'
+                        ),
+                        ...
+                    ]
+                ),
+                ...
+            }
+        """
+
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+        logger.info("findRerankingProviders")
+        fr_response = self._api_commander.request(
+            payload={"findRerankingProviders": {}},
+            timeout_context=_TimeoutContext(
+                request_ms=_database_admin_timeout_ms, label=_da_label
+            ),
+        )
+        if "rerankingProviders" not in fr_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from findRerankingProviders API command.",
+                raw_response=fr_response,
+            )
+        else:
+            logger.info("finished findRerankingProviders")
+            return FindRerankingProvidersResult._from_dict(fr_response["status"])
+
+    async def async_find_reranking_providers(
+        self,
+        *,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> FindRerankingProvidersResult:
+        """
+        Query the API for the full information on available reranking providers.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `database_admin_timeout_ms`.
+            timeout_ms: an alias for `database_admin_timeout_ms`.
+
+        Returns:
+            A `FindRerankingProvidersResult` object with the complete information
+            returned by the API about available reranking providers
+
+        Example (output abridged and indented for clarity):
+            >>> asyncio.run(admin_for_my_db.find_reranking_providers())
+            FindRerankingProvidersResult(reranking_providers=nvidia)
+            >>> asyncio.run(
+            ...     admin_for_my_db.find_reranking_providers()
+            ... ).reranking_providers
+            {
+                'nvidia': RerankingProvider(
+                    <Default>
+                    display_name='Nvidia',
+                    models=[
+                        RerankingProviderModel(
+                            <Default>
+                            name='nvidia/llama-3.2-nv-rerankqa-1b-v2'
+                        ),
+                        ...
+                    ]
+                ),
+                ...
+            }
+        """
+
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+        logger.info("findRerankingProviders, async")
+        fr_response = await self._api_commander.async_request(
+            payload={"findRerankingProviders": {}},
+            timeout_context=_TimeoutContext(
+                request_ms=_database_admin_timeout_ms, label=_da_label
+            ),
+        )
+        if "rerankingProviders" not in fr_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from findRerankingProviders API command.",
+                raw_response=fr_response,
+            )
+        else:
+            logger.info("finished findRerankingProviders, async")
+            return FindRerankingProvidersResult._from_dict(fr_response["status"])
 
 
 class DataAPIDatabaseAdmin(DatabaseAdmin):
@@ -3877,9 +4028,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             returned by the API about available embedding providers
 
         Example (output abridged and indented for clarity):
-            >>> admin_for_my_db.find_embedding_providers()
+            >>> asyncio.run(admin_for_my_db.find_embedding_providers())
             FindEmbeddingProvidersResult(embedding_providers=..., openai, ...)
-            >>> admin_for_my_db.find_embedding_providers().embedding_providers
+            >>> asyncio.run(
+            ...     admin_for_my_db.find_embedding_providers()
+            ... ).embedding_providers
             {
                 'openai': EmbeddingProvider(
                     display_name='OpenAI',
@@ -3913,6 +4066,137 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         else:
             logger.info("finished findEmbeddingProviders, async")
             return FindEmbeddingProvidersResult._from_dict(fe_response["status"])
+
+    def find_reranking_providers(
+        self,
+        *,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> FindRerankingProvidersResult:
+        """
+        Query the API for the full information on available reranking providers.
+
+        Args:
+            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `database_admin_timeout_ms`.
+            timeout_ms: an alias for `database_admin_timeout_ms`.
+
+        Returns:
+            A `FindRerankingProvidersResult` object with the complete information
+            returned by the API about available reranking providers
+
+        Example (output abridged and indented for clarity):
+            >>> admin_for_my_db.find_reranking_providers()
+            FindRerankingProvidersResult(reranking_providers=nvidia)
+            >>> admin_for_my_db.find_reranking_providers().reranking_providers
+            {
+                'nvidia': RerankingProvider(
+                    <Default>
+                    display_name='Nvidia',
+                    models=[
+                        RerankingProviderModel(
+                            <Default>
+                            name='nvidia/llama-3.2-nv-rerankqa-1b-v2'
+                        ),
+                        ...
+                    ]
+                ),
+                ...
+            }
+        """
+
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+        logger.info("findRerankingProviders")
+        fr_response = self._api_commander.request(
+            payload={"findRerankingProviders": {}},
+            timeout_context=_TimeoutContext(
+                request_ms=_database_admin_timeout_ms, label=_da_label
+            ),
+        )
+        if "rerankingProviders" not in fr_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from findRerankingProviders API command.",
+                raw_response=fr_response,
+            )
+        else:
+            logger.info("finished findRerankingProviders")
+            return FindRerankingProvidersResult._from_dict(fr_response["status"])
+
+    async def async_find_reranking_providers(
+        self,
+        *,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> FindRerankingProvidersResult:
+        """
+        Query the API for the full information on available reranking providers.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `database_admin_timeout_ms`.
+            timeout_ms: an alias for `database_admin_timeout_ms`.
+
+        Returns:
+            A `FindRerankingProvidersResult` object with the complete information
+            returned by the API about available reranking providers
+
+        Example (output abridged and indented for clarity):
+            >>> asyncio.run(admin_for_my_db.find_reranking_providers())
+            FindRerankingProvidersResult(reranking_providers=nvidia)
+            >>> asyncio.run(
+            ...     admin_for_my_db.find_reranking_providers()
+            ... ).reranking_providers
+            {
+                'nvidia': RerankingProvider(
+                    <Default>
+                    display_name='Nvidia',
+                    models=[
+                        RerankingProviderModel(
+                            <Default>
+                            name='nvidia/llama-3.2-nv-rerankqa-1b-v2'
+                        ),
+                        ...
+                    ]
+                ),
+                ...
+            }
+        """
+
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+        logger.info("findRerankingProviders, async")
+        fr_response = await self._api_commander.async_request(
+            payload={"findRerankingProviders": {}},
+            timeout_context=_TimeoutContext(
+                request_ms=_database_admin_timeout_ms, label=_da_label
+            ),
+        )
+        if "rerankingProviders" not in fr_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from findRerankingProviders API command.",
+                raw_response=fr_response,
+            )
+        else:
+            logger.info("finished findRerankingProviders, async")
+            return FindRerankingProvidersResult._from_dict(fr_response["status"])
 
 
 __all__ = [
