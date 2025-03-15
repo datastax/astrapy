@@ -27,7 +27,15 @@ from astrapy.data.info.database_info import (
     AstraDBAdminDatabaseInfo,
     AstraDBDatabaseInfo,
 )
-from astrapy.data.info.reranking import RerankingServiceOptions
+from astrapy.data.info.reranking import (
+    FindRerankingProvidersResult,
+    RerankingProvider,
+    RerankingProviderAuthentication,
+    RerankingProviderModel,
+    RerankingProviderParameter,
+    RerankingProviderToken,
+    RerankingServiceOptions,
+)
 from astrapy.data.info.table_descriptor.table_altering import (
     AlterTableAddColumns,
     AlterTableAddVectorize,
@@ -99,8 +107,14 @@ __all__ = [
     "EmbeddingProviderParameter",
     "EmbeddingProviderToken",
     "FindEmbeddingProvidersResult",
+    "FindRerankingProvidersResult",
     "ListTableDefinition",
     "ListTableDescriptor",
+    "RerankingProvider",
+    "RerankingProviderAuthentication",
+    "RerankingProviderModel",
+    "RerankingProviderParameter",
+    "RerankingProviderToken",
     "RerankingServiceOptions",
     "TableAPIIndexSupportDescriptor",
     "TableAPISupportDescriptor",
