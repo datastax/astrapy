@@ -37,7 +37,7 @@ class TableIndexType(StrEnum):
     """
 
     REGULAR = "regular"
-    TEXT_ANALYSED = "text-analysed"
+    TEXT = "text"
     UNKNOWN = "UNKNOWN"
     VECTOR = "vector"
 
