@@ -18,11 +18,14 @@ import base64
 from abc import ABC, abstractmethod
 from typing import Any
 
+from typing_extensions import override
+
 from astrapy.settings.defaults import (
     EMBEDDING_HEADER_API_KEY,
     EMBEDDING_HEADER_AWS_ACCESS_ID,
     EMBEDDING_HEADER_AWS_SECRET_ID,
     FIXED_SECRET_PLACEHOLDER,
+    RERANKING_HEADER_API_KEY,
     SECRETS_REDACT_CHAR,
     SECRETS_REDACT_ENDING,
     SECRETS_REDACT_ENDING_LENGTH,
@@ -64,6 +67,24 @@ def coerce_possible_embedding_headers_provider(
         return _UNSET
     else:
         return coerce_embedding_headers_provider(embedding_api_key)
+
+
+def coerce_reranking_headers_provider(
+    reranking_api_key: str | RerankingHeadersProvider,
+) -> RerankingHeadersProvider:
+    if isinstance(reranking_api_key, RerankingHeadersProvider):
+        return reranking_api_key
+    else:
+        return RerankingAPIKeyHeaderProvider(reranking_api_key)
+
+
+def coerce_possible_reranking_headers_provider(
+    reranking_api_key: str | RerankingHeadersProvider | UnsetType,
+) -> RerankingHeadersProvider | UnsetType:
+    if isinstance(reranking_api_key, UnsetType):
+        return _UNSET
+    else:
+        return coerce_reranking_headers_provider(reranking_api_key)
 
 
 def _redact_secret(secret: str, max_length: int, hide_if_short: bool = True) -> str:
@@ -171,12 +192,14 @@ class StaticTokenProvider(TokenProvider):
     def __init__(self, token: str | None) -> None:
         self.token = token
 
+    @override
     def __repr__(self) -> str:
         if self.token is None:
             return "(none)"
         else:
             return f"{self.__class__.__name__}({_redact_secret(self.token, 15)})"
 
+    @override
     def get_token(self) -> str | None:
         return self.token
 
@@ -212,6 +235,7 @@ class UsernamePasswordTokenProvider(TokenProvider):
             f"{self.PREFIX}:{self._b64(self.username)}:{self._b64(self.password)}"
         )
 
+    @override
     def __repr__(self) -> str:
         _r_username = _redact_secret(self.username, 6)
         _r_password = FIXED_SECRET_PLACEHOLDER
@@ -221,24 +245,24 @@ class UsernamePasswordTokenProvider(TokenProvider):
     def _b64(cleartext: str) -> str:
         return base64.b64encode(cleartext.encode()).decode()
 
+    @override
     def get_token(self) -> str:
         return self.token
 
 
-class EmbeddingHeadersProvider(ABC):
+class HeadersProvider(ABC):
     """
-    Abstract base class for a provider of embedding-related headers (such as API Keys).
+    Abstract base class for a generic "headers provider", which supplies authentication
+    for some service (embeddings, reranking, ...) in the form of a dictionary of
+    (zero,) one or more HTTP headers (name, value).
+
     The relevant method in this interface is returning a dict to use as
     (part of the) headers in Data API requests for a collection.
-
-    This class captures the fact that, depending on the embedding provider for
-    the collection, there may be zero, one *or more* headers to be passed
-    if relying on the HEADERS auth method for Vectorize.
     """
 
     def __eq__(self, other: Any) -> bool:
-        my_headers = self.get_headers()
-        if isinstance(other, EmbeddingHeadersProvider):
+        if isinstance(other, HeadersProvider):
+            my_headers = self.get_headers()
             return other.get_headers() == my_headers
         else:
             return False
@@ -260,6 +284,18 @@ class EmbeddingHeadersProvider(ABC):
         to the Data API.
         """
         ...
+
+
+class EmbeddingHeadersProvider(HeadersProvider):
+    """
+    Abstract class for a provider of embedding-related headers (such as API Keys).
+
+    This class captures the fact that, depending on the embedding provider for
+    the collection, there may be zero, one *or more* headers to be passed
+    if relying on the HEADERS auth method for Vectorize.
+    """
+
+    pass
 
 
 class EmbeddingAPIKeyHeaderProvider(EmbeddingHeadersProvider):
@@ -306,12 +342,17 @@ class EmbeddingAPIKeyHeaderProvider(EmbeddingHeadersProvider):
     def __init__(self, embedding_api_key: str | None) -> None:
         self.embedding_api_key = embedding_api_key
 
+    @override
     def __repr__(self) -> str:
         if self.embedding_api_key is None:
             return f"{self.__class__.__name__}(empty)"
         else:
-            return f'{self.__class__.__name__}("{_redact_secret(self.embedding_api_key, 8)}")'
+            return (
+                f"{self.__class__.__name__}"
+                f'("{_redact_secret(self.embedding_api_key, 8)}")'
+            )
 
+    @override
     def get_headers(self) -> dict[str, str]:
         if self.embedding_api_key is not None:
             return {EMBEDDING_HEADER_API_KEY: self.embedding_api_key}
@@ -368,6 +409,7 @@ class AWSEmbeddingHeadersProvider(EmbeddingHeadersProvider):
         self.embedding_access_id = embedding_access_id
         self.embedding_secret_id = embedding_secret_id
 
+    @override
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}(embedding_access_id="
@@ -375,8 +417,84 @@ class AWSEmbeddingHeadersProvider(EmbeddingHeadersProvider):
             f'embedding_secret_id="{_redact_secret(self.embedding_secret_id, 6)}")'
         )
 
+    @override
     def get_headers(self) -> dict[str, str]:
         return {
             EMBEDDING_HEADER_AWS_ACCESS_ID: self.embedding_access_id,
             EMBEDDING_HEADER_AWS_SECRET_ID: self.embedding_secret_id,
         }
+
+
+class RerankingHeadersProvider(HeadersProvider):
+    """
+    Abstract class for a provider of reranking-related authentication header(s).
+
+    This class captures the fact that, depending on the reranker provider for
+    the collection, there may be zero, one *or more* headers to be passed
+    if relying on the HEADERS auth method for Vectorize.
+    """
+
+    pass
+
+
+class RerankingAPIKeyHeaderProvider(RerankingHeadersProvider):
+    """
+    A "pass-through" header provider representing the single-header
+    (typically "X-Rerank-Api-Key") auth scheme, for use with the (single-header)
+    reranking authentication scheme.
+
+    Args:
+        reranking_api_key: a string that will be the value for the header.
+            If None is passed, this results in a no-headers provider (amounting
+            to no reranking authentication being set through request headers).
+
+    Example:
+        >>> TODO code example
+        >>> from astrapy import DataAPIClient
+        >>> from astrapy.authentication import EmbeddingAPIKeyHeaderProvider
+        >>> from astrapy.info import CollectionDefinition, VectorServiceOptions
+        >>> my_emb_api_key = EmbeddingAPIKeyHeaderProvider("abc012...")
+        >>> service_options = VectorServiceOptions(
+        ...     provider="a-certain-provider",
+        ...     model_name="some-embedding-model",
+        ... )
+        >>>
+        >>> database = DataAPIClient().get_database(
+        ...     "https://01234567-...-eu-west1.apps.datastax.com",
+        ...     token="AstraCS:...",
+        ... )
+        >>> collection = database.create_collection(
+        ...     "vectorize_aws_collection",
+        ...     definition=(
+        ...         CollectionDefinition.builder()
+        ...         .set_vector_service(service_options)
+        ...         .build()
+        ...     ),
+        ...     embedding_api_key=my_emb_api_key,
+        ... )
+        >>> # likewise:
+        >>> collection_b = database.get_collection(
+        ...     "vectorize_collection",
+        ...     embedding_api_key=my_emb_api_key,
+        ... )
+    """
+
+    def __init__(self, reranking_api_key: str | None) -> None:
+        self.reranking_api_key = reranking_api_key
+
+    @override
+    def __repr__(self) -> str:
+        if self.reranking_api_key is None:
+            return f"{self.__class__.__name__}(empty)"
+        else:
+            return (
+                f"{self.__class__.__name__}"
+                f'("{_redact_secret(self.reranking_api_key, 6)}")'
+            )
+
+    @override
+    def get_headers(self) -> dict[str, str]:
+        if self.reranking_api_key is not None:
+            return {RERANKING_HEADER_API_KEY: self.reranking_api_key}
+        else:
+            return {}
