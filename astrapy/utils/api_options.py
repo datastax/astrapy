@@ -21,9 +21,12 @@ from typing import Iterable, Sequence
 from astrapy.authentication import (
     EmbeddingAPIKeyHeaderProvider,
     EmbeddingHeadersProvider,
+    RerankingAPIKeyHeaderProvider,
+    RerankingHeadersProvider,
     StaticTokenProvider,
     TokenProvider,
     coerce_possible_embedding_headers_provider,
+    coerce_possible_reranking_headers_provider,
     coerce_possible_token_provider,
 )
 from astrapy.constants import CallerType, Environment, MapEncodingMode
@@ -96,7 +99,7 @@ class TimeoutOptions:
             Defaults to 30 s.
         database_admin_timeout_ms: a timeout for all database-related admin operations.
             Creating/dropping a database, listing databases, getting database info,
-            querying for the available embedding providers, are all subject
+            querying for the available embedding providers, and others, are all subject
             to this timeout. The longest-running operations in this class are
             the creation and the destruction of a database: if called with the
             `wait_until_complete=True` parameter, these can last several minutes.
@@ -167,7 +170,7 @@ class FullTimeoutOptions(TimeoutOptions):
             Defaults to 30 s.
         database_admin_timeout_ms: a timeout for all database-related admin operations.
             Creating/dropping a database, listing databases, getting database info,
-            querying for the available embedding providers, are all subject
+            querying for the available embedding providers, and others, are all subject
             to this timeout. The longest-running operations in this class are
             the creation and the destruction of a database: if called with the
             `wait_until_complete=True` parameter, these can last several minutes.
@@ -833,6 +836,11 @@ class APIOptions:
             Passing a string, or None, to this constructor parameter will get it
             automatically converted into the appropriate EmbeddingHeadersProvider
             object.
+        reranking_api_key: an instance of RerankingHeadersProvider should it be needed
+            for reranking-related data operations (used by Tables and Collections).
+            Passing a string, or None, to this constructor parameter will get it
+            automatically converted into the appropriate RerankingHeadersProvider
+            object.
         timeout_options: an instance of `TimeoutOptions` (see) to control the timeout
             behavior for the various kinds of operations involving the Data/DevOps API.
         serdes_options: an instance of `SerdesOptions` (see) to customize the
@@ -919,6 +927,7 @@ class APIOptions:
     redacted_header_names: set[str] | UnsetType = _UNSET
     token: TokenProvider | UnsetType = _UNSET
     embedding_api_key: EmbeddingHeadersProvider | UnsetType = _UNSET
+    reranking_api_key: RerankingHeadersProvider | UnsetType = _UNSET
 
     timeout_options: TimeoutOptions | UnsetType = _UNSET
     serdes_options: SerdesOptions | UnsetType = _UNSET
@@ -934,6 +943,7 @@ class APIOptions:
         redacted_header_names: Iterable[str] | UnsetType = _UNSET,
         token: str | TokenProvider | UnsetType = _UNSET,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         timeout_options: TimeoutOptions | UnsetType = _UNSET,
         serdes_options: SerdesOptions | UnsetType = _UNSET,
         data_api_url_options: DataAPIURLOptions | UnsetType = _UNSET,
@@ -952,6 +962,9 @@ class APIOptions:
         self.token = coerce_possible_token_provider(token)
         self.embedding_api_key = coerce_possible_embedding_headers_provider(
             embedding_api_key,
+        )
+        self.reranking_api_key = coerce_possible_reranking_headers_provider(
+            reranking_api_key,
         )
         self.timeout_options = timeout_options
         self.serdes_options = serdes_options
@@ -1006,6 +1019,9 @@ class APIOptions:
                 None
                 if isinstance(self.embedding_api_key, UnsetType)
                 else f"embedding_api_key={self.embedding_api_key}",
+                None
+                if isinstance(self.reranking_api_key, UnsetType)
+                else f"reranking_api_key={self.reranking_api_key}",
                 None
                 if isinstance(self.timeout_options, UnsetType)
                 else f"timeout_options={self.timeout_options}",
@@ -1073,6 +1089,11 @@ class FullAPIOptions(APIOptions):
             Passing a string, or None, to this constructor parameter will get it
             automatically converted into the appropriate EmbeddingHeadersProvider
             object.
+        reranking_api_key: an instance of RerankingHeadersProvider should it be needed
+            for reranking-related data operations (used by Tables and Collections).
+            Passing a string, or None, to this constructor parameter will get it
+            automatically converted into the appropriate RerankingHeadersProvider
+            object.
         timeout_options: an instance of `TimeoutOptions` (see) to control the timeout
             behavior for the various kinds of operations involving the Data/DevOps API.
         serdes_options: an instance of `SerdesOptions` (see) to customize the
@@ -1093,6 +1114,7 @@ class FullAPIOptions(APIOptions):
     redacted_header_names: set[str]
     token: TokenProvider
     embedding_api_key: EmbeddingHeadersProvider
+    reranking_api_key: RerankingHeadersProvider
 
     timeout_options: FullTimeoutOptions
     serdes_options: FullSerdesOptions
@@ -1109,6 +1131,7 @@ class FullAPIOptions(APIOptions):
         redacted_header_names: set[str],
         token: str | TokenProvider,
         embedding_api_key: str | EmbeddingHeadersProvider,
+        reranking_api_key: str | RerankingHeadersProvider,
         timeout_options: FullTimeoutOptions,
         serdes_options: FullSerdesOptions,
         data_api_url_options: FullDataAPIURLOptions,
@@ -1122,6 +1145,7 @@ class FullAPIOptions(APIOptions):
             redacted_header_names=redacted_header_names,
             token=token,
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
             timeout_options=timeout_options,
             serdes_options=serdes_options,
             data_api_url_options=data_api_url_options,
@@ -1146,6 +1170,9 @@ class FullAPIOptions(APIOptions):
                 _token_desc,
                 f"embedding_api_key={self.embedding_api_key}"
                 if self.embedding_api_key
+                else None,
+                f"reranking_api_key={self.reranking_api_key}"
+                if self.reranking_api_key
                 else None,
                 "...",
             )
@@ -1246,6 +1273,11 @@ class FullAPIOptions(APIOptions):
                 if not isinstance(other.embedding_api_key, UnsetType)
                 else self.embedding_api_key
             ),
+            reranking_api_key=(
+                other.reranking_api_key
+                if not isinstance(other.reranking_api_key, UnsetType)
+                else self.reranking_api_key
+            ),
             timeout_options=timeout_options,
             serdes_options=serdes_options,
             data_api_url_options=data_api_url_options,
@@ -1301,6 +1333,7 @@ def defaultAPIOptions(environment: str) -> FullAPIOptions:
         redacted_header_names=set(),
         token=StaticTokenProvider(None),
         embedding_api_key=EmbeddingAPIKeyHeaderProvider(None),
+        reranking_api_key=RerankingAPIKeyHeaderProvider(None),
         timeout_options=defaultTimeoutOptions,
         serdes_options=defaultSerdesOptions,
         data_api_url_options=defaultDataAPIURLOptions,
