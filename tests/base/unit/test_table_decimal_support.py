@@ -96,7 +96,7 @@ class TestTableDecimalSupportUnit:
                 custom_datatypes_in_reading=colltype_custom,
                 unroll_iterables_to_lists=True,
                 use_decimals_in_collections=True,
-                encode_maps_as_lists_in_tables=False,
+                encode_maps_as_lists_in_tables="never",
                 accept_naive_datetimes=False,
                 datetime_tzinfo=None,
             ),

@@ -5,6 +5,9 @@ Cursors (class hierarchy revised to accommodate `find_and_rerank`, plus other ch
     - renamed the abstract ur-class 'FindCursor' => `AbstractCursor`
     - `clone` method does not strip the mapping anymore, rather retains it
     - removed the `alive` sugar property (use `cursors.state != CursorState.CLOSED`)
+Support for reranker header-based authentication:
+    - new authentication classes `RerankingHeadersProvider`, `RerankingAPIKeyHeaderProvider`
+    - introduced `reranking_api_key` parameter for APIOptions, `{get|create}_{table|collection}` database methods, collection/table `with_options` and `to_[a]sync` methods
 Support for "findRerankingProviders" API command in Database Admin classes:
     - classes class hierarchy: `RerankingProviderParameter`, `RerankingProviderModel`, `RerankingProviderToken`, `RerankingProviderAuthentication`, `RerankingProvider`, `FindRerankingProvidersResult` to express the response
     - database admin `find_reranking_providers`/`async_find_reranking_providers` methods implemented.

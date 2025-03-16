@@ -67,7 +67,10 @@ from astrapy.utils.api_options import APIOptions, FullAPIOptions
 from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
-    from astrapy.authentication import EmbeddingHeadersProvider
+    from astrapy.authentication import (
+        EmbeddingHeadersProvider,
+        RerankingHeadersProvider,
+    )
     from astrapy.cursors import AsyncTableFindCursor, TableFindCursor
     from astrapy.info import ListTableDefinition
 
@@ -257,6 +260,7 @@ class Table(Generic[ROW]):
         self._commander_headers = {
             **{DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token()},
             **self.api_options.embedding_api_key.get_headers(),
+            **self.api_options.reranking_api_key.get_headers(),
             **self.api_options.database_additional_headers,
         }
         self._api_commander = self._get_api_commander()
@@ -323,10 +327,12 @@ class Table(Generic[ROW]):
         self: Table[ROW],
         *,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         arg_api_options = APIOptions(
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
         )
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
@@ -342,6 +348,7 @@ class Table(Generic[ROW]):
         self: Table[ROW],
         *,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         """
@@ -357,6 +364,15 @@ class Table(Generic[ROW]):
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the table.
+                If a reranker is configured for the table, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the table
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             api_options: any additional options to set for the clone, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -373,6 +389,7 @@ class Table(Generic[ROW]):
 
         return self._copy(
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
             api_options=api_options,
         )
 
@@ -380,6 +397,7 @@ class Table(Generic[ROW]):
         self: Table[ROW],
         *,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         """
@@ -398,6 +416,15 @@ class Table(Generic[ROW]):
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the table.
+                If a reranker is configured for the table, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the table
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             api_options: any additional options to set for the result, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -416,6 +443,7 @@ class Table(Generic[ROW]):
 
         arg_api_options = APIOptions(
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
         )
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
@@ -2981,6 +3009,7 @@ class AsyncTable(Generic[ROW]):
         self._commander_headers = {
             **{DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token()},
             **self.api_options.embedding_api_key.get_headers(),
+            **self.api_options.reranking_api_key.get_headers(),
             **self.api_options.database_additional_headers,
         }
         self._api_commander = self._get_api_commander()
@@ -3063,10 +3092,12 @@ class AsyncTable(Generic[ROW]):
         self: AsyncTable[ROW],
         *,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         arg_api_options = APIOptions(
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
         )
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
@@ -3082,6 +3113,7 @@ class AsyncTable(Generic[ROW]):
         self: AsyncTable[ROW],
         *,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         """
@@ -3097,6 +3129,15 @@ class AsyncTable(Generic[ROW]):
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the table.
+                If a reranker is configured for the table, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the table
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             api_options: any additional options to set for the clone, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -3113,6 +3154,7 @@ class AsyncTable(Generic[ROW]):
 
         return self._copy(
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
             api_options=api_options,
         )
 
@@ -3120,6 +3162,7 @@ class AsyncTable(Generic[ROW]):
         self: AsyncTable[ROW],
         *,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         """
@@ -3138,6 +3181,15 @@ class AsyncTable(Generic[ROW]):
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the table.
+                If a reranker is configured for the table, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the table
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             api_options: any additional options to set for the result, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -3156,6 +3208,7 @@ class AsyncTable(Generic[ROW]):
 
         arg_api_options = APIOptions(
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
         )
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options

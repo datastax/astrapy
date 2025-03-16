@@ -82,6 +82,7 @@ DefaultAsyncTable = AsyncTable[Dict[str, Any]]
 TEST_COLLECTION_INSTANCE_NAME = "test_coll_instance"
 TEST_COLLECTION_NAME = "id_test_collection"
 TEST_SERVICE_COLLECTION_NAME = "test_indepth_vectorize_collection"
+TEST_TABLE_INSTANCE_NAME = "test_tbl_instance"
 
 
 _NaN = object()
@@ -236,6 +237,23 @@ def async_empty_service_collection(
 ) -> Iterable[DefaultAsyncCollection]:
     """Emptied for each test function"""
     yield sync_empty_service_collection.to_async()
+
+
+@pytest.fixture(scope="session")
+def sync_table_instance(
+    data_api_credentials_kwargs: DataAPICredentials,
+    sync_database: Database,
+) -> Iterable[DefaultTable]:
+    """Just an instance of the class, no DB-level stuff."""
+    yield sync_database.get_table(TEST_TABLE_INSTANCE_NAME)
+
+
+@pytest.fixture(scope="function")
+def async_table_instance(
+    sync_table_instance: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """Just an instance of the class, no DB-level stuff."""
+    yield sync_table_instance.to_async()
 
 
 @pytest.fixture(scope="session")
