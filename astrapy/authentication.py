@@ -449,33 +449,31 @@ class RerankingAPIKeyHeaderProvider(RerankingHeadersProvider):
             to no reranking authentication being set through request headers).
 
     Example:
-        >>> TODO code example
         >>> from astrapy import DataAPIClient
-        >>> from astrapy.authentication import EmbeddingAPIKeyHeaderProvider
-        >>> from astrapy.info import CollectionDefinition, VectorServiceOptions
-        >>> my_emb_api_key = EmbeddingAPIKeyHeaderProvider("abc012...")
-        >>> service_options = VectorServiceOptions(
+        >>> from astrapy.authentication import RerankingAPIKeyHeaderProvider
+        >>> from astrapy.info import CollectionDefinition, CollectionRerankingOptions, RerankingServiceOptions
+        >>> my_rrk_api_key = RerankingAPIKeyHeaderProvider("xyz987...")
+        >>> service_options = RerankingServiceOptions(
         ...     provider="a-certain-provider",
-        ...     model_name="some-embedding-model",
+        ...     model_name="some-reranking-model",
         ... )
-        >>>
         >>> database = DataAPIClient().get_database(
         ...     "https://01234567-...-eu-west1.apps.datastax.com",
         ...     token="AstraCS:...",
         ... )
         >>> collection = database.create_collection(
-        ...     "vectorize_aws_collection",
+        ...     "my_reranking_collection",
         ...     definition=(
         ...         CollectionDefinition.builder()
-        ...         .set_vector_service(service_options)
+        ...         .set_rerank(CollectionRerankingOptions(service=service_options))
         ...         .build()
         ...     ),
-        ...     embedding_api_key=my_emb_api_key,
+        ...     reranking_api_key=my_rrk_api_key,
         ... )
         >>> # likewise:
         >>> collection_b = database.get_collection(
-        ...     "vectorize_collection",
-        ...     embedding_api_key=my_emb_api_key,
+        ...     "my_reranking_collection",
+        ...     reranking_api_key=my_rrk_api_key,
         ... )
     """
 
