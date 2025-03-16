@@ -20,6 +20,7 @@ import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
 from astrapy.constants import CallerType
+from astrapy.settings.defaults import RERANKING_HEADER_API_KEY
 from astrapy.utils.api_options import APIOptions, FullAPIOptions, defaultAPIOptions
 from astrapy.utils.unset import _UNSET, UnsetType
 
@@ -232,3 +233,15 @@ class TestCollectionsAsync:
         assert col4.keyspace == data_api_credentials_info["secondary_keyspace"]
         assert col1 == col3
         assert col2 == col4
+
+    @pytest.mark.describe(
+        "test collection reranking API key in commander headers, async"
+    )
+    async def test_collection_rerankingapikey_in_headers_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        col_0 = async_database.get_collection("q")
+        col_1 = async_database.get_collection("q", reranking_api_key="RAK")
+        assert RERANKING_HEADER_API_KEY not in col_0._api_commander.full_headers
+        assert col_1._api_commander.full_headers[RERANKING_HEADER_API_KEY] == "RAK"
