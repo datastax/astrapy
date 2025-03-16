@@ -260,8 +260,8 @@ class CollectionDefinition:
         vector: an optional CollectionVectorOptions object.
         lexical: A `CollectionLexicalOptions` object encoding the desired
             "lexical" settings. If omitted, the Data API defaults apply.
-        reranking: A `CollectionRerankingOptions` object encoding the desired
-            "reranking" settings. If omitted, the Data API defaults apply.
+        rerank: A `CollectionRerankingOptions` object encoding the desired
+            "rerank" settings. If omitted, the Data API defaults apply.
         indexing: an optional dictionary with the "indexing" collection properties.
             This is in the form of a dictionary such as `{"deny": [...]}`
             or `{"allow": [...]}`, with a list of document paths, or alternatively
@@ -312,7 +312,7 @@ class CollectionDefinition:
 
     vector: CollectionVectorOptions | None = None
     lexical: CollectionLexicalOptions | None = None
-    reranking: CollectionRerankingOptions | None = None
+    rerank: CollectionRerankingOptions | None = None
     indexing: dict[str, Any] | None = None
     default_id: CollectionDefaultIDOptions | None = None
 
@@ -322,9 +322,7 @@ class CollectionDefinition:
             for pc in [
                 None if self.vector is None else f"vector={self.vector.__repr__()}",
                 None if self.lexical is None else f"lexical={self.lexical.__repr__()}",
-                None
-                if self.reranking is None
-                else f"reranking={self.reranking.__repr__()}",
+                None if self.rerank is None else f"rerank={self.rerank.__repr__()}",
                 (
                     None
                     if self.indexing is None
@@ -348,9 +346,7 @@ class CollectionDefinition:
             for k, v in {
                 "vector": None if self.vector is None else self.vector.as_dict(),
                 "lexical": None if self.lexical is None else self.lexical.as_dict(),
-                "reranking": None
-                if self.reranking is None
-                else self.reranking.as_dict(),
+                "rerank": None if self.rerank is None else self.rerank.as_dict(),
                 "indexing": self.indexing,
                 "defaultId": (
                     None if self.default_id is None else self.default_id.as_dict()
@@ -368,12 +364,12 @@ class CollectionDefinition:
         """
 
         _warn_residual_keys(
-            cls, raw_dict, {"vector", "lexical", "reranking", "indexing", "defaultId"}
+            cls, raw_dict, {"vector", "lexical", "rerank", "indexing", "defaultId"}
         )
         return CollectionDefinition(
             vector=CollectionVectorOptions._from_dict(raw_dict.get("vector")),
             lexical=CollectionLexicalOptions._from_dict(raw_dict.get("lexical")),
-            reranking=CollectionRerankingOptions._from_dict(raw_dict.get("reranking")),
+            rerank=CollectionRerankingOptions._from_dict(raw_dict.get("rerank")),
             indexing=raw_dict.get("indexing"),
             default_id=CollectionDefaultIDOptions._from_dict(raw_dict.get("defaultId")),
         )
@@ -436,7 +432,7 @@ class CollectionDefinition:
             return CollectionDefinition(
                 vector=self.vector,
                 lexical=self.lexical,
-                reranking=self.reranking,
+                rerank=self.rerank,
                 indexing=None,
                 default_id=self.default_id,
             )
@@ -451,7 +447,7 @@ class CollectionDefinition:
         return CollectionDefinition(
             vector=self.vector,
             lexical=self.lexical,
-            reranking=self.reranking,
+            rerank=self.rerank,
             indexing={indexing_mode: indexing_target},
             default_id=self.default_id,
         )
@@ -478,7 +474,7 @@ class CollectionDefinition:
             return CollectionDefinition(
                 vector=self.vector,
                 lexical=self.lexical,
-                reranking=self.reranking,
+                rerank=self.rerank,
                 indexing=self.indexing,
                 default_id=None,
             )
@@ -486,7 +482,7 @@ class CollectionDefinition:
         return CollectionDefinition(
             vector=self.vector,
             lexical=self.lexical,
-            reranking=self.reranking,
+            rerank=self.rerank,
             indexing=self.indexing,
             default_id=CollectionDefaultIDOptions(
                 default_id_type=default_id_type,
@@ -521,7 +517,7 @@ class CollectionDefinition:
                 service=_vector_options.service,
             ),
             lexical=self.lexical,
-            reranking=self.reranking,
+            rerank=self.rerank,
             indexing=self.indexing,
             default_id=self.default_id,
         )
@@ -555,7 +551,7 @@ class CollectionDefinition:
                 service=_vector_options.service,
             ),
             lexical=self.lexical,
-            reranking=self.reranking,
+            rerank=self.rerank,
             indexing=self.indexing,
             default_id=self.default_id,
         )
@@ -590,7 +586,7 @@ class CollectionDefinition:
                 service=_vector_options.service,
             ),
             lexical=self.lexical,
-            reranking=self.reranking,
+            rerank=self.rerank,
             indexing=self.indexing,
             default_id=self.default_id,
         )
@@ -681,7 +677,7 @@ class CollectionDefinition:
                     service=provider,
                 ),
                 lexical=self.lexical,
-                reranking=self.reranking,
+                rerank=self.rerank,
                 indexing=self.indexing,
                 default_id=self.default_id,
             )
@@ -714,12 +710,12 @@ class CollectionDefinition:
                     service=new_service,
                 ),
                 lexical=self.lexical,
-                reranking=self.reranking,
+                rerank=self.rerank,
                 indexing=self.indexing,
                 default_id=self.default_id,
             )
 
-    def set_reranking(
+    def set_rerank(
         self,
         provider: str | CollectionRerankingOptions | RerankingServiceOptions | None,
         model_name: str | None = None,
@@ -730,7 +726,7 @@ class CollectionDefinition:
     ) -> CollectionDefinition:
         """
         Return a new collection definition object with a new setting for the
-        collection's reranking service.
+        collection's rerank service.
         This method is for use within the fluent interface for progressively
         building a complete collection definition.
 
@@ -741,7 +737,7 @@ class CollectionDefinition:
                 all desired properties for a reranking service;
                 (2) a `CollectionRerankingOptions`, that is likewise being set
                 as the collection reranking configuration; or (3) it can be None,
-                to signify removal of the entire reranking setting; alternatively,
+                to signify removal of the entire rerank setting; alternatively,
                 (4) it can be a string, the reranking provider name as seen in the
                 response from the database's `find_rerank_providers` method. In the
                 latter case, the other parameters should also be provided as needed.
@@ -769,13 +765,13 @@ class CollectionDefinition:
             >>>
             >>> zero = CollectionDefinition.builder()
             >>>
-            >>> svc1 = zero.set_reranking(
+            >>> svc1 = zero.set_rerank(
             ...     "myProvider",
             ...     "myModelName",
             ...     parameters={"p": "z"},
             ... )
             >>> print(svc1.build().as_dict())
-            {'reranking': {'enabled': True, 'service': {'provider': 'myProvider', 'modelName': 'myModelName', 'parameters': {'p': 'z'}}}}
+            {'rerank': {'enabled': True, 'service': {'provider': 'myProvider', 'modelName': 'myModelName', 'parameters': {'p': 'z'}}}}
             >>>
             >>> myRrkSvcOpt = RerankingServiceOptions(
             ...     provider="myProvider",
@@ -784,7 +780,7 @@ class CollectionDefinition:
             ... )
             >>> svc2 = zero.set_reranking(myRrkSvcOpt).build()
             >>> print(svc2.as_dict())
-            {'reranking': {'enabled': True, 'service': {'provider': 'myProvider', 'modelName': 'myModelName', 'parameters': {'p': 'z'}}}}
+            {'rerank': {'enabled': True, 'service': {'provider': 'myProvider', 'modelName': 'myModelName', 'parameters': {'p': 'z'}}}}
             >>>
             >>> myColRrkOpt = CollectionRerankingOptions(
             ...     enabled=False,
@@ -792,9 +788,9 @@ class CollectionDefinition:
             ... )
             >>> svc3 = zero.set_reranking(myColRrkOpt).build()
             >>> print(svc3.as_dict())
-            {'reranking': {'enabled': False}}
+            {'rerank': {'enabled': False}}
             >>>
-            >>> reset = svc1.set_reranking(None).build()
+            >>> reset = svc1.set_rerank(None).build()
             >>> print(reset.as_dict())
             {}
         """
@@ -815,7 +811,7 @@ class CollectionDefinition:
             return CollectionDefinition(
                 vector=self.vector,
                 lexical=self.lexical,
-                reranking=CollectionRerankingOptions(
+                rerank=CollectionRerankingOptions(
                     enabled=enabled,
                     service=provider,
                 ),
@@ -838,7 +834,7 @@ class CollectionDefinition:
             return CollectionDefinition(
                 vector=self.vector,
                 lexical=self.lexical,
-                reranking=provider,
+                rerank=provider,
                 indexing=self.indexing,
                 default_id=self.default_id,
             )
@@ -852,7 +848,7 @@ class CollectionDefinition:
                 ):
                     msg = (
                         "Parameters 'model_name', 'authentication' and 'parameters' "
-                        "cannot be passed when unsetting the reranking."
+                        "cannot be passed when unsetting the rerank."
                     )
                     raise ValueError(msg)
                 new_service = None
@@ -869,7 +865,7 @@ class CollectionDefinition:
             return CollectionDefinition(
                 vector=self.vector,
                 lexical=self.lexical,
-                reranking=new_service,
+                rerank=new_service,
                 indexing=self.indexing,
                 default_id=self.default_id,
             )
@@ -928,7 +924,7 @@ class CollectionDefinition:
             return CollectionDefinition(
                 vector=self.vector,
                 lexical=None,
-                reranking=self.reranking,
+                rerank=self.rerank,
                 indexing=self.indexing,
                 default_id=self.default_id,
             )
@@ -942,7 +938,7 @@ class CollectionDefinition:
             return CollectionDefinition(
                 vector=self.vector,
                 lexical=analyzer,
-                reranking=self.reranking,
+                rerank=self.rerank,
                 indexing=self.indexing,
                 default_id=self.default_id,
             )
@@ -954,7 +950,7 @@ class CollectionDefinition:
             return CollectionDefinition(
                 vector=self.vector,
                 lexical=new_lexical,
-                reranking=self.reranking,
+                rerank=self.rerank,
                 indexing=self.indexing,
                 default_id=self.default_id,
             )

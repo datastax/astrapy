@@ -43,7 +43,7 @@ class TestFindAndRerankCollectionDefinition:
             {
                 "name": "col_name",
                 "options": {
-                    "reranking": {
+                    "rerank": {
                         "enabled": True,
                         "service": {
                             "provider": "the_pro",
@@ -86,8 +86,8 @@ class TestFindAndRerankCollectionDefinition:
         assert lx3.as_dict() == {"analyzer": {"x": 1}, "enabled": False}
         assert CollectionLexicalOptions._from_dict(lx3.as_dict()) == lx3
 
-    @pytest.mark.describe("test of FARR collection reranking options conversions")
-    def test_farr_collectionrerankingoptions_conversions(self) -> None:
+    @pytest.mark.describe("test of FARR collection rerank options conversions")
+    def test_farr_collectionrerankoptions_conversions(self) -> None:
         sv1 = RerankingServiceOptions(
             provider="provider",
             model_name="model_name",
@@ -122,14 +122,14 @@ class TestFindAndRerankCollectionDefinition:
         assert CollectionRerankingOptions._from_dict(rr3.as_dict()) == rr3
 
     @pytest.mark.describe(
-        "test of FARR collection definition, reranking builder interface"
+        "test of FARR collection definition, rerank builder interface"
     )
-    def test_farr_collectiondefinition_reranking_builders(self) -> None:
+    def test_farr_collectiondefinition_rerank_builders(self) -> None:
         zero = CollectionDefinition.builder()
 
-        rer1 = zero.set_reranking("p", "m", parameters={"p": "q"}).build()
+        rer1 = zero.set_rerank("p", "m", parameters={"p": "q"}).build()
         assert rer1.as_dict() == {
-            "reranking": {
+            "rerank": {
                 "enabled": True,
                 "service": {
                     "provider": "p",
@@ -140,9 +140,9 @@ class TestFindAndRerankCollectionDefinition:
         }
 
         r_svc = RerankingServiceOptions("P", "M")
-        rer2 = zero.set_reranking(r_svc).build()
+        rer2 = zero.set_rerank(r_svc).build()
         assert rer2.as_dict() == {
-            "reranking": {
+            "rerank": {
                 "enabled": True,
                 "service": {"provider": "P", "modelName": "M"},
             }
@@ -151,16 +151,16 @@ class TestFindAndRerankCollectionDefinition:
         cr_opt = CollectionRerankingOptions(
             service=RerankingServiceOptions("pp", "mm"),
         )
-        rer3 = zero.set_reranking(cr_opt).build()
+        rer3 = zero.set_rerank(cr_opt).build()
         assert rer3.as_dict() == {
-            "reranking": {
+            "rerank": {
                 "enabled": True,
                 "service": {"provider": "pp", "modelName": "mm"},
             }
         }
 
-        rer_z = zero.set_reranking("x", "y")
-        reset = rer_z.set_reranking(None).build()
+        rer_z = zero.set_rerank("x", "y")
+        reset = rer_z.set_rerank(None).build()
         assert reset.as_dict() == {}
 
     @pytest.mark.describe(

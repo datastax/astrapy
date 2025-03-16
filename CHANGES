@@ -13,7 +13,7 @@ Support for "findRerankingProviders" API command in Database Admin classes:
     - database admin `find_reranking_providers`/`async_find_reranking_providers` methods implemented.
 Support for findAndRerank in collections:
     - new classes `CollectionLexicalOptions`, `CollectionRerankingOptions`, `RerankingServiceOptions` for create_collection
-    - new `lexical` and `reranking` entries in CollectionDefinition (+builder interface management)
+    - new `lexical` and `rerank` entries in CollectionDefinition (+builder interface management)
     - `find_and_rerank` method for collections
     - cursor classes `[Async]CollectionFindAndRerankCursor` added
     - findAndRerank cursors return the new `RerankedResult` construct by default (modulo custom mappings)
