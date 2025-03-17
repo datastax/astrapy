@@ -451,9 +451,9 @@ class RerankingAPIKeyHeaderProvider(RerankingHeadersProvider):
     Example:
         >>> from astrapy import DataAPIClient
         >>> from astrapy.authentication import RerankingAPIKeyHeaderProvider
-        >>> from astrapy.info import CollectionDefinition, CollectionRerankingOptions, RerankingServiceOptions
+        >>> from astrapy.info import CollectionDefinition, CollectionRerankOptions, RerankServiceOptions
         >>> my_rrk_api_key = RerankingAPIKeyHeaderProvider("xyz987...")
-        >>> service_options = RerankingServiceOptions(
+        >>> service_options = RerankServiceOptions(
         ...     provider="a-certain-provider",
         ...     model_name="some-reranking-model",
         ... )
@@ -465,7 +465,7 @@ class RerankingAPIKeyHeaderProvider(RerankingHeadersProvider):
         ...     "my_reranking_collection",
         ...     definition=(
         ...         CollectionDefinition.builder()
-        ...         .set_rerank(CollectionRerankingOptions(service=service_options))
+        ...         .set_rerank(CollectionRerankOptions(service=service_options))
         ...         .build()
         ...     ),
         ...     reranking_api_key=my_rrk_api_key,

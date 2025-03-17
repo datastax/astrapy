@@ -28,9 +28,9 @@ from astrapy.info import (
     CollectionDefinition,
     CollectionDescriptor,
     CollectionLexicalOptions,
-    CollectionRerankingOptions,
+    CollectionRerankOptions,
     CollectionVectorOptions,
-    RerankingServiceOptions,
+    RerankServiceOptions,
 )
 
 from ..conftest import (
@@ -503,8 +503,8 @@ class TestCollectionDDLAsync:
                         dimension=10,
                         metric=VectorMetric.EUCLIDEAN,
                     ),
-                    rerank=CollectionRerankingOptions(
-                        service=RerankingServiceOptions(
+                    rerank=CollectionRerankOptions(
+                        service=RerankServiceOptions(
                             provider="nvidia",
                             model_name="nvidia/llama-3.2-nv-rerankqa-1b-v2",
                         ),

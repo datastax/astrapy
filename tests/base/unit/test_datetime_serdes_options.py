@@ -40,7 +40,7 @@ class TestDatetimeSerdesOptions:
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=False,
             use_decimals_in_collections=False,
-            encode_maps_as_lists_in_tables=False,
+            encode_maps_as_lists_in_tables="never",
             accept_naive_datetimes=False,
             datetime_tzinfo=tz,
         )
@@ -66,7 +66,7 @@ class TestDatetimeSerdesOptions:
             custom_datatypes_in_reading=False,
             unroll_iterables_to_lists=False,
             use_decimals_in_collections=False,
-            encode_maps_as_lists_in_tables=False,
+            encode_maps_as_lists_in_tables="never",
             accept_naive_datetimes=False,
             datetime_tzinfo=tz,
         )
@@ -91,7 +91,7 @@ class TestDatetimeSerdesOptions:
             custom_datatypes_in_reading=False,
             unroll_iterables_to_lists=False,
             use_decimals_in_collections=False,
-            encode_maps_as_lists_in_tables=False,
+            encode_maps_as_lists_in_tables="never",
             accept_naive_datetimes=False,
             datetime_tzinfo=None,
         )
@@ -117,7 +117,7 @@ class TestDatetimeSerdesOptions:
             custom_datatypes_in_reading=False,
             unroll_iterables_to_lists=False,
             use_decimals_in_collections=False,
-            encode_maps_as_lists_in_tables=False,
+            encode_maps_as_lists_in_tables="never",
             accept_naive_datetimes=False,
             datetime_tzinfo=None,
         )
@@ -139,7 +139,7 @@ class TestDatetimeSerdesOptions:
             custom_datatypes_in_reading=False,
             unroll_iterables_to_lists=False,
             use_decimals_in_collections=False,
-            encode_maps_as_lists_in_tables=False,
+            encode_maps_as_lists_in_tables="never",
             accept_naive_datetimes=False,
             datetime_tzinfo=None,
         )
@@ -159,7 +159,7 @@ class TestDatetimeSerdesOptions:
             custom_datatypes_in_reading=False,
             unroll_iterables_to_lists=False,
             use_decimals_in_collections=False,
-            encode_maps_as_lists_in_tables=False,
+            encode_maps_as_lists_in_tables="never",
             accept_naive_datetimes=True,
             datetime_tzinfo=None,
         )
@@ -181,7 +181,7 @@ class TestDatetimeSerdesOptions:
             custom_datatypes_in_reading=False,
             unroll_iterables_to_lists=False,
             use_decimals_in_collections=False,
-            encode_maps_as_lists_in_tables=False,
+            encode_maps_as_lists_in_tables="never",
             accept_naive_datetimes=True,
             datetime_tzinfo=None,
         )

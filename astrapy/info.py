@@ -20,7 +20,7 @@ from astrapy.data.info.collection_descriptor import (
     CollectionDescriptor,
     CollectionInfo,
     CollectionLexicalOptions,
-    CollectionRerankingOptions,
+    CollectionRerankOptions,
     CollectionVectorOptions,
 )
 from astrapy.data.info.database_info import (
@@ -34,7 +34,7 @@ from astrapy.data.info.reranking import (
     RerankingProviderModel,
     RerankingProviderParameter,
     RerankingProviderToken,
-    RerankingServiceOptions,
+    RerankServiceOptions,
 )
 from astrapy.data.info.table_descriptor.table_altering import (
     AlterTableAddColumns,
@@ -97,7 +97,7 @@ __all__ = [
     "CollectionDescriptor",
     "CollectionInfo",
     "CollectionLexicalOptions",
-    "CollectionRerankingOptions",
+    "CollectionRerankOptions",
     "CollectionVectorOptions",
     "ColumnType",
     "CreateTableDefinition",
@@ -115,7 +115,7 @@ __all__ = [
     "RerankingProviderModel",
     "RerankingProviderParameter",
     "RerankingProviderToken",
-    "RerankingServiceOptions",
+    "RerankServiceOptions",
     "TableAPIIndexSupportDescriptor",
     "TableAPISupportDescriptor",
     "TableBaseIndexDefinition",

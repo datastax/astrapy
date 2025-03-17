@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from astrapy.data.info.database_info import AstraDBDatabaseInfo
-from astrapy.data.info.reranking import RerankingServiceOptions
+from astrapy.data.info.reranking import RerankServiceOptions
 from astrapy.data.info.vectorize import VectorServiceOptions
 from astrapy.utils.parsing import _warn_residual_keys
 
@@ -193,24 +193,24 @@ class CollectionLexicalOptions:
 
 
 @dataclass
-class CollectionRerankingOptions:
+class CollectionRerankOptions:
     """
     The "rerank" component of the collection options.
     See the Data API specifications for allowed values.
 
     Attributes:
         enabled: use this flag to programmatically set 'rerank' to on/off.
-        service: A `RerankingServiceOptions` object describing the desired reranker.
+        service: A `RerankServiceOptions` object describing the desired reranker.
     """
 
     enabled: bool
-    service: RerankingServiceOptions | None
+    service: RerankServiceOptions | None
 
     def __init__(
         self,
         *,
         enabled: bool | None = None,
-        service: RerankingServiceOptions | None = None,
+        service: RerankServiceOptions | None = None,
     ) -> None:
         self.enabled = True if enabled is None else enabled
         self.service = service
@@ -230,16 +230,16 @@ class CollectionRerankingOptions:
     @staticmethod
     def _from_dict(
         raw_dict: dict[str, Any] | None,
-    ) -> CollectionRerankingOptions | None:
+    ) -> CollectionRerankOptions | None:
         """
-        Create an instance of CollectionRerankingOptions from a dictionary
+        Create an instance of CollectionRerankOptions from a dictionary
         such as one from the Data API.
         """
 
         if raw_dict is not None:
-            return CollectionRerankingOptions(
+            return CollectionRerankOptions(
                 enabled=raw_dict.get("enabled"),
-                service=RerankingServiceOptions._from_dict(raw_dict.get("service")),
+                service=RerankServiceOptions._from_dict(raw_dict.get("service")),
             )
         else:
             return None
@@ -260,7 +260,7 @@ class CollectionDefinition:
         vector: an optional CollectionVectorOptions object.
         lexical: A `CollectionLexicalOptions` object encoding the desired
             "lexical" settings. If omitted, the Data API defaults apply.
-        rerank: A `CollectionRerankingOptions` object encoding the desired
+        rerank: A `CollectionRerankOptions` object encoding the desired
             "rerank" settings. If omitted, the Data API defaults apply.
         indexing: an optional dictionary with the "indexing" collection properties.
             This is in the form of a dictionary such as `{"deny": [...]}`
@@ -312,7 +312,7 @@ class CollectionDefinition:
 
     vector: CollectionVectorOptions | None = None
     lexical: CollectionLexicalOptions | None = None
-    rerank: CollectionRerankingOptions | None = None
+    rerank: CollectionRerankOptions | None = None
     indexing: dict[str, Any] | None = None
     default_id: CollectionDefaultIDOptions | None = None
 
@@ -369,7 +369,7 @@ class CollectionDefinition:
         return CollectionDefinition(
             vector=CollectionVectorOptions._from_dict(raw_dict.get("vector")),
             lexical=CollectionLexicalOptions._from_dict(raw_dict.get("lexical")),
-            rerank=CollectionRerankingOptions._from_dict(raw_dict.get("rerank")),
+            rerank=CollectionRerankOptions._from_dict(raw_dict.get("rerank")),
             indexing=raw_dict.get("indexing"),
             default_id=CollectionDefaultIDOptions._from_dict(raw_dict.get("defaultId")),
         )
@@ -717,7 +717,7 @@ class CollectionDefinition:
 
     def set_rerank(
         self,
-        provider: str | CollectionRerankingOptions | RerankingServiceOptions | None,
+        provider: str | CollectionRerankOptions | RerankServiceOptions | None,
         model_name: str | None = None,
         *,
         authentication: dict[str, Any] | None = None,
@@ -733,9 +733,9 @@ class CollectionDefinition:
         See the class docstring for a full example on using the fluent interface.
 
         Args:
-            provider: this can be (1) a `RerankingServiceOptions` object encoding
+            provider: this can be (1) a `RerankServiceOptions` object encoding
                 all desired properties for a reranking service;
-                (2) a `CollectionRerankingOptions`, that is likewise being set
+                (2) a `CollectionRerankOptions`, that is likewise being set
                 as the collection reranking configuration; or (3) it can be None,
                 to signify removal of the entire rerank setting; alternatively,
                 (4) it can be a string, the reranking provider name as seen in the
@@ -760,8 +760,8 @@ class CollectionDefinition:
             reranking-related setting to this collection definition.
 
         Example:
-            >> from astrapy.info import CollectionDefinition, RerankingServiceOptions
-            >>> from astrapy.data.info.collection_descriptor import CollectionRerankingOptions
+            >> from astrapy.info import CollectionDefinition, RerankServiceOptions
+            >>> from astrapy.data.info.collection_descriptor import CollectionRerankOptions
             >>>
             >>> zero = CollectionDefinition.builder()
             >>>
@@ -773,7 +773,7 @@ class CollectionDefinition:
             >>> print(svc1.build().as_dict())
             {'rerank': {'enabled': True, 'service': {'provider': 'myProvider', 'modelName': 'myModelName', 'parameters': {'p': 'z'}}}}
             >>>
-            >>> myRrkSvcOpt = RerankingServiceOptions(
+            >>> myRrkSvcOpt = RerankServiceOptions(
             ...     provider="myProvider",
             ...     model_name="myModelName",
             ...     parameters={"p": "z"},
@@ -782,7 +782,7 @@ class CollectionDefinition:
             >>> print(svc2.as_dict())
             {'rerank': {'enabled': True, 'service': {'provider': 'myProvider', 'modelName': 'myModelName', 'parameters': {'p': 'z'}}}}
             >>>
-            >>> myColRrkOpt = CollectionRerankingOptions(
+            >>> myColRrkOpt = CollectionRerankOptions(
             ...     enabled=False,
             ...     service=None,
             ... )
@@ -795,7 +795,7 @@ class CollectionDefinition:
             {}
         """
 
-        if isinstance(provider, RerankingServiceOptions):
+        if isinstance(provider, RerankServiceOptions):
             if (
                 model_name is not None
                 or authentication is not None
@@ -805,20 +805,20 @@ class CollectionDefinition:
                 msg = (
                     "Parameters 'model_name', 'authentication', 'parameters' and "
                     "'enabled' cannot be passed when setting a "
-                    "RerankingServiceOptions directly."
+                    "RerankServiceOptions directly."
                 )
                 raise ValueError(msg)
             return CollectionDefinition(
                 vector=self.vector,
                 lexical=self.lexical,
-                rerank=CollectionRerankingOptions(
+                rerank=CollectionRerankOptions(
                     enabled=enabled,
                     service=provider,
                 ),
                 indexing=self.indexing,
                 default_id=self.default_id,
             )
-        elif isinstance(provider, CollectionRerankingOptions):
+        elif isinstance(provider, CollectionRerankOptions):
             if (
                 model_name is not None
                 or authentication is not None
@@ -828,7 +828,7 @@ class CollectionDefinition:
                 msg = (
                     "Parameters 'model_name', 'authentication', 'parameters' and "
                     "'enabled' cannot be passed when setting a "
-                    "CollectionRerankingOptions directly."
+                    "CollectionRerankOptions directly."
                 )
                 raise ValueError(msg)
             return CollectionDefinition(
@@ -839,7 +839,7 @@ class CollectionDefinition:
                 default_id=self.default_id,
             )
         else:
-            new_service: CollectionRerankingOptions | None
+            new_service: CollectionRerankOptions | None
             if provider is None:
                 if (
                     model_name is not None
@@ -853,9 +853,9 @@ class CollectionDefinition:
                     raise ValueError(msg)
                 new_service = None
             else:
-                new_service = CollectionRerankingOptions(
+                new_service = CollectionRerankOptions(
                     enabled=enabled,
-                    service=RerankingServiceOptions(
+                    service=RerankServiceOptions(
                         provider=provider,
                         model_name=model_name,
                         authentication=authentication,

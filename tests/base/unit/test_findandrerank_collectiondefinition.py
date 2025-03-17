@@ -22,8 +22,8 @@ from astrapy.info import (
     CollectionDefinition,
     CollectionDescriptor,
     CollectionLexicalOptions,
-    CollectionRerankingOptions,
-    RerankingServiceOptions,
+    CollectionRerankOptions,
+    RerankServiceOptions,
 )
 
 
@@ -88,7 +88,7 @@ class TestFindAndRerankCollectionDefinition:
 
     @pytest.mark.describe("test of FARR collection rerank options conversions")
     def test_farr_collectionrerankoptions_conversions(self) -> None:
-        sv1 = RerankingServiceOptions(
+        sv1 = RerankServiceOptions(
             provider="provider",
             model_name="model_name",
             authentication={"a": "z"},
@@ -100,26 +100,26 @@ class TestFindAndRerankCollectionDefinition:
             "authentication": {"a": "z"},
             "parameters": {"p": "q"},
         }
-        assert RerankingServiceOptions._from_dict(sv1.as_dict()) == sv1
+        assert RerankServiceOptions._from_dict(sv1.as_dict()) == sv1
 
-        sv2 = RerankingServiceOptions(
+        sv2 = RerankServiceOptions(
             provider="pr",
             model_name="mn",
         )
         assert sv2.as_dict() == {"provider": "pr", "modelName": "mn"}
-        assert RerankingServiceOptions._from_dict(sv2.as_dict()) == sv2
+        assert RerankServiceOptions._from_dict(sv2.as_dict()) == sv2
 
-        rr1 = CollectionRerankingOptions(service=sv1)
+        rr1 = CollectionRerankOptions(service=sv1)
         assert rr1.as_dict() == {"service": sv1.as_dict(), "enabled": True}
-        assert CollectionRerankingOptions._from_dict(rr1.as_dict()) == rr1
+        assert CollectionRerankOptions._from_dict(rr1.as_dict()) == rr1
 
-        rr2 = CollectionRerankingOptions(service=None, enabled=True)
+        rr2 = CollectionRerankOptions(service=None, enabled=True)
         assert rr2.as_dict() == {"enabled": True}
-        assert CollectionRerankingOptions._from_dict(rr2.as_dict()) == rr2
+        assert CollectionRerankOptions._from_dict(rr2.as_dict()) == rr2
 
-        rr3 = CollectionRerankingOptions(service=sv2, enabled=False)
+        rr3 = CollectionRerankOptions(service=sv2, enabled=False)
         assert rr3.as_dict() == {"service": sv2.as_dict(), "enabled": False}
-        assert CollectionRerankingOptions._from_dict(rr3.as_dict()) == rr3
+        assert CollectionRerankOptions._from_dict(rr3.as_dict()) == rr3
 
     @pytest.mark.describe(
         "test of FARR collection definition, rerank builder interface"
@@ -139,7 +139,7 @@ class TestFindAndRerankCollectionDefinition:
             }
         }
 
-        r_svc = RerankingServiceOptions("P", "M")
+        r_svc = RerankServiceOptions("P", "M")
         rer2 = zero.set_rerank(r_svc).build()
         assert rer2.as_dict() == {
             "rerank": {
@@ -148,8 +148,8 @@ class TestFindAndRerankCollectionDefinition:
             }
         }
 
-        cr_opt = CollectionRerankingOptions(
-            service=RerankingServiceOptions("pp", "mm"),
+        cr_opt = CollectionRerankOptions(
+            service=RerankServiceOptions("pp", "mm"),
         )
         rer3 = zero.set_rerank(cr_opt).build()
         assert rer3.as_dict() == {

@@ -21,7 +21,7 @@ from astrapy.utils.parsing import _warn_residual_keys
 
 
 @dataclass
-class RerankingServiceOptions:
+class RerankServiceOptions:
     """
     The "rerank.service" component of the collection options.
     See the Data API specifications for allowed values.
@@ -57,14 +57,14 @@ class RerankingServiceOptions:
     @staticmethod
     def _from_dict(
         raw_dict: dict[str, Any] | None,
-    ) -> RerankingServiceOptions | None:
+    ) -> RerankServiceOptions | None:
         """
-        Create an instance of RerankingServiceOptions from a dictionary
+        Create an instance of RerankServiceOptions from a dictionary
         such as one from the Data API.
         """
 
         if raw_dict is not None:
-            return RerankingServiceOptions(
+            return RerankServiceOptions(
                 provider=raw_dict.get("provider"),
                 model_name=raw_dict.get("modelName"),
                 authentication=raw_dict.get("authentication"),
@@ -75,12 +75,12 @@ class RerankingServiceOptions:
 
     @staticmethod
     def coerce(
-        raw_input: RerankingServiceOptions | dict[str, Any] | None,
-    ) -> RerankingServiceOptions | None:
-        if isinstance(raw_input, RerankingServiceOptions):
+        raw_input: RerankServiceOptions | dict[str, Any] | None,
+    ) -> RerankServiceOptions | None:
+        if isinstance(raw_input, RerankServiceOptions):
             return raw_input
         else:
-            return RerankingServiceOptions._from_dict(raw_input)
+            return RerankServiceOptions._from_dict(raw_input)
 
 
 ### QUIQUI
