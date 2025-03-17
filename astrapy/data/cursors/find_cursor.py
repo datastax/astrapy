@@ -136,7 +136,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     ) -> None:
         self._filter = deepcopy(filter)
         self._projection = projection
-        self._sort = sort
+        self._sort = deepcopy(sort)
         self._limit = limit
         self._include_similarity = include_similarity
         self._include_sort_vector = include_sort_vector
@@ -813,7 +813,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     ) -> None:
         self._filter = deepcopy(filter)
         self._projection = projection
-        self._sort = sort
+        self._sort = deepcopy(sort)
         self._limit = limit
         self._include_similarity = include_similarity
         self._include_sort_vector = include_sort_vector
@@ -1419,7 +1419,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     ) -> None:
         self._filter = deepcopy(filter)
         self._projection = projection
-        self._sort = sort
+        self._sort = deepcopy(sort)
         self._limit = limit
         self._include_similarity = include_similarity
         self._include_sort_vector = include_sort_vector
@@ -2094,7 +2094,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     ) -> None:
         self._filter = deepcopy(filter)
         self._projection = projection
-        self._sort = sort
+        self._sort = deepcopy(sort)
         self._limit = limit
         self._include_similarity = include_similarity
         self._include_sort_vector = include_sort_vector

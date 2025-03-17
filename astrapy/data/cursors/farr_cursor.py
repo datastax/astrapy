@@ -105,9 +105,9 @@ class CollectionFindAndRerankCursor(
     ) -> None:
         self._filter = deepcopy(filter)
         self._projection = projection
-        self._sort = sort
+        self._sort = deepcopy(sort)
         self._limit = limit
-        self._hybrid_limits = hybrid_limits
+        self._hybrid_limits = deepcopy(hybrid_limits)
         self._hybrid_projection = hybrid_projection
         self._rerank_on = rerank_on
         self._mapper = mapper
@@ -673,9 +673,9 @@ class AsyncCollectionFindAndRerankCursor(
     ) -> None:
         self._filter = deepcopy(filter)
         self._projection = projection
-        self._sort = sort
+        self._sort = deepcopy(sort)
         self._limit = limit
-        self._hybrid_limits = hybrid_limits
+        self._hybrid_limits = deepcopy(hybrid_limits)
         self._hybrid_projection = hybrid_projection
         self._rerank_on = rerank_on
         self._mapper = mapper
