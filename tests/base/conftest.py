@@ -32,7 +32,10 @@ from astrapy.constants import VectorMetric
 from astrapy.data_types import DataAPIMap, DataAPISet
 from astrapy.info import (
     CollectionDefinition,
+    CollectionLexicalOptions,
+    CollectionRerankOptions,
     CollectionVectorOptions,
+    RerankServiceOptions,
 )
 
 from ..conftest import (
@@ -83,7 +86,8 @@ TEST_COLLECTION_INSTANCE_NAME = "test_coll_instance"
 TEST_COLLECTION_NAME = "id_test_collection"
 TEST_SERVICE_COLLECTION_NAME = "test_indepth_vectorize_collection"
 TEST_TABLE_INSTANCE_NAME = "test_tbl_instance"
-
+TEST_FARR_VECTORIZE_COLLECTION_NAME = "test_farr_collection_vectorize"
+TEST_FARR_VECTOR_COLLECTION_NAME = "test_farr_collection_vector"
 
 _NaN = object()
 _DNaN = object()
@@ -237,6 +241,115 @@ def async_empty_service_collection(
 ) -> Iterable[DefaultAsyncCollection]:
     """Emptied for each test function"""
     yield sync_empty_service_collection.to_async()
+
+
+@pytest.fixture(scope="session")
+def rerankservice_collection_parameters() -> Iterable[CollectionRerankOptions]:
+    yield CollectionRerankOptions(
+        service=RerankServiceOptions(
+            provider="nvidia",
+            model_name="nvidia/llama-3.2-nv-rerankqa-1b-v2",
+        ),
+    )
+
+
+@pytest.fixture(scope="session")
+def lexical_collection_parameters() -> Iterable[CollectionLexicalOptions]:
+    yield CollectionLexicalOptions(
+        analyzer="STANDARD",
+    )
+
+
+@pytest.fixture(scope="module")
+def sync_farr_vectorize_collection(
+    data_api_credentials_kwargs: DataAPICredentials,
+    sync_database: Database,
+    service_collection_parameters: dict[str, Any],
+    rerankservice_collection_parameters: CollectionRerankOptions,
+    lexical_collection_parameters: CollectionLexicalOptions,
+) -> Iterable[DefaultCollection]:
+    """
+    An actual collection on DB, in the main keyspace.
+    """
+    params = service_collection_parameters
+    collection = sync_database.create_collection(
+        TEST_FARR_VECTORIZE_COLLECTION_NAME,
+        definition=(
+            CollectionDefinition.builder()
+            .set_vector_metric(VectorMetric.DOT_PRODUCT)
+            .set_vector_service(
+                provider=params["provider"],
+                model_name=params["modelName"],
+            )
+            .set_rerank(rerankservice_collection_parameters)
+            .set_lexical(lexical_collection_parameters)
+            .build()
+        ),
+        embedding_api_key=params["api_key"],
+    )
+    yield collection
+
+    sync_database.drop_collection(TEST_FARR_VECTORIZE_COLLECTION_NAME)
+
+
+@pytest.fixture(scope="function")
+def sync_empty_farr_vectorize_collection(
+    sync_farr_vectorize_collection: DefaultCollection,
+) -> Iterable[DefaultCollection]:
+    """Emptied for each test function"""
+    sync_farr_vectorize_collection.delete_many({})
+    yield sync_farr_vectorize_collection
+
+
+@pytest.fixture(scope="function")
+def async_empty_farr_vectorize_collection(
+    sync_empty_farr_vectorize_collection: DefaultCollection,
+) -> Iterable[DefaultAsyncCollection]:
+    """Emptied for each test function"""
+    yield sync_empty_farr_vectorize_collection.to_async()
+
+
+@pytest.fixture(scope="module")
+def sync_farr_vector_collection(
+    data_api_credentials_kwargs: DataAPICredentials,
+    sync_database: Database,
+    rerankservice_collection_parameters: CollectionRerankOptions,
+    lexical_collection_parameters: CollectionLexicalOptions,
+) -> Iterable[DefaultCollection]:
+    """
+    An actual collection on DB, in the main keyspace.
+    """
+    collection = sync_database.create_collection(
+        TEST_FARR_VECTOR_COLLECTION_NAME,
+        definition=(
+            CollectionDefinition.builder()
+            .set_vector_metric(VectorMetric.DOT_PRODUCT)
+            .set_vector_dimension(2)
+            .set_rerank(rerankservice_collection_parameters)
+            .set_lexical(lexical_collection_parameters)
+            .build()
+        ),
+    )
+    yield collection
+
+    sync_database.drop_collection(TEST_FARR_VECTOR_COLLECTION_NAME)
+
+
+@pytest.fixture(scope="function")
+def sync_empty_farr_vector_collection(
+    sync_farr_vector_collection: DefaultCollection,
+) -> Iterable[DefaultCollection]:
+    """Emptied for each test function"""
+    sync_farr_vector_collection.delete_many({})
+    yield sync_farr_vector_collection
+
+
+@pytest.fixture(scope="function")
+def async_empty_farr_vector_collection(
+    sync_empty_farr_vector_collection: DefaultCollection,
+) -> Iterable[DefaultAsyncCollection]:
+    """Emptied for each test function"""
+    yield sync_empty_farr_vector_collection.to_async()
 
 
 @pytest.fixture(scope="session")
