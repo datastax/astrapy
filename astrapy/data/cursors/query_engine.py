@@ -42,26 +42,40 @@ MOCK_FARR_API = True
 
 
 def mock_farr_response(pl: dict[str, Any] | None) -> dict[str, Any]:
+    # determine if vector and, if so, dimension
+    assert pl is not None
+    d_hyb = pl["findAndRerank"]["sort"]["$hybrid"]
+    vector_dim: int | None
+    farr_limit = pl["findAndRerank"]["options"]["limit"]
+    if isinstance(d_hyb, str) or "$vector" not in d_hyb:
+        vector_dim = None
+    else:
+        vector_dim = len(d_hyb["$vector"])
+
+    def do_vector_part(doc_i: int) -> dict[str, Any]:
+        if vector_dim is None:
+            return {"$vectorize": f"doc number {doc_i}."}
+        else:
+            return {"$vector": [(5 + doc_i * 0.01)] * vector_dim}
+
     docs = [
         {
             "_id": f"doc_{doc_i}",
-            "pl": str(pl).replace(" ", ""),
             "content": f"content {doc_i}",
-            "$vectorize": f"vectorize {doc_i}",
             "metadata": {"m": f"d<{doc_i}>"},
+            **(do_vector_part(doc_i)),
         }
-        for doc_i in range(5)
+        for doc_i in range(farr_limit)
     ]
     doc_responses = [
         {
-            "_id": f"doc_{doc_i}",
             "scores": {
                 "$rerank": (6 - doc_i) / 8,
                 "$vector": (7 - doc_i) / 9,
                 "$lexical": (8 - doc_i) / 10,
             },
         }
-        for doc_i in range(5)
+        for doc_i in range(farr_limit)
     ]
 
     return {
@@ -73,8 +87,6 @@ def mock_farr_response(pl: dict[str, Any] | None) -> dict[str, Any]:
             "documentResponses": doc_responses,
         },
     }
-
-    return []
 
 
 class _QueryEngine(ABC, Generic[TRAW]):
