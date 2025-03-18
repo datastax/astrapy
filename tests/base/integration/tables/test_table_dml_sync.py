@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable, cast
+from typing import Any, Iterable, Sequence, cast
 
 import pytest
 
@@ -356,6 +356,14 @@ class TestTableDMLSync:
             assert ins_result.inserted_id_tuples == [(pk,) for pk in p_text_values]
             assert ins_result.inserted_ids == [{"p_text": pk} for pk in p_text_values]
 
+        def _assert_tim_exceptions(exps: Sequence[Exception], count: int) -> None:
+            assert len(exps) == count
+            assert all(isinstance(exp, DataAPIResponseException) for exp in exps)
+            assert all(isinstance(exp.command, dict) for exp in exps)  # type: ignore[attr-defined]
+            assert all(isinstance(exp.raw_response, dict) for exp in exps)  # type: ignore[attr-defined]
+            assert all(exp.raw_response != exps[0].raw_response for exp in exps[1:])  # type: ignore[attr-defined]
+            assert all(exp.command != exps[0].command for exp in exps[1:])  # type: ignore[attr-defined]
+
         # ordered, good rows
         sync_table_simple.delete_many({})
         i_result = sync_table_simple.insert_many(
@@ -370,6 +378,7 @@ class TestTableDMLSync:
                 SIMPLE_SEVEN_ROWS_F2, ordered=True, chunk_size=2
             )
         _assert_consistency([], exc.value)
+        _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # ordered, failing later batch
         sync_table_simple.delete_many({})
@@ -378,6 +387,7 @@ class TestTableDMLSync:
                 SIMPLE_SEVEN_ROWS_F4, ordered=True, chunk_size=2
             )
         _assert_consistency(["p1", "p2"], exc.value)
+        _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # unordered/concurrency=1, good rows
         sync_table_simple.delete_many({})
@@ -393,6 +403,7 @@ class TestTableDMLSync:
                 SIMPLE_SEVEN_ROWS_F2, ordered=False, chunk_size=2, concurrency=1
             )
         _assert_consistency(["p1", "p3", "p4", "p5", "p6", "p7"], exc.value)
+        _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # unordered/concurrency=1, failing later batch
         sync_table_simple.delete_many({})
@@ -401,6 +412,7 @@ class TestTableDMLSync:
                 SIMPLE_SEVEN_ROWS_F4, ordered=False, chunk_size=2, concurrency=1
             )
         _assert_consistency(["p1", "p2", "p3", "p5", "p6", "p7"], exc.value)
+        _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # unordered/concurrency=2, good rows
         sync_table_simple.delete_many({})
@@ -416,6 +428,7 @@ class TestTableDMLSync:
                 SIMPLE_SEVEN_ROWS_F2, ordered=False, chunk_size=2, concurrency=2
             )
         _assert_consistency(["p1", "p3", "p4", "p5", "p6", "p7"], exc.value)
+        _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # unordered/concurrency=2, failing later batch
         sync_table_simple.delete_many({})
@@ -424,6 +437,14 @@ class TestTableDMLSync:
                 SIMPLE_SEVEN_ROWS_F4, ordered=False, chunk_size=2, concurrency=2
             )
         _assert_consistency(["p1", "p2", "p3", "p5", "p6", "p7"], exc.value)
+        _assert_tim_exceptions(exc.value.exceptions, count=1)
+
+        # more failing batches (unordered, concurrency=2)
+        with pytest.raises(TableInsertManyException) as exc:
+            sync_table_simple.insert_many(
+                SIMPLE_SEVEN_ROWS_F4 * 2, ordered=False, chunk_size=2, concurrency=2
+            )
+        _assert_tim_exceptions(exc.value.exceptions, count=2)
 
         # with massive amount of rows:
         many_rows = [{"p_text": f"r_{i}", "p_int": i} for i in range(200)]

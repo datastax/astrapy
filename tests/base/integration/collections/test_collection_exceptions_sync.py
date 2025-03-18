@@ -57,25 +57,27 @@ class TestCollectionExceptionsSync:
         sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
-        dup_docs = [{"_id": tid} for tid in ["a", "b", "b", "d", "a", "b", "e", "f"]]
-        ok_docs = [{"_id": tid} for tid in ["a", "b", "c", "d", "e", "f"]]
+        ok_ids = ["a", "b", "c", "d", "e", "f"]
+        ok_docs = [{"_id": tid, "i": i} for i, tid in enumerate(ok_ids)]
+        dup_ids = ["a", "b", "b", "d", "a", "b", "e", "f"]
+        dup_docs = [{"_id": tid, "i": i} for i, tid in enumerate(dup_ids)]
 
         im_result1 = col.insert_many(ok_docs, ordered=True, chunk_size=2, concurrency=1)
-        assert len(im_result1.inserted_ids) == 6
+        assert set(im_result1.inserted_ids) == set(ok_ids)
         assert len(list(col.find({}))) == 6
 
         col.delete_many({})
         im_result2 = col.insert_many(
             ok_docs, ordered=False, chunk_size=2, concurrency=1
         )
-        assert len(im_result2.inserted_ids) == 6
+        assert set(im_result2.inserted_ids) == set(ok_ids)
         assert len(list(col.find({}))) == 6
 
         col.delete_many({})
         im_result3 = col.insert_many(
             ok_docs, ordered=False, chunk_size=2, concurrency=2
         )
-        assert len(im_result3.inserted_ids) == 6
+        assert set(im_result3.inserted_ids) == set(ok_ids)
         assert len(list(col.find({}))) == 6
 
         col.delete_many({})
@@ -85,6 +87,8 @@ class TestCollectionExceptionsSync:
         the_exception = exc.value.exceptions[0]
         assert isinstance(the_exception, DataAPIResponseException)
         assert len(the_exception.error_descriptors) == 1
+        assert isinstance(the_exception.command, dict)
+        assert isinstance(the_exception.raw_response, dict)
         assert exc.value.inserted_ids == ["a", "b"]
         assert {doc["_id"] for doc in col.find()} == {"a", "b"}
 
@@ -94,6 +98,10 @@ class TestCollectionExceptionsSync:
         assert len(exc.value.exceptions) == 2
         the_exceptions = exc.value.exceptions
         assert all(isinstance(exc, DataAPIResponseException) for exc in the_exceptions)
+        assert all(isinstance(exc.command, dict) for exc in the_exceptions)  # type: ignore[attr-defined]
+        assert all(isinstance(exc.raw_response, dict) for exc in the_exceptions)  # type: ignore[attr-defined]
+        assert the_exceptions[0].command != the_exceptions[1].command  # type: ignore[attr-defined]
+        assert the_exceptions[0].raw_response != the_exceptions[1].raw_response  # type: ignore[attr-defined]
         assert (
             len(the_exceptions[0].error_descriptors)  # type: ignore[attr-defined]
             + len(the_exceptions[1].error_descriptors)  # type: ignore[attr-defined]
@@ -110,6 +118,10 @@ class TestCollectionExceptionsSync:
         assert len(exc.value.exceptions) == 2
         the_exceptions = exc.value.exceptions
         assert all(isinstance(exc, DataAPIResponseException) for exc in the_exceptions)
+        assert all(isinstance(exc.command, dict) for exc in the_exceptions)  # type: ignore[attr-defined]
+        assert all(isinstance(exc.raw_response, dict) for exc in the_exceptions)  # type: ignore[attr-defined]
+        assert the_exceptions[0].command != the_exceptions[1].command  # type: ignore[attr-defined]
+        assert the_exceptions[0].raw_response != the_exceptions[1].raw_response  # type: ignore[attr-defined]
         assert (
             len(the_exceptions[0].error_descriptors)  # type: ignore[attr-defined]
             + len(the_exceptions[1].error_descriptors)  # type: ignore[attr-defined]
