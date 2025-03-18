@@ -19,6 +19,7 @@ import os
 import pytest
 
 from astrapy.cursors import RerankedResult
+from astrapy.data_types import DataAPIVector
 
 from ..conftest import DefaultAsyncCollection
 
@@ -121,3 +122,131 @@ class TestCollectionFindAndRerankAsync:
         assert all(
             all(isinstance(sc, float) for sc in hit.scores.values()) for hit in hits
         )
+
+    @pytest.mark.describe(
+        "test of collection find-and-rerank get_sort_vector, vectorize, async"
+    )
+    async def test_collection_getsortvector_farr_vectorize_async(
+        self,
+        async_empty_farr_vectorize_collection: DefaultAsyncCollection,
+    ) -> None:
+        acoll = async_empty_farr_vectorize_collection
+        await acoll.insert_one({"$vectorize": "text", "$lexical": "text"})
+
+        cur_n0 = acoll.find_and_rerank(sort={"$hybrid": "bla"})
+        cur_f0 = acoll.find_and_rerank(
+            sort={"$hybrid": "bla"}, include_sort_vector=False
+        )
+        cur_t0 = acoll.find_and_rerank(
+            sort={"$hybrid": "bla"}, include_sort_vector=True
+        )
+
+        assert await cur_n0.get_sort_vector() is None
+        assert await cur_f0.get_sort_vector() is None
+        gsv_t0 = await cur_t0.get_sort_vector()
+        assert isinstance(gsv_t0, (list, DataAPIVector))
+        assert isinstance(gsv_t0[0], float)
+
+        cur_n1 = acoll.find_and_rerank(sort={"$hybrid": "bla"})
+        cur_f1 = acoll.find_and_rerank(
+            sort={"$hybrid": "bla"}, include_sort_vector=False
+        )
+        cur_t1 = acoll.find_and_rerank(
+            sort={"$hybrid": "bla"}, include_sort_vector=True
+        )
+        await cur_n1.__anext__()
+        await cur_f1.__anext__()
+        await cur_t1.__anext__()
+
+        assert await cur_n1.get_sort_vector() is None
+        assert await cur_f1.get_sort_vector() is None
+        gsv_t1 = await cur_t1.get_sort_vector()
+        assert isinstance(gsv_t1, (list, DataAPIVector))
+        assert isinstance(gsv_t1[0], float)
+
+        cur_n2 = acoll.find_and_rerank(sort={"$hybrid": "bla"})
+        cur_f2 = acoll.find_and_rerank(
+            sort={"$hybrid": "bla"}, include_sort_vector=False
+        )
+        cur_t2 = acoll.find_and_rerank(
+            sort={"$hybrid": "bla"}, include_sort_vector=True
+        )
+        await cur_n2.to_list()
+        await cur_f2.to_list()
+        await cur_t2.to_list()
+
+        assert await cur_n2.get_sort_vector() is None
+        assert await cur_f2.get_sort_vector() is None
+        gsv_t2 = await cur_t2.get_sort_vector()
+        assert isinstance(gsv_t2, (list, DataAPIVector))
+        assert isinstance(gsv_t2[0], float)
+
+    @pytest.mark.describe(
+        "test of collection find-and-rerank get_sort_vector, novectorize, async"
+    )
+    async def test_collection_getsortvector_farr_novectorize_async(
+        self,
+        async_empty_farr_vector_collection: DefaultAsyncCollection,
+    ) -> None:
+        acoll = async_empty_farr_vector_collection
+        await acoll.insert_one({"$vector": [-1, -2], "$lexical": "text"})
+
+        cur_n0 = acoll.find_and_rerank(
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
+        )
+        cur_f0 = acoll.find_and_rerank(
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            include_sort_vector=False,
+        )
+        cur_t0 = acoll.find_and_rerank(
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            include_sort_vector=True,
+        )
+
+        assert await cur_n0.get_sort_vector() is None
+        assert await cur_f0.get_sort_vector() is None
+        gsv_t0 = await cur_t0.get_sort_vector()
+        assert isinstance(gsv_t0, (list, DataAPIVector))
+        assert isinstance(gsv_t0[0], float)
+
+        cur_n1 = acoll.find_and_rerank(
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
+        )
+        cur_f1 = acoll.find_and_rerank(
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            include_sort_vector=False,
+        )
+        cur_t1 = acoll.find_and_rerank(
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            include_sort_vector=True,
+        )
+        await cur_n1.__anext__()
+        await cur_f1.__anext__()
+        await cur_t1.__anext__()
+
+        assert await cur_n1.get_sort_vector() is None
+        assert await cur_f1.get_sort_vector() is None
+        gsv_t1 = await cur_t1.get_sort_vector()
+        assert isinstance(gsv_t1, (list, DataAPIVector))
+        assert isinstance(gsv_t1[0], float)
+
+        cur_n2 = acoll.find_and_rerank(
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
+        )
+        cur_f2 = acoll.find_and_rerank(
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            include_sort_vector=False,
+        )
+        cur_t2 = acoll.find_and_rerank(
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            include_sort_vector=True,
+        )
+        await cur_n2.to_list()
+        await cur_f2.to_list()
+        await cur_t2.to_list()
+
+        assert await cur_n2.get_sort_vector() is None
+        assert await cur_f2.get_sort_vector() is None
+        gsv_t2 = await cur_t2.get_sort_vector()
+        assert isinstance(gsv_t2, (list, DataAPIVector))
+        assert isinstance(gsv_t2[0], float)

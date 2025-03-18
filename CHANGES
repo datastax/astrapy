@@ -20,7 +20,7 @@ Support for findAndRerank in collections:
 Maps for tables expressed as list of pairs (association lists):
     - support for automatic handling of DataAPIMaps (+possibly dicts) in the proper table payload portions
     - introduced serdes option `encode_maps_as_lists_in_tables` (default to "NEVER") to control this
-Exceptions, major rework of `[Table|Collection]InsertManyException`, `CollectionUpdateManyException` and `CollectionDeleteManyException`
+Exceptions, major rework of `[Table|Collection]InsertManyException`, `CollectionUpdateManyException` and `CollectionDeleteManyException` ("bulk operations")
     - All astrapy exceptions derive directly from `Exception` (and not 'ValueError` anymore)
     - better string representation of `DataAPIDetailedErrorDescriptor`
     - `DataAPIDetailedErrorDescriptor` removed.

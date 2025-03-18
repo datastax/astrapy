@@ -19,6 +19,7 @@ import os
 import pytest
 
 from astrapy.cursors import RerankedResult
+from astrapy.data_types import DataAPIVector
 
 from ..conftest import DefaultCollection
 
@@ -121,3 +122,125 @@ class TestCollectionFindAndRerankSync:
         assert all(
             all(isinstance(sc, float) for sc in hit.scores.values()) for hit in hits
         )
+
+    @pytest.mark.describe(
+        "test of collection find-and-rerank get_sort_vector, vectorize, sync"
+    )
+    def test_collection_getsortvector_farr_vectorize_sync(
+        self,
+        sync_empty_farr_vectorize_collection: DefaultCollection,
+    ) -> None:
+        coll = sync_empty_farr_vectorize_collection
+        coll.insert_one({"$vectorize": "text", "$lexical": "text"})
+
+        cur_n0 = coll.find_and_rerank(sort={"$hybrid": "bla"})
+        cur_f0 = coll.find_and_rerank(
+            sort={"$hybrid": "bla"}, include_sort_vector=False
+        )
+        cur_t0 = coll.find_and_rerank(sort={"$hybrid": "bla"}, include_sort_vector=True)
+
+        assert cur_n0.get_sort_vector() is None
+        assert cur_f0.get_sort_vector() is None
+        gsv_t0 = cur_t0.get_sort_vector()
+        assert isinstance(gsv_t0, (list, DataAPIVector))
+        assert isinstance(gsv_t0[0], float)
+
+        cur_n1 = coll.find_and_rerank(sort={"$hybrid": "bla"})
+        cur_f1 = coll.find_and_rerank(
+            sort={"$hybrid": "bla"}, include_sort_vector=False
+        )
+        cur_t1 = coll.find_and_rerank(sort={"$hybrid": "bla"}, include_sort_vector=True)
+        cur_n1.__next__()
+        cur_f1.__next__()
+        cur_t1.__next__()
+
+        assert cur_n1.get_sort_vector() is None
+        assert cur_f1.get_sort_vector() is None
+        gsv_t1 = cur_t1.get_sort_vector()
+        assert isinstance(gsv_t1, (list, DataAPIVector))
+        assert isinstance(gsv_t1[0], float)
+
+        cur_n2 = coll.find_and_rerank(sort={"$hybrid": "bla"})
+        cur_f2 = coll.find_and_rerank(
+            sort={"$hybrid": "bla"}, include_sort_vector=False
+        )
+        cur_t2 = coll.find_and_rerank(sort={"$hybrid": "bla"}, include_sort_vector=True)
+        cur_n2.to_list()
+        cur_f2.to_list()
+        cur_t2.to_list()
+
+        assert cur_n2.get_sort_vector() is None
+        assert cur_f2.get_sort_vector() is None
+        gsv_t2 = cur_t2.get_sort_vector()
+        assert isinstance(gsv_t2, (list, DataAPIVector))
+        assert isinstance(gsv_t2[0], float)
+
+    @pytest.mark.describe(
+        "test of collection find-and-rerank get_sort_vector, novectorize, sync"
+    )
+    def test_collection_getsortvector_farr_novectorize_sync(
+        self,
+        sync_empty_farr_vector_collection: DefaultCollection,
+    ) -> None:
+        coll = sync_empty_farr_vector_collection
+        coll.insert_one({"$vector": [-1, -2], "$lexical": "text"})
+
+        cur_n0 = coll.find_and_rerank(
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
+        )
+        cur_f0 = coll.find_and_rerank(
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            include_sort_vector=False,
+        )
+        cur_t0 = coll.find_and_rerank(
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            include_sort_vector=True,
+        )
+
+        assert cur_n0.get_sort_vector() is None
+        assert cur_f0.get_sort_vector() is None
+        gsv_t0 = cur_t0.get_sort_vector()
+        assert isinstance(gsv_t0, (list, DataAPIVector))
+        assert isinstance(gsv_t0[0], float)
+
+        cur_n1 = coll.find_and_rerank(
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
+        )
+        cur_f1 = coll.find_and_rerank(
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            include_sort_vector=False,
+        )
+        cur_t1 = coll.find_and_rerank(
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            include_sort_vector=True,
+        )
+        cur_n1.__next__()
+        cur_f1.__next__()
+        cur_t1.__next__()
+
+        assert cur_n1.get_sort_vector() is None
+        assert cur_f1.get_sort_vector() is None
+        gsv_t1 = cur_t1.get_sort_vector()
+        assert isinstance(gsv_t1, (list, DataAPIVector))
+        assert isinstance(gsv_t1[0], float)
+
+        cur_n2 = coll.find_and_rerank(
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
+        )
+        cur_f2 = coll.find_and_rerank(
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            include_sort_vector=False,
+        )
+        cur_t2 = coll.find_and_rerank(
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            include_sort_vector=True,
+        )
+        cur_n2.to_list()
+        cur_f2.to_list()
+        cur_t2.to_list()
+
+        assert cur_n2.get_sort_vector() is None
+        assert cur_f2.get_sort_vector() is None
+        gsv_t2 = cur_t2.get_sort_vector()
+        assert isinstance(gsv_t2, (list, DataAPIVector))
+        assert isinstance(gsv_t2[0], float)
