@@ -1455,6 +1455,7 @@ class Collection(Generic[DOC]):
         document_type: None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
+        include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
@@ -1471,6 +1472,7 @@ class Collection(Generic[DOC]):
         document_type: type[DOC2],
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
+        include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
@@ -1486,6 +1488,7 @@ class Collection(Generic[DOC]):
         document_type: type[DOC2] | None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
+        include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
@@ -1590,6 +1593,7 @@ class Collection(Generic[DOC]):
             .sort(sort)
             .hybrid_limits(hybrid_limits)
             .rerank_on(rerank_on)
+            .include_scores(include_scores)
             .include_sort_vector(include_sort_vector)
         )
 
@@ -4215,6 +4219,7 @@ class AsyncCollection(Generic[DOC]):
         document_type: None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
+        include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
@@ -4231,6 +4236,7 @@ class AsyncCollection(Generic[DOC]):
         document_type: type[DOC2],
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
+        include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
@@ -4246,6 +4252,7 @@ class AsyncCollection(Generic[DOC]):
         document_type: type[DOC2] | None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
+        include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
@@ -4350,6 +4357,7 @@ class AsyncCollection(Generic[DOC]):
             .sort(sort)
             .hybrid_limits(hybrid_limits)
             .rerank_on(rerank_on)
+            .include_scores(include_scores)
             .include_sort_vector(include_sort_vector)
         )
 

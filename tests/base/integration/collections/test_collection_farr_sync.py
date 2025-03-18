@@ -64,6 +64,7 @@ class TestCollectionFindAndRerankSync:
         farr_cursor = coll.find_and_rerank(
             {},
             sort={"$hybrid": "bla"},
+            include_scores=True,
             limit=2,
         )
 
@@ -73,6 +74,7 @@ class TestCollectionFindAndRerankSync:
         assert all(isinstance(hit.document, dict) for hit in hits)
         assert all(isinstance(hit.document["$vectorize"], str) for hit in hits)
         assert all(isinstance(hit.scores, dict) for hit in hits)
+        assert all(len(hit.scores) > 0 for hit in hits)
         assert all(
             all(isinstance(sc, float) for sc in hit.scores.values()) for hit in hits
         )
@@ -109,6 +111,7 @@ class TestCollectionFindAndRerankSync:
         farr_cursor = coll.find_and_rerank(
             {},
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            include_scores=True,
             limit=2,
         )
 
@@ -119,9 +122,54 @@ class TestCollectionFindAndRerankSync:
         assert all(isinstance(hit.document["$vector"], list) for hit in hits)
         assert all(len(hit.document["$vector"]) == 2 for hit in hits)
         assert all(isinstance(hit.scores, dict) for hit in hits)
+        assert all(len(hit.scores) > 0 for hit in hits)
         assert all(
             all(isinstance(sc, float) for sc in hit.scores.values()) for hit in hits
         )
+
+    @pytest.mark.describe(
+        "test of collection find-and-rerank include_scores, vectorize, sync"
+    )
+    def test_collection_includescores_farr_vectorize_sync(
+        self,
+        sync_empty_farr_vectorize_collection: DefaultCollection,
+    ) -> None:
+        coll = sync_empty_farr_vectorize_collection
+        coll.insert_one({"$vectorize": "text", "$lexical": "text"})
+
+        cur_n = coll.find_and_rerank(sort={"$hybrid": "bla"})
+        cur_f = coll.find_and_rerank(sort={"$hybrid": "bla"}, include_scores=False)
+        cur_t = coll.find_and_rerank(sort={"$hybrid": "bla"}, include_scores=True)
+        itm_n = cur_n.__next__()
+        itm_f = cur_f.__next__()
+        itm_t = cur_t.__next__()
+
+        assert itm_n.scores == {}
+        assert itm_f.scores == {}
+        assert itm_t.scores != {}
+        assert all(isinstance(val, float) for val in itm_t.scores.values())
+
+    @pytest.mark.describe(
+        "test of collection find-and-rerank include_scores, novectorize, sync"
+    )
+    def test_collection_includescores_farr_novectorize_sync(
+        self,
+        sync_empty_farr_vector_collection: DefaultCollection,
+    ) -> None:
+        coll = sync_empty_farr_vector_collection
+        coll.insert_one({"$vector": [-1, -2], "$lexical": "text"})
+
+        cur_n = coll.find_and_rerank(sort={"$hybrid": "bla"})
+        cur_f = coll.find_and_rerank(sort={"$hybrid": "bla"}, include_scores=False)
+        cur_t = coll.find_and_rerank(sort={"$hybrid": "bla"}, include_scores=True)
+        itm_n = cur_n.__next__()
+        itm_f = cur_f.__next__()
+        itm_t = cur_t.__next__()
+
+        assert itm_n.scores == {}
+        assert itm_f.scores == {}
+        assert itm_t.scores != {}
+        assert all(isinstance(val, float) for val in itm_t.scores.values())
 
     @pytest.mark.describe(
         "test of collection find-and-rerank get_sort_vector, vectorize, sync"

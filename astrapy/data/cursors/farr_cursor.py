@@ -84,6 +84,7 @@ class CollectionFindAndRerankCursor(
     _sort: HybridSortType | None
     _limit: int | None
     _hybrid_limits: int | dict[str, int] | None
+    _include_scores: bool | None
     _include_sort_vector: bool | None
     _rerank_on: str | None
     _mapper: Callable[[RerankedResult[TRAW]], T] | None
@@ -101,6 +102,7 @@ class CollectionFindAndRerankCursor(
         sort: HybridSortType | None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
+        include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         mapper: Callable[[RerankedResult[TRAW]], T] | None = None,
@@ -110,6 +112,7 @@ class CollectionFindAndRerankCursor(
         self._sort = deepcopy(sort)
         self._limit = limit
         self._hybrid_limits = deepcopy(hybrid_limits)
+        self._include_scores = include_scores
         self._include_sort_vector = include_sort_vector
         self._rerank_on = rerank_on
         self._mapper = mapper
@@ -125,6 +128,7 @@ class CollectionFindAndRerankCursor(
             sort=self._sort,
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
+            include_scores=self._include_scores,
             include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
         )
@@ -146,6 +150,7 @@ class CollectionFindAndRerankCursor(
         sort: dict[str, Any] | None | UnsetType = _UNSET,
         limit: int | None | UnsetType = _UNSET,
         hybrid_limits: int | dict[str, int] | None | UnsetType = _UNSET,
+        include_scores: bool | None | UnsetType = _UNSET,
         include_sort_vector: bool | None | UnsetType = _UNSET,
         rerank_on: str | None | UnsetType = _UNSET,
     ) -> CollectionFindAndRerankCursor[TRAW, T]:
@@ -174,6 +179,9 @@ class CollectionFindAndRerankCursor(
             hybrid_limits=self._hybrid_limits
             if isinstance(hybrid_limits, UnsetType)
             else hybrid_limits,
+            include_scores=self._include_scores
+            if isinstance(include_scores, UnsetType)
+            else include_scores,
             include_sort_vector=self._include_sort_vector
             if isinstance(include_sort_vector, UnsetType)
             else include_sort_vector,
@@ -276,6 +284,7 @@ class CollectionFindAndRerankCursor(
             sort=self._sort,
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
+            include_scores=self._include_scores,
             include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
             mapper=self._mapper,
@@ -390,6 +399,28 @@ class CollectionFindAndRerankCursor(
         self._ensure_idle()
         return self._copy(hybrid_limits=hybrid_limits)
 
+    def include_scores(
+        self, include_scores: bool | None
+    ) -> CollectionFindAndRerankCursor[TRAW, T]:
+        """
+        Return a copy of this cursor with a new include_scores setting.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the Collection `find_and_rerank` method.
+
+        Args:
+            include_scores: a new include_scores setting to apply
+                to the returned new cursor.
+
+        Returns:
+            a new CollectionFindAndRerankCursor with the same settings as this one,
+                except for `include_scores` which is the provided value.
+        """
+
+        self._ensure_idle()
+        return self._copy(include_scores=include_scores)
+
     def include_sort_vector(
         self, include_sort_vector: bool | None
     ) -> CollectionFindAndRerankCursor[TRAW, T]:
@@ -480,6 +511,7 @@ class CollectionFindAndRerankCursor(
             sort=self._sort,
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
+            include_scores=self._include_scores,
             include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
             mapper=composite_mapper,
@@ -683,6 +715,7 @@ class AsyncCollectionFindAndRerankCursor(
     _sort: HybridSortType | None
     _limit: int | None
     _hybrid_limits: int | dict[str, int] | None
+    _include_scores: bool | None
     _include_sort_vector: bool | None
     _rerank_on: str | None
     _mapper: Callable[[RerankedResult[TRAW]], T] | None
@@ -700,6 +733,7 @@ class AsyncCollectionFindAndRerankCursor(
         sort: HybridSortType | None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
+        include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         mapper: Callable[[RerankedResult[TRAW]], T] | None = None,
@@ -709,6 +743,7 @@ class AsyncCollectionFindAndRerankCursor(
         self._sort = deepcopy(sort)
         self._limit = limit
         self._hybrid_limits = deepcopy(hybrid_limits)
+        self._include_scores = include_scores
         self._include_sort_vector = include_sort_vector
         self._rerank_on = rerank_on
         self._mapper = mapper
@@ -724,6 +759,7 @@ class AsyncCollectionFindAndRerankCursor(
             sort=self._sort,
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
+            include_scores=self._include_scores,
             include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
         )
@@ -745,6 +781,7 @@ class AsyncCollectionFindAndRerankCursor(
         sort: dict[str, Any] | None | UnsetType = _UNSET,
         limit: int | None | UnsetType = _UNSET,
         hybrid_limits: int | dict[str, int] | None | UnsetType = _UNSET,
+        include_scores: bool | None | UnsetType = _UNSET,
         include_sort_vector: bool | None | UnsetType = _UNSET,
         rerank_on: str | None | UnsetType = _UNSET,
     ) -> AsyncCollectionFindAndRerankCursor[TRAW, T]:
@@ -773,6 +810,9 @@ class AsyncCollectionFindAndRerankCursor(
             hybrid_limits=self._hybrid_limits
             if isinstance(hybrid_limits, UnsetType)
             else hybrid_limits,
+            include_scores=self._include_scores
+            if isinstance(include_scores, UnsetType)
+            else include_scores,
             include_sort_vector=self._include_sort_vector
             if isinstance(include_sort_vector, UnsetType)
             else include_sort_vector,
@@ -878,6 +918,7 @@ class AsyncCollectionFindAndRerankCursor(
             sort=self._sort,
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
+            include_scores=self._include_scores,
             include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
             mapper=self._mapper,
@@ -992,6 +1033,28 @@ class AsyncCollectionFindAndRerankCursor(
         self._ensure_idle()
         return self._copy(hybrid_limits=hybrid_limits)
 
+    def include_scores(
+        self, include_scores: bool | None
+    ) -> AsyncCollectionFindAndRerankCursor[TRAW, T]:
+        """
+        Return a copy of this cursor with a new include_scores setting.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the AsyncCollection `find_and_rerank` method.
+
+        Args:
+            include_scores: a new include_scores setting to apply
+                to the returned new cursor.
+
+        Returns:
+            a new AsyncCollectionFindAndRerankCursor with the same settings as this one,
+                except for `include_scores` which is the provided value.
+        """
+
+        self._ensure_idle()
+        return self._copy(include_scores=include_scores)
+
     def include_sort_vector(
         self, include_sort_vector: bool | None
     ) -> AsyncCollectionFindAndRerankCursor[TRAW, T]:
@@ -1083,6 +1146,7 @@ class AsyncCollectionFindAndRerankCursor(
             sort=self._sort,
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
+            include_scores=self._include_scores,
             include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
             mapper=composite_mapper,

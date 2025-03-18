@@ -48,6 +48,7 @@ def mock_farr_response(pl: dict[str, Any] | None) -> dict[str, Any]:
     vector_dim: int | None
     farr_limit = pl["findAndRerank"]["options"].get("limit", 2)
     include_sv = pl["findAndRerank"]["options"].get("includeSortVector") or False
+    include_sc = pl["findAndRerank"]["options"].get("includeScores") or False
     _sort_vector: list[float] | None
     if isinstance(d_hyb, str) or "$vector" not in d_hyb:
         vector_dim = None
@@ -82,15 +83,19 @@ def mock_farr_response(pl: dict[str, Any] | None) -> dict[str, Any]:
         for doc_i in range(farr_limit)
     ]
 
+    the_status: dict[str, Any] = {}
+    if include_sv or include_sc:
+        if include_sv:
+            the_status["sortVector"] = _sort_vector
+        if include_sc:
+            the_status["documentResponses"] = doc_responses
+
     return {
         "data": {
             "documents": docs,
             "nextPageState": None,
         },
-        "status": {
-            "documentResponses": doc_responses,
-            **({"sortVector": _sort_vector} if include_sv else {}),
-        },
+        **({"status": the_status} if the_status else {}),
     }
 
 
@@ -429,6 +434,7 @@ class _CollectionFindAndRerankQueryEngine(
     sort: HybridSortType | None
     limit: int | None
     hybrid_limits: int | dict[str, int] | None
+    include_scores: bool | None
     include_sort_vector: bool | None
     rerank_on: str | None
     f_r_subpayload: dict[str, Any]
@@ -444,6 +450,7 @@ class _CollectionFindAndRerankQueryEngine(
         sort: HybridSortType | None,
         limit: int | None,
         hybrid_limits: int | dict[str, int] | None,
+        include_scores: bool | None,
         include_sort_vector: bool | None,
         rerank_on: str | None,
     ) -> None:
@@ -454,6 +461,7 @@ class _CollectionFindAndRerankQueryEngine(
         self.sort = sort
         self.limit = limit
         self.hybrid_limits = hybrid_limits
+        self.include_scores = include_scores
         self.include_sort_vector = include_sort_vector
         self.rerank_on = rerank_on
         self.f_r_subpayload = {
@@ -470,6 +478,7 @@ class _CollectionFindAndRerankQueryEngine(
             for k, v in {
                 "limit": self.limit or None,
                 "hybridLimits": self.hybrid_limits or None,
+                "includeScores": self.include_scores,
                 "includeSortVector": self.include_sort_vector,
                 "rerankOn": self.rerank_on,
             }.items()
@@ -523,23 +532,24 @@ class _CollectionFindAndRerankQueryEngine(
                 text="Faulty response from findAndRerank API command (no 'documents').",
                 raw_response=f_response,
             )
-        if "documentResponses" not in f_response.get("status", {}):
-            raise UnexpectedDataAPIResponseException(
-                text="Faulty response from findAndRerank API command (no 'documentResponses').",
-                raw_response=f_response,
-            )
-        p_documents: list[RerankedResult[TRAW]]
-        if f_response["data"]["documents"]:
-            p_documents = [
-                RerankedResult(document=document, scores=doc_response["scores"])
-                for document, doc_response in zip(
-                    f_response["data"]["documents"],
-                    f_response["status"]["documentResponses"],
-                )
-            ]
+        # the presence of 'documentResponses' is not guaranteed (depends on option flags)
+        response_status = f_response.get("status") or {}
+        documents: list[TRAW] = f_response["data"]["documents"]
+        document_responses: list[dict[str, Any]]
+        if "documentResponses" in response_status:
+            document_responses = response_status["documentResponses"]
         else:
-            p_documents = []
-        n_p_state = f_response["data"]["nextPageState"]
+            document_responses = [{}] * len(documents)
+
+        p_documents: list[RerankedResult[TRAW]]
+        p_documents = [
+            RerankedResult(document=document, scores=doc_response.get("scores") or {})
+            for document, doc_response in zip(
+                documents,
+                document_responses,
+            )
+        ]
+        n_p_state = (f_response.get("data") or {}).get("nextPageState")
         p_r_status = f_response.get("status")
         return (p_documents, n_p_state, p_r_status)
 
@@ -591,22 +601,23 @@ class _CollectionFindAndRerankQueryEngine(
                 text="Faulty response from findAndRerank API command (no 'documents').",
                 raw_response=f_response,
             )
-        if "documentResponses" not in f_response.get("status", {}):
-            raise UnexpectedDataAPIResponseException(
-                text="Faulty response from findAndRerank API command (no 'documentResponses').",
-                raw_response=f_response,
-            )
-        p_documents: list[RerankedResult[TRAW]]
-        if f_response["data"]["documents"]:
-            p_documents = [
-                RerankedResult(document=document, scores=doc_response["scores"])
-                for document, doc_response in zip(
-                    f_response["data"]["documents"],
-                    f_response["status"]["documentResponses"],
-                )
-            ]
+        # the presence of 'documentResponses' is not guaranteed (depends on option flags)
+        response_status = f_response.get("status") or {}
+        documents: list[TRAW] = f_response["data"]["documents"]
+        document_responses: list[dict[str, Any]]
+        if "documentResponses" in response_status:
+            document_responses = response_status["documentResponses"]
         else:
-            p_documents = []
-        n_p_state = f_response["data"]["nextPageState"]
+            document_responses = [{}] * len(documents)
+
+        p_documents: list[RerankedResult[TRAW]]
+        p_documents = [
+            RerankedResult(document=document, scores=doc_response.get("scores") or {})
+            for document, doc_response in zip(
+                documents,
+                document_responses,
+            )
+        ]
+        n_p_state = (f_response.get("data") or {}).get("nextPageState")
         p_r_status = f_response.get("status")
         return (p_documents, n_p_state, p_r_status)

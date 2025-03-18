@@ -124,6 +124,50 @@ class TestCollectionFindAndRerankAsync:
         )
 
     @pytest.mark.describe(
+        "test of collection find-and-rerank include_scores, vectorize, async"
+    )
+    async def test_collection_includescores_farr_vectorize_async(
+        self,
+        async_empty_farr_vectorize_collection: DefaultAsyncCollection,
+    ) -> None:
+        acoll = async_empty_farr_vectorize_collection
+        await acoll.insert_one({"$vectorize": "text", "$lexical": "text"})
+
+        cur_n = acoll.find_and_rerank(sort={"$hybrid": "bla"})
+        cur_f = acoll.find_and_rerank(sort={"$hybrid": "bla"}, include_scores=False)
+        cur_t = acoll.find_and_rerank(sort={"$hybrid": "bla"}, include_scores=True)
+        itm_n = await cur_n.__anext__()
+        itm_f = await cur_f.__anext__()
+        itm_t = await cur_t.__anext__()
+
+        assert itm_n.scores == {}
+        assert itm_f.scores == {}
+        assert itm_t.scores != {}
+        assert all(isinstance(val, float) for val in itm_t.scores.values())
+
+    @pytest.mark.describe(
+        "test of collection find-and-rerank include_scores, novectorize, async"
+    )
+    async def test_collection_includescores_farr_novectorize_async(
+        self,
+        async_empty_farr_vector_collection: DefaultAsyncCollection,
+    ) -> None:
+        acoll = async_empty_farr_vector_collection
+        await acoll.insert_one({"$vector": [-1, -2], "$lexical": "text"})
+
+        cur_n = acoll.find_and_rerank(sort={"$hybrid": "bla"})
+        cur_f = acoll.find_and_rerank(sort={"$hybrid": "bla"}, include_scores=False)
+        cur_t = acoll.find_and_rerank(sort={"$hybrid": "bla"}, include_scores=True)
+        itm_n = await cur_n.__anext__()
+        itm_f = await cur_f.__anext__()
+        itm_t = await cur_t.__anext__()
+
+        assert itm_n.scores == {}
+        assert itm_f.scores == {}
+        assert itm_t.scores != {}
+        assert all(isinstance(val, float) for val in itm_t.scores.values())
+
+    @pytest.mark.describe(
         "test of collection find-and-rerank get_sort_vector, vectorize, async"
     )
     async def test_collection_getsortvector_farr_vectorize_async(
