@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from decimal import Decimal
 from inspect import iscoroutinefunction
 from typing import Any, Awaitable, Callable, Generic, cast
 
@@ -30,6 +29,7 @@ from astrapy.data.cursors.cursor import (
     AbstractCursor,
     CursorState,
     T,
+    _ensure_vector,
     _revise_timeouts_for_cursor_copy,
 )
 from astrapy.data.cursors.query_engine import (
@@ -41,31 +41,7 @@ from astrapy.exceptions import (
     CursorException,
     MultiCallTimeoutManager,
 )
-from astrapy.utils.api_options import FullSerdesOptions
 from astrapy.utils.unset import _UNSET, UnsetType
-
-
-def _ensure_vector(
-    fvector: list[float | Decimal] | None,
-    options: FullSerdesOptions,
-) -> list[float] | DataAPIVector | None:
-    """
-    For Tables and - depending on the JSON response parsing - collections alike,
-    the sort vector included in the response from a find could arrive as a list
-    of Decimal instances. This utility makes it back to either a plain list of floats
-    or a DataAPIVector, according the the preferences for the table/collection being
-    queried.
-    """
-    if fvector is None:
-        return None
-    else:
-        # this can be a list of Decimal instances (because it's from tables,
-        # or from collections set to use decimals).
-        f_list = [float(x) for x in fvector]
-        if options.custom_datatypes_in_reading:
-            return DataAPIVector(f_list)
-        else:
-            return f_list
 
 
 class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
@@ -664,7 +640,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
-            list: a list of documents (or other values depending on the mapping
+            a list of documents (or other values depending on the mapping
                 function, if one is set). These are all items that were left
                 to be consumed on the cursor when `to_list` is called.
 
@@ -716,7 +692,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         cursor stays in the IDLE state until actual consumption starts.
 
         Returns:
-            has_next: a boolean value of True if there is at least one further item
+            a boolean value of True if there is at least one further item
                 available to consume; False otherwise (including the case of CLOSED
                 cursor).
         """
@@ -739,7 +715,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         or the sort vector used in the search.
 
         Returns:
-            get_sort_vector: the query vector used in the search if this was a
+            the query vector used in the search if this was a
                 vector search (otherwise None). The vector is returned either
                 as a DataAPIVector or a plain list of number depending on the
                 `APIOptions.serdes_options` that apply. The query vector is available
@@ -1277,7 +1253,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
-            list: a list of documents (or other values depending on the mapping
+            a list of documents (or other values depending on the mapping
                 function, if one is set). These are all items that were left
                 to be consumed on the cursor when `to_list` is called.
         """
@@ -1311,7 +1287,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         cursor stays in the IDLE state until actual consumption starts.
 
         Returns:
-            has_next: a boolean value of True if there is at least one further item
+            a boolean value of True if there is at least one further item
                 available to consume; False otherwise (including the case of CLOSED
                 cursor).
         """
@@ -1334,7 +1310,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         or the sort vector used in the search.
 
         Returns:
-            get_sort_vector: the query vector used in the search if this was a
+            the query vector used in the search if this was a
                 vector search (otherwise None). The vector is returned either
                 as a DataAPIVector or a plain list of number depending on the
                 `APIOptions.serdes_options` that apply. The query vector is available
@@ -1997,7 +1973,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         cursor stays in the IDLE state until actual consumption starts.
 
         Returns:
-            has_next: a boolean value of True if there is at least one further item
+            a boolean value of True if there is at least one further item
                 available to consume; False otherwise (including the case of CLOSED
                 cursor).
         """
@@ -2020,7 +1996,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         or the sort vector used in the search.
 
         Returns:
-            get_sort_vector: the query vector used in the search if this was a
+            the query vector used in the search if this was a
                 vector search (otherwise None). The vector is returned either
                 as a DataAPIVector or a plain list of number depending on the
                 `APIOptions.serdes_options` that apply. The query vector is available
@@ -2591,7 +2567,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         cursor stays in the IDLE state until actual consumption starts.
 
         Returns:
-            has_next: a boolean value of True if there is at least one further item
+            a boolean value of True if there is at least one further item
                 available to consume; False otherwise (including the case of CLOSED
                 cursor).
         """
@@ -2614,7 +2590,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         or the sort vector used in the search.
 
         Returns:
-            get_sort_vector: the query vector used in the search if this was a
+            the query vector used in the search if this was a
                 vector search (otherwise None). The vector is returned either
                 as a DataAPIVector or a plain list of number depending on the
                 `APIOptions.serdes_options` that apply. The query vector is available

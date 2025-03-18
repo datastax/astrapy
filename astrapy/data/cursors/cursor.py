@@ -16,12 +16,15 @@ from __future__ import annotations
 
 import logging
 from abc import ABC
+from decimal import Decimal
 from enum import Enum
 from typing import Any, Generic, TypeVar
 
+from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import (
     CursorException,
 )
+from astrapy.utils.api_options import FullSerdesOptions
 
 # A cursor reads TRAW from DB and maps them to T if any mapping.
 # A new cursor returned by .map will map to TNEW
@@ -72,6 +75,29 @@ def _revise_timeouts_for_cursor_copy(
         else:
             _new_request_timeout_ms = None
     return (_new_request_timeout_ms, _general_method_timeout_ms)
+
+
+def _ensure_vector(
+    fvector: list[float | Decimal] | None,
+    options: FullSerdesOptions,
+) -> list[float] | DataAPIVector | None:
+    """
+    For Tables and - depending on the JSON response parsing - collections alike,
+    the sort vector included in the response from a find-like could arrive as a list
+    of Decimal instances. This utility makes it back to either a plain list of floats
+    or a DataAPIVector, according the the preferences for the table/collection being
+    queried.
+    """
+    if fvector is None:
+        return None
+    else:
+        # this can be a list of Decimal instances (because it's from tables,
+        # or from collections set to use decimals).
+        f_list = [float(x) for x in fvector]
+        if options.custom_datatypes_in_reading:
+            return DataAPIVector(f_list)
+        else:
+            return f_list
 
 
 class CursorState(Enum):

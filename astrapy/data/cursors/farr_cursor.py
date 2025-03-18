@@ -30,10 +30,12 @@ from astrapy.data.cursors.cursor import (
     AbstractCursor,
     CursorState,
     T,
+    _ensure_vector,
     _revise_timeouts_for_cursor_copy,
 )
 from astrapy.data.cursors.query_engine import _CollectionFindAndRerankQueryEngine
 from astrapy.data.cursors.reranked_result import RerankedResult
+from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import (
     CursorException,
     MultiCallTimeoutManager,
@@ -82,7 +84,7 @@ class CollectionFindAndRerankCursor(
     _sort: HybridSortType | None
     _limit: int | None
     _hybrid_limits: int | dict[str, int] | None
-    _hybrid_projection: str | None
+    _include_sort_vector: bool | None
     _rerank_on: str | None
     _mapper: Callable[[RerankedResult[TRAW]], T] | None
 
@@ -99,7 +101,7 @@ class CollectionFindAndRerankCursor(
         sort: HybridSortType | None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
-        hybrid_projection: str | None = None,
+        include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         mapper: Callable[[RerankedResult[TRAW]], T] | None = None,
     ) -> None:
@@ -108,7 +110,7 @@ class CollectionFindAndRerankCursor(
         self._sort = deepcopy(sort)
         self._limit = limit
         self._hybrid_limits = deepcopy(hybrid_limits)
-        self._hybrid_projection = hybrid_projection
+        self._include_sort_vector = include_sort_vector
         self._rerank_on = rerank_on
         self._mapper = mapper
         self._request_timeout_ms = request_timeout_ms
@@ -123,7 +125,7 @@ class CollectionFindAndRerankCursor(
             sort=self._sort,
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
-            hybrid_projection=self._hybrid_projection,
+            include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
         )
         AbstractCursor.__init__(self)
@@ -144,7 +146,7 @@ class CollectionFindAndRerankCursor(
         sort: dict[str, Any] | None | UnsetType = _UNSET,
         limit: int | None | UnsetType = _UNSET,
         hybrid_limits: int | dict[str, int] | None | UnsetType = _UNSET,
-        hybrid_projection: str | None | UnsetType = _UNSET,
+        include_sort_vector: bool | None | UnsetType = _UNSET,
         rerank_on: str | None | UnsetType = _UNSET,
     ) -> CollectionFindAndRerankCursor[TRAW, T]:
         if self._query_engine.collection is None:
@@ -172,9 +174,9 @@ class CollectionFindAndRerankCursor(
             hybrid_limits=self._hybrid_limits
             if isinstance(hybrid_limits, UnsetType)
             else hybrid_limits,
-            hybrid_projection=self._hybrid_projection
-            if isinstance(hybrid_projection, UnsetType)
-            else hybrid_projection,
+            include_sort_vector=self._include_sort_vector
+            if isinstance(include_sort_vector, UnsetType)
+            else include_sort_vector,
             rerank_on=self._rerank_on
             if isinstance(rerank_on, UnsetType)
             else rerank_on,
@@ -274,7 +276,7 @@ class CollectionFindAndRerankCursor(
             sort=self._sort,
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
-            hybrid_projection=self._hybrid_projection,
+            include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
             mapper=self._mapper,
         )
@@ -388,26 +390,27 @@ class CollectionFindAndRerankCursor(
         self._ensure_idle()
         return self._copy(hybrid_limits=hybrid_limits)
 
-    def hybrid_projection(
-        self, hybrid_projection: str | None
+    def include_sort_vector(
+        self, include_sort_vector: bool | None
     ) -> CollectionFindAndRerankCursor[TRAW, T]:
         """
-        Return a copy of this cursor with a new hybrid_projection setting.
+        Return a copy of this cursor with a new include_sort_vector setting.
         This operation is allowed only if the cursor state is still IDLE.
 
         Instead of explicitly invoking this method, the typical usage consists
         in passing arguments to the Collection `find_and_rerank` method.
 
         Args:
-            hybrid_projection: a new setting to apply to the returned new cursor.
+            include_sort_vector: a new include_sort_vector setting to apply
+                to the returned new cursor.
 
         Returns:
             a new CollectionFindAndRerankCursor with the same settings as this one,
-                except for `hybrid_projection` which is the provided value.
+                except for `include_sort_vector` which is the provided value.
         """
 
         self._ensure_idle()
-        return self._copy(hybrid_projection=hybrid_projection)
+        return self._copy(include_sort_vector=include_sort_vector)
 
     def rerank_on(
         self, rerank_on: str | None
@@ -477,7 +480,7 @@ class CollectionFindAndRerankCursor(
             sort=self._sort,
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
-            hybrid_projection=self._hybrid_projection,
+            include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
             mapper=composite_mapper,
         )
@@ -559,7 +562,7 @@ class CollectionFindAndRerankCursor(
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
-            list: a list of documents (or other values depending on the mapping
+            a list of documents (or other values depending on the mapping
                 function, if one is set). These are all items that were left
                 to be consumed on the cursor when `to_list` is called.
 
@@ -596,7 +599,7 @@ class CollectionFindAndRerankCursor(
         cursor stays in the IDLE state until actual consumption starts.
 
         Returns:
-            has_next: a boolean value of True if there is at least one further item
+            a boolean value of True if there is at least one further item
                 available to consume; False otherwise (including the case of CLOSED
                 cursor).
         """
@@ -605,6 +608,36 @@ class CollectionFindAndRerankCursor(
             return False
         self._try_ensure_fill_buffer()
         return len(self._buffer) > 0
+
+    def get_sort_vector(self) -> list[float] | DataAPIVector | None:
+        """
+        Return the query vector used in the vector (ANN) search that was run as
+        part of the search expressed by this cursor, if applicable.
+
+        Calling `get_sort_vector` on an IDLE cursor triggers the first page fetch,
+        but the cursor stays in the IDLE state until actual consumption starts.
+
+        The method can be invoked on a CLOSED cursor and will return either None
+        or the sort vector used in the search.
+
+        Returns:
+            the query vector used in the search, if it was requested by passing
+                `include_sort_vector=True` to the `find_and_rerank` call that originated
+                the cursor.
+                If the sort vector is not available, None is returned.
+                Otherwise, the vector is returned as either a DataAPIVector
+                or a plain list of number depending on the setting for
+                `APIOptions.serdes_options`.
+        """
+
+        self._try_ensure_fill_buffer()
+        if self._last_response_status:
+            return _ensure_vector(
+                self._last_response_status.get("sortVector"),
+                self.data_source.api_options.serdes_options,
+            )
+        else:
+            return None
 
 
 class AsyncCollectionFindAndRerankCursor(
@@ -650,7 +683,7 @@ class AsyncCollectionFindAndRerankCursor(
     _sort: HybridSortType | None
     _limit: int | None
     _hybrid_limits: int | dict[str, int] | None
-    _hybrid_projection: str | None
+    _include_sort_vector: bool | None
     _rerank_on: str | None
     _mapper: Callable[[RerankedResult[TRAW]], T] | None
 
@@ -667,7 +700,7 @@ class AsyncCollectionFindAndRerankCursor(
         sort: HybridSortType | None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
-        hybrid_projection: str | None = None,
+        include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         mapper: Callable[[RerankedResult[TRAW]], T] | None = None,
     ) -> None:
@@ -676,7 +709,7 @@ class AsyncCollectionFindAndRerankCursor(
         self._sort = deepcopy(sort)
         self._limit = limit
         self._hybrid_limits = deepcopy(hybrid_limits)
-        self._hybrid_projection = hybrid_projection
+        self._include_sort_vector = include_sort_vector
         self._rerank_on = rerank_on
         self._mapper = mapper
         self._request_timeout_ms = request_timeout_ms
@@ -691,7 +724,7 @@ class AsyncCollectionFindAndRerankCursor(
             sort=self._sort,
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
-            hybrid_projection=self._hybrid_projection,
+            include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
         )
         AbstractCursor.__init__(self)
@@ -712,7 +745,7 @@ class AsyncCollectionFindAndRerankCursor(
         sort: dict[str, Any] | None | UnsetType = _UNSET,
         limit: int | None | UnsetType = _UNSET,
         hybrid_limits: int | dict[str, int] | None | UnsetType = _UNSET,
-        hybrid_projection: str | None | UnsetType = _UNSET,
+        include_sort_vector: bool | None | UnsetType = _UNSET,
         rerank_on: str | None | UnsetType = _UNSET,
     ) -> AsyncCollectionFindAndRerankCursor[TRAW, T]:
         if self._query_engine.async_collection is None:
@@ -740,9 +773,9 @@ class AsyncCollectionFindAndRerankCursor(
             hybrid_limits=self._hybrid_limits
             if isinstance(hybrid_limits, UnsetType)
             else hybrid_limits,
-            hybrid_projection=self._hybrid_projection
-            if isinstance(hybrid_projection, UnsetType)
-            else hybrid_projection,
+            include_sort_vector=self._include_sort_vector
+            if isinstance(include_sort_vector, UnsetType)
+            else include_sort_vector,
             rerank_on=self._rerank_on
             if isinstance(rerank_on, UnsetType)
             else rerank_on,
@@ -845,7 +878,7 @@ class AsyncCollectionFindAndRerankCursor(
             sort=self._sort,
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
-            hybrid_projection=self._hybrid_projection,
+            include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
             mapper=self._mapper,
         )
@@ -959,26 +992,27 @@ class AsyncCollectionFindAndRerankCursor(
         self._ensure_idle()
         return self._copy(hybrid_limits=hybrid_limits)
 
-    def hybrid_projection(
-        self, hybrid_projection: str | None
+    def include_sort_vector(
+        self, include_sort_vector: bool | None
     ) -> AsyncCollectionFindAndRerankCursor[TRAW, T]:
         """
-        Return a copy of this cursor with a new hybrid_projection setting.
+        Return a copy of this cursor with a new include_sort_vector setting.
         This operation is allowed only if the cursor state is still IDLE.
 
         Instead of explicitly invoking this method, the typical usage consists
         in passing arguments to the AsyncCollection `find_and_rerank` method.
 
         Args:
-            hybrid_projection: a new setting to apply to the returned new cursor.
+            include_sort_vector: a new include_sort_vector setting to apply
+                to the returned new cursor.
 
         Returns:
             a new AsyncCollectionFindAndRerankCursor with the same settings as this one,
-                except for `hybrid_projection` which is the provided value.
+                except for `include_sort_vector` which is the provided value.
         """
 
         self._ensure_idle()
-        return self._copy(hybrid_projection=hybrid_projection)
+        return self._copy(include_sort_vector=include_sort_vector)
 
     def rerank_on(
         self, rerank_on: str | None
@@ -1049,7 +1083,7 @@ class AsyncCollectionFindAndRerankCursor(
             sort=self._sort,
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
-            hybrid_projection=self._hybrid_projection,
+            include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
             mapper=composite_mapper,
         )
@@ -1141,7 +1175,7 @@ class AsyncCollectionFindAndRerankCursor(
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
-            list: a list of documents (or other values depending on the mapping
+            a list of documents (or other values depending on the mapping
                 function, if one is set). These are all items that were left
                 to be consumed on the cursor when `to_list` is called.
         """
@@ -1175,7 +1209,7 @@ class AsyncCollectionFindAndRerankCursor(
         cursor stays in the IDLE state until actual consumption starts.
 
         Returns:
-            has_next: a boolean value of True if there is at least one further item
+            a boolean value of True if there is at least one further item
                 available to consume; False otherwise (including the case of CLOSED
                 cursor).
         """
@@ -1184,3 +1218,33 @@ class AsyncCollectionFindAndRerankCursor(
             return False
         await self._try_ensure_fill_buffer()
         return len(self._buffer) > 0
+
+    async def get_sort_vector(self) -> list[float] | DataAPIVector | None:
+        """
+        Return the query vector used in the vector (ANN) search that was run as
+        part of the search expressed by this cursor, if applicable.
+
+        Calling `get_sort_vector` on an IDLE cursor triggers the first page fetch,
+        but the cursor stays in the IDLE state until actual consumption starts.
+
+        The method can be invoked on a CLOSED cursor and will return either None
+        or the sort vector used in the search.
+
+        Returns:
+            the query vector used in the search, if it was requested by passing
+                `include_sort_vector=True` to the `find_and_rerank` call that originated
+                the cursor.
+                If the sort vector is not available, None is returned.
+                Otherwise, the vector is returned as either a DataAPIVector
+                or a plain list of number depending on the setting for
+                `APIOptions.serdes_options`.
+        """
+
+        await self._try_ensure_fill_buffer()
+        if self._last_response_status:
+            return _ensure_vector(
+                self._last_response_status.get("sortVector"),
+                self.data_source.api_options.serdes_options,
+            )
+        else:
+            return None

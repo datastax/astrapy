@@ -46,11 +46,15 @@ def mock_farr_response(pl: dict[str, Any] | None) -> dict[str, Any]:
     assert pl is not None
     d_hyb = pl["findAndRerank"]["sort"]["$hybrid"]
     vector_dim: int | None
-    farr_limit = pl["findAndRerank"]["options"]["limit"]
+    farr_limit = pl["findAndRerank"]["options"].get("limit", 2)
+    include_sv = pl["findAndRerank"]["options"].get("includeSortVector") or False
+    _sort_vector: list[float] | None
     if isinstance(d_hyb, str) or "$vector" not in d_hyb:
         vector_dim = None
+        _sort_vector = [99] * 1536
     else:
         vector_dim = len(d_hyb["$vector"])
+        _sort_vector = [99] * vector_dim
 
     def do_vector_part(doc_i: int) -> dict[str, Any]:
         if vector_dim is None:
@@ -85,6 +89,7 @@ def mock_farr_response(pl: dict[str, Any] | None) -> dict[str, Any]:
         },
         "status": {
             "documentResponses": doc_responses,
+            **({"sortVector": _sort_vector} if include_sv else {}),
         },
     }
 
@@ -114,6 +119,13 @@ class _QueryEngine(ABC, Generic[TRAW]):
 class _CollectionFindQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
     collection: Collection[TRAW] | None
     async_collection: AsyncCollection[TRAW] | None
+    filter: FilterType | None
+    projection: ProjectionType | None
+    sort: dict[str, Any] | None
+    limit: int | None
+    include_similarity: bool | None
+    include_sort_vector: bool | None
+    skip: int | None
     f_r_subpayload: dict[str, Any]
     f_options0: dict[str, Any]
 
@@ -132,22 +144,29 @@ class _CollectionFindQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
     ) -> None:
         self.collection = collection
         self.async_collection = async_collection
+        self.filter = filter
+        self.projection = projection
+        self.sort = sort
+        self.limit = limit
+        self.include_similarity = include_similarity
+        self.include_sort_vector = include_sort_vector
+        self.skip = skip
         self.f_r_subpayload = {
             k: v
             for k, v in {
-                "filter": filter,
-                "projection": normalize_optional_projection(projection),
-                "sort": sort,
+                "filter": self.filter,
+                "projection": normalize_optional_projection(self.projection),
+                "sort": self.sort,
             }.items()
             if v is not None
         }
         self.f_options0 = {
             k: v
             for k, v in {
-                "limit": limit if limit != 0 else None,
-                "skip": skip,
-                "includeSimilarity": include_similarity,
-                "includeSortVector": include_sort_vector,
+                "limit": self.limit or None,
+                "skip": self.skip,
+                "includeSimilarity": self.include_similarity,
+                "includeSortVector": self.include_sort_vector,
             }.items()
             if v is not None
         }
@@ -247,8 +266,13 @@ class _CollectionFindQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
 class _TableFindQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
     table: Table[TRAW] | None
     async_table: AsyncTable[TRAW] | None
+    filter: FilterType | None
+    projection: ProjectionType | None
+    sort: dict[str, Any] | None
+    limit: int | None
     include_similarity: bool | None
     include_sort_vector: bool | None
+    skip: int | None
     f_r_subpayload: dict[str, Any]
     f_options0: dict[str, Any]
 
@@ -267,24 +291,29 @@ class _TableFindQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
     ) -> None:
         self.table = table
         self.async_table = async_table
+        self.filter = filter
+        self.projection = projection
+        self.sort = sort
+        self.limit = limit
         self.include_similarity = include_similarity
         self.include_sort_vector = include_sort_vector
+        self.skip = skip
         self.f_r_subpayload = {
             k: v
             for k, v in {
-                "filter": filter,
-                "projection": normalize_optional_projection(projection),
-                "sort": sort,
+                "filter": self.filter,
+                "projection": normalize_optional_projection(self.projection),
+                "sort": self.sort,
             }.items()
             if v is not None
         }
         self.f_options0 = {
             k: v
             for k, v in {
-                "limit": limit if limit != 0 else None,
-                "skip": skip,
-                "includeSimilarity": include_similarity,
-                "includeSortVector": include_sort_vector,
+                "limit": self.limit or None,
+                "skip": self.skip,
+                "includeSimilarity": self.include_similarity,
+                "includeSortVector": self.include_sort_vector,
             }.items()
             if v is not None
         }
@@ -395,6 +424,13 @@ class _CollectionFindAndRerankQueryEngine(
 ):
     collection: Collection[TRAW] | None
     async_collection: AsyncCollection[TRAW] | None
+    filter: FilterType | None
+    projection: ProjectionType | None
+    sort: HybridSortType | None
+    limit: int | None
+    hybrid_limits: int | dict[str, int] | None
+    include_sort_vector: bool | None
+    rerank_on: str | None
     f_r_subpayload: dict[str, Any]
     f_options0: dict[str, Any]
 
@@ -408,27 +444,34 @@ class _CollectionFindAndRerankQueryEngine(
         sort: HybridSortType | None,
         limit: int | None,
         hybrid_limits: int | dict[str, int] | None,
-        hybrid_projection: str | None,
+        include_sort_vector: bool | None,
         rerank_on: str | None,
     ) -> None:
         self.collection = collection
         self.async_collection = async_collection
+        self.filter = filter
+        self.projection = projection
+        self.sort = sort
+        self.limit = limit
+        self.hybrid_limits = hybrid_limits
+        self.include_sort_vector = include_sort_vector
+        self.rerank_on = rerank_on
         self.f_r_subpayload = {
             k: v
             for k, v in {
-                "filter": filter,
-                "projection": normalize_optional_projection(projection),
-                "sort": sort,
+                "filter": self.filter,
+                "projection": normalize_optional_projection(self.projection),
+                "sort": self.sort,
             }.items()
             if v is not None
         }
         self.f_options0 = {
             k: v
             for k, v in {
-                "limit": limit if limit != 0 else None,
-                "hybridLimits": hybrid_limits if hybrid_limits != 0 else None,
-                "rerankOn": rerank_on,
-                "hybridProjection": hybrid_projection,
+                "limit": self.limit or None,
+                "hybridLimits": self.hybrid_limits or None,
+                "includeSortVector": self.include_sort_vector,
+                "rerankOn": self.rerank_on,
             }.items()
             if v is not None
         }

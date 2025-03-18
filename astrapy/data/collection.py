@@ -1455,7 +1455,7 @@ class Collection(Generic[DOC]):
         document_type: None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
-        hybrid_projection: str | None = None,
+        include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
@@ -1471,7 +1471,7 @@ class Collection(Generic[DOC]):
         document_type: type[DOC2],
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
-        hybrid_projection: str | None = None,
+        include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
@@ -1486,7 +1486,7 @@ class Collection(Generic[DOC]):
         document_type: type[DOC2] | None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
-        hybrid_projection: str | None = None,
+        include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
@@ -1548,9 +1548,10 @@ class Collection(Generic[DOC]):
                 In case of a dictionary parameter, consult the Data API documentation
                 about the string to use for keys according to the configuration of the
                 collection.
-            hybrid_projection: the amount of additional information that should be
-                returned along with the resulting documents. Values are: "none",
-                "passage" or "scores" (see the Data API documentation for details).
+            include_sort_vector: a boolean to request the search query vector
+                used for the vector-search part of the find operation.
+                If set to True, calling the `get_sort_vector` method on the returned
+                cursor will yield the vector used for the ANN search.
             rerank_on: for collections without a vectorize (server-side embeddings)
                 service, this is used to specify the field name that is then used
                 during reranking.
@@ -1588,8 +1589,8 @@ class Collection(Generic[DOC]):
             .limit(limit)
             .sort(sort)
             .hybrid_limits(hybrid_limits)
-            .hybrid_projection(hybrid_projection)
             .rerank_on(rerank_on)
+            .include_sort_vector(include_sort_vector)
         )
 
     def count_documents(
@@ -4214,7 +4215,7 @@ class AsyncCollection(Generic[DOC]):
         document_type: None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
-        hybrid_projection: str | None = None,
+        include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
@@ -4230,7 +4231,7 @@ class AsyncCollection(Generic[DOC]):
         document_type: type[DOC2],
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
-        hybrid_projection: str | None = None,
+        include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
@@ -4245,7 +4246,7 @@ class AsyncCollection(Generic[DOC]):
         document_type: type[DOC2] | None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
-        hybrid_projection: str | None = None,
+        include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
@@ -4307,9 +4308,10 @@ class AsyncCollection(Generic[DOC]):
                 In case of a dictionary parameter, consult the Data API documentation
                 about the string to use for keys according to the configuration of the
                 collection.
-            hybrid_projection: the amount of additional information that should be
-                returned along with the resulting documents. Values are: "none",
-                "passage" or "scores" (see the Data API documentation for details).
+            include_sort_vector: a boolean to request the search query vector
+                used for the vector-search part of the find operation.
+                If set to True, calling the `get_sort_vector` method on the returned
+                cursor will yield the vector used for the ANN search.
             rerank_on: for collections without a vectorize (server-side embeddings)
                 service, this is used to specify the field name that is then used
                 during reranking.
@@ -4347,8 +4349,8 @@ class AsyncCollection(Generic[DOC]):
             .limit(limit)
             .sort(sort)
             .hybrid_limits(hybrid_limits)
-            .hybrid_projection(hybrid_projection)
             .rerank_on(rerank_on)
+            .include_sort_vector(include_sort_vector)
         )
 
     async def count_documents(
