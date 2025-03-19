@@ -42,6 +42,7 @@ from ..conftest import (
     ADMIN_ENV_LIST,
     ADMIN_ENV_VARIABLE_MAP,
     HEADER_EMBEDDING_API_KEY_OPENAI,
+    HEADER_RERANKING_API_KEY_NVIDIA,
     IS_ASTRA_DB,
     SECONDARY_KEYSPACE,
     DataAPICredentials,
@@ -195,6 +196,7 @@ def service_collection_parameters() -> Iterable[dict[str, Any]]:
         "provider": "openai",
         "modelName": "text-embedding-ada-002",
         "api_key": HEADER_EMBEDDING_API_KEY_OPENAI,
+        "reranking_api_key": HEADER_RERANKING_API_KEY_NVIDIA,
     }
 
 
@@ -286,6 +288,7 @@ def sync_farr_vectorize_collection(
             .build()
         ),
         embedding_api_key=params["api_key"],
+        reranking_api_key=params["reranking_api_key"],
     )
     yield collection
 

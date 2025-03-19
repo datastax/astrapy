@@ -38,7 +38,7 @@ from astrapy.exceptions import (
 )
 
 # TODO: remove this (setting + function) once API testable
-MOCK_FARR_API = True
+MOCK_FARR_API = False
 
 
 def mock_farr_response(pl: dict[str, Any] | None) -> dict[str, Any]:
