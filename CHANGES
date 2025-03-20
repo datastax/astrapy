@@ -1,5 +1,5 @@
-main
-====
+v 2.0.0rc2
+==========
 Cursors (class hierarchy revised to accommodate `find_and_rerank`, plus other changes):
     - renamed the 'FindCursorState' enum to `CursorState`
     - renamed the abstract ur-class 'FindCursor' => `AbstractCursor`
