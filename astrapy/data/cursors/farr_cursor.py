@@ -70,7 +70,22 @@ class CollectionFindAndRerankCursor(
     returns items of type RerankedResult[TRAW].
 
     Example:
-        >>> TODO: code examples
+        >>> TODO: recompute output
+        >>> cursor = collection.find_and_rerank(
+        ...     sort={"$hybrid": "Weekdays?"},
+        ...     projection={"wkd": True},
+        ...     limit=5,
+        ...     hybrid_limits=10,  # TODO goes away
+        ...     include_scores=True,
+        ... )
+        >>> for r_result in cursor:
+        ...     print(f"{r_result.document['wkd']}: {r_result.scores['$rerank']}")
+        ...
+        Wed: -9.1015625
+        Mon: -10.2421875
+        Tue: -10.2421875
+        Sun: -11.375
+        Fri: -12.515625
     """
 
     _query_engine: _CollectionFindAndRerankQueryEngine[TRAW]
@@ -268,7 +283,27 @@ class CollectionFindAndRerankCursor(
             and rewound to its initial state.
 
         Example:
-            >>> TODO: code examples
+            >>> cursor = collection.find_and_rerank(
+            ...     sort={"$hybrid": "Weekdays?"},
+            ...     projection={"wkd": True},
+            ...     limit=3,
+            ...     hybrid_limits=10,  # TODO goes away
+            ... ).map(lambda r_result: r_result.document["wkd"].upper())
+            >>> for idx, value in zip([0, 1], cursor):
+            ...     print(f"{idx} ==> {value}")
+            ...
+            0 ==> MON
+            1 ==> TUE
+            >>> cloned_cursor = cursor.clone()
+            >>> for value in cloned_cursor:
+            ...     print(f"(cloned) {value}")
+            ...
+            (cloned) MON
+            (cloned) TUE
+            (cloned) SUN
+            >>>
+            >>> print(f"n ==> {next(cursor)}")
+            n ==> SUN
         """
 
         if self._query_engine.collection is None:
@@ -486,7 +521,36 @@ class CollectionFindAndRerankCursor(
                 possibly composed with any pre-existing mapping function.
 
         Example:
-            >>> TODO: code examples
+            >>> cursor = collection.find_and_rerank(
+            ...     sort={"$hybrid": "Weekdays?"},
+            ...     projection={"wkd": True},
+            ...     limit=3,
+            ...     hybrid_limits=10,  # TODO goes away
+            ... )
+            >>> for r_result in cursor:
+            ...     print(r_result.document)
+            ...
+            {'_id': 'A', 'wkd': 'Mon'}
+            {'_id': 'B', 'wkd': 'Tue'}
+            {'_id': 'G', 'wkd': 'Sun'}
+            >>> cursor_mapped = cursor.clone().map(
+            ...     lambda r_result: r_result.document["wkd"]
+            ... )
+            >>> for value in cursor_mapped:
+            ...     print(value)
+            ...
+            Mon
+            Tue
+            Sun
+            >>> cursor_mapped_twice = cursor_mapped.clone().map(
+            ...     lambda wkd: f"<{wkd[:2].lower()}>"
+            ... )
+            >>> for value in cursor_mapped_twice:
+            ...     print(value)
+            ...
+            <mo>
+            <tu>
+            <su>
         """
         self._ensure_idle()
         if self._query_engine.collection is None:
@@ -547,7 +611,43 @@ class CollectionFindAndRerankCursor(
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Example:
-            >>> TODO: code examples
+            >>> from astrapy.cursors import CursorState, RerankedResult
+            >>>
+            >>> cursor = collection.find_and_rerank(
+            ...     sort={"$hybrid": "Weekdays?"},
+            ...     projection={"wkd": True},
+            ...     limit=3,
+            ...     hybrid_limits=10,  # TODO goes away
+            ... )
+            >>> def printer(r_result: RerankedResult):
+            ...     print(f"-> {r_result.document['wkd']}")
+            ...
+            >>> cursor.for_each(printer)
+            -> Mon
+            -> Tue
+            -> Sun
+            >>>
+            >>> if cursor.state != CursorState.CLOSED:
+            ...     print(f"alive: {cursor.to_list()}")
+            ... else:
+            ...     print("(closed)")
+            ...
+            (closed)
+            >>> cursor2 = cursor.clone()
+            >>> def checker(r_result: RerankedResult):
+            ...     print(f"-> {r_result.document['wkd']}")
+            ...     return r_result.document["wkd"] != "Tue"
+            ...
+            >>> cursor2.for_each(checker)
+            -> Mon
+            -> Tue
+            >>>
+            >>> if cursor2.state != CursorState.CLOSED:
+            ...     print(f"alive: {list(cursor2)}")
+            ... else:
+            ...     print("(closed)")
+            ...
+            alive: [RerankedResult(document={'_id': 'G', 'wkd': 'Sun'}, scores={})]
         """
 
         self._ensure_alive()
@@ -599,7 +699,26 @@ class CollectionFindAndRerankCursor(
                 to be consumed on the cursor when `to_list` is called.
 
         Example:
-            >>> TODO: code examples
+            >>> collection.find_and_rerank(
+            ...     sort={"$hybrid": "Weekdays?"},
+            ...     projection={"wkd": True},
+            ...     limit=4,
+            ...     hybrid_limits=10,  # TODO goes away
+            ... ).map(
+            ...     lambda r_result: r_result.document["wkd"]
+            ... ).to_list()
+            ['Wed', 'Mon', 'Tue', 'Sun']
+            >>>
+            >>> cursor = collection.find_and_rerank(
+            ...     sort={"$hybrid": "Weekdays?"},
+            ...     projection={"wkd": True},
+            ...     limit=4,
+            ...     hybrid_limits=10,  # TODO goes away
+            ... ).map(lambda r_result: r_result.document["wkd"])
+            >>> print(f"First item: {cursor.__next__()}.")
+            First item: Wed.
+            >>> cursor.to_list()
+            ['Mon', 'Tue', 'Sun']
         """
 
         self._ensure_alive()

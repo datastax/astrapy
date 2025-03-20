@@ -1134,7 +1134,7 @@ class Collection(Generic[DOC]):
             ... )
             >>> cursor.get_sort_vector()
             [3.0, 3.0]
-            >>> matches = list(cursor)
+            >>> matches = cursor.to_list()
             >>> cursor.get_sort_vector()
             [3.0, 3.0]
 
@@ -1493,6 +1493,9 @@ class Collection(Generic[DOC]):
         """
         Find relevant documents, combining vector and lexical matches through reranking.
 
+        For this method to succeed, the collection must be created with the required
+        hybrid capabilities (see the `create_collection` method of the Database class).
+
         The method returns a cursor that can then be iterated over, which yields
         the resulting documents, generally paired with accompanying information
         such as scores.
@@ -1547,6 +1550,10 @@ class Collection(Generic[DOC]):
                 In case of a dictionary parameter, consult the Data API documentation
                 about the string to use for keys according to the configuration of the
                 collection.
+            include_scores: a boolean to request the scores to be returned along with
+                the resulting documents. If this is set, the scores can be read in the
+                the map `scores` attribute of each RerankedResult (the map is
+                otherwise empty).
             include_sort_vector: a boolean to request the search query vector
                 used for the vector-search part of the find operation.
                 If set to True, calling the `get_sort_vector` method on the returned
@@ -3824,7 +3831,6 @@ class AsyncCollection(Generic[DOC]):
             ...             )
             ...             ids = [doc["_id"] async for doc in async_cursor1]
             ...             print("find results 2:", ids)
-            ...             async_cursor2 = acol.find({}, limit=3)
             ...
             >>> asyncio.run(run_finds(my_async_coll))
             find results 1:
@@ -4252,6 +4258,9 @@ class AsyncCollection(Generic[DOC]):
         """
         Find relevant documents, combining vector and lexical matches through reranking.
 
+        For this method to succeed, the collection must be created with the required
+        hybrid capabilities (see the `create_collection` method of the Database class).
+
         The method returns a cursor that can then be iterated over, which yields
         the resulting documents, generally paired with accompanying information
         such as scores.
@@ -4306,6 +4315,10 @@ class AsyncCollection(Generic[DOC]):
                 In case of a dictionary parameter, consult the Data API documentation
                 about the string to use for keys according to the configuration of the
                 collection.
+            include_scores: a boolean to request the scores to be returned along with
+                the resulting documents. If this is set, the scores can be read in the
+                the map `scores` attribute of each RerankedResult (the map is
+                otherwise empty).
             include_sort_vector: a boolean to request the search query vector
                 used for the vector-search part of the find operation.
                 If set to True, calling the `get_sort_vector` method on the returned

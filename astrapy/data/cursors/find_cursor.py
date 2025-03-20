@@ -274,8 +274,8 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             >>> for document in cloned_cursor:
             ...     print(document)
             ...
-            {'seq': 1}
-            {'seq': 4}
+            1
+            4
         """
 
         if self._query_engine.collection is None:
@@ -582,7 +582,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             ... )
             >>> def checker(doc):
             ...     print(f"-> {doc['seq']}")
-            ...     return doc['seq'] != 4
+            ...     return doc["seq"] != 4
             ...
             >>> cursor2.for_each(checker)
             -> 1
@@ -1557,8 +1557,8 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             >>> for row in cloned_cursor:
             ...     print(row)
             ...
-            {'winner': 'Donna'}
-            {'winner': 'Erick'}
+            Donna
+            Erick
         """
 
         if self._query_engine.table is None:
@@ -1863,7 +1863,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             ... )
             >>> def checker(row):
             ...     print(f"-> {row['winner']}")
-            ...     return row['winner'] != "Erick"
+            ...     return row["winner"] != "Erick"
             ...
             >>> cursor2.for_each(checker)
             -> Donna
