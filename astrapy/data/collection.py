@@ -1107,8 +1107,6 @@ class Collection(Generic[DOC]):
             >>> [doc["_id"] for doc in cursor1]
             ['97e85f81-...', '1581efe4-...', '...', '...']
             >>> cursor2 = my_coll.find({}, limit=3)
-            >>> cursor2.distinct("seq")
-            [37, 35, 10]
 
             >>> my_coll.insert_many([
             ...     {"tag": "A", "$vector": [4, 5]},
@@ -1168,8 +1166,6 @@ class Collection(Generic[DOC]):
             at the time of writing, and stop there. The returned documents are
             the top results across the whole collection according to the requested
             criterion.
-            These provisions should be kept in mind even when subsequently running
-            a command such as `.distinct()` on a cursor.
 
         Note:
             When not specifying sorting criteria at all (by vector or otherwise),
@@ -3829,8 +3825,6 @@ class AsyncCollection(Generic[DOC]):
             ...             ids = [doc["_id"] async for doc in async_cursor1]
             ...             print("find results 2:", ids)
             ...             async_cursor2 = acol.find({}, limit=3)
-            ...             seqs = await async_cursor2.distinct("seq")
-            ...             print("distinct results 3:", seqs)
             ...
             >>> asyncio.run(run_finds(my_async_coll))
             find results 1:
@@ -3840,7 +3834,6 @@ class AsyncCollection(Generic[DOC]):
             11
             13
             find results 2: ['d656cd9d-...', '479c7ce8-...', '96dc87fd-...', '83f0a21f-...']
-            distinct results 3: [48, 35, 7]
 
             >>> async def run_vector_finds(acol: AsyncCollection) -> None:
             ...     await acol.insert_many([
@@ -3904,8 +3897,6 @@ class AsyncCollection(Generic[DOC]):
             at the time of writing, and stop there. The returned documents are
             the top results across the whole collection according to the requested
             criterion.
-            These provisions should be kept in mind even when subsequently running
-            a command such as `.distinct()` on a cursor.
 
         Note:
             When not specifying sorting criteria at all (by vector or otherwise),
