@@ -93,6 +93,56 @@ Next steps:
 - [AstraPy reference](https://docs.datastax.com/en/astra-api-docs/_attachments/python-client/astrapy/index.html)
 - Package on [PyPI](https://pypi.org/project/astrapy/)
 
+### Server-side embeddings
+
+AstraPy works with the "vectorize" feature of the Data API. This means that one can define server-side computation for vector embeddings and use text strings in place of a document vector, both in writing and in reading.
+The transformation of said text into an embedding is handled by the Data API, using a provider and model you specify.
+
+```python
+my_collection = database.create_collection(
+    "my_vectorize_collection",
+    definition=(
+        CollectionDefinition.builder()
+        .set_vector_service(
+            provider="example_vendor",
+            model_name="embedding_model_name",
+            authentication={"providerKey": "<STORED_API_KEY_NAME>"}  # if needed
+        )
+        .build()
+    )
+)
+
+my_collection.insert_one({"$vectorize": "text to make into embedding"})
+
+documents = my_collection.find(sort={"$vectorize": "vector search query text"})
+```
+
+See the [Data API reference](https://docs.datastax.com/en/astra-db-serverless/databases/embedding-generation.html)
+for more on this topic.
+
+### Hybrid search
+
+AstraPy supports the supports the "find and rerank" Data API command,
+which performs a hybrid search by combining results from a lexical search
+and a vector-based search in a single operation.
+
+```python
+r_results = my_collection.find_and_rerank(
+    sort={"$hybrid": "query text"},
+    limit=10,
+    include_scores=True,
+)
+
+for r_result in r_results:
+    print(r_result.document, r_results.scores)
+```
+
+The Data API must support the primitive (and one must not have
+disabled the feature at collection-creation time).
+
+See the Data API reference, and the docstring for the `find_and_rerank` method,
+for more on this topic.
+
 ### Using Tables
 
 The example above uses a _collection_, where schemaless "documents" can be stored and retrieved.
@@ -184,7 +234,17 @@ for result in cursor:
 my_table.drop()
 ```
 
-For more on Tables, consult the [Data API documentation about Tables](https://docs.datastax.com/en/astra-db-serverless/api-reference/tables.html).
+For more on Tables, consult the [Data API documentation about Tables](https://docs.datastax.com/en/astra-db-serverless/api-reference/tables.html). Note that most features of Collections, with due modifications, hold for Tables as well (e.g. "vectorize", i.e. server-side embeddings).
+
+#### Maps as association lists
+
+In the Data API, table `map` columns with key of a type other than text
+have to be expressed as association lists,
+i.e. nested lists of lists: `[[key1, value1], [key2, value2], ...]`.
+
+AstraPy objects can be configured to always do so automatically, for a seamless
+experience.
+See the API Option `serdes_options.encode_maps_as_lists_in_tables` for details.
 
 ### Usage with HCD and other non-Astra installations
 
