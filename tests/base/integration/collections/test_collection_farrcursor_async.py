@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from astrapy.api_options import APIOptions, SerdesOptions
@@ -22,7 +24,7 @@ from astrapy.cursors import CursorState, RerankedResult
 from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import CursorException
 
-from ..conftest import DefaultCollection
+from ..conftest import DefaultAsyncCollection
 
 NUM_DOCS = 25  # keep this between 20 and 39
 
@@ -31,10 +33,10 @@ FARR_HYBRIDLIMITS = 8
 
 
 @pytest.fixture
-def filled_vectorize_collection(
-    sync_empty_farr_vectorize_collection: DefaultCollection,
-) -> DefaultCollection:
-    sync_empty_farr_vectorize_collection.insert_many(
+def afilled_vectorize_collection(
+    async_empty_farr_vectorize_collection: DefaultAsyncCollection,
+) -> DefaultAsyncCollection:
+    async_empty_farr_vectorize_collection.to_sync().insert_many(
         [
             {
                 "_id": f"doc_{i:02}",
@@ -45,23 +47,27 @@ def filled_vectorize_collection(
             for i in range(NUM_DOCS)
         ]
     )
-    return sync_empty_farr_vectorize_collection
+    return async_empty_farr_vectorize_collection
 
 
+@pytest.mark.skipif(
+    "ASTRAPY_TEST_FINDANDRERANK" not in os.environ,
+    reason="No testing enabled on findAndRerank support",
+)
 class TestCollectionCursorSync:
-    @pytest.mark.describe("test of an IDLE collection farr-cursors properties, sync")
-    def test_collection_farrcursors_idle_properties_sync(
+    @pytest.mark.describe("test of an IDLE collection farr-cursors properties, async")
+    async def test_collection_farrcursors_idle_properties_async(
         self,
-        filled_vectorize_collection: DefaultCollection,
+        afilled_vectorize_collection: DefaultAsyncCollection,
     ) -> None:
-        cur = filled_vectorize_collection.find_and_rerank(
+        cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
         )
         assert cur.state == CursorState.IDLE
 
-        assert cur.data_source == filled_vectorize_collection
+        assert cur.data_source == afilled_vectorize_collection
 
         assert cur.consumed == 0
         assert cur.consume_buffer(3) == []
@@ -73,14 +79,14 @@ class TestCollectionCursorSync:
         toclose.close()
         assert toclose.state == CursorState.CLOSED
         with pytest.raises(CursorException):
-            for row in toclose:
+            async for row in toclose:
                 pass
-        with pytest.raises(StopIteration):
-            next(toclose)
+        with pytest.raises(StopAsyncIteration):
+            await toclose.__anext__()
         with pytest.raises(CursorException):
-            toclose.for_each(lambda row: None)
+            await toclose.for_each(lambda row: None)
         with pytest.raises(CursorException):
-            toclose.to_list()
+            await toclose.to_list()
 
         cur.rewind()
         assert cur.state == CursorState.IDLE
@@ -101,12 +107,12 @@ class TestCollectionCursorSync:
         with pytest.raises(CursorException):
             cur.map(lambda r_res: None).project({})
 
-    @pytest.mark.describe("test of a CLOSED collection farr-cursors properties, sync")
-    def test_collection_farrcursors_closed_properties_sync(
+    @pytest.mark.describe("test of a CLOSED collection farr-cursors properties, async")
+    async def test_collection_farrcursors_closed_properties_async(
         self,
-        filled_vectorize_collection: DefaultCollection,
+        afilled_vectorize_collection: DefaultAsyncCollection,
     ) -> None:
-        cur0 = filled_vectorize_collection.find_and_rerank(
+        cur0 = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
@@ -115,13 +121,13 @@ class TestCollectionCursorSync:
         cur0.rewind()
         assert cur0.state == CursorState.IDLE
 
-        cur1 = filled_vectorize_collection.find_and_rerank(
+        cur1 = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
         )
         assert cur1.consumed == 0
-        list(cur1)
+        [r_res async for r_res in cur1]
         assert cur1.state == CursorState.CLOSED
         assert cur1.consume_buffer(2) == []
         assert cur1.consumed == NUM_DOCS
@@ -150,18 +156,18 @@ class TestCollectionCursorSync:
         with pytest.raises(CursorException):
             cur1.map(lambda rw: None)
 
-    @pytest.mark.describe("test of a STARTED collection farr-cursors properties, sync")
-    def test_collection_farrcursors_started_properties_sync(
+    @pytest.mark.describe("test of a STARTED collection farr-cursors properties, async")
+    async def test_collection_farrcursors_started_properties_async(
         self,
-        filled_vectorize_collection: DefaultCollection,
+        afilled_vectorize_collection: DefaultAsyncCollection,
     ) -> None:
         LIMIT = NUM_DOCS - 1
-        cur = filled_vectorize_collection.find_and_rerank(
+        cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=LIMIT,
             hybrid_limits=FARR_HYBRIDLIMITS,
         )
-        next(cur)
+        await cur.__anext__()
         # now this is a one-page cursor and has LIMIT-1 items in buffer (one gone)
         assert cur.consumed == 1
         assert cur.buffered_count == LIMIT - 1
@@ -170,7 +176,7 @@ class TestCollectionCursorSync:
         assert cur.buffered_count == LIMIT - 4
         # from time to time the buffer is empty:
         for _ in range(LIMIT - 4):
-            next(cur)
+            await cur.__anext__()
         assert cur.buffered_count == 0
         assert cur.consume_buffer(3) == []
         assert cur.consumed == LIMIT
@@ -195,109 +201,111 @@ class TestCollectionCursorSync:
         with pytest.raises(CursorException):
             cur.map(lambda rw: None)
 
-    @pytest.mark.describe("test of collection farr-cursors has_next, sync")
-    def test_collection_farrcursors_has_next_sync(
+    @pytest.mark.describe("test of collection farr-cursors has_next, async")
+    async def test_collection_farrcursors_has_next_async(
         self,
-        filled_vectorize_collection: DefaultCollection,
+        afilled_vectorize_collection: DefaultAsyncCollection,
     ) -> None:
-        cur = filled_vectorize_collection.find_and_rerank(
+        cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
         )
         assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
-        assert cur.has_next()
+        assert await cur.has_next()
         assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
-        list(cur)
+        [r_res async for r_res in cur]
         assert cur.consumed == NUM_DOCS
         assert cur.state == CursorState.CLOSED  # type: ignore[comparison-overlap]
 
-        curmf = filled_vectorize_collection.find_and_rerank(
+        curmf = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
         )
-        next(curmf)
-        next(curmf)
+        await curmf.__anext__()
+        await curmf.__anext__()
         assert curmf.consumed == 2
         assert curmf.state == CursorState.STARTED
-        assert curmf.has_next()
+        assert await curmf.has_next()
         assert curmf.consumed == 2
         assert curmf.state == CursorState.STARTED
         for _ in range(18):
-            next(curmf)
+            await curmf.__anext__()
         # not very relevant as there's no actual pages here
-        assert curmf.has_next()
+        assert await curmf.has_next()
         assert curmf.consumed == 20
         assert curmf.state == CursorState.STARTED
         assert curmf.buffered_count == NUM_DOCS - 20
 
-        cur0 = filled_vectorize_collection.find_and_rerank(
+        cur0 = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur0.close()
-        assert not cur0.has_next()
+        assert not (await cur0.has_next())
 
     # TODO restore this one test
     @pytest.mark.skip(reason="Cannot run FARR with empty results yet")
-    @pytest.mark.describe("test of collection farr-cursors zero matches, sync")
-    def test_collection_farrcursors_zeromatches_sync(
+    @pytest.mark.describe("test of collection farr-cursors zero matches, async")
+    async def test_collection_farrcursors_zeromatches_async(
         self,
-        filled_vectorize_collection: DefaultCollection,
+        afilled_vectorize_collection: DefaultAsyncCollection,
     ) -> None:
-        cur = filled_vectorize_collection.find_and_rerank(
+        cur = afilled_vectorize_collection.find_and_rerank(
             {"parity": -1},
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
         )
         assert not cur.has_next()
-        assert list(cur) == []
+        assert [r_res async for r_res in cur] == []
 
-    @pytest.mark.describe("test of prematurely farr-closing collection cursors, sync")
-    def test_collection_farrcursors_early_closing_sync(
+    @pytest.mark.describe("test of prematurely farr-closing collection cursors, async")
+    async def test_collection_farrcursors_early_closing_async(
         self,
-        filled_vectorize_collection: DefaultCollection,
+        afilled_vectorize_collection: DefaultAsyncCollection,
     ) -> None:
-        cur = filled_vectorize_collection.find_and_rerank(
+        cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
         )
         for _ in range(12):
-            next(cur)
+            await cur.__anext__()
         cur.close()
         assert cur.state == CursorState.CLOSED
         assert cur.buffered_count == 0
         assert cur.consumed == 12
         # rewind test
         cur.rewind()
-        assert len(list(cur)) == NUM_DOCS
+        assert len([r_res async for r_res in cur]) == NUM_DOCS
 
-    @pytest.mark.describe("test of mappings with collection farr-cursors, sync")
-    def test_collection_farrcursors_mapping_sync(
+    @pytest.mark.describe("test of mappings with collection farr-cursors, async")
+    async def test_collection_farrcursors_mapping_async(
         self,
-        filled_vectorize_collection: DefaultCollection,
+        afilled_vectorize_collection: DefaultAsyncCollection,
     ) -> None:
-        base_rows = list(
-            filled_vectorize_collection.find_and_rerank(
+        base_rows = [
+            r_res
+            async for r_res in afilled_vectorize_collection.find_and_rerank(
                 sort={"$hybrid": "a sentence."},
                 limit=NUM_DOCS,
                 hybrid_limits=FARR_HYBRIDLIMITS,
             )
-        )
+        ]
         assert len(base_rows) == NUM_DOCS
-        base_rows_mu = list(
-            filled_vectorize_collection.find_and_rerank(
+        base_rows_mu = [
+            r_res
+            async for r_res in afilled_vectorize_collection.find_and_rerank(
                 sort={"$hybrid": "a sentence."},
                 limit=NUM_DOCS - 3,
                 hybrid_limits=FARR_HYBRIDLIMITS,
             )
-        )
+        ]
         assert len(base_rows_mu) == NUM_DOCS - 3
 
         parity_backmap = {"odd": 1, "even": 0}
@@ -309,17 +317,17 @@ class TestCollectionCursorSync:
             return 1000 * val
 
         # map, base
-        mcur = filled_vectorize_collection.find_and_rerank(
+        mcur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
         ).map(mint)
-        mints = [val for val in mcur]
+        mints = [val async for val in mcur]
         assert mints == [mint(row) for row in base_rows]
 
         # map composition
         mmcur = (
-            filled_vectorize_collection.find_and_rerank(
+            afilled_vectorize_collection.find_and_rerank(
                 sort={"$hybrid": "a sentence."},
                 limit=NUM_DOCS,
                 hybrid_limits=FARR_HYBRIDLIMITS,
@@ -327,67 +335,70 @@ class TestCollectionCursorSync:
             .map(mint)
             .map(mmult)
         )
-        mmints = [val for val in mmcur]
+        mmints = [val async for val in mmcur]
         assert mmints == [mmult(mint(row)) for row in base_rows]
 
         # consume_buffer skips the map
-        hmcur = filled_vectorize_collection.find_and_rerank(
+        hmcur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
         ).map(mint)
         for _ in range(10):
-            next(hmcur)
+            await hmcur.__anext__()
         conbuf = hmcur.consume_buffer(2)
         assert len(conbuf) == 2
         assert all(isinstance(itm, RerankedResult) for itm in conbuf)
 
         # rewind preserves the mapping
-        rwcur = filled_vectorize_collection.find_and_rerank(
+        rwcur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
         ).map(mint)
         for _ in range(10):
-            next(rwcur)
+            await rwcur.__anext__()
         rwcur.rewind()
-        assert next(rwcur) == mints[0]
+        assert await rwcur.__anext__() == mints[0]
 
         # clone rewinds
         cl_unmapped = rwcur.clone()
-        assert next(cl_unmapped) == mint(base_rows[0])
+        assert await cl_unmapped.__anext__() == mint(base_rows[0])
 
-    @pytest.mark.describe("test of collection farr-cursors, for_each and to_list, sync")
-    def test_collection_farrcursors_collective_methods_sync(
+    @pytest.mark.describe(
+        "test of collection farr-cursors, for_each and to_list, async"
+    )
+    async def test_collection_farrcursors_collective_methods_async(
         self,
-        filled_vectorize_collection: DefaultCollection,
+        afilled_vectorize_collection: DefaultAsyncCollection,
     ) -> None:
-        base_rows = list(
-            filled_vectorize_collection.find_and_rerank(
+        base_rows = [
+            r_res
+            async for r_res in afilled_vectorize_collection.find_and_rerank(
                 sort={"$hybrid": "a sentence."},
                 limit=NUM_DOCS,
                 hybrid_limits=FARR_HYBRIDLIMITS,
             )
-        )
+        ]
 
         # full to_list
-        tl_cur = filled_vectorize_collection.find_and_rerank(
+        tl_cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
         )
-        assert tl_cur.to_list() == base_rows
+        assert await tl_cur.to_list() == base_rows
         assert tl_cur.state == CursorState.CLOSED
 
         # partially-consumed to_list
-        ptl_cur = filled_vectorize_collection.find_and_rerank(
+        ptl_cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
         )
         for _ in range(15):
-            next(ptl_cur)
-        assert ptl_cur.to_list() == base_rows[15:]
+            await ptl_cur.__anext__()
+        assert await ptl_cur.to_list() == base_rows[15:]
         assert ptl_cur.state == CursorState.CLOSED
 
         # mapped to_list
@@ -397,14 +408,14 @@ class TestCollectionCursorSync:
         def mint(r_result: RerankedResult[DefaultDocumentType]) -> int:
             return parity_backmap[r_result.document["parity"]]
 
-        mtl_cur = filled_vectorize_collection.find_and_rerank(
+        mtl_cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
         ).map(mint)
         for _ in range(13):
-            next(mtl_cur)
-        assert mtl_cur.to_list() == [mint(row) for row in base_rows[13:]]
+            await mtl_cur.__anext__()
+        assert await mtl_cur.to_list() == [mint(row) for row in base_rows[13:]]
         assert mtl_cur.state == CursorState.CLOSED
 
         # full for_each
@@ -416,12 +427,12 @@ class TestCollectionCursorSync:
         ) -> None:
             acc += [r_result]
 
-        fe_cur = filled_vectorize_collection.find_and_rerank(
+        fe_cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
         )
-        fe_cur.for_each(marker0)
+        await fe_cur.for_each(marker0)
         assert accum0 == base_rows
         assert fe_cur.state == CursorState.CLOSED
 
@@ -434,14 +445,14 @@ class TestCollectionCursorSync:
         ) -> None:
             acc += [r_result]
 
-        pfe_cur = filled_vectorize_collection.find_and_rerank(
+        pfe_cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
         )
         for _ in range(11):
-            next(pfe_cur)
-        pfe_cur.for_each(marker1)
+            await pfe_cur.__anext__()
+        await pfe_cur.for_each(marker1)
         assert accum1 == base_rows[11:]
         assert pfe_cur.state == CursorState.CLOSED
 
@@ -451,14 +462,14 @@ class TestCollectionCursorSync:
         def marker2(val: int, acc: list[int] = accum2) -> None:
             acc += [val]
 
-        mfe_cur = filled_vectorize_collection.find_and_rerank(
+        mfe_cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
         ).map(mint)
         for _ in range(17):
-            next(mfe_cur)
-        mfe_cur.for_each(marker2)
+            await mfe_cur.__anext__()
+        await mfe_cur.for_each(marker2)
         assert accum2 == [mint(row) for row in base_rows[17:]]
         assert mfe_cur.state == CursorState.CLOSED
 
@@ -472,15 +483,15 @@ class TestCollectionCursorSync:
             acc += [r_result]
             return len(acc) < 5
 
-        bfe_cur = filled_vectorize_collection.find_and_rerank(
+        bfe_cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
         )
-        bfe_cur.for_each(marker3)
+        await bfe_cur.for_each(marker3)
         assert accum3 == base_rows[:5]
         assert bfe_cur.state == CursorState.STARTED
-        bfe_another = next(bfe_cur)
+        bfe_another = await bfe_cur.__anext__()
         assert bfe_another == base_rows[5]
 
         # nonbool-nonbreaking for_each
@@ -493,34 +504,34 @@ class TestCollectionCursorSync:
             acc += [r_result]
             return 8 if len(acc) < 5 else 0
 
-        nbfe_cur = filled_vectorize_collection.find_and_rerank(
+        nbfe_cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
         )
-        nbfe_cur.for_each(marker4)  # type: ignore[arg-type]
+        await nbfe_cur.for_each(marker4)  # type: ignore[arg-type]
         assert accum4 == base_rows
         assert nbfe_cur.state == CursorState.CLOSED
 
     @pytest.mark.describe(
-        "test of collection farr-cursors, serdes options obeyance, sync"
+        "test of collection farr-cursors, serdes options obeyance, async"
     )
-    def test_collection_farrcursors_serdes_options_sync(
+    async def test_collection_farrcursors_serdes_options_async(
         self,
-        filled_vectorize_collection: DefaultCollection,
+        afilled_vectorize_collection: DefaultAsyncCollection,
     ) -> None:
         # serdes options obeyance check
-        noncustom_compo_collection = filled_vectorize_collection.with_options(
+        noncustom_compo_collection = afilled_vectorize_collection.with_options(
             api_options=APIOptions(
                 serdes_options=SerdesOptions(custom_datatypes_in_reading=False),
             )
         )
-        custom_compo_collection = filled_vectorize_collection.with_options(
+        custom_compo_collection = afilled_vectorize_collection.with_options(
             api_options=APIOptions(
                 serdes_options=SerdesOptions(custom_datatypes_in_reading=True),
             )
         )
-        noncustom_rows = noncustom_compo_collection.find_and_rerank(
+        noncustom_rows = await noncustom_compo_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             projection={"$vector": True},
             limit=NUM_DOCS,
@@ -531,7 +542,7 @@ class TestCollectionCursorSync:
             isinstance(nc_r_res.document["$vector"], list)
             for nc_r_res in noncustom_rows
         )
-        custom_rows = custom_compo_collection.find_and_rerank(
+        custom_rows = await custom_compo_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             projection={"$vector": True},
             limit=NUM_DOCS,
@@ -542,3 +553,92 @@ class TestCollectionCursorSync:
             isinstance(c_r_res.document["$vector"], DataAPIVector)
             for c_r_res in custom_rows
         )
+
+    @pytest.mark.describe(
+        "test of collection farr-cursors, include_sort_vector and serdes, async"
+    )
+    async def test_collection_farrcursors_include_sort_vector_serdes_async(
+        self,
+        afilled_vectorize_collection: DefaultAsyncCollection,
+    ) -> None:
+        col_v0_d0 = afilled_vectorize_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=False,
+                    use_decimals_in_collections=False,
+                ),
+            ),
+        )
+        col_v0_d1 = afilled_vectorize_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=False,
+                    use_decimals_in_collections=True,
+                ),
+            ),
+        )
+        col_v1_d0 = afilled_vectorize_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=True,
+                    use_decimals_in_collections=False,
+                ),
+            ),
+        )
+        col_v1_d1 = afilled_vectorize_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=True,
+                    use_decimals_in_collections=True,
+                ),
+            ),
+        )
+
+        cur0_v0_d0 = col_v0_d0.find_and_rerank(
+            sort={"$hybrid": "query"}, hybrid_limits=FARR_HYBRIDLIMITS
+        )
+        cur0_v0_d1 = col_v0_d1.find_and_rerank(
+            sort={"$hybrid": "query"}, hybrid_limits=FARR_HYBRIDLIMITS
+        )
+        cur0_v1_d0 = col_v1_d0.find_and_rerank(
+            sort={"$hybrid": "query"}, hybrid_limits=FARR_HYBRIDLIMITS
+        )
+        cur0_v1_d1 = col_v1_d1.find_and_rerank(
+            sort={"$hybrid": "query"}, hybrid_limits=FARR_HYBRIDLIMITS
+        )
+        assert await cur0_v0_d0.get_sort_vector() is None
+        assert await cur0_v0_d1.get_sort_vector() is None
+        assert await cur0_v1_d0.get_sort_vector() is None
+        assert await cur0_v1_d1.get_sort_vector() is None
+
+        cur1_v0_d0 = col_v0_d0.find_and_rerank(
+            sort={"$hybrid": "query"},
+            include_sort_vector=True,
+            hybrid_limits=FARR_HYBRIDLIMITS,
+        )
+        cur1_v0_d1 = col_v0_d1.find_and_rerank(
+            sort={"$hybrid": "query"},
+            include_sort_vector=True,
+            hybrid_limits=FARR_HYBRIDLIMITS,
+        )
+        cur1_v1_d0 = col_v1_d0.find_and_rerank(
+            sort={"$hybrid": "query"},
+            include_sort_vector=True,
+            hybrid_limits=FARR_HYBRIDLIMITS,
+        )
+        cur1_v1_d1 = col_v1_d1.find_and_rerank(
+            sort={"$hybrid": "query"},
+            include_sort_vector=True,
+            hybrid_limits=FARR_HYBRIDLIMITS,
+        )
+        sv_v0_d0 = await cur1_v0_d0.get_sort_vector()
+        sv_v0_d1 = await cur1_v0_d1.get_sort_vector()
+        sv_v1_d0 = await cur1_v1_d0.get_sort_vector()
+        sv_v1_d1 = await cur1_v1_d1.get_sort_vector()
+
+        assert isinstance(sv_v0_d0, list)
+        assert isinstance(sv_v0_d1, list)
+        assert isinstance(sv_v0_d0[0], float)
+        assert isinstance(sv_v0_d1[0], float)
+        assert isinstance(sv_v1_d0, DataAPIVector)
+        assert isinstance(sv_v1_d1, DataAPIVector)
