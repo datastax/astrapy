@@ -503,7 +503,9 @@ class TestTableDMLSync:
         # unordered insertion [bad, bad]
         err3: TableInsertManyException | None = None
         try:
-            sync_table_simple.insert_many([{"p_text": -2}, {"p_text": -3}])
+            # TODO also cover the case of presumed deduplication (same type error)
+            # once properly re-duplicated client side
+            sync_table_simple.insert_many([{"p_text": -2}, {"p_textXX": -3}])
         except TableInsertManyException as e:
             err3 = e
         assert err3 is not None
