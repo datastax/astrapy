@@ -217,7 +217,7 @@ class UsernamePasswordTokenProvider(TokenProvider):
 
     Example:
         >>> from astrapy import DataAPIClient
-        >>> from astrapy.constants imort Environment
+        >>> from astrapy.constants import Environment
         >>> from astrapy.authentication import UsernamePasswordTokenProvider
         >>> token_provider = UsernamePasswordTokenProvider("username", "password")
         >>> database = DataAPIClient(environment=Environment.HCD).get_database(
@@ -440,7 +440,7 @@ class RerankingHeadersProvider(HeadersProvider):
 class RerankingAPIKeyHeaderProvider(RerankingHeadersProvider):
     """
     A "pass-through" header provider representing the single-header
-    (typically "X-Reranking-Api-Key") auth scheme, for use with the (single-header)
+    (typically "Reranking-Api-Key") auth scheme, for use with the (single-header)
     reranking authentication scheme.
 
     Args:

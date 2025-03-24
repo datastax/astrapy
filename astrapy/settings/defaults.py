@@ -78,7 +78,7 @@ DEFAULT_DATA_API_AUTH_HEADER = "Token"
 EMBEDDING_HEADER_AWS_ACCESS_ID = "X-Embedding-Access-Id"
 EMBEDDING_HEADER_AWS_SECRET_ID = "X-Embedding-Secret-Id"
 EMBEDDING_HEADER_API_KEY = "X-Embedding-Api-Key"
-RERANKING_HEADER_API_KEY = "X-Reranking-Api-Key"
+RERANKING_HEADER_API_KEY = "Reranking-Api-Key"
 
 # Defaults/settings for DevOps API requests and admin operations
 DEFAULT_DEV_OPS_AUTH_HEADER = "Authorization"
