@@ -23,8 +23,8 @@ from astrapy.constants import DefaultDocumentType, ReturnDocument, SortMode
 from astrapy.cursors import CursorState
 from astrapy.data_types import (
     DataAPIDate,
-    DataAPITimestamp,
     DataAPIMap,
+    DataAPITimestamp,
     DataAPIVector,
 )
 from astrapy.exceptions import (
@@ -1863,6 +1863,7 @@ class TestCollectionDMLSync:
         assert ior.inserted_id == at_document["_id"]
 
         read_document = sync_empty_collection.find_one({})
+        assert read_document is not None
         date_checkfields = {"date", "dataapidate"}
         ok_read = {k: v for k, v in read_document.items() if k not in date_checkfields}
         ok_expected = {
@@ -1874,13 +1875,13 @@ class TestCollectionDMLSync:
         assert isinstance(read_document["dataapidate"], DataAPITimestamp)
         one_day_ms = 1000 * 86400
         assert (
-            abs(read_document["date"].timestamp_ms - at_expected["date"].timestamp_ms)
+            abs(read_document["date"].timestamp_ms - at_expected["date"].timestamp_ms)  # type: ignore[attr-defined]
             < one_day_ms
         )
         assert (
             abs(
                 read_document["dataapidate"].timestamp_ms
-                - at_expected["dataapidate"].timestamp_ms
+                - at_expected["dataapidate"].timestamp_ms  # type: ignore[attr-defined]
             )
             < one_day_ms
         )

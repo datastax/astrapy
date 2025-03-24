@@ -251,6 +251,26 @@ class TestCollectionCursorSync:
         assert not await cur.has_next()
         assert [r_res async for r_res in cur] == []
 
+        cur_no_sv = afilled_vectorize_collection.find_and_rerank(
+            {"parity": -1},
+            sort={"$hybrid": "a sentence."},
+            limit=NUM_DOCS,
+            include_sort_vector=False,
+        )
+        assert await cur_no_sv.get_sort_vector() is None
+        assert await cur_no_sv.to_list() == []
+        assert await cur_no_sv.get_sort_vector() is None
+
+        cur_with_sv = afilled_vectorize_collection.find_and_rerank(
+            {"parity": -1},
+            sort={"$hybrid": "a sentence."},
+            limit=NUM_DOCS,
+            include_sort_vector=True,
+        )
+        sort_vector = await cur_with_sv.get_sort_vector()
+        assert sort_vector is not None
+        assert isinstance(sort_vector, DataAPIVector)
+
     @pytest.mark.describe("test of prematurely farr-closing collection cursors, async")
     async def test_collection_farrcursors_early_closing_async(
         self,
