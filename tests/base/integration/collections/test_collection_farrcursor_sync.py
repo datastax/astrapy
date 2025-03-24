@@ -248,8 +248,6 @@ class TestCollectionCursorSync:
         cur0.close()
         assert not cur0.has_next()
 
-    # TODO restore this one test
-    @pytest.mark.skip(reason="Cannot run FARR with empty results yet")
     @pytest.mark.describe("test of collection farr-cursors zero matches, sync")
     def test_collection_farrcursors_zeromatches_sync(
         self,

@@ -248,8 +248,6 @@ class TestCollectionCursorSync:
         cur0.close()
         assert not (await cur0.has_next())
 
-    # TODO restore this one test
-    @pytest.mark.skip(reason="Cannot run FARR with empty results yet")
     @pytest.mark.describe("test of collection farr-cursors zero matches, async")
     async def test_collection_farrcursors_zeromatches_async(
         self,
@@ -261,7 +259,7 @@ class TestCollectionCursorSync:
             limit=NUM_DOCS,
             hybrid_limits=FARR_HYBRIDLIMITS,
         )
-        assert not cur.has_next()
+        assert not await cur.has_next()
         assert [r_res async for r_res in cur] == []
 
     @pytest.mark.describe("test of prematurely farr-closing collection cursors, async")
