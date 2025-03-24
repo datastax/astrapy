@@ -737,7 +737,8 @@ class CollectionDefinition:
                 all desired properties for a reranking service;
                 (2) a `CollectionRerankOptions`, that is likewise being set
                 as the collection reranking configuration; or (3) it can be None,
-                to signify removal of the entire rerank setting; alternatively,
+                to signify removal of the entire rerank setting,
+                leaving the API to its defaults; alternatively,
                 (4) it can be a string, the reranking provider name as seen in the
                 response from the database's `find_rerank_providers` method. In the
                 latter case, the other parameters should also be provided as needed.
@@ -889,7 +890,7 @@ class CollectionDefinition:
                 the configuration for the collection analyzer; or (2) a ready
                 `CollectionLexicalOptions` object encoding said configuration;
                 alternatively (3) None, to remove the lexical setting from the
-                collection definition.
+                collection definition hence letting the API use its defaults.
                 See the examples below for an illustration of these usage patterns.
             enabled: if passed, this flag is used in the lexical definition
                 for the collection. If omitted, defaults to True.

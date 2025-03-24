@@ -21,7 +21,12 @@ import pytest
 
 from astrapy.constants import DefaultDocumentType, ReturnDocument, SortMode
 from astrapy.cursors import CursorState
-from astrapy.data_types import DataAPITimestamp, DataAPIVector
+from astrapy.data_types import (
+    DataAPIDate,
+    DataAPITimestamp,
+    DataAPIMap,
+    DataAPIVector,
+)
 from astrapy.exceptions import (
     CollectionInsertManyException,
     DataAPIResponseException,
@@ -1824,3 +1829,58 @@ class TestCollectionDMLSync:
             assert del_result.deleted_count == 1
             count = sync_empty_collection.count_documents({}, upper_bound=20)
             assert count == len(types_and_ids) - del_index - 1
+
+    @pytest.mark.describe("test of inserting various data types in a collection, sync")
+    def test_collection_datatype_insertability_sync(
+        self,
+        sync_empty_collection: DefaultCollection,
+    ) -> None:
+        d_a_ts = DataAPITimestamp.from_string("1999-11-30T00:00:00.000Z")
+        tz = timezone.utc
+        at_document = {
+            "_id": UUID("1f009012-ff61-646d-8c70-5d87cfbdee0b"),
+            "int": 1,
+            "string": "string",
+            "float": 1.234,
+            "dataapidate": DataAPIDate.from_string("1999-11-30"),
+            "date": date(1999, 11, 30),
+            "dataapitimestamp": d_a_ts,
+            "datetime": d_a_ts.to_datetime(tz=tz),
+            "dataapimap": DataAPIMap([("k", "v")]),
+            "map": {"k": "v"},
+        }
+        at_expected = {
+            **at_document,
+            **{
+                "dataapidate": d_a_ts,
+                "date": d_a_ts,
+                "datetime": d_a_ts,
+                "dataapimap": {"k": "v"},
+            },
+        }
+
+        ior = sync_empty_collection.insert_one(at_document)
+        assert ior.inserted_id == at_document["_id"]
+
+        read_document = sync_empty_collection.find_one({})
+        date_checkfields = {"date", "dataapidate"}
+        ok_read = {k: v for k, v in read_document.items() if k not in date_checkfields}
+        ok_expected = {
+            k: v for k, v in at_expected.items() if k not in date_checkfields
+        }
+        assert ok_read == ok_expected
+        # irreducible approximate check on 'just-date' fields
+        assert isinstance(read_document["date"], DataAPITimestamp)
+        assert isinstance(read_document["dataapidate"], DataAPITimestamp)
+        one_day_ms = 1000 * 86400
+        assert (
+            abs(read_document["date"].timestamp_ms - at_expected["date"].timestamp_ms)
+            < one_day_ms
+        )
+        assert (
+            abs(
+                read_document["dataapidate"].timestamp_ms
+                - at_expected["dataapidate"].timestamp_ms
+            )
+            < one_day_ms
+        )
