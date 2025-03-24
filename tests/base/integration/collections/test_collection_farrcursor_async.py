@@ -28,9 +28,6 @@ from ..conftest import DefaultAsyncCollection
 
 NUM_DOCS = 25  # keep this between 20 and 39
 
-# TODO HYBRIDLIMITS: remove this whole setting once API supplies its default
-FARR_HYBRIDLIMITS = 8
-
 
 @pytest.fixture
 def afilled_vectorize_collection(
@@ -63,7 +60,6 @@ class TestCollectionCursorSync:
         cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         assert cur.state == CursorState.IDLE
 
@@ -115,7 +111,6 @@ class TestCollectionCursorSync:
         cur0 = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur0.close()
         cur0.rewind()
@@ -124,7 +119,6 @@ class TestCollectionCursorSync:
         cur1 = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         assert cur1.consumed == 0
         [r_res async for r_res in cur1]
@@ -165,7 +159,6 @@ class TestCollectionCursorSync:
         cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=LIMIT,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         await cur.__anext__()
         # now this is a one-page cursor and has LIMIT-1 items in buffer (one gone)
@@ -209,7 +202,6 @@ class TestCollectionCursorSync:
         cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
@@ -223,7 +215,6 @@ class TestCollectionCursorSync:
         curmf = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         await curmf.__anext__()
         await curmf.__anext__()
@@ -243,7 +234,6 @@ class TestCollectionCursorSync:
         cur0 = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur0.close()
         assert not (await cur0.has_next())
@@ -257,7 +247,6 @@ class TestCollectionCursorSync:
             {"parity": -1},
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         assert not await cur.has_next()
         assert [r_res async for r_res in cur] == []
@@ -270,7 +259,6 @@ class TestCollectionCursorSync:
         cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         for _ in range(12):
             await cur.__anext__()
@@ -292,7 +280,6 @@ class TestCollectionCursorSync:
             async for r_res in afilled_vectorize_collection.find_and_rerank(
                 sort={"$hybrid": "a sentence."},
                 limit=NUM_DOCS,
-                hybrid_limits=FARR_HYBRIDLIMITS,
             )
         ]
         assert len(base_rows) == NUM_DOCS
@@ -301,7 +288,6 @@ class TestCollectionCursorSync:
             async for r_res in afilled_vectorize_collection.find_and_rerank(
                 sort={"$hybrid": "a sentence."},
                 limit=NUM_DOCS - 3,
-                hybrid_limits=FARR_HYBRIDLIMITS,
             )
         ]
         assert len(base_rows_mu) == NUM_DOCS - 3
@@ -318,7 +304,6 @@ class TestCollectionCursorSync:
         mcur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         ).map(mint)
         mints = [val async for val in mcur]
         assert mints == [mint(row) for row in base_rows]
@@ -328,7 +313,6 @@ class TestCollectionCursorSync:
             afilled_vectorize_collection.find_and_rerank(
                 sort={"$hybrid": "a sentence."},
                 limit=NUM_DOCS,
-                hybrid_limits=FARR_HYBRIDLIMITS,
             )
             .map(mint)
             .map(mmult)
@@ -340,7 +324,6 @@ class TestCollectionCursorSync:
         hmcur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         ).map(mint)
         for _ in range(10):
             await hmcur.__anext__()
@@ -352,7 +335,6 @@ class TestCollectionCursorSync:
         rwcur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         ).map(mint)
         for _ in range(10):
             await rwcur.__anext__()
@@ -375,7 +357,6 @@ class TestCollectionCursorSync:
             async for r_res in afilled_vectorize_collection.find_and_rerank(
                 sort={"$hybrid": "a sentence."},
                 limit=NUM_DOCS,
-                hybrid_limits=FARR_HYBRIDLIMITS,
             )
         ]
 
@@ -383,7 +364,6 @@ class TestCollectionCursorSync:
         tl_cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         assert await tl_cur.to_list() == base_rows
         assert tl_cur.state == CursorState.CLOSED
@@ -392,7 +372,6 @@ class TestCollectionCursorSync:
         ptl_cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         for _ in range(15):
             await ptl_cur.__anext__()
@@ -409,7 +388,6 @@ class TestCollectionCursorSync:
         mtl_cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         ).map(mint)
         for _ in range(13):
             await mtl_cur.__anext__()
@@ -428,7 +406,6 @@ class TestCollectionCursorSync:
         fe_cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         await fe_cur.for_each(marker0)
         assert accum0 == base_rows
@@ -446,7 +423,6 @@ class TestCollectionCursorSync:
         pfe_cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         for _ in range(11):
             await pfe_cur.__anext__()
@@ -463,7 +439,6 @@ class TestCollectionCursorSync:
         mfe_cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         ).map(mint)
         for _ in range(17):
             await mfe_cur.__anext__()
@@ -484,7 +459,6 @@ class TestCollectionCursorSync:
         bfe_cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         await bfe_cur.for_each(marker3)
         assert accum3 == base_rows[:5]
@@ -505,7 +479,6 @@ class TestCollectionCursorSync:
         nbfe_cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         await nbfe_cur.for_each(marker4)  # type: ignore[arg-type]
         assert accum4 == base_rows
@@ -533,7 +506,6 @@ class TestCollectionCursorSync:
             sort={"$hybrid": "a sentence."},
             projection={"$vector": True},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         ).to_list()
         assert len(noncustom_rows) == NUM_DOCS
         assert all(
@@ -544,7 +516,6 @@ class TestCollectionCursorSync:
             sort={"$hybrid": "a sentence."},
             projection={"$vector": True},
             limit=NUM_DOCS,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         ).to_list()
         assert len(custom_rows) == NUM_DOCS
         assert all(
@@ -592,18 +563,10 @@ class TestCollectionCursorSync:
             ),
         )
 
-        cur0_v0_d0 = col_v0_d0.find_and_rerank(
-            sort={"$hybrid": "query"}, hybrid_limits=FARR_HYBRIDLIMITS
-        )
-        cur0_v0_d1 = col_v0_d1.find_and_rerank(
-            sort={"$hybrid": "query"}, hybrid_limits=FARR_HYBRIDLIMITS
-        )
-        cur0_v1_d0 = col_v1_d0.find_and_rerank(
-            sort={"$hybrid": "query"}, hybrid_limits=FARR_HYBRIDLIMITS
-        )
-        cur0_v1_d1 = col_v1_d1.find_and_rerank(
-            sort={"$hybrid": "query"}, hybrid_limits=FARR_HYBRIDLIMITS
-        )
+        cur0_v0_d0 = col_v0_d0.find_and_rerank(sort={"$hybrid": "query"})
+        cur0_v0_d1 = col_v0_d1.find_and_rerank(sort={"$hybrid": "query"})
+        cur0_v1_d0 = col_v1_d0.find_and_rerank(sort={"$hybrid": "query"})
+        cur0_v1_d1 = col_v1_d1.find_and_rerank(sort={"$hybrid": "query"})
         assert await cur0_v0_d0.get_sort_vector() is None
         assert await cur0_v0_d1.get_sort_vector() is None
         assert await cur0_v1_d0.get_sort_vector() is None
@@ -612,22 +575,18 @@ class TestCollectionCursorSync:
         cur1_v0_d0 = col_v0_d0.find_and_rerank(
             sort={"$hybrid": "query"},
             include_sort_vector=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur1_v0_d1 = col_v0_d1.find_and_rerank(
             sort={"$hybrid": "query"},
             include_sort_vector=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur1_v1_d0 = col_v1_d0.find_and_rerank(
             sort={"$hybrid": "query"},
             include_sort_vector=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur1_v1_d1 = col_v1_d1.find_and_rerank(
             sort={"$hybrid": "query"},
             include_sort_vector=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         sv_v0_d0 = await cur1_v0_d0.get_sort_vector()
         sv_v0_d1 = await cur1_v0_d1.get_sort_vector()

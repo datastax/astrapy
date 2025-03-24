@@ -23,9 +23,6 @@ from astrapy.data_types import DataAPIVector
 
 from ..conftest import DefaultAsyncCollection
 
-# TODO HYBRIDLIMITS: remove this whole setting once API supplies its default
-FARR_HYBRIDLIMITS = 8
-
 
 @pytest.mark.skipif(
     "ASTRAPY_TEST_FINDANDRERANK" not in os.environ,
@@ -75,7 +72,6 @@ class TestCollectionFindAndRerankAsync:
             sort={"$hybrid": "bla"},
             projection={"$vectorize": True},
             limit=2,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
 
         hits = await farr_cursor.to_list()
@@ -129,7 +125,6 @@ class TestCollectionFindAndRerankAsync:
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             projection={"$vector": True},
             limit=2,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
 
         hits = await farr_cursor.to_list()
@@ -153,18 +148,14 @@ class TestCollectionFindAndRerankAsync:
         acoll = async_empty_farr_vectorize_collection
         await acoll.insert_one({"$vectorize": "text", "$lexical": "text"})
 
-        cur_n = acoll.find_and_rerank(
-            sort={"$hybrid": "bla"}, hybrid_limits=FARR_HYBRIDLIMITS
-        )
+        cur_n = acoll.find_and_rerank(sort={"$hybrid": "bla"})
         cur_f = acoll.find_and_rerank(
             sort={"$hybrid": "bla"},
             include_scores=False,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_t = acoll.find_and_rerank(
             sort={"$hybrid": "bla"},
             include_scores=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         itm_n = await cur_n.__anext__()
         itm_f = await cur_f.__anext__()
@@ -187,17 +178,14 @@ class TestCollectionFindAndRerankAsync:
 
         cur_n = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_f = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             include_scores=False,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_t = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             include_scores=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         itm_n = await cur_n.__anext__()
         itm_f = await cur_f.__anext__()
@@ -218,18 +206,14 @@ class TestCollectionFindAndRerankAsync:
         acoll = async_empty_farr_vectorize_collection
         await acoll.insert_one({"$vectorize": "text", "$lexical": "text"})
 
-        cur_n0 = acoll.find_and_rerank(
-            sort={"$hybrid": "bla"}, hybrid_limits=FARR_HYBRIDLIMITS
-        )
+        cur_n0 = acoll.find_and_rerank(sort={"$hybrid": "bla"})
         cur_f0 = acoll.find_and_rerank(
             sort={"$hybrid": "bla"},
             include_sort_vector=False,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_t0 = acoll.find_and_rerank(
             sort={"$hybrid": "bla"},
             include_sort_vector=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
 
         assert await cur_n0.get_sort_vector() is None
@@ -238,18 +222,14 @@ class TestCollectionFindAndRerankAsync:
         assert isinstance(gsv_t0, (list, DataAPIVector))
         assert isinstance(gsv_t0[0], float)
 
-        cur_n1 = acoll.find_and_rerank(
-            sort={"$hybrid": "bla"}, hybrid_limits=FARR_HYBRIDLIMITS
-        )
+        cur_n1 = acoll.find_and_rerank(sort={"$hybrid": "bla"})
         cur_f1 = acoll.find_and_rerank(
             sort={"$hybrid": "bla"},
             include_sort_vector=False,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_t1 = acoll.find_and_rerank(
             sort={"$hybrid": "bla"},
             include_sort_vector=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         await cur_n1.__anext__()
         await cur_f1.__anext__()
@@ -261,18 +241,14 @@ class TestCollectionFindAndRerankAsync:
         assert isinstance(gsv_t1, (list, DataAPIVector))
         assert isinstance(gsv_t1[0], float)
 
-        cur_n2 = acoll.find_and_rerank(
-            sort={"$hybrid": "bla"}, hybrid_limits=FARR_HYBRIDLIMITS
-        )
+        cur_n2 = acoll.find_and_rerank(sort={"$hybrid": "bla"})
         cur_f2 = acoll.find_and_rerank(
             sort={"$hybrid": "bla"},
             include_sort_vector=False,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_t2 = acoll.find_and_rerank(
             sort={"$hybrid": "bla"},
             include_sort_vector=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         await cur_n2.to_list()
         await cur_f2.to_list()
@@ -296,17 +272,14 @@ class TestCollectionFindAndRerankAsync:
 
         cur_n0 = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_f0 = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             include_sort_vector=False,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_t0 = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             include_sort_vector=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
 
         assert await cur_n0.get_sort_vector() is None
@@ -317,17 +290,14 @@ class TestCollectionFindAndRerankAsync:
 
         cur_n1 = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_f1 = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             include_sort_vector=False,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_t1 = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             include_sort_vector=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         await cur_n1.__anext__()
         await cur_f1.__anext__()
@@ -341,17 +311,14 @@ class TestCollectionFindAndRerankAsync:
 
         cur_n2 = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_f2 = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             include_sort_vector=False,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_t2 = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             include_sort_vector=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         await cur_n2.to_list()
         await cur_f2.to_list()

@@ -440,7 +440,7 @@ class RerankingHeadersProvider(HeadersProvider):
 class RerankingAPIKeyHeaderProvider(RerankingHeadersProvider):
     """
     A "pass-through" header provider representing the single-header
-    (typically "X-Reranking-Api-Key") auth scheme, for use with the (single-header)
+    (typically "Reranking-Api-Key") auth scheme, for use with the (single-header)
     reranking authentication scheme.
 
     Args:

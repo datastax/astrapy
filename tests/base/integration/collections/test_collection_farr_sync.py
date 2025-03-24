@@ -23,9 +23,6 @@ from astrapy.data_types import DataAPIVector
 
 from ..conftest import DefaultCollection
 
-# TODO HYBRIDLIMITS: remove this whole setting once API supplies its default
-FARR_HYBRIDLIMITS = 8
-
 
 @pytest.mark.skipif(
     "ASTRAPY_TEST_FINDANDRERANK" not in os.environ,
@@ -76,7 +73,6 @@ class TestCollectionFindAndRerankSync:
             projection={"$vectorize": True},
             include_scores=True,
             limit=2,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
 
         hits = farr_cursor.to_list()
@@ -132,7 +128,6 @@ class TestCollectionFindAndRerankSync:
             projection={"$vector": True},
             include_scores=True,
             limit=2,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
 
         hits = farr_cursor.to_list()
@@ -157,18 +152,14 @@ class TestCollectionFindAndRerankSync:
         coll = sync_empty_farr_vectorize_collection
         coll.insert_one({"$vectorize": "text", "$lexical": "text"})
 
-        cur_n = coll.find_and_rerank(
-            sort={"$hybrid": "bla"}, hybrid_limits=FARR_HYBRIDLIMITS
-        )
+        cur_n = coll.find_and_rerank(sort={"$hybrid": "bla"})
         cur_f = coll.find_and_rerank(
             sort={"$hybrid": "bla"},
             include_scores=False,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_t = coll.find_and_rerank(
             sort={"$hybrid": "bla"},
             include_scores=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         itm_n = cur_n.__next__()
         itm_f = cur_f.__next__()
@@ -191,17 +182,14 @@ class TestCollectionFindAndRerankSync:
 
         cur_n = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_f = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             include_scores=False,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_t = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             include_scores=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         itm_n = cur_n.__next__()
         itm_f = cur_f.__next__()
@@ -222,18 +210,14 @@ class TestCollectionFindAndRerankSync:
         coll = sync_empty_farr_vectorize_collection
         coll.insert_one({"$vectorize": "text", "$lexical": "text"})
 
-        cur_n0 = coll.find_and_rerank(
-            sort={"$hybrid": "bla"}, hybrid_limits=FARR_HYBRIDLIMITS
-        )
+        cur_n0 = coll.find_and_rerank(sort={"$hybrid": "bla"})
         cur_f0 = coll.find_and_rerank(
             sort={"$hybrid": "bla"},
             include_sort_vector=False,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_t0 = coll.find_and_rerank(
             sort={"$hybrid": "bla"},
             include_sort_vector=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
 
         assert cur_n0.get_sort_vector() is None
@@ -242,18 +226,14 @@ class TestCollectionFindAndRerankSync:
         assert isinstance(gsv_t0, (list, DataAPIVector))
         assert isinstance(gsv_t0[0], float)
 
-        cur_n1 = coll.find_and_rerank(
-            sort={"$hybrid": "bla"}, hybrid_limits=FARR_HYBRIDLIMITS
-        )
+        cur_n1 = coll.find_and_rerank(sort={"$hybrid": "bla"})
         cur_f1 = coll.find_and_rerank(
             sort={"$hybrid": "bla"},
             include_sort_vector=False,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_t1 = coll.find_and_rerank(
             sort={"$hybrid": "bla"},
             include_sort_vector=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_n1.__next__()
         cur_f1.__next__()
@@ -265,18 +245,14 @@ class TestCollectionFindAndRerankSync:
         assert isinstance(gsv_t1, (list, DataAPIVector))
         assert isinstance(gsv_t1[0], float)
 
-        cur_n2 = coll.find_and_rerank(
-            sort={"$hybrid": "bla"}, hybrid_limits=FARR_HYBRIDLIMITS
-        )
+        cur_n2 = coll.find_and_rerank(sort={"$hybrid": "bla"})
         cur_f2 = coll.find_and_rerank(
             sort={"$hybrid": "bla"},
             include_sort_vector=False,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_t2 = coll.find_and_rerank(
             sort={"$hybrid": "bla"},
             include_sort_vector=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_n2.to_list()
         cur_f2.to_list()
@@ -300,17 +276,14 @@ class TestCollectionFindAndRerankSync:
 
         cur_n0 = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_f0 = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             include_sort_vector=False,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_t0 = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             include_sort_vector=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
 
         assert cur_n0.get_sort_vector() is None
@@ -321,17 +294,14 @@ class TestCollectionFindAndRerankSync:
 
         cur_n1 = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_f1 = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             include_sort_vector=False,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_t1 = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             include_sort_vector=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_n1.__next__()
         cur_f1.__next__()
@@ -345,17 +315,14 @@ class TestCollectionFindAndRerankSync:
 
         cur_n2 = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_f2 = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             include_sort_vector=False,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_t2 = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             include_sort_vector=True,
-            hybrid_limits=FARR_HYBRIDLIMITS,
         )
         cur_n2.to_list()
         cur_f2.to_list()
