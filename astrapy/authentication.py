@@ -217,7 +217,7 @@ class UsernamePasswordTokenProvider(TokenProvider):
 
     Example:
         >>> from astrapy import DataAPIClient
-        >>> from astrapy.constants imort Environment
+        >>> from astrapy.constants import Environment
         >>> from astrapy.authentication import UsernamePasswordTokenProvider
         >>> token_provider = UsernamePasswordTokenProvider("username", "password")
         >>> database = DataAPIClient(environment=Environment.HCD).get_database(
