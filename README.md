@@ -564,8 +564,6 @@ Running special tests taking `find_and_rerank` into account, until dev/prod/loca
 2. ... but also with `ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER=y` to pass a reranker API key where needed
 3. ... which requires an environment variable `HEADER_RERANKING_API_KEY_NVIDIA` to be set with the `AstraCS:...` dev token.
 
-"test_collection_farr_vectorize_sync or test_collection_farr_novectorize_sync or test_collection_includescores_farr_vectorize_sync or test_collection_includescores_farr_novectorize_sync or test_collection_getsortvector_farr_vectorize_sync or test_collection_getsortvector_farr_novectorize_sync"
-
 ## Appendices
 
 ### Appendix A: quick reference for key imports
