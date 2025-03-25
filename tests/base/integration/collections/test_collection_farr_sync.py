@@ -127,7 +127,7 @@ class TestCollectionFindAndRerankSync:
         self,
         sync_empty_farr_vector_collection: DefaultCollection,
     ) -> None:
-        # TODO: (1) add insert modes, (2) test various params, (3) verify returned docs.
+        # TODO: (1) add insert modes, (2) test various params
         coll = sync_empty_farr_vector_collection
         # insertions
         coll.insert_many(
@@ -164,19 +164,51 @@ class TestCollectionFindAndRerankSync:
             projection={"$vector": True},
             include_scores=True,
             limit=2,
+            rerank_on="text_content",
+            rerank_query="blaa",
         )
 
         hits = farr_cursor.to_list()
         assert len(hits) == 2
         assert all(isinstance(hit, RerankedResult) for hit in hits)
         assert all(isinstance(hit.document, dict) for hit in hits)
-        assert all(isinstance(hit.document["$vector"], list) for hit in hits)
+        assert all(isinstance(hit.document["$vector"], DataAPIVector) for hit in hits)
         assert all(len(hit.document["$vector"]) == 2 for hit in hits)
         assert all(isinstance(hit.scores, dict) for hit in hits)
         assert all(len(hit.scores) > 0 for hit in hits)
         assert all(
             all(isinstance(sc, float) for sc in hit.scores.values()) for hit in hits
         )
+
+        # hybrid_limits various forms, functional tests
+        cur_no_hl = coll.find_and_rerank(
+            {},
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            limit=2,
+            rerank_on="text_content",
+            rerank_query="blaa",
+        )
+        cur_nu_hl = coll.find_and_rerank(
+            {},
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            limit=2,
+            rerank_on="text_content",
+            rerank_query="blaa",
+        )
+        cur_ob_hl = coll.find_and_rerank(
+            {},
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            limit=2,
+            rerank_on="text_content",
+            rerank_query="blaa",
+            hybrid_limits={
+                "$lexical": 4,
+                "$vector": 3,
+            },
+        )
+        assert len(cur_no_hl.to_list()) == 2
+        assert len(cur_nu_hl.to_list()) == 2
+        assert len(cur_ob_hl.to_list()) == 2
 
     @pytest.mark.describe(
         "test of collection find-and-rerank include_scores, vectorize, sync"

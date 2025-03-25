@@ -1454,6 +1454,7 @@ class Collection(Generic[DOC]):
         include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
+        rerank_query: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> CollectionFindAndRerankCursor[DOC, RerankedResult[DOC]]: ...
@@ -1471,6 +1472,7 @@ class Collection(Generic[DOC]):
         include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
+        rerank_query: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> CollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]: ...
@@ -1487,6 +1489,7 @@ class Collection(Generic[DOC]):
         include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
+        rerank_query: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> CollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]:
@@ -1561,6 +1564,8 @@ class Collection(Generic[DOC]):
             rerank_on: for collections without a vectorize (server-side embeddings)
                 service, this is used to specify the field name that is then used
                 during reranking.
+            rerank_query: for collections without a vectorize (server-side embeddings)
+                service, this is used to specify the query text for the reranker.
             request_timeout_ms: a timeout, in milliseconds, for each single one
                 of the underlying HTTP requests used to fetch documents as the
                 cursor is iterated over.
@@ -1596,6 +1601,7 @@ class Collection(Generic[DOC]):
             .sort(sort)
             .hybrid_limits(hybrid_limits)
             .rerank_on(rerank_on)
+            .rerank_query(rerank_query)
             .include_scores(include_scores)
             .include_sort_vector(include_sort_vector)
         )
@@ -4219,6 +4225,7 @@ class AsyncCollection(Generic[DOC]):
         include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
+        rerank_query: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> AsyncCollectionFindAndRerankCursor[DOC, RerankedResult[DOC]]: ...
@@ -4236,6 +4243,7 @@ class AsyncCollection(Generic[DOC]):
         include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
+        rerank_query: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> AsyncCollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]: ...
@@ -4252,6 +4260,7 @@ class AsyncCollection(Generic[DOC]):
         include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
+        rerank_query: str | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> AsyncCollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]:
@@ -4326,6 +4335,8 @@ class AsyncCollection(Generic[DOC]):
             rerank_on: for collections without a vectorize (server-side embeddings)
                 service, this is used to specify the field name that is then used
                 during reranking.
+            rerank_query: for collections without a vectorize (server-side embeddings)
+                service, this is used to specify the query text for the reranker.
             request_timeout_ms: a timeout, in milliseconds, for each single one
                 of the underlying HTTP requests used to fetch documents as the
                 cursor is iterated over.
@@ -4361,6 +4372,7 @@ class AsyncCollection(Generic[DOC]):
             .sort(sort)
             .hybrid_limits(hybrid_limits)
             .rerank_on(rerank_on)
+            .rerank_query(rerank_query)
             .include_scores(include_scores)
             .include_sort_vector(include_sort_vector)
         )

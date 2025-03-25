@@ -437,6 +437,7 @@ class _CollectionFindAndRerankQueryEngine(
     include_scores: bool | None
     include_sort_vector: bool | None
     rerank_on: str | None
+    rerank_query: str | None
     f_r_subpayload: dict[str, Any]
     f_options0: dict[str, Any]
 
@@ -453,6 +454,7 @@ class _CollectionFindAndRerankQueryEngine(
         include_scores: bool | None,
         include_sort_vector: bool | None,
         rerank_on: str | None,
+        rerank_query: str | None,
     ) -> None:
         self.collection = collection
         self.async_collection = async_collection
@@ -464,6 +466,7 @@ class _CollectionFindAndRerankQueryEngine(
         self.include_scores = include_scores
         self.include_sort_vector = include_sort_vector
         self.rerank_on = rerank_on
+        self.rerank_query = rerank_query
         self.f_r_subpayload = {
             k: v
             for k, v in {
@@ -481,6 +484,7 @@ class _CollectionFindAndRerankQueryEngine(
                 "includeScores": self.include_scores,
                 "includeSortVector": self.include_sort_vector,
                 "rerankOn": self.rerank_on,
+                "rerankQuery": self.rerank_query,
             }.items()
             if v is not None
         }

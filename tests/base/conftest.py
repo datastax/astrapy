@@ -316,12 +316,14 @@ def async_empty_farr_vectorize_collection(
 def sync_farr_vector_collection(
     data_api_credentials_kwargs: DataAPICredentials,
     sync_database: Database,
+    service_collection_parameters: dict[str, Any],
     rerankservice_collection_parameters: CollectionRerankOptions,
     lexical_collection_parameters: CollectionLexicalOptions,
 ) -> Iterable[DefaultCollection]:
     """
     An actual collection on DB, in the main keyspace.
     """
+    params = service_collection_parameters
     collection = sync_database.create_collection(
         TEST_FARR_VECTOR_COLLECTION_NAME,
         definition=(
@@ -332,6 +334,7 @@ def sync_farr_vector_collection(
             .set_lexical(lexical_collection_parameters)
             .build()
         ),
+        reranking_api_key=params["reranking_api_key"],
     )
     yield collection
 
