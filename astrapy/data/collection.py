@@ -1548,11 +1548,7 @@ class Collection(Generic[DOC]):
                 rerank step. It can be either a number or a dictionary of strings to
                 numbers, the latter case expressing different counts for the different
                 retrievals. For example: `hybrid_limits=50`,
-                `hybrid_limits={"$vectorize": 20, "$lexical": 10}`,
                 `hybrid_limits={"$vector": 20, "$lexical": 10}`.
-                In case of a dictionary parameter, consult the Data API documentation
-                about the string to use for keys according to the configuration of the
-                collection.
             include_scores: a boolean to request the scores to be returned along with
                 the resulting documents. If this is set, the scores can be read in the
                 the map `scores` attribute of each RerankedResult (the map is
@@ -4507,11 +4503,7 @@ class AsyncCollection(Generic[DOC]):
                 rerank step. It can be either a number or a dictionary of strings to
                 numbers, the latter case expressing different counts for the different
                 retrievals. For example: `hybrid_limits=50`,
-                `hybrid_limits={"$vectorize": 20, "$lexical": 10}`,
                 `hybrid_limits={"$vector": 20, "$lexical": 10}`.
-                In case of a dictionary parameter, consult the Data API documentation
-                about the string to use for keys according to the configuration of the
-                collection.
             include_scores: a boolean to request the scores to be returned along with
                 the resulting documents. If this is set, the scores can be read in the
                 the map `scores` attribute of each RerankedResult (the map is

@@ -70,12 +70,11 @@ class CollectionFindAndRerankCursor(
     returns items of type RerankedResult[TRAW].
 
     Example:
-        >>> TODO: recompute output
+        >>> # (this assumes 'vectorize'. See `Collection.find_and_rerank` for more.)
         >>> cursor = collection.find_and_rerank(
         ...     sort={"$hybrid": "Weekdays?"},
         ...     projection={"wkd": True},
         ...     limit=5,
-        ...     hybrid_limits=10,  # TODO goes away
         ...     include_scores=True,
         ... )
         >>> for r_result in cursor:
@@ -291,11 +290,11 @@ class CollectionFindAndRerankCursor(
             and rewound to its initial state.
 
         Example:
+            >>> # (this assumes 'vectorize'. See `Collection.find_and_rerank` for more.)
             >>> cursor = collection.find_and_rerank(
             ...     sort={"$hybrid": "Weekdays?"},
             ...     projection={"wkd": True},
             ...     limit=3,
-            ...     hybrid_limits=10,  # TODO goes away
             ... ).map(lambda r_result: r_result.document["wkd"].upper())
             >>> for idx, value in zip([0, 1], cursor):
             ...     print(f"{idx} ==> {value}")
@@ -551,11 +550,11 @@ class CollectionFindAndRerankCursor(
                 possibly composed with any pre-existing mapping function.
 
         Example:
+            >>> # (this assumes 'vectorize'. See `Collection.find_and_rerank` for more.)
             >>> cursor = collection.find_and_rerank(
             ...     sort={"$hybrid": "Weekdays?"},
             ...     projection={"wkd": True},
             ...     limit=3,
-            ...     hybrid_limits=10,  # TODO goes away
             ... )
             >>> for r_result in cursor:
             ...     print(r_result.document)
@@ -642,13 +641,13 @@ class CollectionFindAndRerankCursor(
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Example:
+            >>> # (this assumes 'vectorize'. See `Collection.find_and_rerank` for more.)
             >>> from astrapy.cursors import CursorState, RerankedResult
             >>>
             >>> cursor = collection.find_and_rerank(
             ...     sort={"$hybrid": "Weekdays?"},
             ...     projection={"wkd": True},
             ...     limit=3,
-            ...     hybrid_limits=10,  # TODO goes away
             ... )
             >>> def printer(r_result: RerankedResult):
             ...     print(f"-> {r_result.document['wkd']}")
@@ -730,11 +729,11 @@ class CollectionFindAndRerankCursor(
                 to be consumed on the cursor when `to_list` is called.
 
         Example:
+            >>> # (this assumes 'vectorize'. See `Collection.find_and_rerank` for more.)
             >>> collection.find_and_rerank(
             ...     sort={"$hybrid": "Weekdays?"},
             ...     projection={"wkd": True},
             ...     limit=4,
-            ...     hybrid_limits=10,  # TODO goes away
             ... ).map(
             ...     lambda r_result: r_result.document["wkd"]
             ... ).to_list()
@@ -744,7 +743,6 @@ class CollectionFindAndRerankCursor(
             ...     sort={"$hybrid": "Weekdays?"},
             ...     projection={"wkd": True},
             ...     limit=4,
-            ...     hybrid_limits=10,  # TODO goes away
             ... ).map(lambda r_result: r_result.document["wkd"])
             >>> print(f"First item: {cursor.__next__()}.")
             First item: Wed.
