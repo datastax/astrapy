@@ -34,7 +34,7 @@ class TestCollectionFindAndRerankSync:
         self,
         sync_empty_farr_vectorize_collection: DefaultCollection,
     ) -> None:
-        # TODO: (1) add insert modes, (2) test various params, (3) verify returned docs.
+        # TODO: add insert modes
         coll = sync_empty_farr_vectorize_collection
         # insertions
         coll.insert_many(
@@ -85,6 +85,42 @@ class TestCollectionFindAndRerankSync:
         assert all(
             all(isinstance(sc, float) for sc in hit.scores.values()) for hit in hits
         )
+
+        # sort.$hybrid can be an object as well:
+        farr_cursor_s_o = coll.find_and_rerank(
+            {},
+            sort={"$hybrid": {"$vectorize": "bla", "$lexical": "bla"}},
+            projection={"$vectorize": True},
+            include_scores=True,
+            limit=2,
+        )
+        s_o_hits = farr_cursor_s_o.to_list()
+        assert s_o_hits == hits
+
+        # hybrid_limits various forms, functional tests
+        cur_no_hl = coll.find_and_rerank(
+            {},
+            sort={"$hybrid": "bla"},
+            limit=2,
+        )
+        cur_nu_hl = coll.find_and_rerank(
+            {},
+            sort={"$hybrid": "bla"},
+            limit=2,
+            hybrid_limits=4,
+        )
+        cur_ob_hl = coll.find_and_rerank(
+            {},
+            sort={"$hybrid": "bla"},
+            limit=2,
+            hybrid_limits={
+                "$lexical": 4,
+                "$vector": 3,
+            },
+        )
+        assert len(cur_no_hl.to_list()) == 2
+        assert len(cur_nu_hl.to_list()) == 2
+        assert len(cur_ob_hl.to_list()) == 2
 
     @pytest.mark.describe("test of collection find-and-rerank novectorize, sync")
     def test_collection_farr_novectorize_sync(

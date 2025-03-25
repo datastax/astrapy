@@ -34,7 +34,7 @@ class TestCollectionFindAndRerankAsync:
         self,
         async_empty_farr_vectorize_collection: DefaultAsyncCollection,
     ) -> None:
-        # TODO: (1) add insert modes, (2) test various params, (3) verify returned docs.
+        # TODO: add insert modes
         acoll = async_empty_farr_vectorize_collection
         # insertions
         await acoll.insert_many(
@@ -71,6 +71,7 @@ class TestCollectionFindAndRerankAsync:
             {},
             sort={"$hybrid": "bla"},
             projection={"$vectorize": True},
+            include_scores=True,
             limit=2,
         )
 
@@ -80,9 +81,46 @@ class TestCollectionFindAndRerankAsync:
         assert all(isinstance(hit.document, dict) for hit in hits)
         assert all(isinstance(hit.document["$vectorize"], str) for hit in hits)
         assert all(isinstance(hit.scores, dict) for hit in hits)
+        assert all(len(hit.scores) > 0 for hit in hits)
         assert all(
             all(isinstance(sc, float) for sc in hit.scores.values()) for hit in hits
         )
+
+        # sort.$hybrid can be an object as well:
+        farr_cursor_s_o = acoll.find_and_rerank(
+            {},
+            sort={"$hybrid": {"$vectorize": "bla", "$lexical": "bla"}},
+            projection={"$vectorize": True},
+            include_scores=True,
+            limit=2,
+        )
+        s_o_hits = await farr_cursor_s_o.to_list()
+        assert s_o_hits == hits
+
+        # hybrid_limits various forms, functional tests
+        cur_no_hl = acoll.find_and_rerank(
+            {},
+            sort={"$hybrid": "bla"},
+            limit=2,
+        )
+        cur_nu_hl = acoll.find_and_rerank(
+            {},
+            sort={"$hybrid": "bla"},
+            limit=2,
+            hybrid_limits=4,
+        )
+        cur_ob_hl = acoll.find_and_rerank(
+            {},
+            sort={"$hybrid": "bla"},
+            limit=2,
+            hybrid_limits={
+                "$lexical": 4,
+                "$vector": 3,
+            },
+        )
+        assert len(await cur_no_hl.to_list()) == 2
+        assert len(await cur_nu_hl.to_list()) == 2
+        assert len(await cur_ob_hl.to_list()) == 2
 
     @pytest.mark.describe("test of collection find-and-rerank novectorize, async")
     async def test_collection_farr_novectorize_async(
