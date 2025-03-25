@@ -37,67 +37,6 @@ from astrapy.exceptions import (
     _TimeoutContext,
 )
 
-# TODO: remove this (setting + function) once API testable
-MOCK_FARR_API = False
-
-
-def mock_farr_response(pl: dict[str, Any] | None) -> dict[str, Any]:
-    # determine if vector and, if so, dimension
-    assert pl is not None
-    d_hyb = pl["findAndRerank"]["sort"]["$hybrid"]
-    vector_dim: int | None
-    farr_limit = pl["findAndRerank"]["options"].get("limit", 2)
-    include_sv = pl["findAndRerank"]["options"].get("includeSortVector") or False
-    include_sc = pl["findAndRerank"]["options"].get("includeScores") or False
-    _sort_vector: list[float] | None
-    if isinstance(d_hyb, str) or "$vector" not in d_hyb:
-        vector_dim = None
-        _sort_vector = [99] * 1536
-    else:
-        vector_dim = len(d_hyb["$vector"])
-        _sort_vector = [99] * vector_dim
-
-    def do_vector_part(doc_i: int) -> dict[str, Any]:
-        if vector_dim is None:
-            return {"$vectorize": f"doc number {doc_i}."}
-        else:
-            return {"$vector": [(5 + doc_i * 0.01)] * vector_dim}
-
-    docs = [
-        {
-            "_id": f"doc_{doc_i}",
-            "content": f"content {doc_i}",
-            "metadata": {"m": f"d<{doc_i}>"},
-            **(do_vector_part(doc_i)),
-        }
-        for doc_i in range(farr_limit)
-    ]
-    doc_responses = [
-        {
-            "scores": {
-                "$rerank": (6 - doc_i) / 8,
-                "$vector": (7 - doc_i) / 9,
-                "$lexical": (8 - doc_i) / 10,
-            },
-        }
-        for doc_i in range(farr_limit)
-    ]
-
-    the_status: dict[str, Any] = {}
-    if include_sv or include_sc:
-        if include_sv:
-            the_status["sortVector"] = _sort_vector
-        if include_sc:
-            the_status["documentResponses"] = doc_responses
-
-    return {
-        "data": {
-            "documents": docs,
-            "nextPageState": None,
-        },
-        **({"status": the_status} if the_status else {}),
-    }
-
 
 class _QueryEngine(ABC, Generic[TRAW]):
     @abstractmethod
@@ -514,22 +453,15 @@ class _CollectionFindAndRerankQueryEngine(
         _page_str = page_state if page_state else "(empty page state)"
         _coll_name = self.collection.name if self.collection else "(none)"
 
-        f_response: dict[str, Any]
-        if MOCK_FARR_API:
-            logger.info("MOCKING FARR API: '%s'", str(converted_f_payload))
-            f_response = mock_farr_response(converted_f_payload)
-        else:
-            logger.info(f"cursor fetching a page: {_page_str} from {_coll_name}")
-            raw_f_response = self.collection._api_commander.request(
-                payload=converted_f_payload,
-                timeout_context=timeout_context,
-            )
-            logger.info(
-                f"cursor finished fetching a page: {_page_str} from {_coll_name}"
-            )
-            f_response = postprocess_collection_response(
-                raw_f_response, options=self.collection.api_options.serdes_options
-            )
+        logger.info(f"cursor fetching a page: {_page_str} from {_coll_name}")
+        raw_f_response = self.collection._api_commander.request(
+            payload=converted_f_payload,
+            timeout_context=timeout_context,
+        )
+        logger.info(f"cursor finished fetching a page: {_page_str} from {_coll_name}")
+        f_response: dict[str, Any] = postprocess_collection_response(
+            raw_f_response, options=self.collection.api_options.serdes_options
+        )
 
         if "documents" not in f_response.get("data", {}):
             raise UnexpectedDataAPIResponseException(
@@ -582,23 +514,18 @@ class _CollectionFindAndRerankQueryEngine(
         _page_str = page_state if page_state else "(empty page state)"
         _coll_name = self.async_collection.name if self.async_collection else "(none)"
 
-        f_response: dict[str, Any]
-        if MOCK_FARR_API:
-            logger.info("MOCKING FARR API: '%s'", str(converted_f_payload))
-            f_response = mock_farr_response(converted_f_payload)
-        else:
-            logger.info(f"cursor fetching a page: {_page_str} from {_coll_name}, async")
-            raw_f_response = await self.async_collection._api_commander.async_request(
-                payload=converted_f_payload,
-                timeout_context=timeout_context,
-            )
-            logger.info(
-                f"cursor finished fetching a page: {_page_str} from {_coll_name}, async"
-            )
-            f_response = postprocess_collection_response(
-                raw_f_response,
-                options=self.async_collection.api_options.serdes_options,
-            )
+        logger.info(f"cursor fetching a page: {_page_str} from {_coll_name}, async")
+        raw_f_response = await self.async_collection._api_commander.async_request(
+            payload=converted_f_payload,
+            timeout_context=timeout_context,
+        )
+        logger.info(
+            f"cursor finished fetching a page: {_page_str} from {_coll_name}, async"
+        )
+        f_response: dict[str, Any] = postprocess_collection_response(
+            raw_f_response,
+            options=self.async_collection.api_options.serdes_options,
+        )
 
         if "documents" not in f_response.get("data", {}):
             raise UnexpectedDataAPIResponseException(
