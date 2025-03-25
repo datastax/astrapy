@@ -194,6 +194,7 @@ class TestCollectionFindAndRerankAsync:
             limit=2,
             rerank_on="text_content",
             rerank_query="blaa",
+            hybrid_limits=3,
         )
         cur_ob_hl = acoll.find_and_rerank(
             {},
@@ -246,17 +247,25 @@ class TestCollectionFindAndRerankAsync:
         async_empty_farr_vector_collection: DefaultAsyncCollection,
     ) -> None:
         acoll = async_empty_farr_vector_collection
-        await acoll.insert_one({"$vector": [-1, -2], "$lexical": "text"})
+        await acoll.insert_one(
+            {"$vector": [11, 12], "$lexical": "text", "content": "text"}
+        )
 
         cur_n = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
         )
         cur_f = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
             include_scores=False,
         )
         cur_t = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
             include_scores=True,
         )
         itm_n = await cur_n.__anext__()
@@ -340,17 +349,25 @@ class TestCollectionFindAndRerankAsync:
         async_empty_farr_vector_collection: DefaultAsyncCollection,
     ) -> None:
         acoll = async_empty_farr_vector_collection
-        await acoll.insert_one({"$vector": [-1, -2], "$lexical": "text"})
+        await acoll.insert_one(
+            {"$vector": [11, 12], "$lexical": "text", "content": "text"}
+        )
 
         cur_n0 = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
         )
         cur_f0 = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
             include_sort_vector=False,
         )
         cur_t0 = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
             include_sort_vector=True,
         )
 
@@ -362,13 +379,19 @@ class TestCollectionFindAndRerankAsync:
 
         cur_n1 = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
         )
         cur_f1 = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
             include_sort_vector=False,
         )
         cur_t1 = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
             include_sort_vector=True,
         )
         await cur_n1.__anext__()
@@ -383,13 +406,19 @@ class TestCollectionFindAndRerankAsync:
 
         cur_n2 = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
         )
         cur_f2 = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
             include_sort_vector=False,
         )
         cur_t2 = acoll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
             include_sort_vector=True,
         )
         await cur_n2.to_list()

@@ -194,6 +194,7 @@ class TestCollectionFindAndRerankSync:
             limit=2,
             rerank_on="text_content",
             rerank_query="blaa",
+            hybrid_limits=3,
         )
         cur_ob_hl = coll.find_and_rerank(
             {},
@@ -246,17 +247,23 @@ class TestCollectionFindAndRerankSync:
         sync_empty_farr_vector_collection: DefaultCollection,
     ) -> None:
         coll = sync_empty_farr_vector_collection
-        coll.insert_one({"$vector": [-1, -2], "$lexical": "text"})
+        coll.insert_one({"$vector": [11, 12], "$lexical": "text", "content": "text"})
 
         cur_n = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
         )
         cur_f = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
             include_scores=False,
         )
         cur_t = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
             include_scores=True,
         )
         itm_n = cur_n.__next__()
@@ -340,17 +347,23 @@ class TestCollectionFindAndRerankSync:
         sync_empty_farr_vector_collection: DefaultCollection,
     ) -> None:
         coll = sync_empty_farr_vector_collection
-        coll.insert_one({"$vector": [-1, -2], "$lexical": "text"})
+        coll.insert_one({"$vector": [11, 12], "$lexical": "text", "content": "text"})
 
         cur_n0 = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
         )
         cur_f0 = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
             include_sort_vector=False,
         )
         cur_t0 = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
             include_sort_vector=True,
         )
 
@@ -362,13 +375,19 @@ class TestCollectionFindAndRerankSync:
 
         cur_n1 = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
         )
         cur_f1 = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
             include_sort_vector=False,
         )
         cur_t1 = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
             include_sort_vector=True,
         )
         cur_n1.__next__()
@@ -383,13 +402,19 @@ class TestCollectionFindAndRerankSync:
 
         cur_n2 = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
         )
         cur_f2 = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
             include_sort_vector=False,
         )
         cur_t2 = coll.find_and_rerank(
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            rerank_on="content",
+            rerank_query="blaa",
             include_sort_vector=True,
         )
         cur_n2.to_list()
