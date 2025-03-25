@@ -127,7 +127,7 @@ class TestCollectionFindAndRerankAsync:
         self,
         async_empty_farr_vector_collection: DefaultAsyncCollection,
     ) -> None:
-        # TODO: (1) add insert modes, (2) test various params
+        # TODO: add insert modes
         acoll = async_empty_farr_vector_collection
         # insertions
         await acoll.insert_many(

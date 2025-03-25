@@ -127,7 +127,7 @@ class TestCollectionFindAndRerankSync:
         self,
         sync_empty_farr_vector_collection: DefaultCollection,
     ) -> None:
-        # TODO: (1) add insert modes, (2) test various params
+        # TODO: add insert modes
         coll = sync_empty_farr_vector_collection
         # insertions
         coll.insert_many(
