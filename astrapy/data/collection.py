@@ -1577,7 +1577,195 @@ class Collection(Generic[DOC]):
             manipulated in several ways).
 
         Examples:
-            >>> TODO: code examples
+            >>> # The following examples assume a collection with 'vectorize' and the
+            >>> # necessary hybrid configuration; see below for a non-vectorize case.
+            >>>
+            >>> # Populate with documents
+            >>> my_vectorize_coll.insert_many([
+            ...     {
+            ...         "_id": "A",
+            ...         "wkd": "Mon",
+            ...         "$vectorize": "Monday is green",
+            ...         "$lexical": "Monday is green",
+            ...     },
+            ...     {
+            ...         "_id": "B",
+            ...         "wkd": "Tue",
+            ...         "$vectorize": "Tuesday is pink",
+            ...         "$lexical": "Tuesday is pink",
+            ...     },
+            ...     {
+            ...         "_id": "C",
+            ...         "wkd": "Wed",
+            ...         "$vectorize": "Wednesday is cyan",
+            ...         "$lexical": "Wednesday is cyan",
+            ...     },
+            ...     {
+            ...         "_id": "D",
+            ...         "wkd": "Thu",
+            ...         "$vectorize": "Thursday is red",
+            ...         "$lexical": "Thursday is red",
+            ...     },
+            ...     {
+            ...         "_id": "E",
+            ...         "wkd": "Fri",
+            ...         "$vectorize": "Friday is orange",
+            ...         "$lexical": "Friday is orange",
+            ...     },
+            ...     {
+            ...         "_id": "F",
+            ...         "wkd": "Sat",
+            ...         "$vectorize": "Saturday is purple",
+            ...         "$lexical": "Saturday is purple",
+            ...     },
+            ...     {
+            ...         "_id": "G",
+            ...         "wkd": "Sun",
+            ...         "$vectorize": "Sunday is beige",
+            ...         "$lexical": "Sunday is beige",
+            ...     },
+            ... ])
+            CollectionInsertManyResult(inserted_ids=[A, B, C, D, E ... (7 total)], raw_results=...)
+            >>>
+            >>> # A simple invocation, consuming the cursor
+            >>> # with a loop ('vectorize collection):
+            >>> for r_result in my_vectorize_coll.find_and_rerank(
+            ...     sort={"$hybrid": "Weekdays?"},
+            ...     limit=2,
+            ... ):
+            ...     print(r_result.document)
+            ...
+            {'_id': 'C', 'wkd': 'Wed'}
+            {'_id': 'A', 'wkd': 'Mon'}
+            >>> # Additional arbitrary filtering predicates
+            >>> # ('vectorize collection):
+            >>> for r_result in my_vectorize_coll.find_and_rerank(
+            ...     {"wkd": {"$ne": "Mon"}},
+            ...     sort={"$hybrid": "Weekdays?"},
+            ...     limit=2,
+            ... ):
+            ...     print(r_result.document)
+            ...
+            {'_id': 'C', 'wkd': 'Wed'}
+            {'_id': 'B', 'wkd': 'Tue'}
+            >>> # Fetch the scores with the documents ('vectorize collection):
+            >>> scored_texts = [
+            ...     (r_result.document["wkd"], r_result.scores["$rerank"])
+            ...     for r_result in my_vectorize_coll.find_and_rerank(
+            ...         sort={"$hybrid": "Weekdays?"},
+            ...         limit=2,
+            ...         include_scores=True,
+            ...     )
+            ... ]
+            >>> print(scored_texts)
+            [('Wed', -9.1015625), ('Mon', -10.2421875)]
+            >>>
+            >>> # Customize sub-search limits ('vectorize collection):
+            >>> hits = my_vectorize_coll.find_and_rerank(
+            ...     sort={"$hybrid": "Weekdays?"},
+            ...     limit=2,
+            ...     hybrid_limits=20,
+            ... ).to_list()
+            >>> print(", ".join(r_res.document["wkd"] for r_res in hits))
+            Wed, Mon
+            >>>
+            >>> # Separate sub-search queries ('vectorize collection):
+            >>> cursor = my_vectorize_coll.find_and_rerank(
+            ...     sort={
+            ...         "$hybrid": {
+            ...             "$vectorize": "a week day",
+            ...             "$lexical": "green",
+            ...         },
+            ...     },
+            ...     limit=2,
+            ...     hybrid_limits={"$lexical": 4, "$vector": 20},
+            ... )
+            >>> print(", ".join(r_res.document["wkd"] for r_res in cursor))
+            Mon, Wed
+            >>>
+            >>> # Reading back the query vector used by
+            >>> # the search ('vectorize collection):
+            >>> cursor = my_vectorize_coll.find_and_rerank(
+            ...     sort={"$hybrid": "Weekdays?"},
+            ...     limit=2,
+            ...     include_sort_vector=True
+            ... )
+            >>> sort_vector = cursor.get_sort_vector()
+            >>> print(" ==> ".join(
+            ...     r_res.document["wkd"] for r_res in cursor
+            ... ))
+            Wed ==> Mon
+            >>> print(f"Sort vector={sort_vector}")
+            Sort vector=[-0.0021172, -0.012057612, 0.010362527 ...]
+            >>>
+            >>>
+            >>> # If the collection has no "vectorize", `rerank_query`
+            >>> # and `rerank_on` must be passed. The following assumes a
+            >>> # collection with a 3-dimensional vector and the setup for hybrid.
+            >>>
+            >>> # Populate with documents:
+            >>> my_vector3d_coll.insert_many([
+            ...     {
+            ...         "_id": "A",
+            ...         "wkd": "Mon",
+            ...         "$vector": [0.1, 0.2, 0.3],
+            ...         "$lexical": "Monday is green",
+            ...     },
+            ...     {
+            ...         "_id": "B",
+            ...         "wkd": "Tue",
+            ...         "$vector": [0.2, 0.3, 0.4],
+            ...         "$lexical": "Tuesday is pink",
+            ...     },
+            ...     {
+            ...         "_id": "C",
+            ...         "wkd": "Wed",
+            ...         "$vector": [0.3, 0.4, 0.5],
+            ...         "$lexical": "Wednesday is cyan",
+            ...     },
+            ...     {
+            ...         "_id": "D",
+            ...         "wkd": "Thu",
+            ...         "$vector": [0.4, 0.5, 0.6],
+            ...         "$lexical": "Thursday is red",
+            ...     },
+            ...     {
+            ...         "_id": "E",
+            ...         "wkd": "Fri",
+            ...         "$vector": [0.5, 0.6, 0.7],
+            ...         "$lexical": "Friday is orange",
+            ...     },
+            ...     {
+            ...         "_id": "F",
+            ...         "wkd": "Sat",
+            ...         "$vector": [0.6, 0.7, 0.8],
+            ...         "$lexical": "Saturday is purple",
+            ...     },
+            ...     {
+            ...         "_id": "G",
+            ...         "wkd": "Sun",
+            ...         "$vector": [0.7, 0.8, 0.9],
+            ...         "$lexical": "Sunday is beige",
+            ...     },
+            ... ])
+            CollectionInsertManyResult(inserted_ids=[A, B, C, D, E ... (7 total)], raw_results=...)
+            >>>
+            >>> # A simple find_and_rerank call (collection without 'vectorize'):
+            >>> for r_result in my_vector3d_coll.find_and_rerank(
+            ...     sort={
+            ...         "$hybrid": {
+            ...             "$vector": [0.9, 0.8, 0.7],
+            ...             "$lexical": "Weekdays?",
+            ...         },
+            ...     },
+            ...     limit=2,
+            ...     rerank_on="wkd",
+            ...     rerank_query="week days",
+            ... ):
+            ...     print(r_result.document["wkd"])
+            ...
+            Mon
+            Tue
         """
 
         # lazy-import here to avoid circular import issues
@@ -4348,7 +4536,30 @@ class AsyncCollection(Generic[DOC]):
             (and manipulated in several ways).
 
         Examples:
-            >>> TODO: code examples
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>> #       See the same method on Collection for more usage patterns.
+            >>>
+            >>> async def run_find_and_reranks(acol: AsyncCollection) -> None:
+            ...     print("find results 1:")
+            ...     async for r_res in acol.find_and_rerank(
+            ...         sort={"$hybrid": "query text"},
+            ...         limit=3,
+            ...     ):
+            ...         print(r_res.document["wkd"])
+            ...     async_cursor1 = acol.find_and_rerank(
+            ...         {"wkd": {"$ne": "Mon"}},
+            ...         sort={"$hybrid": "query text"},
+            ...         limit=3,
+            ...     )
+            ...     ids = [r_res.document["_id"] async for r_res in async_cursor1]
+            ...     print("find results 2:", ids)
+            ...
+            >>> asyncio.run(run_find_and_reranks(my_async_coll))
+            find results 1:
+            Mon
+            Thu
+            Sat
+            find results 2: ['D', 'F', 'B']
         """
 
         # lazy-import here to avoid circular import issues
