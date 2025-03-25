@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import math
+import os
 from decimal import Decimal
 from typing import Any, Dict, Iterable
 
@@ -37,6 +38,7 @@ from astrapy.info import (
     CollectionVectorOptions,
     RerankServiceOptions,
 )
+from astrapy.utils.unset import _UNSET, UnsetType
 
 from ..conftest import (
     ADMIN_ENV_LIST,
@@ -274,6 +276,15 @@ def sync_farr_vectorize_collection(
     An actual collection on DB, in the main keyspace.
     """
     params = service_collection_parameters
+
+    # TODO: once in prod, align rerank-credentials control
+    reranking_api_key: str | UnsetType
+    if "ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER" in os.environ:
+        assert params["reranking_api_key"] is not None
+        reranking_api_key = params["reranking_api_key"]
+    else:
+        reranking_api_key = _UNSET
+
     collection = sync_database.create_collection(
         TEST_FARR_VECTORIZE_COLLECTION_NAME,
         definition=(
@@ -288,7 +299,7 @@ def sync_farr_vectorize_collection(
             .build()
         ),
         embedding_api_key=params["api_key"],
-        reranking_api_key=params["reranking_api_key"],
+        reranking_api_key=reranking_api_key,
     )
     yield collection
 
@@ -324,6 +335,15 @@ def sync_farr_vector_collection(
     An actual collection on DB, in the main keyspace.
     """
     params = service_collection_parameters
+
+    # TODO: once in prod, align rerank-credentials control
+    reranking_api_key: str | UnsetType
+    if "ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER" in os.environ:
+        assert params["reranking_api_key"] is not None
+        reranking_api_key = params["reranking_api_key"]
+    else:
+        reranking_api_key = _UNSET
+
     collection = sync_database.create_collection(
         TEST_FARR_VECTOR_COLLECTION_NAME,
         definition=(
@@ -334,7 +354,7 @@ def sync_farr_vector_collection(
             .set_lexical(lexical_collection_parameters)
             .build()
         ),
-        reranking_api_key=params["reranking_api_key"],
+        reranking_api_key=reranking_api_key,
     )
     yield collection
 

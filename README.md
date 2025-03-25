@@ -547,6 +547,25 @@ poetry run pytest [...] -o log_cli=0
 poetry run pytest [...] -o log_cli=1 --log-cli-level=10
 ```
 
+### Special tests (2025-03-25, Temporary provisions)
+
+Running special tests taking `find_and_rerank` into account, until dev/prod/local discrepancies resolved.
+
+**Prod** (usual CI) just runs as is and skips f.a.r.r.
+
+**Dev** (manual CI on a hybrid-capable cloud Data API). One must:
+
+1. launch integration tests with `ASTRAPY_TEST_FINDANDRERANK=y`
+2. ... but also setting "ASTRAPY_TEST_FINDANDRERANK_SUPPRESS_LEXICAL=y" to suppress actual non-null `"$lexical"` sorts.
+  
+**Local** (manual CI on a hybrid-capable locally-running Data API). One must:
+
+1. launch integration tests with `ASTRAPY_TEST_FINDANDRERANK=y`
+2. ... but also with `ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER=y` to pass a reranker API key where needed
+3. ... which requires an environment variable `HEADER_RERANKING_API_KEY_NVIDIA` to be set with the `AstraCS:...` dev token.
+
+"test_collection_farr_vectorize_sync or test_collection_farr_novectorize_sync or test_collection_includescores_farr_vectorize_sync or test_collection_includescores_farr_novectorize_sync or test_collection_getsortvector_farr_vectorize_sync or test_collection_getsortvector_farr_novectorize_sync"
+
 ## Appendices
 
 ### Appendix A: quick reference for key imports
