@@ -98,7 +98,8 @@ class TestCollectionFindAndRerankAsync:
             limit=2,
         )
         s_o_hits = await farr_cursor_s_o.to_list()
-        assert s_o_hits == hits
+        # scores may differ by epsilon
+        assert [rr.document for rr in s_o_hits] == [rr.document for rr in hits]
 
         # hybrid_limits various forms, functional tests
         cur_no_hl = acoll.find_and_rerank(
@@ -184,6 +185,19 @@ class TestCollectionFindAndRerankAsync:
         assert all(
             all(isinstance(sc, float) for sc in hit.scores.values()) for hit in hits
         )
+
+        hits_dav = await acoll.find_and_rerank(
+            {},
+            sort=_sanitize_dev_hybrid_clause(
+                {"$hybrid": {"$vector": DataAPIVector([0, 1]), "$lexical": "bla"}}
+            ),
+            projection={"$vector": True},
+            include_scores=True,
+            limit=2,
+            rerank_on="text_content",
+            rerank_query="blaa",
+        ).to_list()
+        assert hits_dav == hits
 
         # hybrid_limits various forms, functional tests
         cur_no_hl = acoll.find_and_rerank(

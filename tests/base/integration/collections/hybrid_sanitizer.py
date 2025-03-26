@@ -16,10 +16,12 @@ from __future__ import annotations
 
 import os
 
+from astrapy.data_types import DataAPIVector
+
 
 def _sanitize_dev_hybrid_clause(
-    hybrid_clause: dict[str, str | dict[str, str | list[float]]],
-) -> dict[str, str | dict[str, str | list[float]]]:
+    hybrid_clause: dict[str, str | dict[str, str | list[float] | DataAPIVector]],
+) -> dict[str, str | dict[str, str | list[float] | DataAPIVector]]:
     # If not requested to do anything, do nothing:
     if "ASTRAPY_TEST_FINDANDRERANK_SUPPRESS_LEXICAL" not in os.environ:
         return hybrid_clause

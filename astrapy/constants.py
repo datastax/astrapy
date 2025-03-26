@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, List, Optional, Tuple, TypeVar, Union
 
+from astrapy.data_types import DataAPIVector
 from astrapy.settings.defaults import (
     DATA_API_ENVIRONMENT_CASSANDRA,
     DATA_API_ENVIRONMENT_DEV,
@@ -33,7 +34,9 @@ ProjectionType = Union[
     Iterable[str], Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]
 ]
 SortType = Dict[str, Any]
-HybridSortType = Dict[str, Union[str, Dict[str, Union[str, List[float]]]]]
+HybridSortType = Dict[
+    str, Union[str, Dict[str, Union[str, List[float], DataAPIVector]]]
+]
 FilterType = Dict[str, Any]
 CallerType = Tuple[Optional[str], Optional[str]]
 
