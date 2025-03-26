@@ -556,7 +556,7 @@ Running special tests taking `find_and_rerank` into account, until dev/prod/loca
 **Dev** (manual CI on a hybrid-capable cloud Data API). One must:
 
 1. launch integration tests with `ASTRAPY_TEST_FINDANDRERANK=y`
-2. ... but also setting "ASTRAPY_TEST_FINDANDRERANK_SUPPRESS_LEXICAL=y" to suppress actual non-null `"$lexical"` sorts.
+2. ... but also setting "ASTRAPY_TEST_FINDANDRERANK_SUPPRESS_LEXICAL=y" to suppress actual non-null `"$lexical"` sorts, if not rolled out yet.
   
 **Local** (manual CI on a hybrid-capable locally-running Data API). One must:
 
