@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any, TypedDict
 
 import pytest
@@ -21,6 +22,7 @@ import pytest
 from astrapy import AsyncCollection, AsyncDatabase, Collection, Database
 from astrapy.constants import VectorMetric
 from astrapy.info import CollectionDefinition
+from astrapy.utils.unset import _UNSET, UnsetType
 
 from ..conftest import DefaultAsyncCollection, DefaultCollection
 
@@ -38,6 +40,20 @@ FIND_PROJECTION = {"_id": False, "p_bigint": True}
 DOCUMENT = {"p_ascii": "abc", "p_bigint": 10000, "p_float": 0.123}
 TYPED_DOCUMENT: TestDoc = {"p_ascii": "abc", "p_bigint": 10000}
 FIND_FILTER = {"p_ascii": "abc", "p_bigint": 10000}
+# find_and_rerank-related assets:
+VLEX_DOCUMENT = {
+    "p_ascii": "abc",
+    "p_bigint": 10000,
+    "p_float": 0.123,
+    "$vector": [1, 2],
+    "$lexical": "blo",
+}
+TYPED_VLEX_DOCUMENT: TestDoc = {
+    "p_ascii": "abc",
+    "p_bigint": 10000,
+    "$vector": [1, 2],
+    "$lexical": "blo",
+}  # type: ignore[typeddict-unknown-key]
 
 
 class TestCollectionTyping:
@@ -301,6 +317,99 @@ class TestCollectionTyping:
 
         g_co_typed.delete_many({})
 
+    @pytest.mark.skipif(
+        "ASTRAPY_TEST_FINDANDRERANK" not in os.environ,
+        reason="No testing enabled on findAndRerank support",
+    )
+    @pytest.mark.describe("test of typing find_and_rerank, sync")
+    def test_collection_find_and_rerank_typing_sync(
+        self,
+        sync_database: Database,
+        sync_empty_collection: DefaultCollection,
+        service_collection_parameters: dict[str, Any],
+    ) -> None:
+        """Test of typing in find_and_rerank, sync."""
+
+        params = service_collection_parameters
+        # TODO: once in prod, align rerank-credentials control
+        reranking_api_key: str | UnsetType
+        if "ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER" in os.environ:
+            assert params["reranking_api_key"] is not None
+            reranking_api_key = params["reranking_api_key"]
+        else:
+            reranking_api_key = _UNSET
+
+        # Untyped baseline
+        f_co_untyped = sync_database.get_collection(
+            sync_empty_collection.name, reranking_api_key=reranking_api_key
+        )
+        f_co_untyped.insert_one(VLEX_DOCUMENT)
+        farr_u_hits = f_co_untyped.find_and_rerank(
+            sort={"$hybrid": {"$vector": [2, 1], "$lexical": "bla"}},
+            limit=1,
+            rerank_on="p_ascii",
+            rerank_query="bli",
+        ).to_list()
+        assert len(farr_u_hits) > 0
+        farr_u_doc = farr_u_hits[0].document
+        fu_a: str
+        fu_b: int
+        fu_a = farr_u_doc["p_ascii"]  # noqa: F841
+        fu_b = farr_u_doc["p_bigint"]  # noqa: F841
+        # untyped, these are all ok:
+        fu_x: int
+        fu_y: float
+        fu_x = farr_u_doc["p_ascii"]  # noqa: F841
+        with pytest.raises(KeyError):
+            fu_y = farr_u_doc["c"]  # noqa: F841
+
+        f_co_untyped.delete_many({})
+
+        # Typed
+        f_co_typed: Collection[TestDoc] = sync_database.get_collection(
+            sync_empty_collection.name,
+            document_type=TestDoc,
+            reranking_api_key=reranking_api_key,
+        )
+        f_co_typed.insert_one(TYPED_VLEX_DOCUMENT)
+        farr_t_hits = f_co_typed.find_and_rerank(
+            sort={"$hybrid": {"$vector": [2, 1], "$lexical": "bla"}},
+            limit=1,
+            rerank_on="p_ascii",
+            rerank_query="bli",
+        ).to_list()
+        assert len(farr_t_hits) > 0
+        farr_t_doc = farr_t_hits[0].document
+        ft_a: str
+        ft_b: int
+        ft_a = farr_t_doc["p_ascii"]  # noqa: F841
+        ft_b = farr_t_doc["p_bigint"]  # noqa: F841
+        # these two SHOULD NOT typecheck (i.e. require the ignore directive)
+        ft_x: int
+        ft_y: float
+        ft_x = farr_t_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
+        with pytest.raises(KeyError):
+            ft_y = farr_t_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
+
+        farr_tm_hits = f_co_typed.find_and_rerank(
+            sort={"$hybrid": {"$vector": [2, 1], "$lexical": "bla"}},
+            limit=1,
+            projection=FIND_PROJECTION,
+            document_type=TestMiniDoc,
+            rerank_on="p_ascii",
+            rerank_query="bli",
+        ).to_list()
+        assert len(farr_tm_hits) > 0
+        farr_tm_doc = farr_tm_hits[0].document
+        ftm_a: str
+        ftm_b: int
+        # typechecks must detect that p_ascii is not there
+        with pytest.raises(KeyError):
+            ftm_a = farr_tm_doc["p_ascii"]  # type: ignore[typeddict-item]  # noqa: F841
+        ftm_b = farr_tm_doc["p_bigint"]  # noqa: F841
+
+        f_co_typed.delete_many({})
+
     @pytest.mark.describe("test of typing create_collection, async")
     async def test_create_collection_typing_async(
         self,
@@ -560,3 +669,97 @@ class TestCollectionTyping:
             gt_rbuf_y = t_doc_rbuf4["c"]  # type: ignore[typeddict-item]  # noqa: F841
 
         await ag_co_typed.delete_many({})
+
+    @pytest.mark.skipif(
+        "ASTRAPY_TEST_FINDANDRERANK" not in os.environ,
+        reason="No testing enabled on findAndRerank support",
+    )
+    @pytest.mark.describe("test of typing find_and_rerank, async")
+    async def test_collection_find_and_rerank_typing_async(
+        self,
+        async_database: AsyncDatabase,
+        async_empty_collection: DefaultAsyncCollection,
+        service_collection_parameters: dict[str, Any],
+    ) -> None:
+        """Test of typing in find_and_rerank, sync."""
+
+        params = service_collection_parameters
+        # TODO: once in prod, align rerank-credentials control
+        reranking_api_key: str | UnsetType
+        if "ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER" in os.environ:
+            assert params["reranking_api_key"] is not None
+            reranking_api_key = params["reranking_api_key"]
+        else:
+            reranking_api_key = _UNSET
+
+        # Untyped baseline
+        f_co_untyped = async_database.get_collection(
+            async_empty_collection.name,
+            reranking_api_key=reranking_api_key,
+        )
+        await f_co_untyped.insert_one(VLEX_DOCUMENT)
+        farr_u_hits = await f_co_untyped.find_and_rerank(
+            sort={"$hybrid": {"$vector": [2, 1], "$lexical": "bla"}},
+            limit=1,
+            rerank_on="p_ascii",
+            rerank_query="bli",
+        ).to_list()
+        assert len(farr_u_hits) > 0
+        farr_u_doc = farr_u_hits[0].document
+        fu_a: str
+        fu_b: int
+        fu_a = farr_u_doc["p_ascii"]  # noqa: F841
+        fu_b = farr_u_doc["p_bigint"]  # noqa: F841
+        # untyped, these are all ok:
+        fu_x: int
+        fu_y: float
+        fu_x = farr_u_doc["p_ascii"]  # noqa: F841
+        with pytest.raises(KeyError):
+            fu_y = farr_u_doc["c"]  # noqa: F841
+
+        await f_co_untyped.delete_many({})
+
+        # Typed
+        af_co_typed: AsyncCollection[TestDoc] = async_database.get_collection(
+            async_empty_collection.name,
+            document_type=TestDoc,
+            reranking_api_key=reranking_api_key,
+        )
+        await af_co_typed.insert_one(TYPED_VLEX_DOCUMENT)
+        farr_t_hits = await af_co_typed.find_and_rerank(
+            sort={"$hybrid": {"$vector": [2, 1], "$lexical": "bla"}},
+            limit=1,
+            rerank_on="p_ascii",
+            rerank_query="bli",
+        ).to_list()
+        assert len(farr_t_hits) > 0
+        farr_t_doc = farr_t_hits[0].document
+        ft_a: str
+        ft_b: int
+        ft_a = farr_t_doc["p_ascii"]  # noqa: F841
+        ft_b = farr_t_doc["p_bigint"]  # noqa: F841
+        # these two SHOULD NOT typecheck (i.e. require the ignore directive)
+        ft_x: int
+        ft_y: float
+        ft_x = farr_t_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
+        with pytest.raises(KeyError):
+            ft_y = farr_t_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
+
+        farr_tm_hits = await af_co_typed.find_and_rerank(
+            sort={"$hybrid": {"$vector": [2, 1], "$lexical": "bla"}},
+            limit=1,
+            projection=FIND_PROJECTION,
+            document_type=TestMiniDoc,
+            rerank_on="p_ascii",
+            rerank_query="bli",
+        ).to_list()
+        assert len(farr_tm_hits) > 0
+        farr_tm_doc = farr_tm_hits[0].document
+        ftm_a: str
+        ftm_b: int
+        # typechecks must detect that p_ascii is not there
+        with pytest.raises(KeyError):
+            ftm_a = farr_tm_doc["p_ascii"]  # type: ignore[typeddict-item]  # noqa: F841
+        ftm_b = farr_tm_doc["p_bigint"]  # noqa: F841
+
+        await af_co_typed.delete_many({})
