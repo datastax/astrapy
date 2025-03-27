@@ -1,6 +1,6 @@
 [project]
 requires-python = ">=3.8"
-version = "2.0.0rc2"
+version = "2.0.0"
 name = "astrapy"
 description = "AstraPy is a Pythonic SDK for DataStax Astra and its Data API"
 authors = [
