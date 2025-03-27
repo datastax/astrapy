@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import pytest
 
-from astrapy import Collection, DataAPIClient, Database
+from astrapy import Collection, DataAPIClient, Database, Table
 from astrapy.authentication import StaticTokenProvider
 from astrapy.constants import Environment
 from astrapy.exceptions import InvalidEnvironmentException
@@ -29,9 +29,11 @@ from astrapy.utils.api_options import (
 
 from ..conftest import (
     TEST_COLLECTION_INSTANCE_NAME,
+    TEST_TABLE_INSTANCE_NAME,
     DataAPICredentials,
     DataAPICredentialsInfo,
     DefaultCollection,
+    DefaultTable,
 )
 
 api_ep5643_prod = (
@@ -177,6 +179,64 @@ class TestDatabasesSync:
             api_options=sync_database.api_options,
         )
         assert collection_ks2.database.keyspace == KEYSPACE_2
+
+        kcollection = sync_database.get_collection(
+            TEST_COLLECTION_INSTANCE_NAME,
+            keyspace=KEYSPACE_2,
+            embedding_api_key="eak",
+            reranking_api_key="eak",
+        )
+        assert kcollection == Collection(
+            database=sync_database,
+            name=TEST_COLLECTION_INSTANCE_NAME,
+            keyspace=KEYSPACE_2,
+            api_options=sync_database.api_options.with_override(
+                APIOptions(
+                    embedding_api_key="eak",
+                    reranking_api_key="eak",
+                )
+            ),
+        )
+
+    @pytest.mark.describe("test get_table method, sync")
+    def test_database_get_table_sync(
+        self,
+        sync_database: Database,
+        sync_table_instance: DefaultTable,
+        data_api_credentials_kwargs: DataAPICredentials,
+    ) -> None:
+        table = sync_database.get_table(TEST_TABLE_INSTANCE_NAME)
+        assert table == sync_table_instance
+
+        KEYSPACE_2 = "other_keyspace"
+        table_ks2 = sync_database.get_table(
+            TEST_TABLE_INSTANCE_NAME, keyspace=KEYSPACE_2
+        )
+        assert table_ks2 == Table(
+            database=sync_database,
+            name=TEST_TABLE_INSTANCE_NAME,
+            keyspace=KEYSPACE_2,
+            api_options=sync_database.api_options,
+        )
+        assert table_ks2.database.keyspace == KEYSPACE_2
+
+        ktable = sync_database.get_table(
+            TEST_TABLE_INSTANCE_NAME,
+            keyspace=KEYSPACE_2,
+            embedding_api_key="eak",
+            reranking_api_key="eak",
+        )
+        assert ktable == Table(
+            database=sync_database,
+            name=TEST_TABLE_INSTANCE_NAME,
+            keyspace=KEYSPACE_2,
+            api_options=sync_database.api_options.with_override(
+                APIOptions(
+                    embedding_api_key="eak",
+                    reranking_api_key="eak",
+                )
+            ),
+        )
 
     @pytest.mark.describe("test database id and region, sync")
     def test_database_id_region_sync(self) -> None:

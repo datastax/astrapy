@@ -60,7 +60,11 @@ from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
     from astrapy.admin import DatabaseAdmin
-    from astrapy.authentication import EmbeddingHeadersProvider, TokenProvider
+    from astrapy.authentication import (
+        EmbeddingHeadersProvider,
+        RerankingHeadersProvider,
+        TokenProvider,
+    )
     from astrapy.collection import AsyncCollection, Collection
     from astrapy.table import AsyncTable, Table
 
@@ -501,6 +505,7 @@ class Database:
         *,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DefaultDocumentType]: ...
 
@@ -512,6 +517,7 @@ class Database:
         document_type: type[DOC],
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]: ...
 
@@ -522,6 +528,7 @@ class Database:
         document_type: type[Any] = DefaultDocumentType,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]:
         """
@@ -552,6 +559,15 @@ class Database:
                 For some vectorize providers/models, if using header-based
                 authentication, specialized subclasses of
                 `astrapy.authentication.EmbeddingHeadersProvider` should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the collection.
+                If a reranker is configured for the collection, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the collection
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the collection, e.g.
@@ -584,6 +600,7 @@ class Database:
         ).with_override(
             APIOptions(
                 embedding_api_key=embedding_api_key,
+                reranking_api_key=reranking_api_key,
             ),
         )
 
@@ -609,6 +626,7 @@ class Database:
         keyspace: str | None = None,
         collection_admin_timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DefaultDocumentType]: ...
 
@@ -622,6 +640,7 @@ class Database:
         keyspace: str | None = None,
         collection_admin_timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]: ...
 
@@ -634,6 +653,7 @@ class Database:
         keyspace: str | None = None,
         collection_admin_timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]:
         """
@@ -669,6 +689,15 @@ class Database:
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the collection.
+                If a reranker is configured for the collection, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the collection
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the collection, e.g.
@@ -772,6 +801,7 @@ class Database:
             document_type=document_type,
             keyspace=keyspace,
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
             spawn_api_options=spawn_api_options,
         )
 
@@ -963,6 +993,7 @@ class Database:
         *,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[DefaultRowType]: ...
 
@@ -974,6 +1005,7 @@ class Database:
         row_type: type[ROW],
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]: ...
 
@@ -984,6 +1016,7 @@ class Database:
         row_type: type[Any] = DefaultRowType,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         """
@@ -1013,6 +1046,15 @@ class Database:
                 For some vectorize providers/models, if using header-based
                 authentication, specialized subclasses of
                 `astrapy.authentication.EmbeddingHeadersProvider` should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the table.
+                If a reranker is configured for the table, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the table
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the table, e.g.
@@ -1056,6 +1098,7 @@ class Database:
         ).with_override(
             APIOptions(
                 embedding_api_key=embedding_api_key,
+                reranking_api_key=reranking_api_key,
             ),
         )
 
@@ -1084,6 +1127,7 @@ class Database:
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[DefaultRowType]: ...
 
@@ -1100,6 +1144,7 @@ class Database:
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]: ...
 
@@ -1115,6 +1160,7 @@ class Database:
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         """
@@ -1157,6 +1203,15 @@ class Database:
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the table.
+                If a reranker is configured for the table, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the table
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the table, e.g.
@@ -1308,6 +1363,7 @@ class Database:
             row_type=row_type,
             keyspace=keyspace,
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
             spawn_api_options=spawn_api_options,
         )
 
@@ -2223,6 +2279,7 @@ class AsyncDatabase:
         *,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DefaultDocumentType]: ...
 
@@ -2234,6 +2291,7 @@ class AsyncDatabase:
         document_type: type[DOC],
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]: ...
 
@@ -2244,6 +2302,7 @@ class AsyncDatabase:
         document_type: type[Any] = DefaultDocumentType,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]:
         """
@@ -2274,6 +2333,15 @@ class AsyncDatabase:
                 For some vectorize providers/models, if using header-based
                 authentication, specialized subclasses of
                 `astrapy.authentication.EmbeddingHeadersProvider` should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the collection.
+                If a reranker is configured for the collection, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the collection
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the collection, e.g.
@@ -2311,6 +2379,7 @@ class AsyncDatabase:
         ).with_override(
             APIOptions(
                 embedding_api_key=embedding_api_key,
+                reranking_api_key=reranking_api_key,
             ),
         )
 
@@ -2336,6 +2405,7 @@ class AsyncDatabase:
         keyspace: str | None = None,
         collection_admin_timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DefaultDocumentType]: ...
 
@@ -2349,6 +2419,7 @@ class AsyncDatabase:
         keyspace: str | None = None,
         collection_admin_timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]: ...
 
@@ -2361,6 +2432,7 @@ class AsyncDatabase:
         keyspace: str | None = None,
         collection_admin_timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]:
         """
@@ -2396,6 +2468,15 @@ class AsyncDatabase:
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the collection.
+                If a reranker is configured for the collection, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the collection
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the collection, e.g.
@@ -2496,6 +2577,7 @@ class AsyncDatabase:
             document_type=document_type,
             keyspace=keyspace,
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
             spawn_api_options=spawn_api_options,
         )
 
@@ -2695,6 +2777,7 @@ class AsyncDatabase:
         *,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[DefaultRowType]: ...
 
@@ -2706,6 +2789,7 @@ class AsyncDatabase:
         row_type: type[ROW],
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]: ...
 
@@ -2716,6 +2800,7 @@ class AsyncDatabase:
         row_type: type[Any] = DefaultRowType,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         """
@@ -2746,6 +2831,15 @@ class AsyncDatabase:
                 For some vectorize providers/models, if using header-based
                 authentication, specialized subclasses of
                 `astrapy.authentication.EmbeddingHeadersProvider` should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the table.
+                If a reranker is configured for the table, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the table
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the table, e.g.
@@ -2790,6 +2884,7 @@ class AsyncDatabase:
         ).with_override(
             APIOptions(
                 embedding_api_key=embedding_api_key,
+                reranking_api_key=reranking_api_key,
             ),
         )
 
@@ -2818,6 +2913,7 @@ class AsyncDatabase:
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[DefaultRowType]: ...
 
@@ -2834,6 +2930,7 @@ class AsyncDatabase:
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]: ...
 
@@ -2849,6 +2946,7 @@ class AsyncDatabase:
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         """
@@ -2892,6 +2990,15 @@ class AsyncDatabase:
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the table.
+                If a reranker is configured for the table, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the table
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the table, e.g.
@@ -3045,6 +3152,7 @@ class AsyncDatabase:
             row_type=row_type,
             keyspace=keyspace,
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
             spawn_api_options=spawn_api_options,
         )
 

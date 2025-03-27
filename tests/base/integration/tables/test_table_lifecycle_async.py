@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -27,6 +28,7 @@ from astrapy.info import (
     TableIndexDefinition,
     TableIndexDescriptor,
     TableIndexOptions,
+    TableIndexType,
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
@@ -342,7 +344,7 @@ class TestTableLifecycle:
                 ),
             ),
         ]
-        assert sorted(await table.list_indexes(), key=lambda id: id.name) == sorted(
+        assert sorted(await table._list_indexes(), key=lambda id: id.name) == sorted(
             expected_index_list, key=lambda id: id.name
         )
 
@@ -353,7 +355,7 @@ class TestTableLifecycle:
         await async_database.drop_table(table.name)
 
     @pytest.mark.describe("test of alter table, async")
-    async def test_alter_tableindex_async(
+    async def test_alter_table_async(
         self,
         async_database: AsyncDatabase,
     ) -> None:
@@ -401,5 +403,193 @@ class TestTableLifecycle:
             # back to the original table:
             adef = await atable.definition()
             assert _remove_apisupport(adef.as_dict()) == orig_table_def.as_dict()
+        finally:
+            await atable.drop()
+
+    @pytest.mark.skipif(
+        "ASTRAPY_TEST_LISTINDEXES" not in os.environ,
+        reason="list_indexes method not publicly available yet",
+    )
+    @pytest.mark.describe("test of collection indexes, async")
+    async def test_table_collectionindexes_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        table_colidx_def = CreateTableDefinition(
+            columns={
+                "id": TableScalarColumnTypeDescriptor(column_type="text"),
+                "t": TableScalarColumnTypeDescriptor(column_type="text"),
+                "set_int": TableValuedColumnTypeDescriptor(
+                    column_type="set",
+                    value_type="int",
+                ),
+                "set_int2": TableValuedColumnTypeDescriptor(
+                    column_type="set",
+                    value_type="int",
+                ),
+                "list_int": TableValuedColumnTypeDescriptor(
+                    column_type="list",
+                    value_type="int",
+                ),
+                "list_int2": TableValuedColumnTypeDescriptor(
+                    column_type="list",
+                    value_type="int",
+                ),
+                "map_text_int_e": TableKeyValuedColumnTypeDescriptor(
+                    key_type="text",
+                    value_type="int",
+                ),
+                "map_text_int_e2": TableKeyValuedColumnTypeDescriptor(
+                    key_type="text",
+                    value_type="int",
+                ),
+                "map_text_int_k": TableKeyValuedColumnTypeDescriptor(
+                    key_type="text",
+                    value_type="int",
+                ),
+                "map_text_int_v": TableKeyValuedColumnTypeDescriptor(
+                    key_type="text",
+                    value_type="int",
+                ),
+            },
+            primary_key=TablePrimaryKeyDescriptor(
+                partition_by=["id"],
+                partition_sort={},
+            ),
+        )
+        atable = await async_database.create_table(
+            "table_collectionindexes",
+            definition=table_colidx_def,
+        )
+
+        try:
+            # create, list and drop baseline + various collection-column indexes
+            idx_t_t_column = "t"
+            idx_t_t_options = {
+                "caseSensitive": False,
+                "normalize": False,
+                "ascii": True,
+            }
+            idx_t_set_int_column = "set_int"
+            idx_t_set_int_column2 = {"set_int2": "$values"}
+            idx_t_list_int_column = "list_int"
+            idx_t_list_int_column2 = {"list_int2": "$values"}
+            idx_t_map_text_int_e_column = "map_text_int_e"
+            idx_t_map_text_int_e_column2 = {"map_text_int_e2": "$entries"}
+            idx_t_map_text_int_k_column = {"map_text_int_k": "$keys"}
+            idx_t_map_text_int_v_column = {"map_text_int_v": "$values"}
+
+            await atable.create_index(
+                "idx_t_t", idx_t_t_column, options=idx_t_t_options
+            )
+            await atable.create_index("idx_t_set_int", idx_t_set_int_column)
+            await atable.create_index("idx_t_set_int2", idx_t_set_int_column2)
+            await atable.create_index("idx_t_list_int", idx_t_list_int_column)
+            await atable.create_index("idx_t_list_int2", idx_t_list_int_column2)
+            await atable.create_index(
+                "idx_t_map_text_int_e", idx_t_map_text_int_e_column
+            )
+            await atable.create_index(
+                "idx_t_map_text_int_e2", idx_t_map_text_int_e_column2
+            )
+            await atable.create_index(
+                "idx_t_map_text_int_k", idx_t_map_text_int_k_column
+            )
+            await atable.create_index(
+                "idx_t_map_text_int_v", idx_t_map_text_int_v_column
+            )
+
+            listed_indexes = sorted(
+                await atable._list_indexes(),
+                key=lambda idx_desc: idx_desc.name,
+            )
+            expected_indexes = sorted(
+                [
+                    TableIndexDescriptor(
+                        name="idx_t_t",
+                        definition=TableIndexDefinition(
+                            column=idx_t_t_column,
+                            options=TableIndexOptions.coerce(idx_t_t_options),
+                        ),
+                        index_type=TableIndexType.REGULAR,
+                    ),
+                    TableIndexDescriptor(
+                        name="idx_t_set_int",
+                        definition=TableIndexDefinition(
+                            column={idx_t_set_int_column: "$values"},
+                            options=TableIndexOptions(),
+                        ),
+                        index_type=TableIndexType.REGULAR,
+                    ),
+                    TableIndexDescriptor(
+                        name="idx_t_set_int2",
+                        definition=TableIndexDefinition(
+                            column=idx_t_set_int_column2,
+                            options=TableIndexOptions(),
+                        ),
+                        index_type=TableIndexType.REGULAR,
+                    ),
+                    TableIndexDescriptor(
+                        name="idx_t_list_int",
+                        definition=TableIndexDefinition(
+                            column={idx_t_list_int_column: "$values"},
+                            options=TableIndexOptions(),
+                        ),
+                        index_type=TableIndexType.REGULAR,
+                    ),
+                    TableIndexDescriptor(
+                        name="idx_t_list_int2",
+                        definition=TableIndexDefinition(
+                            column=idx_t_list_int_column2,
+                            options=TableIndexOptions(),
+                        ),
+                        index_type=TableIndexType.REGULAR,
+                    ),
+                    TableIndexDescriptor(
+                        name="idx_t_map_text_int_e",
+                        definition=TableIndexDefinition(
+                            column={idx_t_map_text_int_e_column: "$entries"},
+                            options=TableIndexOptions(),
+                        ),
+                        index_type=TableIndexType.REGULAR,
+                    ),
+                    TableIndexDescriptor(
+                        name="idx_t_map_text_int_e2",
+                        definition=TableIndexDefinition(
+                            column=idx_t_map_text_int_e_column2,
+                            options=TableIndexOptions(),
+                        ),
+                        index_type=TableIndexType.REGULAR,
+                    ),
+                    TableIndexDescriptor(
+                        name="idx_t_map_text_int_k",
+                        definition=TableIndexDefinition(
+                            column=idx_t_map_text_int_k_column,
+                            options=TableIndexOptions(),
+                        ),
+                        index_type=TableIndexType.REGULAR,
+                    ),
+                    TableIndexDescriptor(
+                        name="idx_t_map_text_int_v",
+                        definition=TableIndexDefinition(
+                            column=idx_t_map_text_int_v_column,
+                            options=TableIndexOptions(),
+                        ),
+                        index_type=TableIndexType.REGULAR,
+                    ),
+                ],
+                key=lambda idx_desc: idx_desc.name,
+            )
+            assert listed_indexes == expected_indexes
+
+            await atable.database.drop_table_index("idx_t_t")
+            await atable.database.drop_table_index("idx_t_set_int")
+            await atable.database.drop_table_index("idx_t_set_int2")
+            await atable.database.drop_table_index("idx_t_list_int")
+            await atable.database.drop_table_index("idx_t_list_int2")
+            await atable.database.drop_table_index("idx_t_map_text_int_e")
+            await atable.database.drop_table_index("idx_t_map_text_int_e2")
+            await atable.database.drop_table_index("idx_t_map_text_int_k")
+            await atable.database.drop_table_index("idx_t_map_text_int_v")
         finally:
             await atable.drop()

@@ -35,10 +35,18 @@ from astrapy.data.utils.vector_coercion import (
     ensure_unrolled_if_iterable,
     is_list_of_floats,
 )
-from astrapy.data_types import DataAPITimestamp, DataAPIVector
+from astrapy.data_types import DataAPIDate, DataAPIMap, DataAPITimestamp, DataAPIVector
 from astrapy.ids import UUID, ObjectId
 from astrapy.settings.error_messages import CANNOT_ENCODE_NAIVE_DATETIME_ERROR_MESSAGE
 from astrapy.utils.api_options import FullSerdesOptions
+
+FIND_AND_RERANK_VECTOR_FLOAT_PATH = [
+    "status",
+    "documentResponses",
+    "",
+    "scores",
+    "$vector",
+]
 
 
 def preprocess_collection_payload_value(
@@ -77,7 +85,7 @@ def preprocess_collection_payload_value(
 
     if options.unroll_iterables_to_lists:
         _value = ensure_unrolled_if_iterable(_value)
-    if isinstance(_value, dict):
+    if isinstance(_value, (dict, DataAPIMap)):
         return {
             k: preprocess_collection_payload_value(path + [k], v, options=options)
             for k, v in _value.items()
@@ -93,6 +101,7 @@ def preprocess_collection_payload_value(
         return convert_to_ejson_date_object(_value)
     elif isinstance(_value, datetime.date):
         # Note: since 'datetime' subclasses 'date', this must come after the previous.
+        # Timezone-related subtleties may make supporting this data type a "risk"
         return convert_to_ejson_date_object(_value)
     elif isinstance(_value, bytes):
         return convert_to_ejson_bytes(_value)
@@ -102,6 +111,9 @@ def preprocess_collection_payload_value(
         return convert_to_ejson_objectid_object(_value)
     elif isinstance(_value, DataAPITimestamp):
         return convert_to_ejson_apitimestamp_object(_value)
+    elif isinstance(_value, DataAPIDate):
+        # Despite similar timezone-concerns as for `date`, this is supported as well
+        return convert_to_ejson_date_object(_value.to_date())
     else:
         return _value
 
@@ -136,8 +148,8 @@ def postprocess_collection_response_value(
     The path helps determining special treatments
     """
 
-    # for reads, everywhere there's a $vector it can be treated as such and reconverted
-    if path[-1:] == ["$vector"]:
+    # for reads, (almost) everywhere there's a $vector it can be treated as such and reconverted
+    if path[-1:] == ["$vector"] and path != FIND_AND_RERANK_VECTOR_FLOAT_PATH:
         # custom faster handling for the $vector path:
         if isinstance(value, list):
             if options.custom_datatypes_in_reading:
@@ -152,7 +164,8 @@ def postprocess_collection_response_value(
                 return DataAPIVector.from_bytes(_bytes).data
         else:
             raise ValueError(
-                f"Response parsing failed: unexpected data type found under $vector: {type(value)}"
+                f"Response parsing failed at path '{path}': unexpected data type "
+                f"found under $vector: {type(value)}"
             )
     if isinstance(value, dict):
         value_keys = set(value.keys())

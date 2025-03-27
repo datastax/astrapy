@@ -20,6 +20,7 @@ import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
 from astrapy.constants import CallerType
+from astrapy.settings.defaults import RERANKING_HEADER_API_KEY
 from astrapy.utils.api_options import APIOptions, FullAPIOptions, defaultAPIOptions
 from astrapy.utils.unset import _UNSET, UnsetType
 
@@ -35,6 +36,7 @@ def _wrapSomeOptions(
     *,
     callers: Sequence[CallerType] | UnsetType = _UNSET,
     embedding_api_key: str | UnsetType = _UNSET,
+    reranking_api_key: str | UnsetType = _UNSET,
 ) -> FullAPIOptions:
     return defaultAPIOptions(
         environment=asrc_database.api_options.environment
@@ -42,6 +44,7 @@ def _wrapSomeOptions(
         APIOptions(
             callers=callers,
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
         )
     )
 
@@ -95,6 +98,7 @@ class TestCollectionsAsync:
                 async_database,
                 callers=callers0,
                 embedding_api_key="eak",
+                reranking_api_key="rak",
             ),
         )
 
@@ -102,12 +106,23 @@ class TestCollectionsAsync:
             embedding_api_key="zak",
         )
         assert col2 != col1
+        col2b = col1._copy(
+            reranking_api_key="zak",
+        )
+        assert col2b != col1
 
         assert col1.with_options(embedding_api_key="zak") != col1
+        assert col1.with_options(reranking_api_key="zak") != col1
 
         assert (
             col1.with_options(embedding_api_key="zak").with_options(
                 embedding_api_key="eak"
+            )
+            == col1
+        )
+        assert (
+            col1.with_options(reranking_api_key="zak").with_options(
+                reranking_api_key="rak"
             )
             == col1
         )
@@ -126,19 +141,29 @@ class TestCollectionsAsync:
                 async_database,
                 callers=callers0,
                 embedding_api_key="eak",
+                reranking_api_key="rak",
             ),
         )
         assert col1 != col1.to_sync(embedding_api_key="zak").to_async()
+        assert col1 != col1.to_sync(reranking_api_key="zak").to_async()
 
         col2s = col1.to_sync(
             embedding_api_key="zak",
         )
         assert col2s.to_async() != col1
+        col2bs = col1.to_sync(
+            reranking_api_key="zak",
+        )
+        assert col2bs.to_async() != col1
 
         col3 = col2s.to_async(
             embedding_api_key="eak",
         )
         assert col3 == col1
+        col3b = col2bs.to_async(
+            reranking_api_key="rak",
+        )
+        assert col3b == col1
 
     @pytest.mark.describe("test of Collection database property, async")
     async def test_collection_database_property_async(
@@ -208,3 +233,15 @@ class TestCollectionsAsync:
         assert col4.keyspace == data_api_credentials_info["secondary_keyspace"]
         assert col1 == col3
         assert col2 == col4
+
+    @pytest.mark.describe(
+        "test collection reranking API key in commander headers, async"
+    )
+    async def test_collection_rerankingapikey_in_headers_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        col_0 = async_database.get_collection("q")
+        col_1 = async_database.get_collection("q", reranking_api_key="RAK")
+        assert RERANKING_HEADER_API_KEY not in col_0._api_commander.full_headers
+        assert col_1._api_commander.full_headers[RERANKING_HEADER_API_KEY] == "RAK"

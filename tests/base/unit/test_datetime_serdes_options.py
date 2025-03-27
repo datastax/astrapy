@@ -40,6 +40,7 @@ class TestDatetimeSerdesOptions:
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=False,
             use_decimals_in_collections=False,
+            encode_maps_as_lists_in_tables="never",
             accept_naive_datetimes=False,
             datetime_tzinfo=tz,
         )
@@ -65,6 +66,7 @@ class TestDatetimeSerdesOptions:
             custom_datatypes_in_reading=False,
             unroll_iterables_to_lists=False,
             use_decimals_in_collections=False,
+            encode_maps_as_lists_in_tables="never",
             accept_naive_datetimes=False,
             datetime_tzinfo=tz,
         )
@@ -89,6 +91,7 @@ class TestDatetimeSerdesOptions:
             custom_datatypes_in_reading=False,
             unroll_iterables_to_lists=False,
             use_decimals_in_collections=False,
+            encode_maps_as_lists_in_tables="never",
             accept_naive_datetimes=False,
             datetime_tzinfo=None,
         )
@@ -114,11 +117,16 @@ class TestDatetimeSerdesOptions:
             custom_datatypes_in_reading=False,
             unroll_iterables_to_lists=False,
             use_decimals_in_collections=False,
+            encode_maps_as_lists_in_tables="never",
             accept_naive_datetimes=False,
             datetime_tzinfo=None,
         )
         dt = datetime.datetime(1991, 7, 23, 12, 34, 56, tzinfo=tz)
-        preprocessed = preprocess_table_payload({"mu": dt}, options=sd_options)
+        preprocessed = preprocess_table_payload(
+            {"mu": dt},
+            options=sd_options,
+            map2tuple_checker=None,
+        )
         assert preprocessed is not None
         assert DataAPITimestamp.from_string(
             preprocessed["mu"]
@@ -131,12 +139,17 @@ class TestDatetimeSerdesOptions:
             custom_datatypes_in_reading=False,
             unroll_iterables_to_lists=False,
             use_decimals_in_collections=False,
+            encode_maps_as_lists_in_tables="never",
             accept_naive_datetimes=False,
             datetime_tzinfo=None,
         )
         dt = datetime.datetime(1991, 7, 23, 12, 34, 56)
         with pytest.raises(ValueError, match="tz"):
-            preprocess_table_payload({"mu": dt}, options=sd_options)
+            preprocess_table_payload(
+                {"mu": dt},
+                options=sd_options,
+                map2tuple_checker=None,
+            )
 
     @pytest.mark.describe("test writing tzaware datetime to table, naive permitted")
     def test_ddate_table_writing_tzaware_relaxed(self) -> None:
@@ -146,11 +159,16 @@ class TestDatetimeSerdesOptions:
             custom_datatypes_in_reading=False,
             unroll_iterables_to_lists=False,
             use_decimals_in_collections=False,
+            encode_maps_as_lists_in_tables="never",
             accept_naive_datetimes=True,
             datetime_tzinfo=None,
         )
         dt = datetime.datetime(1991, 7, 23, 12, 34, 56, tzinfo=tz)
-        preprocessed = preprocess_table_payload({"mu": dt}, options=sd_options)
+        preprocessed = preprocess_table_payload(
+            {"mu": dt},
+            options=sd_options,
+            map2tuple_checker=None,
+        )
         assert preprocessed is not None
         assert DataAPITimestamp.from_string(
             preprocessed["mu"]
@@ -163,11 +181,16 @@ class TestDatetimeSerdesOptions:
             custom_datatypes_in_reading=False,
             unroll_iterables_to_lists=False,
             use_decimals_in_collections=False,
+            encode_maps_as_lists_in_tables="never",
             accept_naive_datetimes=True,
             datetime_tzinfo=None,
         )
         dt = datetime.datetime(1991, 7, 23, 12, 34, 56)
-        preprocessed = preprocess_table_payload({"mu": dt}, options=sd_options)
+        preprocessed = preprocess_table_payload(
+            {"mu": dt},
+            options=sd_options,
+            map2tuple_checker=None,
+        )
         assert preprocessed is not None
         assert DataAPITimestamp.from_string(
             preprocessed["mu"]

@@ -44,7 +44,7 @@ class TestTableDecimalSupportUnit:
         )
         # baseline, encode then decode and check
         baseline_fully_encoded = APICommander._decimal_aware_encode_payload(
-            t_agent.preprocess_payload(BASELINE_OBJ)
+            t_agent.preprocess_payload(BASELINE_OBJ, map2tuple_checker=None)
         )
         baseline_obj_2 = t_agent.postprocess_row(
             APICommander._decimal_aware_parse_json_response(baseline_fully_encoded),  # type: ignore[arg-type]
@@ -54,7 +54,7 @@ class TestTableDecimalSupportUnit:
         assert _repaint_NaNs(baseline_obj_2) == _repaint_NaNs(BASELINE_OBJ)
         # with-decimals, encode then decode and check
         wdecs_fully_encoded = APICommander._decimal_aware_encode_payload(
-            t_agent.preprocess_payload(WDECS_OBJ)
+            t_agent.preprocess_payload(WDECS_OBJ, map2tuple_checker=None)
         )
         wdecs_2 = t_agent.postprocess_row(
             APICommander._decimal_aware_parse_json_response(wdecs_fully_encoded),  # type: ignore[arg-type]
@@ -96,13 +96,14 @@ class TestTableDecimalSupportUnit:
                 custom_datatypes_in_reading=colltype_custom,
                 unroll_iterables_to_lists=True,
                 use_decimals_in_collections=True,
+                encode_maps_as_lists_in_tables="never",
                 accept_naive_datetimes=False,
                 datetime_tzinfo=None,
             ),
         )
 
         fully_encoded = APICommander._decimal_aware_encode_payload(
-            t_agent.preprocess_payload(colltype_obj)
+            t_agent.preprocess_payload(colltype_obj, map2tuple_checker=None)
         )
         colltype_obj_2 = t_agent.postprocess_row(
             APICommander._decimal_aware_parse_json_response(fully_encoded),  # type: ignore[arg-type]

@@ -20,7 +20,7 @@ import pytest
 
 from astrapy.api_options import APIOptions, SerdesOptions
 from astrapy.constants import SortMode
-from astrapy.cursors import FindCursorState
+from astrapy.cursors import CursorState
 from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import CursorException
 
@@ -51,7 +51,7 @@ class TestTableCursorSync:
         filled_composite_table: DefaultTable,
     ) -> None:
         cur = filled_composite_table.find()
-        assert cur.state == FindCursorState.IDLE
+        assert cur.state == CursorState.IDLE
 
         assert cur.data_source == filled_composite_table
 
@@ -63,7 +63,7 @@ class TestTableCursorSync:
         toclose = cur.clone()
         toclose.close()
         toclose.close()
-        assert toclose.state == FindCursorState.CLOSED
+        assert toclose.state == CursorState.CLOSED
         with pytest.raises(CursorException):
             for row in toclose:
                 pass
@@ -75,7 +75,7 @@ class TestTableCursorSync:
             toclose.to_list()
 
         cur.rewind()
-        assert cur.state == FindCursorState.IDLE
+        assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
         assert cur.buffered_count == 0
 
@@ -100,19 +100,19 @@ class TestTableCursorSync:
         cur0 = filled_composite_table.find()
         cur0.close()
         cur0.rewind()
-        assert cur0.state == FindCursorState.IDLE
+        assert cur0.state == CursorState.IDLE
 
         cur1 = filled_composite_table.find()
         assert cur1.consumed == 0
         list(cur1)
-        assert cur1.state == FindCursorState.CLOSED
+        assert cur1.state == CursorState.CLOSED
         assert cur1.consume_buffer(2) == []
         assert cur1.consumed == NUM_ROWS
         assert cur1.buffered_count == 0
         cloned = cur1.clone()
         assert cloned.consumed == 0
         assert cloned.buffered_count == 0
-        assert cloned.state == FindCursorState.IDLE
+        assert cloned.state == CursorState.IDLE
 
         with pytest.raises(CursorException):
             cur1.filter({"c": True})
@@ -175,28 +175,28 @@ class TestTableCursorSync:
         filled_composite_table: DefaultTable,
     ) -> None:
         cur = filled_composite_table.find()
-        assert cur.state == FindCursorState.IDLE
+        assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
         assert cur.has_next()
-        assert cur.state == FindCursorState.IDLE
+        assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
         list(cur)
         assert cur.consumed == NUM_ROWS
-        assert cur.state == FindCursorState.CLOSED  # type: ignore[comparison-overlap]
+        assert cur.state == CursorState.CLOSED  # type: ignore[comparison-overlap]
 
         curmf = filled_composite_table.find()
         next(curmf)
         next(curmf)
         assert curmf.consumed == 2
-        assert curmf.state == FindCursorState.STARTED
+        assert curmf.state == CursorState.STARTED
         assert curmf.has_next()
         assert curmf.consumed == 2
-        assert curmf.state == FindCursorState.STARTED
+        assert curmf.state == CursorState.STARTED
         for _ in range(18):
             next(curmf)
         assert curmf.has_next()
         assert curmf.consumed == 20
-        assert curmf.state == FindCursorState.STARTED
+        assert curmf.state == CursorState.STARTED
         assert curmf.buffered_count == NUM_ROWS - 20
 
         cur0 = filled_composite_table.find()
@@ -221,7 +221,7 @@ class TestTableCursorSync:
         for _ in range(12):
             next(cur)
         cur.close()
-        assert cur.state == FindCursorState.CLOSED
+        assert cur.state == CursorState.CLOSED
         assert cur.buffered_count == 0
         assert cur.consumed == 12
         # rewind test
@@ -267,9 +267,9 @@ class TestTableCursorSync:
         rwcur.rewind()
         assert next(rwcur) == mints[0]
 
-        # clone strips the mapping
+        # clone rewinds
         cl_unmapped = rwcur.clone()
-        assert next(cl_unmapped) == base_rows[0]
+        assert next(cl_unmapped) == mint(base_rows[0])
 
     @pytest.mark.describe("test of table cursors, for_each and to_list, sync")
     def test_table_cursors_collective_methods_sync(
@@ -281,14 +281,14 @@ class TestTableCursorSync:
         # full to_list
         tl_cur = filled_composite_table.find()
         assert tl_cur.to_list() == base_rows
-        assert tl_cur.state == FindCursorState.CLOSED
+        assert tl_cur.state == CursorState.CLOSED
 
         # partially-consumed to_list
         ptl_cur = filled_composite_table.find()
         for _ in range(15):
             next(ptl_cur)
         assert ptl_cur.to_list() == base_rows[15:]
-        assert ptl_cur.state == FindCursorState.CLOSED
+        assert ptl_cur.state == CursorState.CLOSED
 
         # mapped to_list
 
@@ -299,7 +299,7 @@ class TestTableCursorSync:
         for _ in range(13):
             next(mtl_cur)
         assert mtl_cur.to_list() == [mint(row) for row in base_rows[13:]]
-        assert mtl_cur.state == FindCursorState.CLOSED
+        assert mtl_cur.state == CursorState.CLOSED
 
         # full for_each
         accum0: list[dict[str, Any]] = []
@@ -310,7 +310,7 @@ class TestTableCursorSync:
         fe_cur = filled_composite_table.find()
         fe_cur.for_each(marker0)
         assert accum0 == base_rows
-        assert fe_cur.state == FindCursorState.CLOSED
+        assert fe_cur.state == CursorState.CLOSED
 
         # partially-consumed for_each
         accum1: list[dict[str, Any]] = []
@@ -323,7 +323,7 @@ class TestTableCursorSync:
             next(pfe_cur)
         pfe_cur.for_each(marker1)
         assert accum1 == base_rows[11:]
-        assert pfe_cur.state == FindCursorState.CLOSED
+        assert pfe_cur.state == CursorState.CLOSED
 
         # mapped for_each
         accum2: list[int] = []
@@ -336,7 +336,7 @@ class TestTableCursorSync:
             next(mfe_cur)
         mfe_cur.for_each(marker2)
         assert accum2 == [mint(row) for row in base_rows[17:]]
-        assert mfe_cur.state == FindCursorState.CLOSED
+        assert mfe_cur.state == CursorState.CLOSED
 
         # breaking (early) for_each
         accum3: list[dict[str, Any]] = []
@@ -348,7 +348,7 @@ class TestTableCursorSync:
         bfe_cur = filled_composite_table.find()
         bfe_cur.for_each(marker3)
         assert accum3 == base_rows[:5]
-        assert bfe_cur.state == FindCursorState.STARTED
+        assert bfe_cur.state == CursorState.STARTED
         bfe_another = next(bfe_cur)
         assert bfe_another == base_rows[5]
 
@@ -362,7 +362,7 @@ class TestTableCursorSync:
         nbfe_cur = filled_composite_table.find()
         nbfe_cur.for_each(marker4)  # type: ignore[arg-type]
         assert accum4 == base_rows
-        assert nbfe_cur.state == FindCursorState.CLOSED
+        assert nbfe_cur.state == CursorState.CLOSED
 
     @pytest.mark.describe("test of table cursors, serdes options obeyance, sync")
     def test_table_cursors_serdes_options_sync(

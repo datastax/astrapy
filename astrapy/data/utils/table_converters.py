@@ -23,7 +23,7 @@ import json
 import math
 from typing import Any, Callable, Dict, Generic, cast
 
-from astrapy.constants import ROW
+from astrapy.constants import ROW, MapEncodingMode
 from astrapy.data.info.table_descriptor.table_columns import (
     TableColumnTypeDescriptor,
     TableKeyValuedColumnTypeDescriptor,
@@ -427,13 +427,19 @@ def _create_column_tpostprocessor(
             if options.custom_datatypes_in_reading:
 
                 def _tpostprocessor_dataapimap(
-                    raw_items: dict[Any, Any] | None,
+                    raw_items: dict[Any, Any] | list[list[Any]] | None,
                 ) -> DataAPIMap[Any, Any] | None:
                     if raw_items is None:
                         return None
+                    if isinstance(raw_items, dict):
+                        return DataAPIMap(
+                            (key_tpostprocessor(k), value_tpostprocessor(v))
+                            for k, v in raw_items.items()
+                        )
+                    # it's a list-of-2tuples
                     return DataAPIMap(
                         (key_tpostprocessor(k), value_tpostprocessor(v))
-                        for k, v in raw_items.items()
+                        for k, v in raw_items
                     )
 
                 return _tpostprocessor_dataapimap
@@ -441,13 +447,19 @@ def _create_column_tpostprocessor(
             else:
 
                 def _tpostprocessor_dataapimap_as_dict(
-                    raw_items: dict[Any, Any] | None,
+                    raw_items: dict[Any, Any] | list[list[Any]] | None,
                 ) -> dict[Any, Any] | None:
                     if raw_items is None:
                         return None
+                    if isinstance(raw_items, dict):
+                        return {
+                            key_tpostprocessor(k): value_tpostprocessor(v)
+                            for k, v in raw_items.items()
+                        }
+                    # it's a list-of-2tuples
                     return {
                         key_tpostprocessor(k): value_tpostprocessor(v)
-                        for k, v in raw_items.items()
+                        for k, v in raw_items
                     }
 
                 return _tpostprocessor_dataapimap_as_dict
@@ -551,7 +563,10 @@ def create_key_ktpostprocessor(
 
 
 def preprocess_table_payload_value(
-    path: list[str], value: Any, options: FullSerdesOptions
+    path: list[str],
+    value: Any,
+    options: FullSerdesOptions,
+    map2tuple_checker: Callable[[list[str]], bool] | None,
 ) -> Any:
     """
     Walk a payload for Tables and apply the necessary and required conversions
@@ -560,15 +575,56 @@ def preprocess_table_payload_value(
 
     # is this a nesting structure?
     if isinstance(value, (dict, DataAPIMap)):
+        maps_can_become_tuples: bool
+        if options.encode_maps_as_lists_in_tables == MapEncodingMode.NEVER:
+            maps_can_become_tuples = False
+        elif options.encode_maps_as_lists_in_tables == MapEncodingMode.DATAAPIMAPS:
+            maps_can_become_tuples = isinstance(value, DataAPIMap)
+        else:
+            # 'ALWAYS' setting
+            maps_can_become_tuples = True
+
+        maps_become_tuples: bool
+        if maps_can_become_tuples:
+            if map2tuple_checker is None:
+                maps_become_tuples = False
+            else:
+                maps_become_tuples = map2tuple_checker(path)
+        else:
+            maps_become_tuples = False
+
+        if maps_become_tuples:
+            return [
+                [
+                    preprocess_table_payload_value(
+                        path,
+                        k,
+                        options=options,
+                        map2tuple_checker=map2tuple_checker,
+                    ),
+                    preprocess_table_payload_value(
+                        path + [k],
+                        v,
+                        options=options,
+                        map2tuple_checker=map2tuple_checker,
+                    ),
+                ]
+                for k, v in value.items()
+            ]
+
         return {
             preprocess_table_payload_value(
-                path, k, options=options
-            ): preprocess_table_payload_value(path + [k], v, options=options)
+                path, k, options=options, map2tuple_checker=map2tuple_checker
+            ): preprocess_table_payload_value(
+                path + [k], v, options=options, map2tuple_checker=map2tuple_checker
+            )
             for k, v in value.items()
         }
     elif isinstance(value, (list, set, DataAPISet)):
         return [
-            preprocess_table_payload_value(path + [""], v, options=options)
+            preprocess_table_payload_value(
+                path + [""], v, options=options, map2tuple_checker=map2tuple_checker
+            )
             for v in value
         ]
 
@@ -591,7 +647,12 @@ def preprocess_table_payload_value(
         else:
             # regular list of floats - which can contain non-numbers:
             return [
-                preprocess_table_payload_value(path + [""], fval, options=options)
+                preprocess_table_payload_value(
+                    path + [""],
+                    fval,
+                    options=options,
+                    map2tuple_checker=map2tuple_checker,
+                )
                 for fval in value.data
             ]
     elif isinstance(value, DataAPITimestamp):
@@ -652,7 +713,9 @@ def preprocess_table_payload_value(
         # process it as
         if isinstance(_value, list):
             return [
-                preprocess_table_payload_value(path + [""], v, options=options)
+                preprocess_table_payload_value(
+                    path + [""], v, options=options, map2tuple_checker=map2tuple_checker
+                )
                 for v in _value
             ]
         return _value
@@ -662,7 +725,9 @@ def preprocess_table_payload_value(
 
 
 def preprocess_table_payload(
-    payload: dict[str, Any] | None, options: FullSerdesOptions
+    payload: dict[str, Any] | None,
+    options: FullSerdesOptions,
+    map2tuple_checker: Callable[[list[str]], bool] | None,
 ) -> dict[str, Any] | None:
     """
     Normalize a payload for API calls.
@@ -671,6 +736,11 @@ def preprocess_table_payload(
 
     Args:
         payload (dict[str, Any]): A dict expressing a payload for an API call
+        options: a FullSerdesOptions setting the preprocessing configuration
+        map2tuple_checker: a boolean function of a path in the doc, that returns
+            True for "doc-like" portions of a payload, i.e. whose maps/DataAPIMaps
+            can be converted into association lists, if such autoconversion is
+            turned on. If this parameter is None, no paths are autoconverted.
 
     Returns:
         dict[str, Any]: a payload dict, pre-processed, ready for HTTP requests.
@@ -679,7 +749,12 @@ def preprocess_table_payload(
     if payload:
         return cast(
             Dict[str, Any],
-            preprocess_table_payload_value([], payload, options=options),
+            preprocess_table_payload_value(
+                [],
+                payload,
+                options=options,
+                map2tuple_checker=map2tuple_checker,
+            ),
         )
     else:
         return payload
@@ -757,9 +832,15 @@ class _TableConverterAgent(Generic[ROW]):
         return self.row_postprocessors[schema_cache_key]
 
     def preprocess_payload(
-        self, payload: dict[str, Any] | None
+        self,
+        payload: dict[str, Any] | None,
+        map2tuple_checker: Callable[[list[str]], bool] | None,
     ) -> dict[str, Any] | None:
-        return preprocess_table_payload(payload, options=self.options)
+        return preprocess_table_payload(
+            payload,
+            options=self.options,
+            map2tuple_checker=map2tuple_checker,
+        )
 
     def postprocess_key(
         self, primary_key_list: list[Any], *, primary_key_schema_dict: dict[str, Any]

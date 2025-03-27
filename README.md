@@ -93,6 +93,56 @@ Next steps:
 - [AstraPy reference](https://docs.datastax.com/en/astra-api-docs/_attachments/python-client/astrapy/index.html)
 - Package on [PyPI](https://pypi.org/project/astrapy/)
 
+### Server-side embeddings
+
+AstraPy works with the "vectorize" feature of the Data API. This means that one can define server-side computation for vector embeddings and use text strings in place of a document vector, both in writing and in reading.
+The transformation of said text into an embedding is handled by the Data API, using a provider and model you specify.
+
+```python
+my_collection = database.create_collection(
+    "my_vectorize_collection",
+    definition=(
+        CollectionDefinition.builder()
+        .set_vector_service(
+            provider="example_vendor",
+            model_name="embedding_model_name",
+            authentication={"providerKey": "<STORED_API_KEY_NAME>"}  # if needed
+        )
+        .build()
+    )
+)
+
+my_collection.insert_one({"$vectorize": "text to make into embedding"})
+
+documents = my_collection.find(sort={"$vectorize": "vector search query text"})
+```
+
+See the [Data API reference](https://docs.datastax.com/en/astra-db-serverless/databases/embedding-generation.html)
+for more on this topic.
+
+### Hybrid search
+
+AstraPy supports the supports the "find and rerank" Data API command,
+which performs a hybrid search by combining results from a lexical search
+and a vector-based search in a single operation.
+
+```python
+r_results = my_collection.find_and_rerank(
+    sort={"$hybrid": "query text"},
+    limit=10,
+    include_scores=True,
+)
+
+for r_result in r_results:
+    print(r_result.document, r_results.scores)
+```
+
+The Data API must support the primitive (and one must not have
+disabled the feature at collection-creation time).
+
+See the Data API reference, and the docstring for the `find_and_rerank` method,
+for more on this topic.
+
 ### Using Tables
 
 The example above uses a _collection_, where schemaless "documents" can be stored and retrieved.
@@ -184,7 +234,17 @@ for result in cursor:
 my_table.drop()
 ```
 
-For more on Tables, consult the [Data API documentation about Tables](https://docs.datastax.com/en/astra-db-serverless/api-reference/tables.html).
+For more on Tables, consult the [Data API documentation about Tables](https://docs.datastax.com/en/astra-db-serverless/api-reference/tables.html). Note that most features of Collections, with due modifications, hold for Tables as well (e.g. "vectorize", i.e. server-side embeddings).
+
+#### Maps as association lists
+
+In the Data API, table `map` columns with key of a type other than text
+have to be expressed as association lists,
+i.e. nested lists of lists: `[[key1, value1], [key2, value2], ...]`.
+
+AstraPy objects can be configured to always do so automatically, for a seamless
+experience.
+See the API Option `serdes_options.encode_maps_as_lists_in_tables` for details.
 
 ### Usage with HCD and other non-Astra installations
 
@@ -393,6 +453,25 @@ my_collection.update_one(
 my_collection.insert_one({"_id": uuid8()})
 ```
 
+### Escaping field names
+
+Field names containing special characters (`.` and `&`) must be correctly escaped
+in certain Data API commands. It is a responsibility of the user to ensure escaping
+is done when needed; however, AstraPy offers utilities to escape sequences of "path
+segments" and -- should it ever be needed -- unescape path-strings back into
+literal segments:
+
+```python
+from astrapy.utils.document_paths import escape_field_names, unescape_field_path
+
+print(escape_field_names("f1", "f2", 12, "g.&3"))
+# prints: f1.f2.12.g&.&&3
+print(escape_field_names(["f1", "f2", 12, "g.&3"]))
+# prints: f1.f2.12.g&.&&3
+print(unescape_field_path("a&&&.b.c.d.12"))
+# prints: ['a&.b', 'c', 'd', '12']
+```
+
 ## For contributors
 
 First install poetry with `pip install poetry` and then the project dependencies with `poetry install --with dev`.
@@ -468,6 +547,23 @@ poetry run pytest [...] -o log_cli=0
 poetry run pytest [...] -o log_cli=1 --log-cli-level=10
 ```
 
+### Special tests (2025-03-25, Temporary provisions)
+
+Running special tests taking `find_and_rerank` into account, until dev/prod/local discrepancies resolved.
+
+**Prod** (usual CI) just runs as is and skips f.a.r.r.
+
+**Dev** (manual CI on a hybrid-capable cloud Data API). One must:
+
+1. launch integration tests with `ASTRAPY_TEST_FINDANDRERANK=y`
+2. ... but also setting "ASTRAPY_TEST_FINDANDRERANK_SUPPRESS_LEXICAL=y" to suppress actual non-null `"$lexical"` sorts, if not rolled out yet.
+  
+**Local** (manual CI on a hybrid-capable locally-running Data API). One must:
+
+1. launch integration tests with `ASTRAPY_TEST_FINDANDRERANK=y`
+2. ... but also with `ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER=y` to pass a reranker API key where needed
+3. ... which requires an environment variable `HEADER_RERANKING_API_KEY_NVIDIA` to be set with the `AstraCS:...` dev token.
+
 ## Appendices
 
 ### Appendix A: quick reference for key imports
@@ -497,9 +593,26 @@ Constants for data-related use:
 from astrapy.constants import (
     DefaultIdType,
     Environment,
+    MapEncodingMode,
     ReturnDocument,
     SortMode,
     VectorMetric,
+)
+```
+
+Cursor for find-like operations:
+
+```python
+from astrapy.cursors import (
+  AbstractCursor,
+  AsyncCollectionFindAndRerankCursor,
+  AsyncCollectionFindCursor,
+  AsyncTableFindCursor,
+  CollectionFindAndRerankCursor,
+  CollectionFindCursor,
+  CursorState,
+  RerankedResult,
+  TableFindCursor,
 )
 ```
 
@@ -553,8 +666,14 @@ from astrapy.info import (
     AlterTableAddVectorize,
     AlterTableDropColumns,
     AlterTableDropVectorize,
+    AstraDBAdminDatabaseInfo,
+    AstraDBDatabaseInfo,
     CollectionDefaultIDOptions,
     CollectionDefinition,
+    CollectionDescriptor,
+    CollectionInfo,
+    CollectionLexicalOptions,
+    CollectionRerankOptions,
     CollectionVectorOptions,
     ColumnType,
     CreateTableDefinition,
@@ -563,14 +682,29 @@ from astrapy.info import (
     EmbeddingProviderModel,
     EmbeddingProviderParameter,
     EmbeddingProviderToken,
+    FindEmbeddingProvidersResult,
+    FindRerankingProvidersResult,
+    ListTableDefinition,
+    ListTableDescriptor,
+    RerankingProvider,
+    RerankingProviderAuthentication,
+    RerankingProviderModel,
+    RerankingProviderParameter,
+    RerankingProviderToken,
+    RerankServiceOptions,
+    TableAPIIndexSupportDescriptor,
+    TableAPISupportDescriptor,
     TableBaseIndexDefinition,
     TableIndexDefinition,
+    TableIndexDescriptor,
     TableIndexOptions,
+    TableInfo,
     TableKeyValuedColumnType,
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
     TableUnsupportedColumnTypeDescriptor,
+    TableUnsupportedIndexDefinition,
     TableValuedColumnType,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,

@@ -14,8 +14,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Optional, Tuple, TypeVar, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, TypeVar, Union
 
+from astrapy.data_types import DataAPIVector
 from astrapy.settings.defaults import (
     DATA_API_ENVIRONMENT_CASSANDRA,
     DATA_API_ENVIRONMENT_DEV,
@@ -25,6 +26,7 @@ from astrapy.settings.defaults import (
     DATA_API_ENVIRONMENT_PROD,
     DATA_API_ENVIRONMENT_TEST,
 )
+from astrapy.utils.str_enum import StrEnum
 
 DefaultDocumentType = Dict[str, Any]
 DefaultRowType = Dict[str, Any]
@@ -32,6 +34,9 @@ ProjectionType = Union[
     Iterable[str], Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]
 ]
 SortType = Dict[str, Any]
+HybridSortType = Dict[
+    str, Union[str, Dict[str, Union[str, List[float], DataAPIVector]]]
+]
 FilterType = Dict[str, Any]
 CallerType = Tuple[Optional[str], Optional[str]]
 
@@ -136,9 +141,21 @@ class Environment:
     astra_db_values = {PROD, DEV, TEST}
 
 
+class MapEncodingMode(StrEnum):
+    """
+    Enum for the possible values of the setting controlling whether to encode
+    dicts/DataAPIMaps as lists of pairs ("association lists") in table payloads.
+    """
+
+    NEVER = "NEVER"
+    DATAAPIMAPS = "DATAAPIMAPS"
+    ALWAYS = "ALWAYS"
+
+
 __all__ = [
     "DefaultIdType",
     "Environment",
+    "MapEncodingMode",
     "ReturnDocument",
     "SortMode",
     "VectorMetric",

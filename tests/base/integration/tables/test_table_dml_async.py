@@ -14,14 +14,18 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Iterable, Sequence, cast
 
 import pytest
 
 from astrapy.api_options import APIOptions, SerdesOptions
 from astrapy.constants import SortMode
 from astrapy.data_types import DataAPITimestamp, DataAPIVector
-from astrapy.exceptions import DataAPIException, TableInsertManyException
+from astrapy.exceptions import (
+    DataAPIException,
+    DataAPIResponseException,
+    TableInsertManyException,
+)
 from astrapy.results import TableInsertManyResult
 
 from ..conftest import (
@@ -240,17 +244,110 @@ class TestTableDMLAsync:
         assert set(d_timestamp) == set(exp_d_timestamp)
 
         d_list_int = await async_empty_table_all_returns.distinct("p_list_int")
-        exp_d_list_int = {1, 2, 3}
+        exp_d_list_int = {
+            itm
+            for doc in DISTINCT_AR_ROWS
+            for itm in cast(Iterable[int], doc.get("p_list_int", []))
+        }
         assert set(d_list_int) == set(exp_d_list_int)
 
+        d_list_int_ind = await async_empty_table_all_returns.distinct("p_list_int.1")
+        exp_d_list_int_ind = {1}
+        assert set(d_list_int_ind) == set(exp_d_list_int_ind)
+
         d_p_map_text_text = await async_empty_table_all_returns.distinct(
-            "p_map_text_text.a"
+            "p_map_text_text",
         )
-        exp_d_p_map_text_text = {"va", "VA"}
-        assert set(d_p_map_text_text) == set(exp_d_p_map_text_text)
+        exp_d_p_map_text_text = [
+            {"a": "va", "b": "vb"},
+            {"b": "VB"},
+            {"a": "VA", "b": "VB"},
+            {},
+        ]
+        assert len(d_p_map_text_text) == len(exp_d_p_map_text_text)
+        for _exp in exp_d_p_map_text_text:
+            assert any(_d == _exp for _d in d_p_map_text_text)
+
+        d_p_map_text_text_a = await async_empty_table_all_returns.distinct(
+            "p_map_text_text.a",
+        )
+        exp_d_p_map_text_text_a = {"va", "VA"}
+        assert set(d_p_map_text_text_a) == set(exp_d_p_map_text_text_a)
 
         d_set_int = await async_empty_table_all_returns.distinct("p_set_int")
-        exp_d_set_int = {100, 200, 300}
+        exp_d_set_int = {
+            itm
+            for doc in DISTINCT_AR_ROWS
+            for itm in cast(Iterable[int], doc.get("p_set_int", []))
+        }
+        assert set(d_set_int) == set(exp_d_set_int)
+
+    @pytest.mark.describe("test of table distinct key-as-list, async")
+    async def test_table_distinct_key_as_list_async(
+        self,
+        async_empty_table_all_returns: DefaultAsyncTable,
+    ) -> None:
+        await async_empty_table_all_returns.insert_many(DISTINCT_AR_ROWS)
+
+        d_float = await async_empty_table_all_returns.distinct(["p_float"])
+        exp_d_float = {0.1, 0.2, float("NaN")}
+        assert set(_repaint_NaNs(d_float)) == _repaint_NaNs(exp_d_float)
+
+        d_text = await async_empty_table_all_returns.distinct(["p_text"])
+        exp_d_text = {"a", "b", None}
+        assert set(d_text) == set(exp_d_text)
+
+        d_timestamp = await async_empty_table_all_returns.distinct(["p_timestamp"])
+        exp_d_timestamp = {
+            DataAPITimestamp.from_string("1111-01-01T01:01:01Z"),
+            DataAPITimestamp.from_string("1221-01-01T01:01:01Z"),
+            None,
+        }
+        assert set(d_timestamp) == set(exp_d_timestamp)
+
+        d_list_int = await async_empty_table_all_returns.distinct(["p_list_int"])
+        exp_d_list_int = {
+            itm
+            for doc in DISTINCT_AR_ROWS
+            for itm in cast(Iterable[int], doc.get("p_list_int", []))
+        }
+        assert set(d_list_int) == set(exp_d_list_int)
+
+        d_list_int_ind = await async_empty_table_all_returns.distinct(["p_list_int", 1])
+        exp_d_list_int_ind = {1}
+        assert set(d_list_int_ind) == set(exp_d_list_int_ind)
+
+        d_list_int_sind = await async_empty_table_all_returns.distinct(
+            ["p_list_int", "1"],
+        )
+        exp_d_list_int_sind: set[int] = set()
+        assert set(d_list_int_sind) == set(exp_d_list_int_sind)
+
+        d_p_map_text_text = await async_empty_table_all_returns.distinct(
+            ["p_map_text_text"],
+        )
+        exp_d_p_map_text_text = [
+            {"a": "va", "b": "vb"},
+            {"b": "VB"},
+            {"a": "VA", "b": "VB"},
+            {},
+        ]
+        assert len(d_p_map_text_text) == len(exp_d_p_map_text_text)
+        for _exp in exp_d_p_map_text_text:
+            assert any(_d == _exp for _d in d_p_map_text_text)
+
+        d_p_map_text_text_a = await async_empty_table_all_returns.distinct(
+            ["p_map_text_text", "a"],
+        )
+        exp_d_p_map_text_text_a = {"va", "VA"}
+        assert set(d_p_map_text_text_a) == set(exp_d_p_map_text_text_a)
+
+        d_set_int = await async_empty_table_all_returns.distinct(["p_set_int"])
+        exp_d_set_int = {
+            itm
+            for doc in DISTINCT_AR_ROWS
+            for itm in cast(Iterable[int], doc.get("p_set_int", []))
+        }
         assert set(d_set_int) == set(exp_d_set_int)
 
     @pytest.mark.describe("test of table insert_many, async")
@@ -269,12 +366,21 @@ class TestTableDMLAsync:
             }
 
         async def _assert_consistency(
-            p_text_values: list[str], ins_result: TableInsertManyResult
+            p_text_values: list[str],
+            ins_result: TableInsertManyResult | TableInsertManyException,
         ) -> None:
             pkeys = await _pkeys()
             assert pkeys == set(p_text_values)
             assert ins_result.inserted_id_tuples == [(pk,) for pk in p_text_values]
             assert ins_result.inserted_ids == [{"p_text": pk} for pk in p_text_values]
+
+        def _assert_tim_exceptions(exps: Sequence[Exception], count: int) -> None:
+            assert len(exps) == count
+            assert all(isinstance(exp, DataAPIResponseException) for exp in exps)
+            assert all(isinstance(exp.command, dict) for exp in exps)  # type: ignore[attr-defined]
+            assert all(isinstance(exp.raw_response, dict) for exp in exps)  # type: ignore[attr-defined]
+            assert all(exp.raw_response != exps[0].raw_response for exp in exps[1:])  # type: ignore[attr-defined]
+            assert all(exp.command != exps[0].command for exp in exps[1:])  # type: ignore[attr-defined]
 
         # ordered, good rows
         await async_table_simple.delete_many({})
@@ -289,7 +395,8 @@ class TestTableDMLAsync:
             await async_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F2, ordered=True, chunk_size=2
             )
-        await _assert_consistency([], exc.value.partial_result)
+        await _assert_consistency([], exc.value)
+        _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # ordered, failing later batch
         await async_table_simple.delete_many({})
@@ -297,7 +404,8 @@ class TestTableDMLAsync:
             await async_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F4, ordered=True, chunk_size=2
             )
-        await _assert_consistency(["p1", "p2"], exc.value.partial_result)
+        await _assert_consistency(["p1", "p2"], exc.value)
+        _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # unordered/concurrency=1, good rows
         await async_table_simple.delete_many({})
@@ -312,9 +420,8 @@ class TestTableDMLAsync:
             await async_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F2, ordered=False, chunk_size=2, concurrency=1
             )
-        await _assert_consistency(
-            ["p1", "p3", "p4", "p5", "p6", "p7"], exc.value.partial_result
-        )
+        await _assert_consistency(["p1", "p3", "p4", "p5", "p6", "p7"], exc.value)
+        _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # unordered/concurrency=1, failing later batch
         await async_table_simple.delete_many({})
@@ -322,9 +429,8 @@ class TestTableDMLAsync:
             await async_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F4, ordered=False, chunk_size=2, concurrency=1
             )
-        await _assert_consistency(
-            ["p1", "p2", "p3", "p5", "p6", "p7"], exc.value.partial_result
-        )
+        await _assert_consistency(["p1", "p2", "p3", "p5", "p6", "p7"], exc.value)
+        _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # unordered/concurrency=2, good rows
         await async_table_simple.delete_many({})
@@ -339,9 +445,8 @@ class TestTableDMLAsync:
             await async_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F2, ordered=False, chunk_size=2, concurrency=2
             )
-        await _assert_consistency(
-            ["p1", "p3", "p4", "p5", "p6", "p7"], exc.value.partial_result
-        )
+        await _assert_consistency(["p1", "p3", "p4", "p5", "p6", "p7"], exc.value)
+        _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # unordered/concurrency=2, failing later batch
         await async_table_simple.delete_many({})
@@ -349,9 +454,15 @@ class TestTableDMLAsync:
             await async_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F4, ordered=False, chunk_size=2, concurrency=2
             )
-        await _assert_consistency(
-            ["p1", "p2", "p3", "p5", "p6", "p7"], exc.value.partial_result
-        )
+        await _assert_consistency(["p1", "p2", "p3", "p5", "p6", "p7"], exc.value)
+        _assert_tim_exceptions(exc.value.exceptions, count=1)
+
+        # more failing batches (unordered, concurrency=2)
+        with pytest.raises(TableInsertManyException) as exc:
+            await async_table_simple.insert_many(
+                SIMPLE_SEVEN_ROWS_F4 * 2, ordered=False, chunk_size=2, concurrency=2
+            )
+        _assert_tim_exceptions(exc.value.exceptions, count=2)
 
         # with massive amount of rows:
         many_rows = [{"p_text": f"r_{i}", "p_int": i} for i in range(200)]
@@ -404,18 +515,24 @@ class TestTableDMLAsync:
         except TableInsertManyException as e:
             err2 = e
         assert err2 is not None
-        assert len(err2.error_descriptors) == 1
-        assert err2.partial_result.inserted_id_tuples == [(f"{2 * N}",)]
+        assert len(err2.exceptions) == 1
+        assert isinstance(err2.exceptions[0], DataAPIResponseException)
+        assert len(err2.exceptions[0].error_descriptors) == 1
+        assert err2.inserted_id_tuples == [(f"{2 * N}",)]
 
         # unordered insertion [bad, bad]
         err3: TableInsertManyException | None = None
         try:
-            await async_table_simple.insert_many([{"p_text": -2}, {"p_text": -3}])
+            # TODO also cover the case of presumed deduplication (same type error)
+            # once properly re-duplicated client side
+            await async_table_simple.insert_many([{"p_text": -2}, {"p_textXX": -3}])
         except TableInsertManyException as e:
             err3 = e
         assert err3 is not None
-        assert len(err3.error_descriptors) == 2
-        assert err3.partial_result.inserted_id_tuples == []
+        assert len(err3.exceptions) == 1
+        assert isinstance(err3.exceptions[0], DataAPIResponseException)
+        assert len(err3.exceptions[0].error_descriptors) == 2
+        assert err3.inserted_id_tuples == []
 
         # ordered insertion [good, bad, good_skipped]
         # Tables do not insert anything in this case! (as opposed to Collections)
@@ -428,8 +545,10 @@ class TestTableDMLAsync:
         except TableInsertManyException as e:
             err4 = e
         assert err4 is not None
-        assert len(err4.error_descriptors) == 1
-        assert err4.partial_result.inserted_ids == []
+        assert len(err4.exceptions) == 1
+        assert isinstance(err4.exceptions[0], DataAPIResponseException)
+        assert len(err4.exceptions[0].error_descriptors) == 1
+        assert err4.inserted_id_tuples == []
 
     @pytest.mark.describe("test of table update_one, async")
     async def test_table_update_one_async(

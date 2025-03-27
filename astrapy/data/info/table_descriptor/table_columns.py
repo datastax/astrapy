@@ -402,9 +402,9 @@ class TableKeyValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
     def __init__(
         self,
         *,
-        column_type: str | TableKeyValuedColumnType,
         value_type: str | ColumnType,
         key_type: str | ColumnType,
+        column_type: str | TableKeyValuedColumnType = TableKeyValuedColumnType.MAP,
         api_support: TableAPISupportDescriptor | None = None,
     ) -> None:
         self.key_type = ColumnType.coerce(key_type)

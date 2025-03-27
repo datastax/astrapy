@@ -29,6 +29,7 @@ from astrapy.authentication import (
     UsernamePasswordTokenProvider,
 )
 from astrapy.constants import Environment
+from astrapy.exceptions import InvalidEnvironmentException
 from astrapy.utils.api_options import (
     APIOptions,
     DataAPIURLOptions,
@@ -95,7 +96,7 @@ class TestAdminConversions:
             "https://99999999-89ab-cdef-0123-456789abcdef-us-east1"
             ".apps.astra-test.datastax.com"
         )
-        with pytest.raises(ValueError):
+        with pytest.raises(InvalidEnvironmentException):
             dac1[a_e_string_test]
 
         # equivalence between passing api_options and named parameters; option override

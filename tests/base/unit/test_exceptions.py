@@ -25,23 +25,24 @@ from astrapy import DataAPIClient
 from astrapy.api_options import APIOptions, SerdesOptions
 from astrapy.constants import Environment
 from astrapy.exceptions import (
-    CollectionDeleteManyException,
-    CollectionInsertManyException,
-    DataAPIDetailedErrorDescriptor,
     DataAPIErrorDescriptor,
     DataAPIHttpException,
     DataAPIResponseException,
     InvalidEnvironmentException,
 )
-from astrapy.results import CollectionDeleteResult, CollectionInsertManyResult
 
-SAMPLE_API_MESSAGE = "da_message"
-SAMPLE_API_ERROR_OBJECT = {
-    "title": "da_title",
-    "errorCode": "DA_ERRORCODE",
-    "message": SAMPLE_API_MESSAGE,
+ERROR_MESSAGE = "da_message"
+ERROR_CODE = "DA_ERRORCODE"
+ERROR_ATTRIBUTES = {"ekey": "evalue"}
+ERROR_TITLE = "da_title"
+ERROR_JSON = {
+    "title": ERROR_TITLE,
+    "errorCode": ERROR_CODE,
+    "message": ERROR_MESSAGE,
+    **ERROR_ATTRIBUTES,
 }
-FULL_RESPONSE_OF_500 = json.dumps({"errors": [SAMPLE_API_ERROR_OBJECT]})
+ERROR_TITLE = f"{ERROR_TITLE}: {ERROR_MESSAGE} ({ERROR_CODE})"
+FULL_RESPONSE_OF_500 = json.dumps({"errors": [ERROR_JSON]})
 
 
 @pytest.mark.describe("test DataAPIHttpException")
@@ -91,7 +92,7 @@ def test_dataapihttpexception() -> None:
     str(de2)
     str(de3)
     str(de4)
-    assert SAMPLE_API_MESSAGE in str(de5)
+    assert ERROR_MESSAGE in str(de5)
 
 
 @pytest.mark.describe("test DataAPIHttpException raising 500 from a mock server, sync")
@@ -125,9 +126,9 @@ def test_dataapihttpexception_raising_500_sync(httpserver: HTTPServer) -> None:
     assert isinstance(exc, DataAPIHttpException)
     httpx_payload = json.loads(exc.request.content.decode())
     assert "findOne" in httpx_payload
-    assert SAMPLE_API_MESSAGE in exc.response.text
-    assert exc.error_descriptors == [DataAPIErrorDescriptor(SAMPLE_API_ERROR_OBJECT)]
-    assert SAMPLE_API_MESSAGE in str(exc)
+    assert ERROR_MESSAGE in exc.response.text
+    assert exc.error_descriptors == [DataAPIErrorDescriptor(ERROR_JSON)]
+    assert ERROR_MESSAGE in str(exc)
 
 
 @pytest.mark.describe("test DataAPIHttpException raising 404 from a mock server, sync")
@@ -198,9 +199,9 @@ async def test_dataapihttpexception_raising_500_async(httpserver: HTTPServer) ->
     assert isinstance(exc, DataAPIHttpException)
     httpx_payload = json.loads(exc.request.content.decode())
     assert "findOne" in httpx_payload
-    assert SAMPLE_API_MESSAGE in exc.response.text
-    assert exc.error_descriptors == [DataAPIErrorDescriptor(SAMPLE_API_ERROR_OBJECT)]
-    assert SAMPLE_API_MESSAGE in str(exc)
+    assert ERROR_MESSAGE in exc.response.text
+    assert exc.error_descriptors == [DataAPIErrorDescriptor(ERROR_JSON)]
+    assert ERROR_MESSAGE in str(exc)
 
 
 @pytest.mark.describe("test DataAPIHttpException raising 404 from a mock server, async")
@@ -242,80 +243,19 @@ async def test_dataapihttpexception_raising_404_async(httpserver: HTTPServer) ->
 
 @pytest.mark.describe("test DataAPIResponseException")
 def test_dataapiresponseexception() -> None:
-    da_e1 = DataAPIResponseException.from_responses(
-        commands=[{"cmd": "C1"}],
-        raw_responses=[
-            {"errors": [{"errorCode": "C", "message": "Aaa", "field": "value"}]}
-        ],
+    da_e1 = DataAPIResponseException.from_response(
+        command={"cmd": "C1"},
+        raw_response=({"errors": [ERROR_JSON]}),
     )
-    the_daed = DataAPIErrorDescriptor(
-        {"errorCode": "C", "message": "Aaa", "field": "value"}
-    )
+    the_daed = DataAPIErrorDescriptor(ERROR_JSON)
 
-    assert the_daed.error_code == "C"
-    assert the_daed.message == "Aaa"
-    assert the_daed.attributes == {"field": "value"}
+    assert the_daed.error_code == ERROR_CODE
+    assert the_daed.message == ERROR_MESSAGE
+    assert the_daed.attributes == ERROR_ATTRIBUTES
 
-    assert da_e1.text == "Aaa (C)"
-    assert str(da_e1) == "Aaa (C)"
+    assert da_e1.text == ERROR_TITLE
+    assert str(da_e1) == ERROR_TITLE
     assert da_e1.error_descriptors == [the_daed]
-    assert da_e1.detailed_error_descriptors == [
-        DataAPIDetailedErrorDescriptor(
-            error_descriptors=[the_daed],
-            command={"cmd": "C1"},
-            raw_response={
-                "errors": [{"errorCode": "C", "message": "Aaa", "field": "value"}]
-            },
-        )
-    ]
-
-
-@pytest.mark.describe("test CollectionInsertManyException")
-def test_collection_insert_many_exception() -> None:
-    im_result = CollectionInsertManyResult(
-        raw_results=[{"a": 1}], inserted_ids=["a", "b"]
-    )
-    # mypy thinks im_e1 is a DataAPIException for some reason...
-    im_e1: CollectionInsertManyException = CollectionInsertManyException.from_responses(  # type: ignore[assignment]
-        commands=[{"cmd": "C1"}],
-        raw_responses=[{"errors": [{"errorCode": "C", "message": "Aaa"}]}],
-        partial_result=im_result,
-    )
-    the_daed = DataAPIErrorDescriptor({"errorCode": "C", "message": "Aaa"})
-
-    assert im_e1.partial_result == im_result
-    assert im_e1.text == "Aaa (C)"
-    assert im_e1.error_descriptors == [the_daed]
-    assert im_e1.detailed_error_descriptors == [
-        DataAPIDetailedErrorDescriptor(
-            error_descriptors=[the_daed],
-            command={"cmd": "C1"},
-            raw_response={"errors": [{"errorCode": "C", "message": "Aaa"}]},
-        )
-    ]
-
-
-@pytest.mark.describe("test CollectionDeleteManyException")
-def test_collection_delete_many_exception() -> None:
-    dm_result = CollectionDeleteResult(deleted_count=123, raw_results=[{"a": 1}])
-    # mypy thinks dm_e1 is a DataAPIException for some reason...
-    dm_e1: CollectionDeleteManyException = CollectionDeleteManyException.from_responses(  # type: ignore[assignment]
-        commands=[{"cmd": "C1"}],
-        raw_responses=[{"errors": [{"errorCode": "C", "message": "Aaa"}]}],
-        partial_result=dm_result,
-    )
-    the_daed = DataAPIErrorDescriptor({"errorCode": "C", "message": "Aaa"})
-
-    assert dm_e1.partial_result == dm_result
-    assert dm_e1.text == "Aaa (C)"
-    assert dm_e1.error_descriptors == [the_daed]
-    assert dm_e1.detailed_error_descriptors == [
-        DataAPIDetailedErrorDescriptor(
-            error_descriptors=[the_daed],
-            command={"cmd": "C1"},
-            raw_response={"errors": [{"errorCode": "C", "message": "Aaa"}]},
-        )
-    ]
 
 
 @pytest.mark.describe("test of database info failures, sync")

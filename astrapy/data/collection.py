@@ -24,6 +24,7 @@ from astrapy.constants import (
     DOC,
     DOC2,
     FilterType,
+    HybridSortType,
     ProjectionType,
     ReturnDocument,
     SortType,
@@ -35,7 +36,7 @@ from astrapy.data.utils.collection_converters import (
 )
 from astrapy.data.utils.distinct_extractors import (
     _create_document_key_extractor,
-    _hash_document,
+    _hash_collection_document,
     _reduce_distinct_key_to_safe,
 )
 from astrapy.database import AsyncDatabase, Database
@@ -43,6 +44,7 @@ from astrapy.exceptions import (
     CollectionDeleteManyException,
     CollectionInsertManyException,
     CollectionUpdateManyException,
+    DataAPIResponseException,
     MultiCallTimeoutManager,
     TooManyDocumentsToCountException,
     UnexpectedDataAPIResponseException,
@@ -65,12 +67,22 @@ from astrapy.settings.defaults import (
 )
 from astrapy.utils.api_commander import APICommander
 from astrapy.utils.api_options import APIOptions, FullAPIOptions
+from astrapy.utils.meta import beta_method
 from astrapy.utils.request_tools import HttpMethod
 from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
-    from astrapy.authentication import EmbeddingHeadersProvider
-    from astrapy.cursors import AsyncCollectionFindCursor, CollectionFindCursor
+    from astrapy.authentication import (
+        EmbeddingHeadersProvider,
+        RerankingHeadersProvider,
+    )
+    from astrapy.cursors import (
+        AsyncCollectionFindAndRerankCursor,
+        AsyncCollectionFindCursor,
+        CollectionFindAndRerankCursor,
+        CollectionFindCursor,
+        RerankedResult,
+    )
 
 
 logger = logging.getLogger(__name__)
@@ -220,6 +232,7 @@ class Collection(Generic[DOC]):
         self._commander_headers = {
             **{DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token()},
             **self.api_options.embedding_api_key.get_headers(),
+            **self.api_options.reranking_api_key.get_headers(),
             **self.api_options.database_additional_headers,
         }
         self._api_commander = self._get_api_commander()
@@ -321,10 +334,12 @@ class Collection(Generic[DOC]):
         self: Collection[DOC],
         *,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]:
         arg_api_options = APIOptions(
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
         )
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
@@ -340,6 +355,7 @@ class Collection(Generic[DOC]):
         self: Collection[DOC],
         *,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]:
         """
@@ -355,6 +371,15 @@ class Collection(Generic[DOC]):
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the collection.
+                If a reranker is configured for the collection, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the collection
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             api_options: any additional options to set for the clone, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -371,6 +396,7 @@ class Collection(Generic[DOC]):
 
         return self._copy(
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
             api_options=api_options,
         )
 
@@ -378,6 +404,7 @@ class Collection(Generic[DOC]):
         self: Collection[DOC],
         *,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]:
         """
@@ -396,6 +423,15 @@ class Collection(Generic[DOC]):
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the collection.
+                If a reranker is configured for the collection, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the collection
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             api_options: any additional options to set for the result, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -411,6 +447,7 @@ class Collection(Generic[DOC]):
 
         arg_api_options = APIOptions(
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
         )
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
@@ -733,8 +770,8 @@ class Collection(Generic[DOC]):
 
         Note:
             A failure mode for this command is related to certain faulty documents
-            found among those to insert: a document may have the an `_id` already
-            present on the collection, or its vector dimension may not
+            found among those to insert: for example, a document may have an ID
+            already found on the collection, or its vector dimension may not
             match the collection setting.
 
             For an ordered insertion, the method will raise an exception at
@@ -746,11 +783,11 @@ class Collection(Generic[DOC]):
             an exception is raised -- and all insertable documents will have been
             written to the database, including those "after" the troublesome ones.
 
-            If, on the other hand, there are errors not related to individual
-            documents (such as a network connectivity error), the whole
-            `insert_many` operation will stop in mid-way, an exception will be raised,
-            and only a certain amount of the input documents will
-            have made their way to the database.
+            Errors occurring during an insert_many operation, for that reason,
+            may result in a `CollectionInsertManyException` being raised.
+            This exception allows to inspect the list of document IDs that were
+            successfully inserted, while accessing at the same time the underlying
+            "root errors" that made the full method call to fail.
         """
 
         _general_method_timeout_ms, _gmt_label = _first_valid_timeout(
@@ -781,6 +818,7 @@ class Collection(Generic[DOC]):
         _documents = list(documents)
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: list[dict[str, Any]] = []
+        im_payloads: list[dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_general_method_timeout_ms,
             timeout_label=_gmt_label,
@@ -815,16 +853,15 @@ class Collection(Generic[DOC]):
                 ]
                 inserted_ids += chunk_inserted_ids
                 raw_results += [chunk_response]
+                im_payloads += [im_payload]
                 # if errors, quit early
                 if chunk_response.get("errors", []):
-                    partial_result = CollectionInsertManyResult(
-                        raw_results=raw_results,
-                        inserted_ids=inserted_ids,
-                    )
-                    raise CollectionInsertManyException.from_response(
-                        command=None,
+                    response_exception = DataAPIResponseException.from_response(
+                        command=im_payload,
                         raw_response=chunk_response,
-                        partial_result=partial_result,
+                    )
+                    raise CollectionInsertManyException(
+                        inserted_ids=inserted_ids, exceptions=[response_exception]
                     )
 
             # return
@@ -845,7 +882,7 @@ class Collection(Generic[DOC]):
 
                     def _chunk_insertor(
                         document_chunk: list[dict[str, Any]],
-                    ) -> dict[str, Any]:
+                    ) -> tuple[dict[str, Any], dict[str, Any]]:
                         im_payload = {
                             "insertMany": {
                                 "documents": document_chunk,
@@ -862,9 +899,9 @@ class Collection(Generic[DOC]):
                             ),
                         )
                         logger.info(f"finished insertMany(chunk) on '{self.name}'")
-                        return im_response
+                        return im_payload, im_response
 
-                    raw_results = list(
+                    raw_pl_results_pairs = list(
                         executor.map(
                             _chunk_insertor,
                             (
@@ -873,6 +910,11 @@ class Collection(Generic[DOC]):
                             ),
                         )
                     )
+                    if raw_pl_results_pairs:
+                        im_payloads, raw_results = list(zip(*raw_pl_results_pairs))
+                    else:
+                        im_payloads, raw_results = [], []
+
             else:
                 for i in range(0, len(_documents), _chunk_size):
                     im_payload = {
@@ -892,6 +934,7 @@ class Collection(Generic[DOC]):
                     )
                     logger.info(f"finished insertMany(chunk) on '{self.name}'")
                     raw_results.append(im_response)
+                    im_payloads.append(im_payload)
             # recast raw_results
             inserted_ids = [
                 doc_resp["_id"]
@@ -903,17 +946,18 @@ class Collection(Generic[DOC]):
             ]
 
             # check-raise
-            if any(
-                [chunk_response.get("errors", []) for chunk_response in raw_results]
-            ):
-                partial_result = CollectionInsertManyResult(
-                    raw_results=raw_results,
-                    inserted_ids=inserted_ids,
+            response_exceptions = [
+                DataAPIResponseException.from_response(
+                    command=chunk_payload,
+                    raw_response=chunk_response,
                 )
-                raise CollectionInsertManyException.from_responses(
-                    commands=[None for _ in raw_results],
-                    raw_responses=raw_results,
-                    partial_result=partial_result,
+                for chunk_payload, chunk_response in zip(im_payloads, raw_results)
+                if chunk_response.get("errors", [])
+            ]
+            if response_exceptions:
+                raise CollectionInsertManyException(
+                    inserted_ids=inserted_ids,
+                    exceptions=response_exceptions,
                 )
 
             # return
@@ -975,7 +1019,7 @@ class Collection(Generic[DOC]):
         """
         Find documents on the collection, matching a certain provided filter.
 
-        The method returns a Cursor that can then be iterated over. Depending
+        The method returns a cursor that can then be iterated over. Depending
         on the method call pattern, the iteration over all documents can reflect
         collection mutations occurred since the `find` method was called, or not.
         In cases where the cursor reflects mutations in real-time, it will iterate
@@ -1010,9 +1054,9 @@ class Collection(Generic[DOC]):
             document_type: this parameter acts a formal specifier for the type checker.
                 If omitted, the resulting cursor is implicitly a
                 `CollectionFindCursor[DOC, DOC]`, i.e. maintains the same type for
-                the items it returns as that for the documents in the table. Strictly
-                typed code may want to specify this parameter especially when a
-                projection is given.
+                the items it returns as that for the documents in the collection.
+                Strictly typed code may want to specify this parameter especially when
+                a projection is given.
             skip: with this integer parameter, what would be the first `skip`
                 documents returned by the query are discarded, and the results
                 start from the (skip+1)-th document.
@@ -1024,9 +1068,8 @@ class Collection(Generic[DOC]):
                 for lack of matching documents), nothing more is returned.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each
-                returned document. Can only be used for vector ANN search, i.e.
-                when either `vector` is supplied or the `sort` parameter has the
-                shape {"$vector": ...}.
+                returned document. It can be used meaningfully only in a vector
+                search (see `sort`).
             include_sort_vector: a boolean to request the search query vector.
                 If set to True (and if the invocation is a vector search), calling
                 the `get_sort_vector` method on the returned cursor will yield
@@ -1043,9 +1086,9 @@ class Collection(Generic[DOC]):
             timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            a Cursor object representing iterations over the matching documents
-            (see the Cursor object for how to use it. The simplest thing is to
-            run a for loop: `for document in collection.sort(...):`).
+            a CollectionFindCursor object, that can be iterated over (and manipulated
+            in several ways). The cursor, if needed, handles pagination under the hood
+            as the documents are consumed.
 
         Examples:
             >>> filter = {"seq": {"$exists": True}}
@@ -1065,8 +1108,6 @@ class Collection(Generic[DOC]):
             >>> [doc["_id"] for doc in cursor1]
             ['97e85f81-...', '1581efe4-...', '...', '...']
             >>> cursor2 = my_coll.find({}, limit=3)
-            >>> cursor2.distinct("seq")
-            [37, 35, 10]
 
             >>> my_coll.insert_many([
             ...     {"tag": "A", "$vector": [4, 5]},
@@ -1094,7 +1135,7 @@ class Collection(Generic[DOC]):
             ... )
             >>> cursor.get_sort_vector()
             [3.0, 3.0]
-            >>> matches = list(cursor)
+            >>> matches = cursor.to_list()
             >>> cursor.get_sort_vector()
             [3.0, 3.0]
 
@@ -1126,8 +1167,6 @@ class Collection(Generic[DOC]):
             at the time of writing, and stop there. The returned documents are
             the top results across the whole collection according to the requested
             criterion.
-            These provisions should be kept in mind even when subsequently running
-            a command such as `.distinct()` on a cursor.
 
         Note:
             When not specifying sorting criteria at all (by vector or otherwise),
@@ -1204,9 +1243,8 @@ class Collection(Generic[DOC]):
                 See the Data API documentation for more on projections.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in the
-                returned document. Can only be used for vector ANN search, i.e.
-                when either `vector` is supplied or the `sort` parameter has the
-                shape {"$vector": ...}.
+                returned document. It can be used meaningfully only in a vector
+                search (see `sort`).
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
                 Vector-based ANN sorting is achieved by providing a "$vector"
@@ -1284,7 +1322,7 @@ class Collection(Generic[DOC]):
 
     def distinct(
         self,
-        key: str,
+        key: str | Iterable[str | int],
         *,
         filter: FilterType | None = None,
         general_method_timeout_ms: int | None = None,
@@ -1297,12 +1335,14 @@ class Collection(Generic[DOC]):
 
         Args:
             key: the name of the field whose value is inspected across documents.
-                Keys can use dot-notation to descend to deeper document levels.
-                Example of acceptable `key` values:
-                    "field"
-                    "field.subfield"
-                    "field.3"
-                    "field.3.subfield"
+                Keys can be just field names (as is often the case), but
+                the dot-notation is also accepted to mean subkeys or indices
+                within lists (for example, "map_field.subkey" or "list_field.2").
+                If a field has literal dots or ampersands in its name, this
+                parameter must be escaped to be treated properly.
+                The key can also be a list of strings and numbers, in which case
+                no escape is necessary: each item in the list is a field name/index,
+                for example ["map_field", "subkey"] or ["list_field", 2].
                 If lists are encountered and no numeric index is specified,
                 all items in the list are visited.
             filter: a predicate expressed as a dictionary according to the
@@ -1375,11 +1415,6 @@ class Collection(Generic[DOC]):
         # preparing cursor:
         _extractor = _create_document_key_extractor(key)
         _key = _reduce_distinct_key_to_safe(key)
-        if _key == "":
-            raise ValueError(
-                "The 'key' parameter for distinct cannot be empty "
-                "or start with a list index."
-            )
         # relaxing the type hint (limited to within this method body)
         f_cursor: CollectionFindCursor[dict[str, Any], dict[str, Any]] = (
             CollectionFindCursor(
@@ -1398,7 +1433,7 @@ class Collection(Generic[DOC]):
         logger.info(f"running distinct() on '{self.name}'")
         for document in f_cursor:
             for item in _extractor(document):
-                _item_hash = _hash_document(
+                _item_hash = _hash_collection_document(
                     item, options=self.api_options.serdes_options
                 )
                 if _item_hash not in _item_hashes:
@@ -1406,6 +1441,356 @@ class Collection(Generic[DOC]):
                     distinct_items.append(item)
         logger.info(f"finished running distinct() on '{self.name}'")
         return distinct_items
+
+    @overload
+    def find_and_rerank(
+        self,
+        filter: FilterType | None = None,
+        *,
+        sort: HybridSortType,
+        projection: ProjectionType | None = None,
+        document_type: None = None,
+        limit: int | None = None,
+        hybrid_limits: int | dict[str, int] | None = None,
+        include_scores: bool | None = None,
+        include_sort_vector: bool | None = None,
+        rerank_on: str | None = None,
+        rerank_query: str | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> CollectionFindAndRerankCursor[DOC, RerankedResult[DOC]]: ...
+
+    @overload
+    def find_and_rerank(
+        self,
+        filter: FilterType | None = None,
+        *,
+        sort: HybridSortType,
+        projection: ProjectionType | None = None,
+        document_type: type[DOC2],
+        limit: int | None = None,
+        hybrid_limits: int | dict[str, int] | None = None,
+        include_scores: bool | None = None,
+        include_sort_vector: bool | None = None,
+        rerank_on: str | None = None,
+        rerank_query: str | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> CollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]: ...
+
+    @beta_method
+    def find_and_rerank(
+        self,
+        filter: FilterType | None = None,
+        *,
+        sort: HybridSortType,
+        projection: ProjectionType | None = None,
+        document_type: type[DOC2] | None = None,
+        limit: int | None = None,
+        hybrid_limits: int | dict[str, int] | None = None,
+        include_scores: bool | None = None,
+        include_sort_vector: bool | None = None,
+        rerank_on: str | None = None,
+        rerank_query: str | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> CollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]:
+        """
+        Find relevant documents, combining vector and lexical matches through reranking.
+
+        For this method to succeed, the collection must be created with the required
+        hybrid capabilities (see the `create_collection` method of the Database class).
+
+        The method returns a cursor that can then be iterated over, which yields
+        the resulting documents, generally paired with accompanying information
+        such as scores.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
+                See the Data API documentation for the full set of operators.
+            sort: a clause specifying the criteria for selecting the top matching
+                documents. This must provide enough information for both a lexical
+                and a vector similarity to be performed (the latter either query text
+                or by query vector, depending on the collection configuration).
+                Examples are: `sort={"$hybrid": "xyz"}`,
+                `sort={"$hybrid": {"$vectorize": "xyz", "$lexical": "abc"}}`,
+                `sort={"$hybrid": {"$vector": DataAPIVector(...), "$lexical": "abc"}}`.
+                Note this differs from the `sort` parameter for the `find` method.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` and other special fields, which can be
+                associated to both True or False independently of the rest
+                of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection (used if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
+            document_type: this parameter acts a formal specifier for the type checker.
+                If omitted, the resulting cursor is implicitly a
+                `CollectionFindAndRerankCursor[DOC, DOC]`, i.e. maintains the same type
+                for the items it returns as that for the documents in the collection.
+                Strictly typed code may want to specify this parameter especially when
+                a projection is given.
+            limit: maximum number of documents to return as the result of the final
+                rerank step.
+            hybrid_limits: this controls the amount of documents that are fetched by
+                each of the individual retrieval operations that are combined in the
+                rerank step. It can be either a number or a dictionary of strings to
+                numbers, the latter case expressing different counts for the different
+                retrievals. For example: `hybrid_limits=50`,
+                `hybrid_limits={"$vector": 20, "$lexical": 10}`.
+            include_scores: a boolean to request the scores to be returned along with
+                the resulting documents. If this is set, the scores can be read in the
+                the map `scores` attribute of each RerankedResult (the map is
+                otherwise empty).
+            include_sort_vector: a boolean to request the search query vector
+                used for the vector-search part of the find operation.
+                If set to True, calling the `get_sort_vector` method on the returned
+                cursor will yield the vector used for the ANN search.
+            rerank_on: for collections without a vectorize (server-side embeddings)
+                service, this is used to specify the field name that is then used
+                during reranking.
+            rerank_query: for collections without a vectorize (server-side embeddings)
+                service, this is used to specify the query text for the reranker.
+            request_timeout_ms: a timeout, in milliseconds, for each single one
+                of the underlying HTTP requests used to fetch documents as the
+                cursor is iterated over.
+                If not passed, the collection-level setting is used instead.
+            timeout_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            a CollectionFindAndRerankCursor object, that can be iterated over (and
+            manipulated in several ways).
+
+        Examples:
+            >>> # The following examples assume a collection with 'vectorize' and the
+            >>> # necessary hybrid configuration; see below for a non-vectorize case.
+            >>>
+            >>> # Populate with documents
+            >>> my_vectorize_coll.insert_many([
+            ...     {
+            ...         "_id": "A",
+            ...         "wkd": "Mon",
+            ...         "$vectorize": "Monday is green",
+            ...         "$lexical": "Monday is green",
+            ...     },
+            ...     {
+            ...         "_id": "B",
+            ...         "wkd": "Tue",
+            ...         "$vectorize": "Tuesday is pink",
+            ...         "$lexical": "Tuesday is pink",
+            ...     },
+            ...     {
+            ...         "_id": "C",
+            ...         "wkd": "Wed",
+            ...         "$vectorize": "Wednesday is cyan",
+            ...         "$lexical": "Wednesday is cyan",
+            ...     },
+            ...     {
+            ...         "_id": "D",
+            ...         "wkd": "Thu",
+            ...         "$vectorize": "Thursday is red",
+            ...         "$lexical": "Thursday is red",
+            ...     },
+            ...     {
+            ...         "_id": "E",
+            ...         "wkd": "Fri",
+            ...         "$vectorize": "Friday is orange",
+            ...         "$lexical": "Friday is orange",
+            ...     },
+            ...     {
+            ...         "_id": "F",
+            ...         "wkd": "Sat",
+            ...         "$vectorize": "Saturday is purple",
+            ...         "$lexical": "Saturday is purple",
+            ...     },
+            ...     {
+            ...         "_id": "G",
+            ...         "wkd": "Sun",
+            ...         "$vectorize": "Sunday is beige",
+            ...         "$lexical": "Sunday is beige",
+            ...     },
+            ... ])
+            CollectionInsertManyResult(inserted_ids=[A, B, C, D, E ... (7 total)], raw_results=...)
+            >>>
+            >>> # A simple invocation, consuming the cursor
+            >>> # with a loop ('vectorize collection):
+            >>> for r_result in my_vectorize_coll.find_and_rerank(
+            ...     sort={"$hybrid": "Weekdays?"},
+            ...     limit=2,
+            ... ):
+            ...     print(r_result.document)
+            ...
+            {'_id': 'C', 'wkd': 'Wed'}
+            {'_id': 'A', 'wkd': 'Mon'}
+            >>> # Additional arbitrary filtering predicates
+            >>> # ('vectorize collection):
+            >>> for r_result in my_vectorize_coll.find_and_rerank(
+            ...     {"wkd": {"$ne": "Mon"}},
+            ...     sort={"$hybrid": "Weekdays?"},
+            ...     limit=2,
+            ... ):
+            ...     print(r_result.document)
+            ...
+            {'_id': 'C', 'wkd': 'Wed'}
+            {'_id': 'B', 'wkd': 'Tue'}
+            >>> # Fetch the scores with the documents ('vectorize collection):
+            >>> scored_texts = [
+            ...     (r_result.document["wkd"], r_result.scores["$rerank"])
+            ...     for r_result in my_vectorize_coll.find_and_rerank(
+            ...         sort={"$hybrid": "Weekdays?"},
+            ...         limit=2,
+            ...         include_scores=True,
+            ...     )
+            ... ]
+            >>> print(scored_texts)
+            [('Wed', -9.1015625), ('Mon', -10.2421875)]
+            >>>
+            >>> # Customize sub-search limits ('vectorize collection):
+            >>> hits = my_vectorize_coll.find_and_rerank(
+            ...     sort={"$hybrid": "Weekdays?"},
+            ...     limit=2,
+            ...     hybrid_limits=20,
+            ... ).to_list()
+            >>> print(", ".join(r_res.document["wkd"] for r_res in hits))
+            Wed, Mon
+            >>>
+            >>> # Separate sub-search queries ('vectorize collection):
+            >>> cursor = my_vectorize_coll.find_and_rerank(
+            ...     sort={
+            ...         "$hybrid": {
+            ...             "$vectorize": "a week day",
+            ...             "$lexical": "green",
+            ...         },
+            ...     },
+            ...     limit=2,
+            ...     hybrid_limits={"$lexical": 4, "$vector": 20},
+            ... )
+            >>> print(", ".join(r_res.document["wkd"] for r_res in cursor))
+            Mon, Wed
+            >>>
+            >>> # Reading back the query vector used by
+            >>> # the search ('vectorize collection):
+            >>> cursor = my_vectorize_coll.find_and_rerank(
+            ...     sort={"$hybrid": "Weekdays?"},
+            ...     limit=2,
+            ...     include_sort_vector=True
+            ... )
+            >>> sort_vector = cursor.get_sort_vector()
+            >>> print(" ==> ".join(
+            ...     r_res.document["wkd"] for r_res in cursor
+            ... ))
+            Wed ==> Mon
+            >>> print(f"Sort vector={sort_vector}")
+            Sort vector=[-0.0021172, -0.012057612, 0.010362527 ...]
+            >>>
+            >>>
+            >>> # If the collection has no "vectorize", `rerank_query`
+            >>> # and `rerank_on` must be passed. The following assumes a
+            >>> # collection with a 3-dimensional vector and the setup for hybrid.
+            >>>
+            >>> # Populate with documents:
+            >>> my_vector3d_coll.insert_many([
+            ...     {
+            ...         "_id": "A",
+            ...         "wkd": "Mon",
+            ...         "$vector": [0.1, 0.2, 0.3],
+            ...         "$lexical": "Monday is green",
+            ...     },
+            ...     {
+            ...         "_id": "B",
+            ...         "wkd": "Tue",
+            ...         "$vector": [0.2, 0.3, 0.4],
+            ...         "$lexical": "Tuesday is pink",
+            ...     },
+            ...     {
+            ...         "_id": "C",
+            ...         "wkd": "Wed",
+            ...         "$vector": [0.3, 0.4, 0.5],
+            ...         "$lexical": "Wednesday is cyan",
+            ...     },
+            ...     {
+            ...         "_id": "D",
+            ...         "wkd": "Thu",
+            ...         "$vector": [0.4, 0.5, 0.6],
+            ...         "$lexical": "Thursday is red",
+            ...     },
+            ...     {
+            ...         "_id": "E",
+            ...         "wkd": "Fri",
+            ...         "$vector": [0.5, 0.6, 0.7],
+            ...         "$lexical": "Friday is orange",
+            ...     },
+            ...     {
+            ...         "_id": "F",
+            ...         "wkd": "Sat",
+            ...         "$vector": [0.6, 0.7, 0.8],
+            ...         "$lexical": "Saturday is purple",
+            ...     },
+            ...     {
+            ...         "_id": "G",
+            ...         "wkd": "Sun",
+            ...         "$vector": [0.7, 0.8, 0.9],
+            ...         "$lexical": "Sunday is beige",
+            ...     },
+            ... ])
+            CollectionInsertManyResult(inserted_ids=[A, B, C, D, E ... (7 total)], raw_results=...)
+            >>>
+            >>> # A simple find_and_rerank call (collection without 'vectorize'):
+            >>> for r_result in my_vector3d_coll.find_and_rerank(
+            ...     sort={
+            ...         "$hybrid": {
+            ...             "$vector": [0.9, 0.8, 0.7],
+            ...             "$lexical": "Weekdays?",
+            ...         },
+            ...     },
+            ...     limit=2,
+            ...     rerank_on="wkd",
+            ...     rerank_query="week days",
+            ... ):
+            ...     print(r_result.document["wkd"])
+            ...
+            Mon
+            Tue
+        """
+
+        # lazy-import here to avoid circular import issues
+        from astrapy.cursors import CollectionFindAndRerankCursor
+
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        )
+        return (
+            CollectionFindAndRerankCursor(
+                collection=self,
+                request_timeout_ms=_request_timeout_ms,
+                overall_timeout_ms=None,
+                request_timeout_label=_rt_label,
+            )
+            .filter(filter)
+            .project(projection)
+            .limit(limit)
+            .sort(sort)
+            .hybrid_limits(hybrid_limits)
+            .rerank_on(rerank_on)
+            .rerank_query(rerank_query)
+            .include_scores(include_scores)
+            .include_sort_vector(include_sort_vector)
+        )
 
     def count_documents(
         self,
@@ -2161,6 +2546,7 @@ class Collection(Generic[DOC]):
             logger.info(f"updateMany on '{self.name}'")
             this_um_response = self._converted_request(
                 payload=this_um_payload,
+                raise_api_errors=False,
                 timeout_context=timeout_manager.remaining_timeout(
                     cap_time_ms=_request_timeout_ms,
                     cap_timeout_label=_rt_label,
@@ -2176,11 +2562,13 @@ class Collection(Generic[DOC]):
                     raw_results=um_responses,
                     update_info=partial_update_info,
                 )
-                all_um_responses = um_responses + [this_um_response]
-                raise CollectionUpdateManyException.from_responses(
-                    commands=[None for _ in all_um_responses],
-                    raw_responses=all_um_responses,
+                cause_exception = DataAPIResponseException.from_response(
+                    command=this_um_payload,
+                    raw_response=this_um_response,
+                )
+                raise CollectionUpdateManyException(
                     partial_result=partial_result,
+                    cause=cause_exception,
                 )
             else:
                 if "status" not in this_um_response:
@@ -2497,11 +2885,13 @@ class Collection(Generic[DOC]):
                     deleted_count=deleted_count,
                     raw_results=dm_responses,
                 )
-                all_dm_responses = dm_responses + [this_dm_response]
-                raise CollectionDeleteManyException.from_responses(
-                    commands=[None for _ in all_dm_responses],
-                    raw_responses=all_dm_responses,
+                cause_exception = DataAPIResponseException.from_response(
+                    command=this_dm_payload,
+                    raw_response=this_dm_response,
+                )
+                raise CollectionDeleteManyException(
                     partial_result=partial_result,
+                    cause=cause_exception,
                 )
             else:
                 this_dc = this_dm_response.get("status", {}).get("deletedCount")
@@ -2733,6 +3123,7 @@ class AsyncCollection(Generic[DOC]):
         self._commander_headers = {
             **{DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token()},
             **self.api_options.embedding_api_key.get_headers(),
+            **self.api_options.reranking_api_key.get_headers(),
             **self.api_options.database_additional_headers,
         }
         self._api_commander = self._get_api_commander()
@@ -2850,10 +3241,12 @@ class AsyncCollection(Generic[DOC]):
         self: AsyncCollection[DOC],
         *,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]:
         arg_api_options = APIOptions(
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
         )
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
@@ -2869,6 +3262,7 @@ class AsyncCollection(Generic[DOC]):
         self: AsyncCollection[DOC],
         *,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]:
         """
@@ -2884,6 +3278,15 @@ class AsyncCollection(Generic[DOC]):
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the collection.
+                If a reranker is configured for the collection, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the collection
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             api_options: any additional options to set for the clone, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -2900,6 +3303,7 @@ class AsyncCollection(Generic[DOC]):
 
         return self._copy(
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
             api_options=api_options,
         )
 
@@ -2907,6 +3311,7 @@ class AsyncCollection(Generic[DOC]):
         self: AsyncCollection[DOC],
         *,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]:
         """
@@ -2925,6 +3330,15 @@ class AsyncCollection(Generic[DOC]):
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the collection.
+                If a reranker is configured for the collection, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the collection
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             api_options: any additional options to set for the result, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -2942,6 +3356,7 @@ class AsyncCollection(Generic[DOC]):
 
         arg_api_options = APIOptions(
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
         )
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
@@ -3286,8 +3701,8 @@ class AsyncCollection(Generic[DOC]):
 
         Note:
             A failure mode for this command is related to certain faulty documents
-            found among those to insert: a document may have the an `_id` already
-            present on the collection, or its vector dimension may not
+            found among those to insert: for example, a document may have an ID
+            already found on the collection, or its vector dimension may not
             match the collection setting.
 
             For an ordered insertion, the method will raise an exception at
@@ -3299,11 +3714,11 @@ class AsyncCollection(Generic[DOC]):
             an exception is raised -- and all insertable documents will have been
             written to the database, including those "after" the troublesome ones.
 
-            If, on the other hand, there are errors not related to individual
-            documents (such as a network connectivity error), the whole
-            `insert_many` operation will stop in mid-way, an exception will be raised,
-            and only a certain amount of the input documents will
-            have made their way to the database.
+            Errors occurring during an insert_many operation, for that reason,
+            may result in a `CollectionInsertManyException` being raised.
+            This exception allows to inspect the list of document IDs that were
+            successfully inserted, while accessing at the same time the underlying
+            "root errors" that made the full method call to fail.
         """
 
         _general_method_timeout_ms, _gmt_label = _first_valid_timeout(
@@ -3334,6 +3749,7 @@ class AsyncCollection(Generic[DOC]):
         _documents = list(documents)
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: list[dict[str, Any]] = []
+        im_payloads: list[dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_general_method_timeout_ms,
             timeout_label=_gmt_label,
@@ -3368,16 +3784,15 @@ class AsyncCollection(Generic[DOC]):
                 ]
                 inserted_ids += chunk_inserted_ids
                 raw_results += [chunk_response]
+                im_payloads += [im_payload]
                 # if errors, quit early
                 if chunk_response.get("errors", []):
-                    partial_result = CollectionInsertManyResult(
-                        raw_results=raw_results,
-                        inserted_ids=inserted_ids,
-                    )
-                    raise CollectionInsertManyException.from_response(
-                        command=None,
+                    response_exception = DataAPIResponseException.from_response(
+                        command=im_payload,
                         raw_response=chunk_response,
-                        partial_result=partial_result,
+                    )
+                    raise CollectionInsertManyException(
+                        inserted_ids=inserted_ids, exceptions=[response_exception]
                     )
 
             # return
@@ -3398,7 +3813,7 @@ class AsyncCollection(Generic[DOC]):
 
             async def concurrent_insert_chunk(
                 document_chunk: list[DOC],
-            ) -> dict[str, Any]:
+            ) -> tuple[dict[str, Any], dict[str, Any]]:
                 async with sem:
                     im_payload = {
                         "insertMany": {
@@ -3416,8 +3831,9 @@ class AsyncCollection(Generic[DOC]):
                         ),
                     )
                     logger.info(f"finished insertMany(chunk) on '{self.name}'")
-                    return im_response
+                    return im_payload, im_response
 
+            raw_pl_results_pairs: list[tuple[dict[str, Any], dict[str, Any]]]
             if _concurrency > 1:
                 tasks = [
                     asyncio.create_task(
@@ -3425,12 +3841,17 @@ class AsyncCollection(Generic[DOC]):
                     )
                     for i in range(0, len(_documents), _chunk_size)
                 ]
-                raw_results = await asyncio.gather(*tasks)
+                raw_pl_results_pairs = await asyncio.gather(*tasks)
             else:
-                raw_results = [
+                raw_pl_results_pairs = [
                     await concurrent_insert_chunk(_documents[i : i + _chunk_size])
                     for i in range(0, len(_documents), _chunk_size)
                 ]
+
+            if raw_pl_results_pairs:
+                im_payloads, raw_results = list(zip(*raw_pl_results_pairs))
+            else:
+                im_payloads, raw_results = [], []
 
             # recast raw_results
             inserted_ids = [
@@ -3443,17 +3864,18 @@ class AsyncCollection(Generic[DOC]):
             ]
 
             # check-raise
-            if any(
-                [chunk_response.get("errors", []) for chunk_response in raw_results]
-            ):
-                partial_result = CollectionInsertManyResult(
-                    raw_results=raw_results,
-                    inserted_ids=inserted_ids,
+            response_exceptions = [
+                DataAPIResponseException.from_response(
+                    command=chunk_payload,
+                    raw_response=chunk_response,
                 )
-                raise CollectionInsertManyException.from_responses(
-                    commands=[None for _ in raw_results],
-                    raw_responses=raw_results,
-                    partial_result=partial_result,
+                for chunk_payload, chunk_response in zip(im_payloads, raw_results)
+                if chunk_response.get("errors", [])
+            ]
+            if response_exceptions:
+                raise CollectionInsertManyException(
+                    inserted_ids=inserted_ids,
+                    exceptions=response_exceptions,
                 )
 
             # return
@@ -3515,7 +3937,7 @@ class AsyncCollection(Generic[DOC]):
         """
         Find documents on the collection, matching a certain provided filter.
 
-        The method returns a Cursor that can then be iterated over. Depending
+        The method returns a cursor that can then be iterated over. Depending
         on the method call pattern, the iteration over all documents can reflect
         collection mutations occurred since the `find` method was called, or not.
         In cases where the cursor reflects mutations in real-time, it will iterate
@@ -3550,9 +3972,9 @@ class AsyncCollection(Generic[DOC]):
             document_type: this parameter acts a formal specifier for the type checker.
                 If omitted, the resulting cursor is implicitly an
                 `AsyncCollectionFindCursor[DOC, DOC]`, i.e. maintains the same type for
-                the items it returns as that for the documents in the table. Strictly
-                typed code may want to specify this parameter especially when a
-                projection is given.
+                the items it returns as that for the documents in the collection.
+                Strictly typed code may want to specify this parameter especially when
+                a projection is given.
             skip: with this integer parameter, what would be the first `skip`
                 documents returned by the query are discarded, and the results
                 start from the (skip+1)-th document.
@@ -3564,9 +3986,8 @@ class AsyncCollection(Generic[DOC]):
                 for lack of matching documents), nothing more is returned.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each
-                returned document. Can only be used for vector ANN search, i.e.
-                when either `vector` is supplied or the `sort` parameter has the
-                shape {"$vector": ...}.
+                returned document. It can be used meaningfully only in a vector
+                search (see `sort`).
             include_sort_vector: a boolean to request the search query vector.
                 If set to True (and if the invocation is a vector search), calling
                 the `get_sort_vector` method on the returned cursor will yield
@@ -3583,9 +4004,9 @@ class AsyncCollection(Generic[DOC]):
             timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            an AsyncCursor object representing iterations over the matching documents
-            (see the AsyncCursor object for how to use it. The simplest thing is to
-            run a for loop: `for document in collection.sort(...):`).
+            a AsyncCollectionFindCursor object, that can be iterated over (and
+            manipulated in several ways). The cursor, if needed, handles pagination
+            under the hood as the documents are consumed.
 
         Examples:
             >>> # NOTE: may require slight adaptation to an async context.
@@ -3602,9 +4023,6 @@ class AsyncCollection(Generic[DOC]):
             ...             )
             ...             ids = [doc["_id"] async for doc in async_cursor1]
             ...             print("find results 2:", ids)
-            ...             async_cursor2 = acol.find({}, limit=3)
-            ...             seqs = await async_cursor2.distinct("seq")
-            ...             print("distinct results 3:", seqs)
             ...
             >>> asyncio.run(run_finds(my_async_coll))
             find results 1:
@@ -3614,7 +4032,6 @@ class AsyncCollection(Generic[DOC]):
             11
             13
             find results 2: ['d656cd9d-...', '479c7ce8-...', '96dc87fd-...', '83f0a21f-...']
-            distinct results 3: [48, 35, 7]
 
             >>> async def run_vector_finds(acol: AsyncCollection) -> None:
             ...     await acol.insert_many([
@@ -3678,8 +4095,6 @@ class AsyncCollection(Generic[DOC]):
             at the time of writing, and stop there. The returned documents are
             the top results across the whole collection according to the requested
             criterion.
-            These provisions should be kept in mind even when subsequently running
-            a command such as `.distinct()` on a cursor.
 
         Note:
             When not specifying sorting criteria at all (by vector or otherwise),
@@ -3756,9 +4171,8 @@ class AsyncCollection(Generic[DOC]):
                 See the Data API documentation for more on projections.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in the
-                returned document. Can only be used for vector ANN search, i.e.
-                when either `vector` is supplied or the `sort` parameter has the
-                shape {"$vector": ...}.
+                returned document. It can be used meaningfully only in a vector
+                search (see `sort`).
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
                 Vector-based ANN sorting is achieved by providing a "$vector"
@@ -3854,7 +4268,7 @@ class AsyncCollection(Generic[DOC]):
 
     async def distinct(
         self,
-        key: str,
+        key: str | Iterable[str | int],
         *,
         filter: FilterType | None = None,
         general_method_timeout_ms: int | None = None,
@@ -3867,12 +4281,14 @@ class AsyncCollection(Generic[DOC]):
 
         Args:
             key: the name of the field whose value is inspected across documents.
-                Keys can use dot-notation to descend to deeper document levels.
-                Example of acceptable `key` values:
-                    "field"
-                    "field.subfield"
-                    "field.3"
-                    "field.3.subfield"
+                Keys can be just field names (as is often the case), but
+                the dot-notation is also accepted to mean subkeys or indices
+                within lists (for example, "map_field.subkey" or "list_field.2").
+                If a field has literal dots or ampersands in its name, this
+                parameter must be escaped to be treated properly.
+                The key can also be a list of strings and numbers, in which case
+                no escape is necessary: each item in the list is a field name/index,
+                for example ["map_field", "subkey"] or ["list_field", 2].
                 If lists are encountered and no numeric index is specified,
                 all items in the list are visited.
             filter: a predicate expressed as a dictionary according to the
@@ -3955,11 +4371,6 @@ class AsyncCollection(Generic[DOC]):
         # preparing cursor:
         _extractor = _create_document_key_extractor(key)
         _key = _reduce_distinct_key_to_safe(key)
-        if _key == "":
-            raise ValueError(
-                "The 'key' parameter for distinct cannot be empty "
-                "or start with a list index."
-            )
         # relaxing the type hint (limited to within this method body)
         f_cursor: AsyncCollectionFindCursor[dict[str, Any], dict[str, Any]] = (
             AsyncCollectionFindCursor(
@@ -3978,7 +4389,7 @@ class AsyncCollection(Generic[DOC]):
         logger.info(f"running distinct() on '{self.name}'")
         async for document in f_cursor:
             for item in _extractor(document):
-                _item_hash = _hash_document(
+                _item_hash = _hash_collection_document(
                     item, options=self.api_options.serdes_options
                 )
                 if _item_hash not in _item_hashes:
@@ -3986,6 +4397,191 @@ class AsyncCollection(Generic[DOC]):
                     distinct_items.append(item)
         logger.info(f"finished running distinct() on '{self.name}'")
         return distinct_items
+
+    @overload
+    def find_and_rerank(
+        self,
+        filter: FilterType | None = None,
+        *,
+        sort: HybridSortType,
+        projection: ProjectionType | None = None,
+        document_type: None = None,
+        limit: int | None = None,
+        hybrid_limits: int | dict[str, int] | None = None,
+        include_scores: bool | None = None,
+        include_sort_vector: bool | None = None,
+        rerank_on: str | None = None,
+        rerank_query: str | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> AsyncCollectionFindAndRerankCursor[DOC, RerankedResult[DOC]]: ...
+
+    @overload
+    def find_and_rerank(
+        self,
+        filter: FilterType | None = None,
+        *,
+        sort: HybridSortType,
+        projection: ProjectionType | None = None,
+        document_type: type[DOC2],
+        limit: int | None = None,
+        hybrid_limits: int | dict[str, int] | None = None,
+        include_scores: bool | None = None,
+        include_sort_vector: bool | None = None,
+        rerank_on: str | None = None,
+        rerank_query: str | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> AsyncCollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]: ...
+
+    @beta_method
+    def find_and_rerank(
+        self,
+        filter: FilterType | None = None,
+        *,
+        sort: HybridSortType,
+        projection: ProjectionType | None = None,
+        document_type: type[DOC2] | None = None,
+        limit: int | None = None,
+        hybrid_limits: int | dict[str, int] | None = None,
+        include_scores: bool | None = None,
+        include_sort_vector: bool | None = None,
+        rerank_on: str | None = None,
+        rerank_query: str | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> AsyncCollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]:
+        """
+        Find relevant documents, combining vector and lexical matches through reranking.
+
+        For this method to succeed, the collection must be created with the required
+        hybrid capabilities (see the `create_collection` method of the Database class).
+
+        The method returns a cursor that can then be iterated over, which yields
+        the resulting documents, generally paired with accompanying information
+        such as scores.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
+                See the Data API documentation for the full set of operators.
+            sort: a clause specifying the criteria for selecting the top matching
+                documents. This must provide enough information for both a lexical
+                and a vector similarity to be performed (the latter either query text
+                or by query vector, depending on the collection configuration).
+                Examples are: `sort={"$hybrid": "xyz"}`,
+                `sort={"$hybrid": {"$vectorize": "xyz", "$lexical": "abc"}}`,
+                `sort={"$hybrid": {"$vector": DataAPIVector(...), "$lexical": "abc"}}`.
+                Note this differs from the `sort` parameter for the `find` method.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` and other special fields, which can be
+                associated to both True or False independently of the rest
+                of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection (used if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
+            document_type: this parameter acts a formal specifier for the type checker.
+                If omitted, the resulting cursor is implicitly a
+                `AsyncCollectionFindAndRerankCursor[DOC, DOC]`, i.e. maintains the same
+                type for the items it returns as that for the documents in the
+                collection. Strictly typed code may want to specify this parameter
+                especially when a projection is given.
+            limit: maximum number of documents to return as the result of the final
+                rerank step.
+            hybrid_limits: this controls the amount of documents that are fetched by
+                each of the individual retrieval operations that are combined in the
+                rerank step. It can be either a number or a dictionary of strings to
+                numbers, the latter case expressing different counts for the different
+                retrievals. For example: `hybrid_limits=50`,
+                `hybrid_limits={"$vector": 20, "$lexical": 10}`.
+            include_scores: a boolean to request the scores to be returned along with
+                the resulting documents. If this is set, the scores can be read in the
+                the map `scores` attribute of each RerankedResult (the map is
+                otherwise empty).
+            include_sort_vector: a boolean to request the search query vector
+                used for the vector-search part of the find operation.
+                If set to True, calling the `get_sort_vector` method on the returned
+                cursor will yield the vector used for the ANN search.
+            rerank_on: for collections without a vectorize (server-side embeddings)
+                service, this is used to specify the field name that is then used
+                during reranking.
+            rerank_query: for collections without a vectorize (server-side embeddings)
+                service, this is used to specify the query text for the reranker.
+            request_timeout_ms: a timeout, in milliseconds, for each single one
+                of the underlying HTTP requests used to fetch documents as the
+                cursor is iterated over.
+                If not passed, the collection-level setting is used instead.
+            timeout_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            an AsyncCollectionFindAndRerankCursor object, that can be iterated over
+            (and manipulated in several ways).
+
+        Examples:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>> #       See the same method on Collection for more usage patterns.
+            >>>
+            >>> async def run_find_and_reranks(acol: AsyncCollection) -> None:
+            ...     print("find results 1:")
+            ...     async for r_res in acol.find_and_rerank(
+            ...         sort={"$hybrid": "query text"},
+            ...         limit=3,
+            ...     ):
+            ...         print(r_res.document["wkd"])
+            ...     async_cursor1 = acol.find_and_rerank(
+            ...         {"wkd": {"$ne": "Mon"}},
+            ...         sort={"$hybrid": "query text"},
+            ...         limit=3,
+            ...     )
+            ...     ids = [r_res.document["_id"] async for r_res in async_cursor1]
+            ...     print("find results 2:", ids)
+            ...
+            >>> asyncio.run(run_find_and_reranks(my_async_coll))
+            find results 1:
+            Mon
+            Thu
+            Sat
+            find results 2: ['D', 'F', 'B']
+        """
+
+        # lazy-import here to avoid circular import issues
+        from astrapy.cursors import AsyncCollectionFindAndRerankCursor
+
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        )
+        return (
+            AsyncCollectionFindAndRerankCursor(
+                collection=self,
+                request_timeout_ms=_request_timeout_ms,
+                overall_timeout_ms=None,
+                request_timeout_label=_rt_label,
+            )
+            .filter(filter)
+            .project(projection)
+            .limit(limit)
+            .sort(sort)
+            .hybrid_limits(hybrid_limits)
+            .rerank_on(rerank_on)
+            .rerank_query(rerank_query)
+            .include_scores(include_scores)
+            .include_sort_vector(include_sort_vector)
+        )
 
     async def count_documents(
         self,
@@ -4818,6 +5414,7 @@ class AsyncCollection(Generic[DOC]):
             logger.info(f"updateMany on '{self.name}'")
             this_um_response = await self._converted_request(
                 payload=this_um_payload,
+                raise_api_errors=False,
                 timeout_context=timeout_manager.remaining_timeout(
                     cap_time_ms=_request_timeout_ms,
                     cap_timeout_label=_rt_label,
@@ -4833,11 +5430,13 @@ class AsyncCollection(Generic[DOC]):
                     raw_results=um_responses,
                     update_info=partial_update_info,
                 )
-                all_um_responses = um_responses + [this_um_response]
-                raise CollectionUpdateManyException.from_responses(
-                    commands=[None for _ in all_um_responses],
-                    raw_responses=all_um_responses,
+                cause_exception = DataAPIResponseException.from_response(
+                    command=this_um_payload,
+                    raw_response=this_um_response,
+                )
+                raise CollectionUpdateManyException(
                     partial_result=partial_result,
+                    cause=cause_exception,
                 )
             else:
                 if "status" not in this_um_response:
@@ -5177,11 +5776,13 @@ class AsyncCollection(Generic[DOC]):
                     deleted_count=deleted_count,
                     raw_results=dm_responses,
                 )
-                all_dm_responses = dm_responses + [this_dm_response]
-                raise CollectionDeleteManyException.from_responses(
-                    commands=[None for _ in all_dm_responses],
-                    raw_responses=all_dm_responses,
+                cause_exception = DataAPIResponseException.from_response(
+                    command=this_dm_payload,
+                    raw_response=this_dm_response,
+                )
+                raise CollectionDeleteManyException(
                     partial_result=partial_result,
+                    cause=cause_exception,
                 )
             else:
                 this_dc = this_dm_response.get("status", {}).get("deletedCount")

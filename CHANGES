@@ -1,8 +1,43 @@
-main
-====
-Exceptions
-    - `DataAPIResponseException.error_descriptors` is a property (computed from detailed_error_descriptors)
+v 2.0.0
+==========
+Collections admit `DataAPIMap` in writing and support `DataAPIDate` as well (the latter coming with the same timezone caveats as `datetime.date`)
+(plus all of the v2 pre-releases below)
+
+
+v 2.0.0rc2
+==========
+Cursors (class hierarchy revised to accommodate `find_and_rerank`, plus other changes):
+    - renamed the 'FindCursorState' enum to `CursorState`
+    - renamed the abstract ur-class 'FindCursor' => `AbstractCursor`
+    - `clone` method does not strip the mapping anymore, rather retains it
+    - removed the `alive` sugar property (use `cursors.state != CursorState.CLOSED`)
+Support for reranker header-based authentication:
+    - new authentication classes `RerankingHeadersProvider`, `RerankingAPIKeyHeaderProvider`
+    - introduced `reranking_api_key` parameter for APIOptions, `{get|create}_{table|collection}` database methods, collection/table `with_options` and `to_[a]sync` methods
+Support for "findRerankingProviders" API command in Database Admin classes:
+    - classes class hierarchy: `RerankingProviderParameter`, `RerankingProviderModel`, `RerankingProviderToken`, `RerankingProviderAuthentication`, `RerankingProvider`, `FindRerankingProvidersResult` to express the response
+    - database admin `find_reranking_providers`/`async_find_reranking_providers` methods implemented.
+Support for findAndRerank in collections:
+    - new classes `CollectionLexicalOptions`, `CollectionRerankOptions`, `RerankServiceOptions` for create_collection
+    - new `lexical` and `rerank` entries in CollectionDefinition (+builder interface management)
+    - `find_and_rerank` method for collections
+    - cursor classes `[Async]CollectionFindAndRerankCursor` added
+    - findAndRerank cursors return the new `RerankedResult` construct by default (modulo custom mappings)
+Maps for tables expressed as list of pairs (association lists):
+    - support for automatic handling of DataAPIMaps (+possibly dicts) in the proper table payload portions
+    - introduced serdes option `encode_maps_as_lists_in_tables` (default to "NEVER") to control this
+Exceptions, major rework of `[Table|Collection]InsertManyException`, `CollectionUpdateManyException` and `CollectionDeleteManyException` ("bulk operations")
+    - All astrapy exceptions derive directly from `Exception` (and not 'ValueError` anymore)
     - better string representation of `DataAPIDetailedErrorDescriptor`
+    - `DataAPIDetailedErrorDescriptor` removed.
+    - 'CumulativeOperationException` removed.
+    - The four `CollectionInsertManyException`, `CollectionUpdateManyException`, `CollectionDeleteManyException`, `TableInsertManyException` classes now inherit directly from `DataAPIResponseException`.
+    - New semantics and structure for `[Collection|Table]InsertManyException`: they have members `inserted_ids`(/`inserted_id_tuples`) and an `exceptions` list for the root cause(s)
+    - New semantics and structure for `Collection[Update|Delete]ManyException`: they have members `partial_result` and a single-exception `cause`. They are now raised consistently for API exceptions occurring during the respective methods.
+Arbitrary field names and dot-escaping:
+    - offering utilities `astrapy.utils.document_paths.escape_field_names/unescape_field_path`
+    - `distinct` methods can accept a list of (literal) str|int as well as a(n escaped) identifier string
+Improved StrEnum matching for e.g. better coercion of TableIndexType (and future enum with e.g. dashes in values)
 Spawner methods for databases/admins standardized; they don't issue DevOps API calls.
     - removed `normalize_region_for_id` utility method, not used anymore.
     - `AstraDBAdmin.get_[async]_database()`:
@@ -29,6 +64,7 @@ Replaced the ValueErrors not directly coming from function calls/constructors wi
 Collection and Table `insert_many` methods employ returnDocumentResponses under the hood.
 maintenance: switch to DSE6.9 for local non-Astra testing.
 
+
 v 2.0.0rc1
 ==========
 Support for TIMEUUID and COUNTER columns:
@@ -40,6 +76,7 @@ added optional `api_support` member to all column descriptor (as the Data API re
 restore support for Python 3.8, 3.9
 maintenance: full restructuring of tests and CI (tables+collections on same footing+other)
 maintenance: adopt `blockbuster` in async tests to detect (and bust) any blocking call
+
 
 v 2.0.0-preview
 ===============
@@ -77,7 +114,7 @@ Reworked and enriched `FindCursor` interface:
     - Cursor classes renamed to `[Async]CollectionCursor`
     - Base class for all (find) cursors renamed to `FindCursor`
     - introduced `map` and `to_list` methods
-    - `cursor.state` now has values in `FindCursorState` enum (take `cursor.state.value` for a string)
+    - `cursor.state` now has values in `CursorState` enum (take `cursor.state.value` for a string)
     - 'cursor.address' is removed from the API
     - `cursor.rewind()` returns None, mutates cursor in-place
     - removed 'cursor.distinct()': use the  corresponding collection(/table) method.
@@ -198,6 +235,7 @@ Internal restructuring/maintenance things:
     - major restructuring of the codebase in directories (some internal-only imports changed; reduced the scope of `test_imports`)
     - removal of unused imports from toplevel `__init__.py` (ids, constants, cursors)
     - simplified timeout management classes and representations
+
 
 v. 1.5.2
 ========

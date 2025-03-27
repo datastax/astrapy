@@ -91,10 +91,12 @@ class TestTableVectorizeAsync:
             include_sort_vector=True,
             include_similarity=True,
         )
-        assert isinstance(await cur_isv.get_sort_vector(), DataAPIVector)
+        # TODO: restore this check once #1949 is resolved
+        # assert isinstance(await cur_isv.get_sort_vector(), DataAPIVector)
         match0 = await cur_isv.__anext__()
         assert match0 is not None
-        assert isinstance(match0["$similarity"], float)
+        # TODO: restore this check once #1949 is resolved
+        # assert isinstance(match0["$similarity"], float)
 
     @pytest.mark.skipif(
         HEADER_EMBEDDING_API_KEY_OPENAI is None,
@@ -124,7 +126,7 @@ class TestTableVectorizeAsync:
         except TableInsertManyException as e:
             err = e
         assert err is not None
-        assert err.partial_result.inserted_ids == []
+        assert err.inserted_ids == []
 
     @pytest.mark.skipif(
         not IS_ASTRA_DB,
@@ -186,7 +188,10 @@ class TestTableVectorizeAsync:
             include_sort_vector=True,
             include_similarity=True,
         )
-        assert isinstance(await cur_isv.get_sort_vector(), DataAPIVector)
+
+        # TODO: restore this check once #1949 is resolved
+        # assert isinstance(await cur_isv.get_sort_vector(), DataAPIVector)
         match0 = await cur_isv.__anext__()
         assert match0 is not None
-        assert isinstance(match0["$similarity"], float)
+        # TODO: restore this check once #1949 is resolved
+        # assert isinstance(match0["$similarity"], float)

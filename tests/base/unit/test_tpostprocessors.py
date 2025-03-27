@@ -376,6 +376,7 @@ class TestTableConverters:
                 custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=False,
                 use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="never",
                 accept_naive_datetimes=False,
                 datetime_tzinfo=None,
             ),
@@ -404,6 +405,7 @@ class TestTableConverters:
                 custom_datatypes_in_reading=False,
                 unroll_iterables_to_lists=False,
                 use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="never",
                 accept_naive_datetimes=False,
                 datetime_tzinfo=datetime.timezone.utc,
             ),
@@ -446,6 +448,7 @@ class TestTableConverters:
                 custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=False,
                 use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="never",
                 accept_naive_datetimes=False,
                 datetime_tzinfo=None,
             ),
@@ -487,6 +490,7 @@ class TestTableConverters:
                 custom_datatypes_in_reading=False,
                 unroll_iterables_to_lists=False,
                 use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="never",
                 accept_naive_datetimes=False,
                 datetime_tzinfo=datetime.timezone.utc,
             ),
@@ -503,12 +507,14 @@ class TestTableConverters:
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,
             use_decimals_in_collections=False,
+            encode_maps_as_lists_in_tables="never",
             accept_naive_datetimes=False,
             datetime_tzinfo=None,
         )
         preprocessed_row = preprocess_table_payload(
             INPUT_ROW_TO_PREPROCESS,
             options=ptp_opts,
+            map2tuple_checker=None,
         )
         assert preprocessed_row == EXPECTED_PREPROCESSED_ROW
 
@@ -517,6 +523,7 @@ class TestTableConverters:
         preprocessed_gen_0 = preprocess_table_payload(
             gen_row_0,
             options=ptp_opts,
+            map2tuple_checker=None,
         )
         assert preprocessed_gen_0 == {"gen_col": [0, 1, 2, 3, 4]}
         gen_row_1 = {"gen_col": (i for i in range(5))}
@@ -527,9 +534,11 @@ class TestTableConverters:
                 custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=False,
                 use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="never",
                 accept_naive_datetimes=False,
                 datetime_tzinfo=None,
             ),
+            map2tuple_checker=None,
         )
         assert preprocessed_gen_1 == gen_row_1
 
@@ -539,6 +548,7 @@ class TestTableConverters:
         preprocessed_dvec_0 = preprocess_table_payload(
             dvec_row,
             options=ptp_opts,
+            map2tuple_checker=None,
         )
         assert preprocessed_dvec_0 == {"dvec": {"$binary": "PczMzb5MzM0+mZma"}}
         preprocessed_dvec_1 = preprocess_table_payload(
@@ -548,9 +558,11 @@ class TestTableConverters:
                 custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=True,
                 use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="never",
                 accept_naive_datetimes=False,
                 datetime_tzinfo=None,
             ),
+            map2tuple_checker=None,
         )
         assert preprocessed_dvec_1 == {"dvec": vec_data}
 
@@ -558,6 +570,7 @@ class TestTableConverters:
             preprocess_table_payload(
                 {"err_field": ObjectId()},
                 options=ptp_opts,
+                map2tuple_checker=None,
             )
 
     @pytest.mark.describe("test of row postprocessors from schema, fillers")
@@ -570,6 +583,7 @@ class TestTableConverters:
                 custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=False,
                 use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="never",
                 accept_naive_datetimes=False,
                 datetime_tzinfo=None,
             ),
@@ -593,6 +607,7 @@ class TestTableConverters:
                 custom_datatypes_in_reading=False,
                 unroll_iterables_to_lists=False,
                 use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="never",
                 accept_naive_datetimes=False,
                 datetime_tzinfo=None,
             ),
