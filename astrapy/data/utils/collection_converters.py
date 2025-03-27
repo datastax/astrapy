@@ -163,10 +163,8 @@ def postprocess_collection_response_value(
             else:
                 return DataAPIVector.from_bytes(_bytes).data
         else:
-            raise ValueError(
-                f"Response parsing failed at path '{path}': unexpected data type "
-                f"found under $vector: {type(value)}"
-            )
+            return value
+
     if isinstance(value, dict):
         value_keys = set(value.keys())
         if value_keys == {"$date"}:

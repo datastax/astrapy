@@ -1,5 +1,9 @@
+v 2.0.1
+=======
+bugfix: receiving `'$vector': null` caused response parsing to break
+
 v 2.0.0
-==========
+=======
 Collections admit `DataAPIMap` in writing and support `DataAPIDate` as well (the latter coming with the same timezone caveats as `datetime.date`)
 (plus all of the v2 pre-releases below)
 
