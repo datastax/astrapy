@@ -1,3 +1,7 @@
+v 2.0.2
+=======
+allow sending `"$vector": None` when inserting into collections
+
 v 2.0.1
 =======
 bugfix: receiving `'$vector': null` caused response parsing to break

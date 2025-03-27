@@ -78,7 +78,11 @@ def preprocess_collection_payload_value(
                 return _value.data
         else:
             # this is a list. Encode if serdes options allow it
-            if can_bin_encode and options.binary_encode_vectors:
+            if (
+                can_bin_encode
+                and options.binary_encode_vectors
+                and isinstance(_value, list)
+            ):
                 return convert_to_ejson_bytes(DataAPIVector(_value).to_bytes())
             else:
                 return _value
