@@ -67,6 +67,7 @@ from astrapy.settings.defaults import (
 )
 from astrapy.utils.api_commander import APICommander
 from astrapy.utils.api_options import APIOptions, FullAPIOptions
+from astrapy.utils.meta import beta_method
 from astrapy.utils.request_tools import HttpMethod
 from astrapy.utils.unset import _UNSET, UnsetType
 
@@ -1477,6 +1478,7 @@ class Collection(Generic[DOC]):
         timeout_ms: int | None = None,
     ) -> CollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]: ...
 
+    @beta_method
     def find_and_rerank(
         self,
         filter: FilterType | None = None,
@@ -4432,6 +4434,7 @@ class AsyncCollection(Generic[DOC]):
         timeout_ms: int | None = None,
     ) -> AsyncCollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]: ...
 
+    @beta_method
     def find_and_rerank(
         self,
         filter: FilterType | None = None,

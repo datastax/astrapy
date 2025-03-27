@@ -24,7 +24,7 @@ S_OPTS_NO_DECS = FullSerdesOptions(
     custom_datatypes_in_reading=True,
     unroll_iterables_to_lists=True,
     use_decimals_in_collections=False,
-    encode_maps_as_lists_in_tables=False,
+    encode_maps_as_lists_in_tables="NEVER",
     accept_naive_datetimes=False,
     datetime_tzinfo=None,
 )
@@ -33,7 +33,7 @@ S_OPTS_OK_DECS = FullSerdesOptions(
     custom_datatypes_in_reading=True,
     unroll_iterables_to_lists=True,
     use_decimals_in_collections=True,
-    encode_maps_as_lists_in_tables=False,
+    encode_maps_as_lists_in_tables="NEVER",
     accept_naive_datetimes=False,
     datetime_tzinfo=None,
 )
