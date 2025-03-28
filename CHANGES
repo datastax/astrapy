@@ -1,5 +1,5 @@
-v 2.0.2
-=======
+main
+====
 allow sending `"$vector": None` when inserting into collections
 
 v 2.0.1
