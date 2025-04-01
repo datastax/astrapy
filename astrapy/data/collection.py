@@ -707,8 +707,8 @@ class Collection(Generic[DOC]):
         ordered: bool = False,
         chunk_size: int | None = None,
         concurrency: int | None = None,
-        request_timeout_ms: int | None = None,
         general_method_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> CollectionInsertManyResult:
         """
@@ -3626,8 +3626,8 @@ class AsyncCollection(Generic[DOC]):
         ordered: bool = False,
         chunk_size: int | None = None,
         concurrency: int | None = None,
-        request_timeout_ms: int | None = None,
         general_method_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> CollectionInsertManyResult:
         """
