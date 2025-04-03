@@ -1539,10 +1539,10 @@ class Collection(Generic[DOC]):
                 See the Data API documentation for more on projections.
             document_type: this parameter acts a formal specifier for the type checker.
                 If omitted, the resulting cursor is implicitly a
-                `CollectionFindAndRerankCursor[DOC, DOC]`, i.e. maintains the same type
-                for the items it returns as that for the documents in the collection.
-                Strictly typed code may want to specify this parameter especially when
-                a projection is given.
+                `CollectionFindAndRerankCursor[DOC, RerankedResult[DOC]]`, i.e.
+                maintains the same type for the items it returns as that for the
+                documents in the collection. Strictly typed code may want to specify
+                this parameter especially when a projection is given.
             limit: maximum number of documents to return as the result of the final
                 rerank step.
             hybrid_limits: this controls the amount of documents that are fetched by
@@ -4495,10 +4495,10 @@ class AsyncCollection(Generic[DOC]):
                 See the Data API documentation for more on projections.
             document_type: this parameter acts a formal specifier for the type checker.
                 If omitted, the resulting cursor is implicitly a
-                `AsyncCollectionFindAndRerankCursor[DOC, DOC]`, i.e. maintains the same
-                type for the items it returns as that for the documents in the
-                collection. Strictly typed code may want to specify this parameter
-                especially when a projection is given.
+                `AsyncCollectionFindAndRerankCursor[DOC, RerankedResult[DOC]]`, i.e.
+                maintains the same type for the items it returns as that for the
+                documents in the collection. Strictly typed code may want to specify
+                this parameter especially when a projection is given.
             limit: maximum number of documents to return as the result of the final
                 rerank step.
             hybrid_limits: this controls the amount of documents that are fetched by
