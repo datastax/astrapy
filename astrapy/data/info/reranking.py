@@ -83,7 +83,40 @@ class RerankServiceOptions:
             return RerankServiceOptions._from_dict(raw_input)
 
 
-### QUIQUI
+@dataclass
+class RerankingModelSupport:
+    """
+    A representation of the support status for a reranking model;
+    this models a part of the response from the
+    'findRerankingProviders' Data API endpoint.
+
+    Attributes:
+        status: the support status as a string, e.g. "SUPPORTED".
+    """
+
+    status: str
+
+    def __repr__(self) -> str:
+        return f"RerankingModelSupport('{self.status}')"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            "status": self.status,
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> RerankingModelSupport:
+        """
+        Create an instance of RerankingModelSupport from a dictionary
+        such as one from the Data API.
+        """
+
+        _warn_residual_keys(cls, raw_dict, {"status"})
+        return RerankingModelSupport(
+            status=raw_dict["status"],
+        )
 
 
 @dataclass
@@ -184,6 +217,7 @@ class RerankingProviderModel:
     url: str | None
     properties: dict[str, Any] | None
     parameters: list[RerankingProviderParameter]
+    model_support: RerankingModelSupport | None
 
     def __repr__(self) -> str:
         _default_desc = "<Default> " if self.is_default else ""
@@ -206,6 +240,9 @@ class RerankingProviderModel:
                     )
                     if self.parameters
                     else None,
+                    ("modelSupport", self.model_support.as_dict())
+                    if self.model_support
+                    else None,
                 ]
                 if pair is not None
             ]
@@ -227,6 +264,7 @@ class RerankingProviderModel:
                 "url",
                 "properties",
                 "parameters",
+                "modelSupport",
             },
         )
         return RerankingProviderModel(
@@ -238,6 +276,9 @@ class RerankingProviderModel:
                 RerankingProviderParameter._from_dict(param_dict)
                 for param_dict in raw_dict.get("parameters") or []
             ],
+            model_support=RerankingModelSupport._from_dict(raw_dict["modelSupport"])
+            if "modelSupport" in raw_dict
+            else None,
         )
 
 
