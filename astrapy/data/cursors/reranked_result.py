@@ -32,4 +32,4 @@ class RerankedResult(Generic[TRAW]):
     """
 
     document: TRAW
-    scores: dict[str, float]
+    scores: dict[str, float | int | None]

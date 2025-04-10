@@ -666,7 +666,7 @@ class Database:
 
         Args:
             name: the name of the collection.
-            definition: a complete collection definition for the table. This can be an
+            definition: a complete collection definition. This can be an
                 instance of `CollectionDefinition` or an equivalent (nested) dictionary,
                 in which case it will be parsed into a `CollectionDefinition`.
                 See the `astrapy.info.CollectionDefinition` class and the
@@ -1173,7 +1173,7 @@ class Database:
 
         Args:
             name: the name of the table.
-            definition: a complete table definition for the table. This can be an
+            definition: a complete table definition. This can be an
                 instance of `CreateTableDefinition` or an equivalent (nested) dictionary,
                 in which case it will be parsed into a `CreateTableDefinition`.
                 See the `astrapy.info.CreateTableDefinition` class and the
@@ -2445,7 +2445,7 @@ class AsyncDatabase:
 
         Args:
             name: the name of the collection.
-            definition: a complete collection definition for the table. This can be an
+            definition: a complete collection definition. This can be an
                 instance of `CollectionDefinition` or an equivalent (nested) dictionary,
                 in which case it will be parsed into a `CollectionDefinition`.
                 See the `astrapy.info.CollectionDefinition` class and the
@@ -2959,7 +2959,7 @@ class AsyncDatabase:
 
         Args:
             name: the name of the table.
-            definition: a complete table definition for the table. This can be an
+            definition: a complete table definition. This can be an
                 instance of `CreateTableDefinition` or an equivalent (nested) dictionary,
                 in which case it will be parsed into a `CreateTableDefinition`.
                 See the `astrapy.info.CreateTableDefinition` class and the
