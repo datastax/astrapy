@@ -83,8 +83,13 @@ class TestCollectionFindAndRerankSync:
         assert all(isinstance(hit.document["$vectorize"], str) for hit in hits)
         assert all(isinstance(hit.scores, dict) for hit in hits)
         assert all(len(hit.scores) > 0 for hit in hits)
+        # some scores can get back as None or integer
         assert all(
-            all(isinstance(sc, float) for sc in hit.scores.values()) for hit in hits
+            all(isinstance(sc, (float, int, type(None))) for sc in hit.scores.values())
+            for hit in hits
+        )
+        assert all(
+            any(isinstance(sc, float) for sc in hit.scores.values()) for hit in hits
         )
 
         # sort.$hybrid can be an object as well:
@@ -182,8 +187,13 @@ class TestCollectionFindAndRerankSync:
         assert all(len(hit.document["$vector"]) == 2 for hit in hits)
         assert all(isinstance(hit.scores, dict) for hit in hits)
         assert all(len(hit.scores) > 0 for hit in hits)
+        # some scores can get back as None or integer
         assert all(
-            all(isinstance(sc, float) for sc in hit.scores.values()) for hit in hits
+            all(isinstance(sc, (float, int, type(None))) for sc in hit.scores.values())
+            for hit in hits
+        )
+        assert all(
+            any(isinstance(sc, float) for sc in hit.scores.values()) for hit in hits
         )
 
         hits_dav = coll.find_and_rerank(
