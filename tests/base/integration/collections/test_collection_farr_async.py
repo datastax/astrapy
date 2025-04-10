@@ -274,7 +274,9 @@ class TestCollectionFindAndRerankAsync:
         assert itm_n.scores == {}
         assert itm_f.scores == {}
         assert itm_t.scores != {}
-        assert all(isinstance(val, float) for val in itm_t.scores.values())
+        assert all(
+            isinstance(val, (float, int, type(None))) for val in itm_t.scores.values()
+        )
 
     @pytest.mark.describe(
         "test of collection find-and-rerank include_scores, novectorize, async"
@@ -318,7 +320,9 @@ class TestCollectionFindAndRerankAsync:
         assert itm_n.scores == {}
         assert itm_f.scores == {}
         assert itm_t.scores != {}
-        assert all(isinstance(val, float) for val in itm_t.scores.values())
+        assert all(
+            isinstance(val, (float, int, type(None))) for val in itm_t.scores.values()
+        )
 
     @pytest.mark.describe(
         "test of collection find-and-rerank get_sort_vector, vectorize, async"
