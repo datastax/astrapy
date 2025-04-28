@@ -1,6 +1,7 @@
 main
 ====
 allow sending `"$vector": None` when inserting into collections
+CollectionDefinition fluent interface: set_lexical and set_rerank accept also just 'enabled'
 
 v 2.0.1
 =======
