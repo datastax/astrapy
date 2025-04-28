@@ -34,7 +34,6 @@ class TestCollectionFindAndRerankAsync:
         self,
         async_empty_farr_vectorize_collection: DefaultAsyncCollection,
     ) -> None:
-        # TODO: add insert modes
         acoll = async_empty_farr_vectorize_collection
         # insertions
         await acoll.insert_many(
@@ -51,19 +50,19 @@ class TestCollectionFindAndRerankAsync:
                     "$lexical": "a lynx",
                     "tag": "test01",
                 },
-                # {
-                #     "_id": "02",
-                #     "$hybrid": "this is a dog",
-                #     "tag": "test01",
-                # },
-                # {
-                #     "_id": "03",
-                #     "$hybrid": {
-                #         "$vectorize": "this is a Pucciniomycotina",
-                #         "$lexical": "Pucciniomycotina, my dear rust fungus",
-                #     },
-                #     "tag": "test01",
-                # },
+                {
+                    "_id": "02",
+                    "$hybrid": "this is a dog",
+                    "tag": "test01",
+                },
+                {
+                    "_id": "03",
+                    "$hybrid": {
+                        "$vectorize": "this is a Pucciniomycotina",
+                        "$lexical": "Pucciniomycotina, my dear rust fungus",
+                    },
+                    "tag": "test01",
+                },
             ]
         )
         # find-and-rerank functional test
@@ -72,11 +71,11 @@ class TestCollectionFindAndRerankAsync:
             sort={"$hybrid": "bla"},
             projection={"$vectorize": True},
             include_scores=True,
-            limit=2,
+            limit=5,
         )
 
         hits = await farr_cursor.to_list()
-        assert len(hits) == 2
+        assert len(hits) == 4
         assert all(isinstance(hit, RerankedResult) for hit in hits)
         assert all(isinstance(hit.document, dict) for hit in hits)
         assert all(isinstance(hit.document["$vectorize"], str) for hit in hits)
@@ -97,7 +96,7 @@ class TestCollectionFindAndRerankAsync:
             sort={"$hybrid": {"$vectorize": "bla", "$lexical": "bla"}},
             projection={"$vectorize": True},
             include_scores=True,
-            limit=2,
+            limit=5,
         )
         s_o_hits = await farr_cursor_s_o.to_list()
         # scores may differ by epsilon
@@ -133,7 +132,6 @@ class TestCollectionFindAndRerankAsync:
         self,
         async_empty_farr_vector_collection: DefaultAsyncCollection,
     ) -> None:
-        # TODO: add insert modes
         acoll = async_empty_farr_vector_collection
         # insertions
         await acoll.insert_many(
@@ -152,15 +150,6 @@ class TestCollectionFindAndRerankAsync:
                     "$lexical": "a lynx",
                     "tag": "test01",
                 },
-                # {
-                #     "_id": "02",
-                #     "text_content": "this is a Pucciniomycotina",
-                #     "$hybrid": {
-                #         "$vector": [3, 4],
-                #         "$lexical": "Pucciniomycotina, my dear rust fungus",
-                #     },
-                #     "tag": "test01",
-                # },
             ]
         )
         # find-and-rerank functional test
@@ -169,7 +158,7 @@ class TestCollectionFindAndRerankAsync:
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             projection={"$vector": True},
             include_scores=True,
-            limit=2,
+            limit=5,
             rerank_on="text_content",
             rerank_query="blaa",
         )
@@ -196,7 +185,7 @@ class TestCollectionFindAndRerankAsync:
             sort={"$hybrid": {"$vector": DataAPIVector([0, 1]), "$lexical": "bla"}},
             projection={"$vector": True},
             include_scores=True,
-            limit=2,
+            limit=5,
             rerank_on="text_content",
             rerank_query="blaa",
         ).to_list()
@@ -206,14 +195,14 @@ class TestCollectionFindAndRerankAsync:
         cur_no_hl = acoll.find_and_rerank(
             {},
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
-            limit=2,
+            limit=5,
             rerank_on="text_content",
             rerank_query="blaa",
         )
         cur_nu_hl = acoll.find_and_rerank(
             {},
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
-            limit=2,
+            limit=5,
             rerank_on="text_content",
             rerank_query="blaa",
             hybrid_limits=3,
@@ -221,7 +210,7 @@ class TestCollectionFindAndRerankAsync:
         cur_ob_hl = acoll.find_and_rerank(
             {},
             sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
-            limit=2,
+            limit=5,
             rerank_on="text_content",
             rerank_query="blaa",
             hybrid_limits={
