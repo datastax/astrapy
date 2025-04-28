@@ -22,7 +22,6 @@ from astrapy.cursors import RerankedResult
 from astrapy.data_types import DataAPIVector
 
 from ..conftest import DefaultAsyncCollection
-from .hybrid_sanitizer import _sanitize_dev_hybrid_clause
 
 
 @pytest.mark.skipif(
@@ -70,7 +69,7 @@ class TestCollectionFindAndRerankAsync:
         # find-and-rerank functional test
         farr_cursor = acoll.find_and_rerank(
             {},
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "bla"}),
+            sort={"$hybrid": "bla"},
             projection={"$vectorize": True},
             include_scores=True,
             limit=2,
@@ -95,9 +94,7 @@ class TestCollectionFindAndRerankAsync:
         # sort.$hybrid can be an object as well:
         farr_cursor_s_o = acoll.find_and_rerank(
             {},
-            sort=_sanitize_dev_hybrid_clause(
-                {"$hybrid": {"$vectorize": "bla", "$lexical": "bla"}}
-            ),
+            sort={"$hybrid": {"$vectorize": "bla", "$lexical": "bla"}},
             projection={"$vectorize": True},
             include_scores=True,
             limit=2,
@@ -109,18 +106,18 @@ class TestCollectionFindAndRerankAsync:
         # hybrid_limits various forms, functional tests
         cur_no_hl = acoll.find_and_rerank(
             {},
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "bla"}),
+            sort={"$hybrid": "bla"},
             limit=2,
         )
         cur_nu_hl = acoll.find_and_rerank(
             {},
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "bla"}),
+            sort={"$hybrid": "bla"},
             limit=2,
             hybrid_limits=4,
         )
         cur_ob_hl = acoll.find_and_rerank(
             {},
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "bla"}),
+            sort={"$hybrid": "bla"},
             limit=2,
             hybrid_limits={
                 "$lexical": 4,
@@ -169,9 +166,7 @@ class TestCollectionFindAndRerankAsync:
         # find-and-rerank functional test
         farr_cursor = acoll.find_and_rerank(
             {},
-            sort=_sanitize_dev_hybrid_clause(
-                {"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
-            ),
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             projection={"$vector": True},
             include_scores=True,
             limit=2,
@@ -198,9 +193,7 @@ class TestCollectionFindAndRerankAsync:
 
         hits_dav = await acoll.find_and_rerank(
             {},
-            sort=_sanitize_dev_hybrid_clause(
-                {"$hybrid": {"$vector": DataAPIVector([0, 1]), "$lexical": "bla"}}
-            ),
+            sort={"$hybrid": {"$vector": DataAPIVector([0, 1]), "$lexical": "bla"}},
             projection={"$vector": True},
             include_scores=True,
             limit=2,
@@ -212,18 +205,14 @@ class TestCollectionFindAndRerankAsync:
         # hybrid_limits various forms, functional tests
         cur_no_hl = acoll.find_and_rerank(
             {},
-            sort=_sanitize_dev_hybrid_clause(
-                {"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
-            ),
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             limit=2,
             rerank_on="text_content",
             rerank_query="blaa",
         )
         cur_nu_hl = acoll.find_and_rerank(
             {},
-            sort=_sanitize_dev_hybrid_clause(
-                {"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
-            ),
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             limit=2,
             rerank_on="text_content",
             rerank_query="blaa",
@@ -231,9 +220,7 @@ class TestCollectionFindAndRerankAsync:
         )
         cur_ob_hl = acoll.find_and_rerank(
             {},
-            sort=_sanitize_dev_hybrid_clause(
-                {"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
-            ),
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             limit=2,
             rerank_on="text_content",
             rerank_query="blaa",
@@ -256,15 +243,13 @@ class TestCollectionFindAndRerankAsync:
         acoll = async_empty_farr_vectorize_collection
         await acoll.insert_one({"$vectorize": "text", "$lexical": "text"})
 
-        cur_n = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "bla"})
-        )
+        cur_n = acoll.find_and_rerank(sort={"$hybrid": "bla"})
         cur_f = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "bla"}),
+            sort={"$hybrid": "bla"},
             include_scores=False,
         )
         cur_t = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "bla"}),
+            sort={"$hybrid": "bla"},
             include_scores=True,
         )
         itm_n = await cur_n.__anext__()
@@ -291,24 +276,18 @@ class TestCollectionFindAndRerankAsync:
         )
 
         cur_n = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause(
-                {"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
-            ),
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             rerank_on="content",
             rerank_query="blaa",
         )
         cur_f = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause(
-                {"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
-            ),
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             rerank_on="content",
             rerank_query="blaa",
             include_scores=False,
         )
         cur_t = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause(
-                {"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
-            ),
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             rerank_on="content",
             rerank_query="blaa",
             include_scores=True,
@@ -334,15 +313,13 @@ class TestCollectionFindAndRerankAsync:
         acoll = async_empty_farr_vectorize_collection
         await acoll.insert_one({"$vectorize": "text", "$lexical": "text"})
 
-        cur_n0 = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "bla"})
-        )
+        cur_n0 = acoll.find_and_rerank(sort={"$hybrid": "bla"})
         cur_f0 = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "bla"}),
+            sort={"$hybrid": "bla"},
             include_sort_vector=False,
         )
         cur_t0 = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "bla"}),
+            sort={"$hybrid": "bla"},
             include_sort_vector=True,
         )
 
@@ -352,15 +329,13 @@ class TestCollectionFindAndRerankAsync:
         assert isinstance(gsv_t0, (list, DataAPIVector))
         assert isinstance(gsv_t0[0], float)
 
-        cur_n1 = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "bla"})
-        )
+        cur_n1 = acoll.find_and_rerank(sort={"$hybrid": "bla"})
         cur_f1 = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "bla"}),
+            sort={"$hybrid": "bla"},
             include_sort_vector=False,
         )
         cur_t1 = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "bla"}),
+            sort={"$hybrid": "bla"},
             include_sort_vector=True,
         )
         await cur_n1.__anext__()
@@ -373,15 +348,13 @@ class TestCollectionFindAndRerankAsync:
         assert isinstance(gsv_t1, (list, DataAPIVector))
         assert isinstance(gsv_t1[0], float)
 
-        cur_n2 = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "bla"})
-        )
+        cur_n2 = acoll.find_and_rerank(sort={"$hybrid": "bla"})
         cur_f2 = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "bla"}),
+            sort={"$hybrid": "bla"},
             include_sort_vector=False,
         )
         cur_t2 = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "bla"}),
+            sort={"$hybrid": "bla"},
             include_sort_vector=True,
         )
         await cur_n2.to_list()
@@ -407,24 +380,18 @@ class TestCollectionFindAndRerankAsync:
         )
 
         cur_n0 = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause(
-                {"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
-            ),
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             rerank_on="content",
             rerank_query="blaa",
         )
         cur_f0 = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause(
-                {"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
-            ),
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             rerank_on="content",
             rerank_query="blaa",
             include_sort_vector=False,
         )
         cur_t0 = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause(
-                {"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
-            ),
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             rerank_on="content",
             rerank_query="blaa",
             include_sort_vector=True,
@@ -437,24 +404,18 @@ class TestCollectionFindAndRerankAsync:
         assert isinstance(gsv_t0[0], float)
 
         cur_n1 = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause(
-                {"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
-            ),
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             rerank_on="content",
             rerank_query="blaa",
         )
         cur_f1 = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause(
-                {"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
-            ),
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             rerank_on="content",
             rerank_query="blaa",
             include_sort_vector=False,
         )
         cur_t1 = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause(
-                {"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
-            ),
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             rerank_on="content",
             rerank_query="blaa",
             include_sort_vector=True,
@@ -470,24 +431,18 @@ class TestCollectionFindAndRerankAsync:
         assert isinstance(gsv_t1[0], float)
 
         cur_n2 = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause(
-                {"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
-            ),
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             rerank_on="content",
             rerank_query="blaa",
         )
         cur_f2 = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause(
-                {"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
-            ),
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             rerank_on="content",
             rerank_query="blaa",
             include_sort_vector=False,
         )
         cur_t2 = acoll.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause(
-                {"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}}
-            ),
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
             rerank_on="content",
             rerank_query="blaa",
             include_sort_vector=True,

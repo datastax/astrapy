@@ -25,7 +25,6 @@ from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import CursorException
 
 from ..conftest import DefaultCollection
-from .hybrid_sanitizer import _sanitize_dev_hybrid_clause
 
 NUM_DOCS = 25  # keep this between 20 and 39
 
@@ -59,7 +58,7 @@ class TestCollectionCursorSync:
         filled_vectorize_collection: DefaultCollection,
     ) -> None:
         cur = filled_vectorize_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         )
         assert cur.state == CursorState.IDLE
@@ -110,7 +109,7 @@ class TestCollectionCursorSync:
         filled_vectorize_collection: DefaultCollection,
     ) -> None:
         cur0 = filled_vectorize_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         )
         cur0.close()
@@ -118,7 +117,7 @@ class TestCollectionCursorSync:
         assert cur0.state == CursorState.IDLE
 
         cur1 = filled_vectorize_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         )
         assert cur1.consumed == 0
@@ -158,7 +157,7 @@ class TestCollectionCursorSync:
     ) -> None:
         LIMIT = NUM_DOCS - 1
         cur = filled_vectorize_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=LIMIT,
         )
         next(cur)
@@ -201,7 +200,7 @@ class TestCollectionCursorSync:
         filled_vectorize_collection: DefaultCollection,
     ) -> None:
         cur = filled_vectorize_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         )
         assert cur.state == CursorState.IDLE
@@ -214,7 +213,7 @@ class TestCollectionCursorSync:
         assert cur.state == CursorState.CLOSED  # type: ignore[comparison-overlap]
 
         curmf = filled_vectorize_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         )
         next(curmf)
@@ -233,7 +232,7 @@ class TestCollectionCursorSync:
         assert curmf.buffered_count == NUM_DOCS - 20
 
         cur0 = filled_vectorize_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         )
         cur0.close()
@@ -246,7 +245,7 @@ class TestCollectionCursorSync:
     ) -> None:
         cur = filled_vectorize_collection.find_and_rerank(
             {"parity": -1},
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         )
         assert not cur.has_next()
@@ -254,7 +253,7 @@ class TestCollectionCursorSync:
 
         cur_no_sv = filled_vectorize_collection.find_and_rerank(
             {"parity": -1},
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             include_sort_vector=False,
         )
@@ -264,7 +263,7 @@ class TestCollectionCursorSync:
 
         cur_with_sv = filled_vectorize_collection.find_and_rerank(
             {"parity": -1},
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
             include_sort_vector=True,
         )
@@ -278,7 +277,7 @@ class TestCollectionCursorSync:
         filled_vectorize_collection: DefaultCollection,
     ) -> None:
         cur = filled_vectorize_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         )
         for _ in range(12):
@@ -298,14 +297,14 @@ class TestCollectionCursorSync:
     ) -> None:
         base_rows = list(
             filled_vectorize_collection.find_and_rerank(
-                sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+                sort={"$hybrid": "a sentence."},
                 limit=NUM_DOCS,
             )
         )
         assert len(base_rows) == NUM_DOCS
         base_rows_mu = list(
             filled_vectorize_collection.find_and_rerank(
-                sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+                sort={"$hybrid": "a sentence."},
                 limit=NUM_DOCS - 3,
             )
         )
@@ -321,7 +320,7 @@ class TestCollectionCursorSync:
 
         # map, base
         mcur = filled_vectorize_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         ).map(mint)
         mints = [val for val in mcur]
@@ -330,7 +329,7 @@ class TestCollectionCursorSync:
         # map composition
         mmcur = (
             filled_vectorize_collection.find_and_rerank(
-                sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+                sort={"$hybrid": "a sentence."},
                 limit=NUM_DOCS,
             )
             .map(mint)
@@ -341,7 +340,7 @@ class TestCollectionCursorSync:
 
         # consume_buffer skips the map
         hmcur = filled_vectorize_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         ).map(mint)
         for _ in range(10):
@@ -352,7 +351,7 @@ class TestCollectionCursorSync:
 
         # rewind preserves the mapping
         rwcur = filled_vectorize_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         ).map(mint)
         for _ in range(10):
@@ -371,14 +370,14 @@ class TestCollectionCursorSync:
     ) -> None:
         base_rows = list(
             filled_vectorize_collection.find_and_rerank(
-                sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+                sort={"$hybrid": "a sentence."},
                 limit=NUM_DOCS,
             )
         )
 
         # full to_list
         tl_cur = filled_vectorize_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         )
         assert tl_cur.to_list() == base_rows
@@ -386,7 +385,7 @@ class TestCollectionCursorSync:
 
         # partially-consumed to_list
         ptl_cur = filled_vectorize_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         )
         for _ in range(15):
@@ -402,7 +401,7 @@ class TestCollectionCursorSync:
             return parity_backmap[r_result.document["parity"]]
 
         mtl_cur = filled_vectorize_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         ).map(mint)
         for _ in range(13):
@@ -420,7 +419,7 @@ class TestCollectionCursorSync:
             acc += [r_result]
 
         fe_cur = filled_vectorize_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         )
         fe_cur.for_each(marker0)
@@ -437,7 +436,7 @@ class TestCollectionCursorSync:
             acc += [r_result]
 
         pfe_cur = filled_vectorize_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         )
         for _ in range(11):
@@ -453,7 +452,7 @@ class TestCollectionCursorSync:
             acc += [val]
 
         mfe_cur = filled_vectorize_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         ).map(mint)
         for _ in range(17):
@@ -473,7 +472,7 @@ class TestCollectionCursorSync:
             return len(acc) < 5
 
         bfe_cur = filled_vectorize_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         )
         bfe_cur.for_each(marker3)
@@ -493,7 +492,7 @@ class TestCollectionCursorSync:
             return 8 if len(acc) < 5 else 0
 
         nbfe_cur = filled_vectorize_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         )
         nbfe_cur.for_each(marker4)  # type: ignore[arg-type]
@@ -519,7 +518,7 @@ class TestCollectionCursorSync:
             )
         )
         noncustom_rows = noncustom_compo_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             projection={"$vector": True},
             limit=NUM_DOCS,
         ).to_list()
@@ -529,7 +528,7 @@ class TestCollectionCursorSync:
             for nc_r_res in noncustom_rows
         )
         custom_rows = custom_compo_collection.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "a sentence."}),
+            sort={"$hybrid": "a sentence."},
             projection={"$vector": True},
             limit=NUM_DOCS,
         ).to_list()
@@ -579,37 +578,29 @@ class TestCollectionCursorSync:
             ),
         )
 
-        cur0_v0_d0 = col_v0_d0.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "query"})
-        )
-        cur0_v0_d1 = col_v0_d1.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "query"})
-        )
-        cur0_v1_d0 = col_v1_d0.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "query"})
-        )
-        cur0_v1_d1 = col_v1_d1.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "query"})
-        )
+        cur0_v0_d0 = col_v0_d0.find_and_rerank(sort={"$hybrid": "query"})
+        cur0_v0_d1 = col_v0_d1.find_and_rerank(sort={"$hybrid": "query"})
+        cur0_v1_d0 = col_v1_d0.find_and_rerank(sort={"$hybrid": "query"})
+        cur0_v1_d1 = col_v1_d1.find_and_rerank(sort={"$hybrid": "query"})
         assert cur0_v0_d0.get_sort_vector() is None
         assert cur0_v0_d1.get_sort_vector() is None
         assert cur0_v1_d0.get_sort_vector() is None
         assert cur0_v1_d1.get_sort_vector() is None
 
         cur1_v0_d0 = col_v0_d0.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "query"}),
+            sort={"$hybrid": "query"},
             include_sort_vector=True,
         )
         cur1_v0_d1 = col_v0_d1.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "query"}),
+            sort={"$hybrid": "query"},
             include_sort_vector=True,
         )
         cur1_v1_d0 = col_v1_d0.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "query"}),
+            sort={"$hybrid": "query"},
             include_sort_vector=True,
         )
         cur1_v1_d1 = col_v1_d1.find_and_rerank(
-            sort=_sanitize_dev_hybrid_clause({"$hybrid": "query"}),
+            sort={"$hybrid": "query"},
             include_sort_vector=True,
         )
         sv_v0_d0 = cur1_v0_d0.get_sort_vector()
