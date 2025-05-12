@@ -549,6 +549,8 @@ poetry run pytest [...] -o log_cli=1 --log-cli-level=10
 
 ### Special tests (2025-03-25, Temporary provisions)
 
+#### Find-and-rerank
+
 Running special tests taking `find_and_rerank` into account, until dev/prod/local discrepancies resolved.
 
 **Prod and Dev**. The usual CI just runs with no f.a.r.r. coverage.
@@ -560,6 +562,10 @@ To run the f.a.r.r. tests, launch the integration tests with `ASTRAPY_TEST_FINDA
 1. launch integration tests with `ASTRAPY_TEST_FINDANDRERANK=y`
 2. ... but also with `ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER=y` to pass a reranker API key where needed
 3. ... which requires an environment variable `HEADER_RERANKING_API_KEY_NVIDIA` to be set with the `AstraCS:...` dev token.
+
+#### Maps as tuples
+
+To enable the maps-as-tuples testing, prepend the test invocation with `ASTRAPY_TEST_MAP2TUPLES=y`.
 
 ## Appendices
 
