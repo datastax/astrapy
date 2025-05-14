@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 
 import pytest
 
@@ -95,7 +94,7 @@ class TestCollectionDDLAsync:
         lc_response = await async_database.list_collections()
         #
         # TODO: remove this ambiguity once lexical/farr is a full citizen
-        _farr_part = {
+        rerank_lexical_portion = {
             "rerank": {
                 "enabled": True,
                 "service": {
@@ -118,9 +117,7 @@ class TestCollectionDDLAsync:
                         "sourceModel": "other",
                     },
                     "indexing": {"deny": ["a", "b", "c"]},
-                    **(
-                        _farr_part if "ASTRAPY_TEST_FINDANDRERANK" in os.environ else {}
-                    ),
+                    **rerank_lexical_portion,
                 },
             },
         )
@@ -129,9 +126,7 @@ class TestCollectionDDLAsync:
                 "name": TEST_LOCAL_COLLECTION_NAME_B,
                 "options": {
                     "indexing": {"allow": ["z"]},
-                    **(
-                        _farr_part if "ASTRAPY_TEST_FINDANDRERANK" in os.environ else {}
-                    ),
+                    **rerank_lexical_portion,
                 },
             },
         )
@@ -485,10 +480,6 @@ class TestCollectionDDLAsync:
         db_n = db_admin.get_async_database()
         assert isinstance(db_n.keyspace, str)  # i.e. resolution took place
 
-    @pytest.mark.skipif(
-        "ASTRAPY_TEST_FINDANDRERANK" not in os.environ,
-        reason="No testing enabled on findAndRerank support",
-    )
     @pytest.mark.describe("test of collection find-and-rerank lifecycle, async")
     async def test_collection_farr_lifecycle_async(
         self,

@@ -14,8 +14,6 @@
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from astrapy.cursors import RerankedResult
@@ -24,10 +22,6 @@ from astrapy.data_types import DataAPIVector
 from ..conftest import DefaultAsyncCollection
 
 
-@pytest.mark.skipif(
-    "ASTRAPY_TEST_FINDANDRERANK" not in os.environ,
-    reason="No testing enabled on findAndRerank support",
-)
 class TestCollectionFindAndRerankAsync:
     @pytest.mark.describe("test of collection find-and-rerank vectorize, async")
     async def test_collection_farr_vectorize_async(

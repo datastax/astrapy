@@ -517,6 +517,9 @@ poetry run pytest tests/base/unit
 poetry run pytest tests/base/integration
 ```
 
+_Note: when running locally, the reranking-related tests require `ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER=y` and
+HEADER_RERANKING_API_KEY_NVIDIA="AstraCS:<dev token...>`._
+
 Admin:
 
 ```
@@ -547,21 +550,11 @@ poetry run pytest [...] -o log_cli=0
 poetry run pytest [...] -o log_cli=1 --log-cli-level=10
 ```
 
-### Special tests (2025-03-25, Temporary provisions)
+### Special tests
 
-#### Find-and-rerank
-
-Running special tests taking `find_and_rerank` into account, until dev/prod/local discrepancies resolved.
-
-**Prod and Dev**. The usual CI just runs with no f.a.r.r. coverage.
-
-To run the f.a.r.r. tests, launch the integration tests with `ASTRAPY_TEST_FINDANDRERANK=y`
-  
-**Local** (manual CI on a hybrid-capable locally-running Data API). One must:
-
-1. launch integration tests with `ASTRAPY_TEST_FINDANDRERANK=y`
-2. ... but also with `ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER=y` to pass a reranker API key where needed
-3. ... which requires an environment variable `HEADER_RERANKING_API_KEY_NVIDIA` to be set with the `AstraCS:...` dev token.
+The following are special provision to manage features under evolution or not
+entirely deployed to all environments. Typically they require manually passing
+certain environment variables, otherwise the associated tests are excluded from CI.
 
 #### Maps as tuples
 

@@ -317,10 +317,6 @@ class TestCollectionTyping:
 
         g_co_typed.delete_many({})
 
-    @pytest.mark.skipif(
-        "ASTRAPY_TEST_FINDANDRERANK" not in os.environ,
-        reason="No testing enabled on findAndRerank support",
-    )
     @pytest.mark.describe("test of typing find_and_rerank, sync")
     def test_collection_find_and_rerank_typing_sync(
         self,
@@ -331,7 +327,7 @@ class TestCollectionTyping:
         """Test of typing in find_and_rerank, sync."""
 
         params = service_collection_parameters
-        # TODO: once in prod, align rerank-credentials control
+
         reranking_api_key: str | UnsetType
         if "ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER" in os.environ:
             assert params["reranking_api_key"] is not None
@@ -670,10 +666,6 @@ class TestCollectionTyping:
 
         await ag_co_typed.delete_many({})
 
-    @pytest.mark.skipif(
-        "ASTRAPY_TEST_FINDANDRERANK" not in os.environ,
-        reason="No testing enabled on findAndRerank support",
-    )
     @pytest.mark.describe("test of typing find_and_rerank, async")
     async def test_collection_find_and_rerank_typing_async(
         self,
@@ -684,7 +676,7 @@ class TestCollectionTyping:
         """Test of typing in find_and_rerank, sync."""
 
         params = service_collection_parameters
-        # TODO: once in prod, align rerank-credentials control
+
         reranking_api_key: str | UnsetType
         if "ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER" in os.environ:
             assert params["reranking_api_key"] is not None

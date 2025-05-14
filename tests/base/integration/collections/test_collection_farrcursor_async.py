@@ -14,8 +14,6 @@
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from astrapy.api_options import APIOptions, SerdesOptions
@@ -47,10 +45,6 @@ def afilled_vectorize_collection(
     return async_empty_farr_vectorize_collection
 
 
-@pytest.mark.skipif(
-    "ASTRAPY_TEST_FINDANDRERANK" not in os.environ,
-    reason="No testing enabled on findAndRerank support",
-)
 class TestCollectionCursorSync:
     @pytest.mark.describe("test of an IDLE collection farr-cursors properties, async")
     async def test_collection_farrcursors_idle_properties_async(

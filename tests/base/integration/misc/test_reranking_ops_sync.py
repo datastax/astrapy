@@ -14,18 +14,12 @@
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from astrapy import Database
 from astrapy.info import FindRerankingProvidersResult, RerankingProvider
 
 
-@pytest.mark.skipif(
-    "ASTRAPY_TEST_FINDANDRERANK" not in os.environ,
-    reason="Disabled except on bleeding-edge main so far",
-)
 class TestRerankingOpsSync:
     @pytest.mark.describe("test of find_reranking_providers, sync")
     def test_findrerankingproviders_sync(
@@ -42,4 +36,10 @@ class TestRerankingOpsSync:
             for rer_prov in rp_result.reranking_providers.values()
         )
 
-        assert FindRerankingProvidersResult._from_dict(rp_result.as_dict()) == rp_result
+        # 'raw_info' not compared, for resiliency against newly-introduced fields
+        assert (
+            FindRerankingProvidersResult._from_dict(
+                rp_result.as_dict()
+            ).reranking_providers
+            == rp_result.reranking_providers
+        )
