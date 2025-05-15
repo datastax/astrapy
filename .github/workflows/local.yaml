@@ -34,6 +34,21 @@ jobs:
         pip install poetry==1.8.3
         poetry install
 
+    # Prepare to login to ECR:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.HCD_ECR_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.HCD_ECR_SECRET_KEY }}
+        aws-region: us-west-2
+
+    # Login to ECR so we can pull HCD image:
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+      with:
+        mask-password: 'true'
+
     - name: Run pytest
       run: |
         poetry run pytest tests/base/integration

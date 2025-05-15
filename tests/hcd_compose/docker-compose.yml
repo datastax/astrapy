@@ -1,12 +1,12 @@
 services:
   hcd:
-    image: datastax/hcd:1.0.0
+    image: 559669398656.dkr.ecr.us-west-2.amazonaws.com/engops-shared/hcd/staging/hcd:1.2.1-early-preview
     networks:
       - stargate
     mem_limit: 2G
     environment:
       - MAX_HEAP_SIZE=1536M
-      - CLUSTER_NAME=hcd-1.0.0-early-preview.1-cluster
+      - CLUSTER_NAME=hcd-1.2.1-early-preview-cluster
       - DS_LICENSE=accept
       - HCD_AUTO_CONF_OFF=cassandra.yaml
     volumes:
