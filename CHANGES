@@ -1,6 +1,7 @@
 v 2.0.1
 =======
 bugfix: receiving `'$vector': null` caused response parsing to break
+maintenance: switch to latest HCD for non-Astra CI github action
 
 v 2.0.0
 =======

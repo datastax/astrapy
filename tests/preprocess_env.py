@@ -34,7 +34,7 @@ from astrapy.authentication import (
 DOCKER_COMPOSE_SLEEP_TIME_SECONDS = 20
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
-docker_compose_filepath = os.path.join(base_dir, "dse_compose")
+docker_compose_filepath = os.path.join(base_dir, "hcd_compose")
 
 
 IS_ASTRA_DB: bool
