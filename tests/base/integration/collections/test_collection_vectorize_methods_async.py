@@ -19,7 +19,6 @@ from typing import Any
 import pytest
 
 from astrapy import AsyncDatabase
-from astrapy.api_options import APIOptions, SerdesOptions
 from astrapy.constants import DefaultDocumentType
 from astrapy.cursors import AsyncCollectionFindCursor
 from astrapy.data_types import DataAPIVector
@@ -28,7 +27,6 @@ from astrapy.info import CollectionDefinition
 
 from ..conftest import (
     HEADER_EMBEDDING_API_KEY_OPENAI,
-    IS_ASTRA_DB,
     DefaultAsyncCollection,
 )
 
@@ -47,19 +45,13 @@ class TestCollectionVectorizeMethodsAsync:
         acol = async_empty_service_collection
         service_vector_dimension = service_collection_parameters["dimension"]
 
-        # TODO we lift storage of binencoded vectors on nonAstra because docker image
-        # 1.0.20-ct1 does not have fix 1738 yet (long nonindexed binenc strings)
-        binencoptions = APIOptions(
-            serdes_options=SerdesOptions(binary_encode_vectors=IS_ASTRA_DB)
-        )
-
         await acol.insert_one({"t": "tower", "$vectorize": "How high is this tower?"})
         await acol.insert_one({"t": "vectorless"})
-        await acol.with_options(api_options=binencoptions).insert_one(
+        await acol.insert_one(
             {"t": "vectorful", "$vector": [0.01] * service_vector_dimension},
         )
 
-        await acol.with_options(api_options=binencoptions).insert_many(
+        await acol.insert_many(
             [
                 {
                     "t": "guide",
