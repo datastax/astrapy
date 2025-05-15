@@ -129,13 +129,11 @@ class TestTableDMLAsync:
         assert fo_fil_ann_row is not None
         assert (fo_fil_ann_row["p_text"], fo_fil_ann_row["p_int"]) == ("pB", 100)
         # just regular sort
-        if False:
-            # TODO: reinstate this part on Astra/nonAstra once patch in docker image and Astra prod
-            fo_unf_srt_row = await async_empty_table_composite.find_one(
-                sort={"p_int": SortMode.DESCENDING}
-            )
-            assert fo_unf_srt_row is not None
-            assert (fo_unf_srt_row["p_text"], fo_unf_srt_row["p_int"]) == ("pB", 100)
+        fo_unf_srt_row = await async_empty_table_composite.find_one(
+            sort={"p_int": SortMode.DESCENDING}
+        )
+        assert fo_unf_srt_row is not None
+        assert (fo_unf_srt_row["p_text"], fo_unf_srt_row["p_int"]) == ("pB", 100)
         # regular sort, filtered
         fo_fil_srt_row = await async_empty_table_composite.find_one(
             filter={"p_text": "pA"},
@@ -171,7 +169,6 @@ class TestTableDMLAsync:
         self,
         async_empty_table_simple: DefaultAsyncTable,
     ) -> None:
-        # TODO cross check with CQL direct (!)
         im_result = await async_empty_table_simple.insert_many(SIMPLE_FULL_ROWS)
         assert len(im_result.inserted_ids) == len(SIMPLE_FULL_ROWS)
         assert len(im_result.inserted_id_tuples) == len(SIMPLE_FULL_ROWS)
@@ -195,7 +192,6 @@ class TestTableDMLAsync:
         self,
         async_empty_table_simple: DefaultAsyncTable,
     ) -> None:
-        # TODO cross check with CQL direct (!)
         im_result = await async_empty_table_simple.insert_many(SIMPLE_FULL_ROWS)
         assert len(im_result.inserted_ids) == len(SIMPLE_FULL_ROWS)
         assert len(im_result.inserted_id_tuples) == len(SIMPLE_FULL_ROWS)
@@ -523,8 +519,6 @@ class TestTableDMLAsync:
         # unordered insertion [bad, bad]
         err3: TableInsertManyException | None = None
         try:
-            # TODO also cover the case of presumed deduplication (same type error)
-            # once properly re-duplicated client side
             await async_table_simple.insert_many([{"p_text": -2}, {"p_textXX": -3}])
         except TableInsertManyException as e:
             err3 = e
@@ -805,16 +799,14 @@ class TestTableDMLAsync:
         # (nonvector) sorting
         await async_empty_table_all_returns.insert_many(INSMANY_AR_ROWS)
         # sorting as per clustering column
-        if False:
-            # TODO: reinstate this part on Astra/nonAstra once patch in docker image and Astra prod
-            srows_in_part = await async_empty_table_all_returns.find(
-                filter={"p_ascii": "A", "p_bigint": 100},
-                sort={"p_int": SortMode.DESCENDING},
-                limit=INSMANY_AR_ROW_HALFN + 1,
-            ).to_list()
-            assert len(srows_in_part) == INSMANY_AR_ROW_HALFN
-            srows_in_part_pints = [row["p_int"] for row in srows_in_part]
-            assert sorted(srows_in_part_pints) == srows_in_part_pints[::-1]
+        srows_in_part = await async_empty_table_all_returns.find(
+            filter={"p_ascii": "A", "p_bigint": 100},
+            sort={"p_int": SortMode.DESCENDING},
+            limit=INSMANY_AR_ROW_HALFN + 1,
+        ).to_list()
+        assert len(srows_in_part) == INSMANY_AR_ROW_HALFN
+        srows_in_part_pints = [row["p_int"] for row in srows_in_part]
+        assert sorted(srows_in_part_pints) == srows_in_part_pints[::-1]
         # sorting by any regular column
         srows_anycol = await async_empty_table_all_returns.find(
             filter={"p_ascii": "A", "p_bigint": 100},

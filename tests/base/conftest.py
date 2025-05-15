@@ -277,7 +277,7 @@ def sync_farr_vectorize_collection(
     """
     params = service_collection_parameters
 
-    # TODO: once in prod, align rerank-credentials control
+    # reranker credentials through header is needed for non-Astra (HCD) runs
     reranking_api_key: str | UnsetType
     if "ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER" in os.environ:
         assert params["reranking_api_key"] is not None
@@ -336,7 +336,7 @@ def sync_farr_vector_collection(
     """
     params = service_collection_parameters
 
-    # TODO: once in prod, align rerank-credentials control
+    # reranker credentials through header is needed for non-Astra (HCD) runs
     reranking_api_key: str | UnsetType
     if "ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER" in os.environ:
         assert params["reranking_api_key"] is not None
