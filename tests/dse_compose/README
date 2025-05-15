@@ -1,0 +1,4 @@
+Caution: DSE does not support all features required for a full Data API usage.
+(for example BM25 indexing, necessary for the Data API reranker).
+
+As such, do not expect all of the features (/testing) to work if running this compose.

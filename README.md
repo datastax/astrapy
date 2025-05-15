@@ -498,7 +498,7 @@ Astrapy's CI only runs "base". The others are to be checked manually when it's n
 
 Tests can be run on three types of Data API _targets_ (with slight differences in what is applicable):
 
-- **DockerCompose**: DSE+Data API, started by the test initialization with `docker-compose`. _Note that in this case you will have to manually destroy the created containers._
+- **DockerCompose**: HCD+Data API, started by the test initialization with `docker-compose`. _Note that in this case you will have to manually destroy the created containers._
 - **nonAstra**: a ready-to-use (user-supplied) local Data API (e.g. using `tests/dse_compose`)
 - **Astra**: an Astra DB target account (or two, as some tests are specific to dev environment)
 
