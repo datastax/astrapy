@@ -474,7 +474,12 @@ print(unescape_field_path("a&&&.b.c.d.12"))
 
 ## For contributors
 
-First install poetry with `pip install poetry` and then the project dependencies with `poetry install --with dev`.
+First install `uv` (e.g. `pipx install uv`), then set up a dev environment:
+
+```
+uv venv
+uv sync --extra dev
+```
 
 Linter, style and typecheck should all pass for a PR:
 
@@ -512,9 +517,9 @@ Base:
 
 ```
 # choose one:
-poetry run pytest tests/base
-poetry run pytest tests/base/unit
-poetry run pytest tests/base/integration
+uv run pytest tests/base
+uv run pytest tests/base/unit
+uv run pytest tests/base/integration
 ```
 
 _Note: when running locally, the reranking-related tests require `ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER=y` and
@@ -524,30 +529,30 @@ Admin:
 
 ```
 # depending on the environment, different 'admin tests' will run:
-poetry run pytest tests/admin
+uv run pytest tests/admin
 ```
 
 Extended vectorize:
 
 ```
 # very many env. variables required for this one:
-poetry run pytest tests/vectorize
+uv run pytest tests/vectorize
 
 # restrict to some combination(s) with e.g.:
 EMBEDDING_MODEL_TAGS="openai/text-embedding-3-large/HEADER/0,voyageAI/voyage-finance-2/SHARED_SECRET/f" \
-    poetry run pytest tests/vectorize/integration/test_vectorize_providers.py \
+    uv run pytest tests/vectorize/integration/test_vectorize_providers.py \
     -k test_vectorize_usage_auth_type_header_sync
 ```
 
 All the usual `pytest` ways of restricting the test selection hold
-(e.g. `poetry run pytest tests/idiomatic/unit` or `[...] -k <test_name_selector>`). Also e.g.:
+(e.g. `uv run pytest tests/idiomatic/unit` or `[...] -k <test_name_selector>`). Also e.g.:
 
 ```
 # suppress log noise
-poetry run pytest [...] -o log_cli=0
+uv run pytest [...] -o log_cli=0
 
 # increase log level
-poetry run pytest [...] -o log_cli=1 --log-cli-level=10
+uv run pytest [...] -o log_cli=1 --log-cli-level=10
 ```
 
 ### Special tests

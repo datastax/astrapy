@@ -1214,8 +1214,7 @@ class AstraDBAdmin:
             timeout_label=_da_label,
         )
         logger.info(
-            f"creating database {name}/({cloud_provider}, {region}) "
-            "(DevOps API), async"
+            f"creating database {name}/({cloud_provider}, {region}) (DevOps API), async"
         )
         cd_raw_response = await self._dev_ops_api_commander.async_raw_request(
             http_method=HttpMethod.POST,
@@ -2461,9 +2460,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             dev_ops_api=True,
             timeout_label=_ka_label,
         )
-        logger.info(
-            f"creating keyspace '{name}' on " f"'{self._database_id}' (DevOps API)"
-        )
+        logger.info(f"creating keyspace '{name}' on '{self._database_id}' (DevOps API)")
         cn_raw_response = self._dev_ops_api_commander.raw_request(
             http_method=HttpMethod.POST,
             additional_path=f"keyspaces/{name}",
@@ -2502,8 +2499,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             if name not in self.list_keyspaces():
                 raise DevOpsAPIException("Could not create the keyspace.")
         logger.info(
-            f"finished creating keyspace '{name}' on "
-            f"'{self._database_id}' (DevOps API)"
+            f"finished creating keyspace '{name}' on '{self._database_id}' (DevOps API)"
         )
         if update_db_keyspace:
             self.spawner_database.use_keyspace(name)
@@ -2578,8 +2574,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             timeout_label=_ka_label,
         )
         logger.info(
-            f"creating keyspace '{name}' on "
-            f"'{self._database_id}' (DevOps API), async"
+            f"creating keyspace '{name}' on '{self._database_id}' (DevOps API), async"
         )
         cn_raw_response = await self._dev_ops_api_commander.async_raw_request(
             http_method=HttpMethod.POST,
@@ -2692,9 +2687,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             dev_ops_api=True,
             timeout_label=_ka_label,
         )
-        logger.info(
-            f"dropping keyspace '{name}' on " f"'{self._database_id}' (DevOps API)"
-        )
+        logger.info(f"dropping keyspace '{name}' on '{self._database_id}' (DevOps API)")
         dk_raw_response = self._dev_ops_api_commander.raw_request(
             http_method=HttpMethod.DELETE,
             additional_path=f"keyspaces/{name}",
@@ -2733,8 +2726,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             if name in self.list_keyspaces():
                 raise DevOpsAPIException("Could not drop the keyspace.")
         logger.info(
-            f"finished dropping keyspace '{name}' on "
-            f"'{self._database_id}' (DevOps API)"
+            f"finished dropping keyspace '{name}' on '{self._database_id}' (DevOps API)"
         )
 
     async def async_drop_keyspace(
@@ -2801,8 +2793,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             timeout_label=_ka_label,
         )
         logger.info(
-            f"dropping keyspace '{name}' on "
-            f"'{self._database_id}' (DevOps API), async"
+            f"dropping keyspace '{name}' on '{self._database_id}' (DevOps API), async"
         )
         dk_raw_response = await self._dev_ops_api_commander.async_raw_request(
             http_method=HttpMethod.DELETE,
