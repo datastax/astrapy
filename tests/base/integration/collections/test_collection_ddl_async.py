@@ -93,7 +93,6 @@ class TestCollectionDDLAsync:
         )
         lc_response = await async_database.list_collections()
         #
-        # TODO: remove this ambiguity once lexical/farr is a full citizen
         rerank_lexical_portion = {
             "rerank": {
                 "enabled": True,
