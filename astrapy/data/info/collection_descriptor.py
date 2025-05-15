@@ -21,6 +21,7 @@ from astrapy.data.info.database_info import AstraDBDatabaseInfo
 from astrapy.data.info.reranking import RerankServiceOptions
 from astrapy.data.info.vectorize import VectorServiceOptions
 from astrapy.utils.parsing import _warn_residual_keys
+from astrapy.utils.unset import _UNSET, UnsetType
 
 INDEXING_ALLOWED_MODES = {"allow", "deny"}
 
@@ -717,7 +718,11 @@ class CollectionDefinition:
 
     def set_rerank(
         self,
-        provider: str | CollectionRerankOptions | RerankServiceOptions | None,
+        provider: str
+        | CollectionRerankOptions
+        | RerankServiceOptions
+        | None
+        | UnsetType = _UNSET,
         model_name: str | None = None,
         *,
         authentication: dict[str, Any] | None = None,
@@ -725,8 +730,8 @@ class CollectionDefinition:
         enabled: bool | None = None,
     ) -> CollectionDefinition:
         """
-        Return a new collection definition object with a new setting for the
-        collection's rerank service.
+        Return a new collection definition object with a modified 'rerank' setting.
+
         This method is for use within the fluent interface for progressively
         building a complete collection definition.
 
@@ -737,11 +742,12 @@ class CollectionDefinition:
                 all desired properties for a reranking service;
                 (2) a `CollectionRerankOptions`, that is likewise being set
                 as the collection reranking configuration; or (3) it can be None,
-                to signify removal of the entire rerank setting,
-                leaving the API to its defaults; alternatively,
+                to unset the rerank setting, altogether from the collection
+                definition, hence letting the API use its defaults;
                 (4) it can be a string, the reranking provider name as seen in the
                 response from the database's `find_rerank_providers` method. In the
                 latter case, the other parameters should also be provided as needed.
+                If this parameter is omitted, the `enabled` parameter must be supplied.
                 See the examples below for an illustration of these usage patterns.
             model_name: a string, the name of the reranker model to use (must be
                 compatible with the chosen provider).
@@ -757,21 +763,24 @@ class CollectionDefinition:
                 for the collection. If omitted, defaults to True.
 
         Returns:
-            a CollectionDefinition obtained by adding (or replacing) the desired
-            reranking-related setting to this collection definition.
+            a CollectionDefinition obtained by adding, replacing or unsetting the
+            rerank configuration of this collection definition.
 
         Example:
-            >> from astrapy.info import CollectionDefinition, RerankServiceOptions
-            >>> from astrapy.data.info.collection_descriptor import CollectionRerankOptions
+            >>> from astrapy.info import (
+            ...     CollectionDefinition,
+            ...     CollectionRerankOptions,
+            ...     RerankServiceOptions,
+            ... )
             >>>
             >>> zero = CollectionDefinition.builder()
             >>>
-            >>> svc1 = zero.set_rerank(
+            >>> rrk1 = zero.set_rerank(
             ...     "myProvider",
             ...     "myModelName",
             ...     parameters={"p": "z"},
             ... )
-            >>> print(svc1.build().as_dict())
+            >>> print(rrk1.build().as_dict())
             {'rerank': {'enabled': True, 'service': {'provider': 'myProvider', 'modelName': 'myModelName', 'parameters': {'p': 'z'}}}}
             >>>
             >>> myRrkSvcOpt = RerankServiceOptions(
@@ -779,47 +788,28 @@ class CollectionDefinition:
             ...     model_name="myModelName",
             ...     parameters={"p": "z"},
             ... )
-            >>> svc2 = zero.set_reranking(myRrkSvcOpt).build()
-            >>> print(svc2.as_dict())
+            >>> rrk2 = zero.set_rerank(myRrkSvcOpt).build()
+            >>> print(rrk2.as_dict())
             {'rerank': {'enabled': True, 'service': {'provider': 'myProvider', 'modelName': 'myModelName', 'parameters': {'p': 'z'}}}}
             >>>
             >>> myColRrkOpt = CollectionRerankOptions(
-            ...     enabled=False,
-            ...     service=None,
+            ...     enabled=True,
+            ...     service=myRrkSvcOpt,
             ... )
-            >>> svc3 = zero.set_reranking(myColRrkOpt).build()
-            >>> print(svc3.as_dict())
+            >>> rrk3 = zero.set_rerank(myColRrkOpt).build()
+            >>> print(rrk3.as_dict())
+            {'rerank': {'enabled': True, 'service': {'provider': 'myProvider', 'modelName': 'myModelName', 'parameters': {'p': 'z'}}}}
+            >>>
+            >>> rrk4 = rrk1.set_rerank(enabled=False).build()
+            >>> print(rrk4.as_dict())
             {'rerank': {'enabled': False}}
             >>>
-            >>> reset = svc1.set_rerank(None).build()
+            >>> reset = rrk1.set_rerank(None).build()
             >>> print(reset.as_dict())
             {}
         """
 
-        if isinstance(provider, RerankServiceOptions):
-            if (
-                model_name is not None
-                or authentication is not None
-                or parameters is not None
-                or enabled is not None
-            ):
-                msg = (
-                    "Parameters 'model_name', 'authentication', 'parameters' and "
-                    "'enabled' cannot be passed when setting a "
-                    "RerankServiceOptions directly."
-                )
-                raise ValueError(msg)
-            return CollectionDefinition(
-                vector=self.vector,
-                lexical=self.lexical,
-                rerank=CollectionRerankOptions(
-                    enabled=enabled,
-                    service=provider,
-                ),
-                indexing=self.indexing,
-                default_id=self.default_id,
-            )
-        elif isinstance(provider, CollectionRerankOptions):
+        if isinstance(provider, CollectionRerankOptions):
             if (
                 model_name is not None
                 or authentication is not None
@@ -839,30 +829,80 @@ class CollectionDefinition:
                 indexing=self.indexing,
                 default_id=self.default_id,
             )
-        else:
-            new_service: CollectionRerankOptions | None
-            if provider is None:
-                if (
-                    model_name is not None
-                    or authentication is not None
-                    or parameters is not None
-                ):
-                    msg = (
-                        "Parameters 'model_name', 'authentication' and 'parameters' "
-                        "cannot be passed when unsetting the rerank."
-                    )
-                    raise ValueError(msg)
-                new_service = None
-            else:
-                new_service = CollectionRerankOptions(
-                    enabled=enabled,
-                    service=RerankServiceOptions(
-                        provider=provider,
-                        model_name=model_name,
-                        authentication=authentication,
-                        parameters=parameters,
-                    ),
+        elif isinstance(provider, RerankServiceOptions):
+            if (
+                model_name is not None
+                or authentication is not None
+                or parameters is not None
+            ):
+                msg = (
+                    "Parameters 'model_name', 'authentication', 'parameters' "
+                    "cannot be passed when setting a RerankServiceOptions directly."
                 )
+                raise ValueError(msg)
+            return CollectionDefinition(
+                vector=self.vector,
+                lexical=self.lexical,
+                rerank=CollectionRerankOptions(
+                    enabled=enabled,
+                    service=provider,
+                ),
+                indexing=self.indexing,
+                default_id=self.default_id,
+            )
+        elif provider is None:
+            if (
+                model_name is not None
+                or authentication is not None
+                or parameters is not None
+                or enabled is not None
+            ):
+                msg = (
+                    "Parameters 'model_name', 'authentication', 'parameters' "
+                    "and 'enabled' cannot be passed when unsetting 'rerank'."
+                )
+                raise ValueError(msg)
+            return CollectionDefinition(
+                vector=self.vector,
+                lexical=self.lexical,
+                rerank=None,
+                indexing=self.indexing,
+                default_id=self.default_id,
+            )
+        elif isinstance(provider, UnsetType):
+            if (
+                model_name is not None
+                or authentication is not None
+                or parameters is not None
+            ):
+                msg = (
+                    "Parameters 'model_name', 'authentication', 'parameters' "
+                    "cannot be passed when omitting 'provider'."
+                )
+                raise ValueError(msg)
+            if enabled is None:
+                msg = (
+                    "At least one of 'provider' and 'enabled' must be passed "
+                    "to `set_rerank`."
+                )
+                raise ValueError(msg)
+            return CollectionDefinition(
+                vector=self.vector,
+                lexical=self.lexical,
+                rerank=CollectionRerankOptions(enabled=enabled),
+                indexing=self.indexing,
+                default_id=self.default_id,
+            )
+        else:
+            new_service = CollectionRerankOptions(
+                enabled=enabled,
+                service=RerankServiceOptions(
+                    provider=provider,
+                    model_name=model_name,
+                    authentication=authentication,
+                    parameters=parameters,
+                ),
+            )
             return CollectionDefinition(
                 vector=self.vector,
                 lexical=self.lexical,
@@ -873,12 +913,16 @@ class CollectionDefinition:
 
     def set_lexical(
         self,
-        analyzer: str | dict[str, Any] | CollectionLexicalOptions | None,
+        analyzer: str
+        | dict[str, Any]
+        | CollectionLexicalOptions
+        | None
+        | UnsetType = _UNSET,
         *,
         enabled: bool | None = None,
     ) -> CollectionDefinition:
         """
-        Return a new collection definition object with a new 'lexical' setting.
+        Return a new collection definition object with a modified 'lexical' setting.
 
         This method is for use within the fluent interface for progressively
         building a complete collection definition.
@@ -889,15 +933,16 @@ class CollectionDefinition:
             analyzer: this can be (1) a string or free-form dictionary, specifying
                 the configuration for the collection analyzer; or (2) a ready
                 `CollectionLexicalOptions` object encoding said configuration;
-                alternatively (3) None, to remove the lexical setting from the
-                collection definition hence letting the API use its defaults.
+                alternatively (3) None, to unset 'lexical' altogether from the
+                collection definition, hence letting the API use its defaults.
+                If this parameter is omitted, the `enabled` parameter must be supplied.
                 See the examples below for an illustration of these usage patterns.
             enabled: if passed, this flag is used in the lexical definition
                 for the collection. If omitted, defaults to True.
 
         Returns:
-            a CollectionDefinition obtained by adding (or replacing) the desired
-            lexical setting to this collection definition.
+            a CollectionDefinition obtained by adding, replacing or unsetting the
+            lexical configuration of this collection definition.
 
         Example:
             >>> from astrapy.info import CollectionDefinition, CollectionLexicalOptions
@@ -916,11 +961,14 @@ class CollectionDefinition:
             >>> reset = anz1.set_lexical(None).build()
             >>> print(reset.as_dict())
             {}
+            >>> anz3 = zero.set_lexical(enabled=False).build()
+            >>> print(anz3.as_dict())
+            {'lexical': {'enabled': False}}
         """
 
         if analyzer is None:
             if enabled is not None:
-                msg = "Parameter 'enabled' cannot be passed when disabling 'lexical'."
+                msg = "Parameter 'enabled' cannot be passed when unsetting 'lexical'."
                 raise ValueError(msg)
             return CollectionDefinition(
                 vector=self.vector,
@@ -939,6 +987,20 @@ class CollectionDefinition:
             return CollectionDefinition(
                 vector=self.vector,
                 lexical=analyzer,
+                rerank=self.rerank,
+                indexing=self.indexing,
+                default_id=self.default_id,
+            )
+        elif isinstance(analyzer, UnsetType):
+            if enabled is None:
+                msg = (
+                    "At least one of 'enabled' and 'analyzer' must be passed "
+                    "to set_lexical."
+                )
+                raise ValueError(msg)
+            return CollectionDefinition(
+                vector=self.vector,
+                lexical=CollectionLexicalOptions(enabled=enabled),
                 rerank=self.rerank,
                 indexing=self.indexing,
                 default_id=self.default_id,

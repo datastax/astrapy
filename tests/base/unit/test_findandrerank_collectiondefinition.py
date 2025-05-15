@@ -186,6 +186,12 @@ class TestFindAndRerankCollectionDefinition:
             }
         }
 
+        lex3 = zero.set_lexical(enabled=False)
+        assert lex3.as_dict() == {"lexical": {"enabled": False}}
+
+        lex4 = zero.set_lexical(enabled=True)
+        assert lex4.as_dict() == {"lexical": {"enabled": True}}
+
         lex_z = zero.set_lexical("aaa")
         reset = lex_z.set_lexical(None)
         assert reset.as_dict() == {}

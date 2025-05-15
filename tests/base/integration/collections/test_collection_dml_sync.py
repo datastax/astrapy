@@ -119,6 +119,22 @@ class TestCollectionDMLSync:
         assert retrieved2 is not None
         assert retrieved2["$vector"] == DataAPIVector([-3, -4])
 
+        sync_empty_collection.insert_one({"tag": "v_null", "$vector": None})
+        retrieved3 = sync_empty_collection.find_one(
+            {"tag": "v_null"}, projection={"*": 1}
+        )
+        assert retrieved3 is not None
+        assert retrieved3["$vector"] is None
+
+        unroll_options = APIOptions(
+            serdes_options=SerdesOptions(unroll_iterables_to_lists=True),
+        )
+        unroll_coll = sync_empty_collection.with_options(api_options=unroll_options)
+        unroll_coll.insert_one({"tag": "v_null_u", "$vector": None})
+        retrieved4 = unroll_coll.find_one({"tag": "v_null_u"}, projection={"*": 1})
+        assert retrieved4 is not None
+        assert retrieved4["$vector"] is None
+
     @pytest.mark.describe("test of collection vector insertion options, sync")
     def test_collection_vector_insertion_options_sync(
         self,

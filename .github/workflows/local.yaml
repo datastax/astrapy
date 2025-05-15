@@ -14,6 +14,9 @@ jobs:
       HEADER_EMBEDDING_API_KEY_OPENAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_OPENAI }}
       # hardcoding the target DB
       DOCKER_COMPOSE_LOCAL_DATA_API: "yes"
+      # turn on header-based reranker auth
+      ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER: "yes"
+      HEADER_RERANKING_API_KEY_NVIDIA: ${{ secrets.HEADER_RERANKING_API_KEY_NVIDIA }}
     runs-on: ubuntu-latest
 
     steps:

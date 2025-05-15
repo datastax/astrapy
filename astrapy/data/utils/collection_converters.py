@@ -62,7 +62,9 @@ def preprocess_collection_payload_value(
     if path[-1:] == ["$vector"] and path[-2:] != ["projection", "$vector"]:
         # must coerce list-likes broadly, and is it the case to do it?
         if options.unroll_iterables_to_lists and not (
-            is_list_of_floats(_value) or isinstance(_value, DataAPIVector)
+            is_list_of_floats(_value)
+            or _value is None
+            or isinstance(_value, DataAPIVector)
         ):
             _value = convert_vector_to_floats(_value)
         # now _value is either a list or a DataAPIVector.
@@ -78,7 +80,11 @@ def preprocess_collection_payload_value(
                 return _value.data
         else:
             # this is a list. Encode if serdes options allow it
-            if can_bin_encode and options.binary_encode_vectors:
+            if (
+                can_bin_encode
+                and options.binary_encode_vectors
+                and isinstance(_value, list)
+            ):
                 return convert_to_ejson_bytes(DataAPIVector(_value).to_bytes())
             else:
                 return _value

@@ -498,7 +498,7 @@ Astrapy's CI only runs "base". The others are to be checked manually when it's n
 
 Tests can be run on three types of Data API _targets_ (with slight differences in what is applicable):
 
-- **DockerCompose**: DSE+Data API, started by the test initialization with `docker-compose`. _Note that in this case you will have to manually destroy the created containers._
+- **DockerCompose**: HCD+Data API, started by the test initialization with `docker-compose`. _Note that in this case you will have to manually destroy the created containers._
 - **nonAstra**: a ready-to-use (user-supplied) local Data API (e.g. using `tests/dse_compose`)
 - **Astra**: an Astra DB target account (or two, as some tests are specific to dev environment)
 
@@ -516,6 +516,9 @@ poetry run pytest tests/base
 poetry run pytest tests/base/unit
 poetry run pytest tests/base/integration
 ```
+
+_Note: when running locally, the reranking-related tests require `ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER=y` and
+HEADER_RERANKING_API_KEY_NVIDIA="AstraCS:<dev token...>`._
 
 Admin:
 
@@ -547,22 +550,15 @@ poetry run pytest [...] -o log_cli=0
 poetry run pytest [...] -o log_cli=1 --log-cli-level=10
 ```
 
-### Special tests (2025-03-25, Temporary provisions)
+### Special tests
 
-Running special tests taking `find_and_rerank` into account, until dev/prod/local discrepancies resolved.
+The following are special provision to manage features under evolution or not
+entirely deployed to all environments. Typically they require manually passing
+certain environment variables, otherwise the associated tests are excluded from CI.
 
-**Prod** (usual CI) just runs as is and skips f.a.r.r.
+#### Maps as tuples
 
-**Dev** (manual CI on a hybrid-capable cloud Data API). One must:
-
-1. launch integration tests with `ASTRAPY_TEST_FINDANDRERANK=y`
-2. ... but also setting "ASTRAPY_TEST_FINDANDRERANK_SUPPRESS_LEXICAL=y" to suppress actual non-null `"$lexical"` sorts, if not rolled out yet.
-  
-**Local** (manual CI on a hybrid-capable locally-running Data API). One must:
-
-1. launch integration tests with `ASTRAPY_TEST_FINDANDRERANK=y`
-2. ... but also with `ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER=y` to pass a reranker API key where needed
-3. ... which requires an environment variable `HEADER_RERANKING_API_KEY_NVIDIA` to be set with the `AstraCS:...` dev token.
+To enable the maps-as-tuples testing, prepend the test invocation with `ASTRAPY_TEST_MAP2TUPLES=y`.
 
 ## Appendices
 

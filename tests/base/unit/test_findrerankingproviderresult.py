@@ -18,7 +18,7 @@ import pytest
 
 from astrapy.info import FindRerankingProvidersResult
 
-RESPONSE_DICT = {
+RESPONSE_DICT_0 = {
     "rerankingProviders": {
         "provider": {
             "isDefault": True,
@@ -41,11 +41,37 @@ RESPONSE_DICT = {
     },
 }
 
+RESPONSE_DICT_1 = {
+    "rerankingProviders": {
+        "provider": {
+            "isDefault": True,
+            "displayName": "TheProvider",
+            "supportedAuthentication": {
+                "NONE": {
+                    "tokens": [],
+                    "enabled": True,
+                },
+            },
+            "models": [
+                {
+                    "name": "provider/<model>",
+                    "modelSupport": {
+                        "status": "SUPPORTED",
+                    },
+                    "isDefault": True,
+                    "url": "https://<url>/ranking",
+                    "properties": None,
+                },
+            ],
+        },
+    },
+}
+
 
 class TestFindRerankingProvidersResult:
     @pytest.mark.describe("test of FindRerankingProvidersResult parsing and back")
-    def test_reranking_providers_result_parsing_and_back(self) -> None:
-        parsed = FindRerankingProvidersResult._from_dict(RESPONSE_DICT)
+    def test_reranking_providers_result_parsing_and_back_base(self) -> None:
+        parsed = FindRerankingProvidersResult._from_dict(RESPONSE_DICT_0)
         providers = parsed.reranking_providers
         assert len(providers) == 1
         assert providers["provider"].display_name is not None
@@ -55,4 +81,20 @@ class TestFindRerankingProvidersResult:
         assert models[0].is_default
 
         dumped = parsed.as_dict()
-        assert dumped == RESPONSE_DICT
+        assert dumped == RESPONSE_DICT_0
+
+    @pytest.mark.describe(
+        "test of FindRerankingProvidersResult parsing and back (with modelSupport)"
+    )
+    def test_reranking_providers_result_parsing_and_back_rich(self) -> None:
+        parsed = FindRerankingProvidersResult._from_dict(RESPONSE_DICT_1)
+        providers = parsed.reranking_providers
+        assert len(providers) == 1
+        assert providers["provider"].display_name is not None
+
+        models = providers["provider"].models
+        assert len(models) == 1
+        assert models[0].is_default
+
+        dumped = parsed.as_dict()
+        assert dumped == RESPONSE_DICT_1
