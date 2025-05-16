@@ -478,7 +478,7 @@ First install `uv` (e.g. `pipx install uv`), then set up a dev environment with 
 
 ```
 uv venv
-uv sync --extra dev
+uv sync --dev
 ```
 
 Linter, style and typecheck should all pass for a PR:
@@ -519,7 +519,7 @@ create more than one venv and specify the version, e.g. for each one:
 ```
 uv venv --python 3.8 .venv-3.8
 . .venv-3.8/bin/activate
-uv sync --extra dev --active
+uv sync --dev --active
 ```
 
 Then, with the desired virtual env active, you will simply run e.g. `pytest [...]`.
@@ -530,7 +530,7 @@ After editing the `pyproject.toml`, make sure you run
 
 ```
 uv lock
-uv sync --extra dev --active  # to align your local virtual environment
+uv sync --dev
 ```
 
 and then commit the new `uv.lock` to the repo as well.

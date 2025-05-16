@@ -38,13 +38,13 @@ Repository = "https://github.com/datastax/astrapy"
 Issues = "https://github.com/datastax/astrapy/issues"
 Changelog = "https://github.com/datastax/astrapy/blob/main/CHANGES"
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "blockbuster ~= 1.5.5",
     "build >= 1.0.0",
     "faker ~= 23.1.0",
     "mypy ~= 1.9.0",
-    "ruff >= 0.6.8,<1.0.0",
+    "ruff >= 0.11.9,<0.12",
     "pre-commit ~= 3.5.0",
     "pytest ~= 8.0.0",
     "pytest-asyncio ~= 0.23.5",
@@ -54,13 +54,15 @@ dev = [
     "pytest-httpserver ~= 1.0.8",
     "setuptools >= 61.0",
     "testcontainers ~= 3.7.1",
-    "types-toml >= 0.10.8.7,<1.0.0",
-    "twine >= 4.0.0"
+    "types-toml >= 0.10.8.7,<1.0.0"
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ["astrapy"]
+
 [build-system]
-requires = ["setuptools >= 61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.setuptools.packages.find]
 include = ["astrapy*"]

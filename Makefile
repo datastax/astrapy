@@ -8,7 +8,7 @@ FMT_FLAGS ?= --check
 
 venv:
 	uv venv
-	uv sync --extra dev
+	uv sync --dev
 
 format: format-src format-tests
 
@@ -41,7 +41,7 @@ docker-test-integration:
 
 build:
 	rm -f dist/astrapy*
-	uv run python -m build
+	uv build
 
 help:
 	@echo "======================================================================"
