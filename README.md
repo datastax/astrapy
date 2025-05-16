@@ -474,7 +474,7 @@ print(unescape_field_path("a&&&.b.c.d.12"))
 
 ## For contributors
 
-First install `uv` (e.g. `pipx install uv`), then set up a dev environment:
+First install `uv` (e.g. `pipx install uv`), then set up a dev environment with `make venv`, or equivalently:
 
 ```
 uv venv
@@ -510,6 +510,30 @@ Tests can be run on three types of Data API _targets_ (with slight differences i
 Depending on the test, different environment variables are needed: refer to
 the templates in `tests/env_templates`. The "basic" credentials (one of the three options)
 are always required, _even for unit testing_.
+
+#### Multiple Python versions
+
+If may be useful to run e.g. unit tests with multiple Python versions. You can have `uv`
+create more than one venv and specify the version, e.g. for each one:
+
+```
+uv venv --python 3.8 .venv-3.8
+. .venv-3.8/bin/activate
+uv sync --extra dev --active
+```
+
+Then, with the desired virtual env active, you will simply run e.g. `pytest [...]`.
+
+#### Adding/changing dependencies
+
+After editing the `pyproject.toml`, make sure you run
+
+```
+uv lock
+uv sync --extra dev --active  # to align your local virtual environment
+```
+
+and then commit the new `uv.lock` to the repo as well.
 
 #### Sample testing commands
 
