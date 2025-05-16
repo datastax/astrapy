@@ -474,7 +474,12 @@ print(unescape_field_path("a&&&.b.c.d.12"))
 
 ## For contributors
 
-First install poetry with `pip install poetry` and then the project dependencies with `poetry install --with dev`.
+First install `uv` (e.g. `pipx install uv`), then set up a dev environment with `make venv`, or equivalently:
+
+```
+uv venv
+uv sync --dev
+```
 
 Linter, style and typecheck should all pass for a PR:
 
@@ -506,15 +511,39 @@ Depending on the test, different environment variables are needed: refer to
 the templates in `tests/env_templates`. The "basic" credentials (one of the three options)
 are always required, _even for unit testing_.
 
+#### Multiple Python versions
+
+If may be useful to run e.g. unit tests with multiple Python versions. You can have `uv`
+create more than one venv and specify the version, e.g. for each one:
+
+```
+uv venv --python 3.8 .venv-3.8
+. .venv-3.8/bin/activate
+uv sync --dev --active
+```
+
+Then, with the desired virtual env active, you will simply run e.g. `pytest [...]`.
+
+#### Adding/changing dependencies
+
+After editing the `pyproject.toml`, make sure you run
+
+```
+uv lock
+uv sync --dev
+```
+
+and then commit the new `uv.lock` to the repo as well.
+
 #### Sample testing commands
 
 Base:
 
 ```
 # choose one:
-poetry run pytest tests/base
-poetry run pytest tests/base/unit
-poetry run pytest tests/base/integration
+uv run pytest tests/base
+uv run pytest tests/base/unit
+uv run pytest tests/base/integration
 ```
 
 _Note: when running locally, the reranking-related tests require `ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER=y` and
@@ -524,30 +553,30 @@ Admin:
 
 ```
 # depending on the environment, different 'admin tests' will run:
-poetry run pytest tests/admin
+uv run pytest tests/admin
 ```
 
 Extended vectorize:
 
 ```
 # very many env. variables required for this one:
-poetry run pytest tests/vectorize
+uv run pytest tests/vectorize
 
 # restrict to some combination(s) with e.g.:
 EMBEDDING_MODEL_TAGS="openai/text-embedding-3-large/HEADER/0,voyageAI/voyage-finance-2/SHARED_SECRET/f" \
-    poetry run pytest tests/vectorize/integration/test_vectorize_providers.py \
+    uv run pytest tests/vectorize/integration/test_vectorize_providers.py \
     -k test_vectorize_usage_auth_type_header_sync
 ```
 
 All the usual `pytest` ways of restricting the test selection hold
-(e.g. `poetry run pytest tests/idiomatic/unit` or `[...] -k <test_name_selector>`). Also e.g.:
+(e.g. `uv run pytest tests/idiomatic/unit` or `[...] -k <test_name_selector>`). Also e.g.:
 
 ```
 # suppress log noise
-poetry run pytest [...] -o log_cli=0
+uv run pytest [...] -o log_cli=0
 
 # increase log level
-poetry run pytest [...] -o log_cli=1 --log-cli-level=10
+uv run pytest [...] -o log_cli=1 --log-cli-level=10
 ```
 
 ### Special tests

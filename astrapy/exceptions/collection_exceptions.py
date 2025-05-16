@@ -83,8 +83,7 @@ class CollectionInsertManyException(DataAPIException):
             else:
                 exc_desc = ", ".join(excs_strs)
             return (
-                f"{self.__class__.__name__}({exc_desc} "
-                f"[with {num_ids} inserted ids])"
+                f"{self.__class__.__name__}({exc_desc} [with {num_ids} inserted ids])"
             )
         else:
             return f"{self.__class__.__name__}()"
