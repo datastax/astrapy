@@ -29,6 +29,7 @@ from astrapy.data.info.database_info import (
 )
 from astrapy.data.info.reranking import (
     FindRerankingProvidersResult,
+    RerankingAPIModelSupport,
     RerankingProvider,
     RerankingProviderAuthentication,
     RerankingProviderModel,
@@ -71,6 +72,7 @@ from astrapy.data.info.table_descriptor.table_listing import (
     TableInfo,
 )
 from astrapy.data.info.vectorize import (
+    EmbeddingAPIModelSupport,
     EmbeddingProvider,
     EmbeddingProviderAuthentication,
     EmbeddingProviderModel,
@@ -101,6 +103,7 @@ __all__ = [
     "CollectionVectorOptions",
     "ColumnType",
     "CreateTableDefinition",
+    "EmbeddingAPIModelSupport",
     "EmbeddingProvider",
     "EmbeddingProviderAuthentication",
     "EmbeddingProviderModel",
@@ -110,6 +113,7 @@ __all__ = [
     "FindRerankingProvidersResult",
     "ListTableDefinition",
     "ListTableDescriptor",
+    "RerankingAPIModelSupport",
     "RerankingProvider",
     "RerankingProviderAuthentication",
     "RerankingProviderModel",

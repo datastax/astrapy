@@ -84,42 +84,6 @@ class RerankServiceOptions:
 
 
 @dataclass
-class RerankingModelSupport:
-    """
-    A representation of the support status for a reranking model;
-    this models a part of the response from the
-    'findRerankingProviders' Data API endpoint.
-
-    Attributes:
-        status: the support status as a string, e.g. "SUPPORTED".
-    """
-
-    status: str
-
-    def __repr__(self) -> str:
-        return f"RerankingModelSupport('{self.status}')"
-
-    def as_dict(self) -> dict[str, Any]:
-        """Recast this object into a dictionary."""
-
-        return {
-            "status": self.status,
-        }
-
-    @classmethod
-    def _from_dict(cls, raw_dict: dict[str, Any]) -> RerankingModelSupport:
-        """
-        Create an instance of RerankingModelSupport from a dictionary
-        such as one from the Data API.
-        """
-
-        _warn_residual_keys(cls, raw_dict, {"status"})
-        return RerankingModelSupport(
-            status=raw_dict["status"],
-        )
-
-
-@dataclass
 class RerankingProviderParameter:
     """
     A representation of a parameter as returned by the 'findRerankingProviders'

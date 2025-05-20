@@ -19,6 +19,18 @@ import pytest
 from astrapy import Database
 from astrapy.info import FindRerankingProvidersResult, RerankingProvider
 
+from ..conftest import IS_ASTRA_DB
+
+
+def _count_models(frp_result: FindRerankingProvidersResult) -> int:
+    return len(
+        [
+            model
+            for prov_v in frp_result.reranking_providers.values()
+            for model in prov_v.models
+        ]
+    )
+
 
 class TestRerankingOpsSync:
     @pytest.mark.describe("test of find_reranking_providers, sync")
@@ -43,3 +55,29 @@ class TestRerankingOpsSync:
             ).reranking_providers
             == rp_result.reranking_providers
         )
+
+    @pytest.mark.skipif(IS_ASTRA_DB, reason="Filtering models not yet on Astra DB")
+    @pytest.mark.describe("test of find_reranking_providers filtering, sync")
+    def test_filtered_findrerankingproviders_sync(
+        self,
+        sync_database: Database,
+    ) -> None:
+        database_admin = sync_database.get_database_admin()
+        default_count = _count_models(database_admin.find_reranking_providers())
+
+        all_count = _count_models(
+            database_admin.find_reranking_providers(filter_model_status="")
+        )
+
+        sup_count = _count_models(
+            database_admin.find_reranking_providers(filter_model_status="SUPPORTED")
+        )
+        dep_count = _count_models(
+            database_admin.find_reranking_providers(filter_model_status="DEPRECATED")
+        )
+        eol_count = _count_models(
+            database_admin.find_reranking_providers(filter_model_status="END_OF_LIFE")
+        )
+
+        assert sup_count + dep_count + eol_count == all_count
+        assert sup_count == default_count

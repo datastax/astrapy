@@ -160,7 +160,3 @@ __all__ = [
     "SortMode",
     "VectorMetric",
 ]
-
-__pdoc__ = {
-    "normalize_optional_projection": False,
-}

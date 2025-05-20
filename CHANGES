@@ -1,5 +1,8 @@
 main
 ====
+embedding/reranking models' "API support status":
+    - db admins' `.find_[embedding|reranking]_providers()` methods have a `filter_model_status` parameter;
+    - returned `*Model` objects have an appropriate "API Support" attribute.
 allow sending `"$vector": None` when inserting into collections
 support for modelSupport in findRerankingProviders
 CollectionDefinition fluent interface: set_lexical and set_rerank accept also just 'enabled'
