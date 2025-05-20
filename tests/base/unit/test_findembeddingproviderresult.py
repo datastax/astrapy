@@ -128,9 +128,9 @@ RESPONSE_DICT_1 = {
             "models": [
                 {
                     "name": "provider/<model>",
-                    # "apiModelSupport": {
-                    #     "status": "SUPPORTED",
-                    # },
+                    "apiModelSupport": {
+                        "status": "SUPPORTED",
+                    },
                     "vectorDimension": None,
                     "parameters": [
                         {
@@ -166,10 +166,14 @@ class TestFindEmbeddingProvidersResult:
         assert len(models) == 1
 
         dumped = parsed.as_dict()
+        # clean out apiModelSupport from generated dict before checking
+        for pro_v in dumped["embeddingProviders"].values():
+            for mod_v in pro_v["models"]:
+                del mod_v["apiModelSupport"]
         assert dumped == RESPONSE_DICT_0
 
     @pytest.mark.describe(
-        "test of FindEmbeddingProvidersResult parsing and back (with modelSupport)"
+        "test of FindEmbeddingProvidersResult parsing and back (with apiModelSupport)"
     )
     def test_embedding_providers_result_parsing_and_back_rich(self) -> None:
         parsed = FindEmbeddingProvidersResult._from_dict(RESPONSE_DICT_1)

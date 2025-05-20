@@ -55,9 +55,9 @@ RESPONSE_DICT_1 = {
             "models": [
                 {
                     "name": "provider/<model>",
-                    # "apiModelSupport": {
-                    #     "status": "SUPPORTED",
-                    # },
+                    "apiModelSupport": {
+                        "status": "SUPPORTED",
+                    },
                     "isDefault": True,
                     "url": "https://<url>/ranking",
                     "properties": None,
@@ -81,10 +81,14 @@ class TestFindRerankingProvidersResult:
         assert models[0].is_default
 
         dumped = parsed.as_dict()
+        # clean out apiModelSupport from generated dict before checking
+        for pro_v in dumped["rerankingProviders"].values():
+            for mod_v in pro_v["models"]:
+                del mod_v["apiModelSupport"]
         assert dumped == RESPONSE_DICT_0
 
     @pytest.mark.describe(
-        "test of FindRerankingProvidersResult parsing and back (with modelSupport)"
+        "test of FindRerankingProvidersResult parsing and back (with apiModelSupport)"
     )
     def test_reranking_providers_result_parsing_and_back_rich(self) -> None:
         parsed = FindRerankingProvidersResult._from_dict(RESPONSE_DICT_1)
