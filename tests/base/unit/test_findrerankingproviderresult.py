@@ -55,9 +55,9 @@ RESPONSE_DICT_1 = {
             "models": [
                 {
                     "name": "provider/<model>",
-                    "modelSupport": {
-                        "status": "SUPPORTED",
-                    },
+                    # "apiModelSupport": {
+                    #     "status": "SUPPORTED",
+                    # },
                     "isDefault": True,
                     "url": "https://<url>/ranking",
                     "properties": None,
