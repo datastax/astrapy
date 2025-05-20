@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from astrapy import Database
@@ -33,6 +35,10 @@ def _count_models(fep_result: FindEmbeddingProvidersResult) -> int:
 
 
 class TestVectorizeOpsSync:
+    @pytest.mark.skipif(
+        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
+        reason="No 'latest main' tests required.",
+    )
     @pytest.mark.describe("test of find_embedding_providers, sync")
     def test_findembeddingproviders_sync(
         self,
@@ -69,6 +75,10 @@ class TestVectorizeOpsSync:
                         del model["apiModelSupport"]
         assert cleaned_dict_mapping == cleaned_raw_info
 
+    @pytest.mark.skipif(
+        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
+        reason="No 'latest main' tests required.",
+    )
     @pytest.mark.skipif(IS_ASTRA_DB, reason="Filtering models not yet on Astra DB")
     @pytest.mark.describe("test of find_embedding_providers filtering, sync")
     def test_filtered_findembeddingproviders_sync(

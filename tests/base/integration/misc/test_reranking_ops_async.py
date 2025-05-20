@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from astrapy import AsyncDatabase
@@ -56,6 +58,10 @@ class TestRerankingOpsAsync:
             == rp_result.reranking_providers
         )
 
+    @pytest.mark.skipif(
+        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
+        reason="No 'latest main' tests required.",
+    )
     @pytest.mark.skipif(IS_ASTRA_DB, reason="Filtering models not yet on Astra DB")
     @pytest.mark.describe("test of find_reranking_providers filtering, async")
     async def test_filtered_findrerankingproviders_async(
