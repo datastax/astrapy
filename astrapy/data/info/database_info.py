@@ -20,6 +20,7 @@ from typing import Any
 
 from astrapy.admin.endpoints import build_api_endpoint, parse_api_endpoint
 from astrapy.data_types import DataAPITimestamp
+from astrapy.utils.parsing import _warn_residual_keys
 
 
 def _failsafe_parse_date(date_string: str | None) -> datetime.datetime | None:
@@ -305,3 +306,83 @@ class AstraDBAdminDatabaseInfo(_BaseAstraDBDatabaseInfo):
             "raw=...",
         ]
         return f"{self.__class__.__name__}({', '.join(pieces)})"
+
+
+@dataclass
+class AstraDBAvailableRegionInfo:
+    """
+    Represents a region information as returned by the `find_available_regions`
+    method: in other words, it is a descriptor of a certain region available
+    for database creation.
+
+    Attributes:
+        classification: level of access to the region, one of 'standard', 'premium'
+            or 'premium_plus'.
+        cloud_provider: one of 'gcp', 'aws' or 'azure'.
+        display_name: a region "pretty name" e.g. for printing messages.
+        enabled: a boolean flag marking whether the region is enabled.
+        region_name: the name of the region. This is what the DevOps API calls "region"
+            in its raw response and can be used as an identifier rather than a
+            pretty-printable descriptive string.
+        reserved_for_qualified_users: a boolean flag marking availability settings.
+        zone: macro-zone for the region, e.g. "na" or "emea".
+    """
+
+    classification: str
+    cloud_provider: str
+    display_name: str
+    enabled: bool
+    region_name: str
+    reserved_for_qualified_users: bool
+    zone: str
+
+    def __repr__(self) -> str:
+        body = f'{self.cloud_provider}/{self.region_name}: "{self.display_name}", ...'
+        return f"{self.__class__.__name__}({body})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """
+        Recast this object into a dictionary.
+        """
+
+        return {
+            "classification": self.classification,
+            "cloudProvider": self.cloud_provider,
+            "displayName": self.display_name,
+            "enabled": self.enabled,
+            "name": self.region_name,
+            "region_type": "vector",
+            "reservedForQualifiedUsers": self.reserved_for_qualified_users,
+            "zone": self.zone,
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> AstraDBAvailableRegionInfo:
+        """
+        Create an instance of AstraDBAvailableRegionInfo from a dictionary
+        such as one from the Data API.
+        """
+
+        _warn_residual_keys(
+            cls,
+            raw_dict,
+            {
+                "classification",
+                "cloudProvider",
+                "displayName",
+                "enabled",
+                "name",
+                "region_type",
+                "reservedForQualifiedUsers",
+                "zone",
+            },
+        )
+        return AstraDBAvailableRegionInfo(
+            classification=raw_dict["classification"],
+            cloud_provider=raw_dict["cloudProvider"],
+            display_name=raw_dict["displayName"],
+            enabled=raw_dict["enabled"],
+            region_name=raw_dict["name"],
+            reserved_for_qualified_users=raw_dict["reservedForQualifiedUsers"],
+            zone=raw_dict["zone"],
+        )

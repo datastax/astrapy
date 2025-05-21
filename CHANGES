@@ -1,5 +1,6 @@
 main
 ====
+AstraDBAdmin: introduced `[async_]find_available_regions()` method (and related response objects)
 embedding/reranking models' "API support status":
     - db admins' `.find_[embedding|reranking]_providers()` methods have a `filter_model_status` parameter;
     - returned `*Model` objects have an appropriate "API Support" attribute.

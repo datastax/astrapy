@@ -21,6 +21,7 @@ from __future__ import annotations
 import pytest
 
 from astrapy.admin import ParsedAPIEndpoint, parse_api_endpoint
+from astrapy.info import AstraDBAvailableRegionInfo
 
 
 @pytest.mark.describe("test of parsing API endpoints")
@@ -66,3 +67,18 @@ def test_parse_api_endpoint() -> None:
 
     for m_ep in malformed_endpoints:
         assert parse_api_endpoint(m_ep) is None
+
+
+@pytest.mark.describe("test of marshaling of available region info")
+def test_parse_availableregioninfo() -> None:
+    region_dict = {
+        "classification": "standard",
+        "cloudProvider": "AWS",
+        "displayName": "US East (Ohio)",
+        "enabled": True,
+        "name": "us-east-2",
+        "region_type": "vector",
+        "reservedForQualifiedUsers": False,
+        "zone": "na",
+    }
+    assert AstraDBAvailableRegionInfo._from_dict(region_dict).as_dict() == region_dict
