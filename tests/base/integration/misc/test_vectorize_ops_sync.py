@@ -35,10 +35,6 @@ def _count_models(fep_result: FindEmbeddingProvidersResult) -> int:
 
 
 class TestVectorizeOpsSync:
-    @pytest.mark.skipif(
-        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
-        reason="No 'latest main' tests required.",
-    )
     @pytest.mark.describe("test of find_embedding_providers, sync")
     def test_findembeddingproviders_sync(
         self,
@@ -67,8 +63,13 @@ class TestVectorizeOpsSync:
         cleaned_raw_info = clean_nulls_from_dict(
             ep_result.raw_info["embeddingProviders"]  # type: ignore[index]
         )
-        # TODO remove this cleanup once Astra prod gets the support status flags
-        if IS_ASTRA_DB:
+        # TODO remove this cleanup once Astra prod and HCD get the support status flags
+        raw_info_has_ams = any(
+            "apiModelSupport" in model_dict
+            for prov_v in cleaned_raw_info.values()
+            for model_dict in prov_v["models"]
+        )
+        if not raw_info_has_ams:
             for emb_prov in cleaned_dict_mapping.values():
                 for model in emb_prov["models"]:
                     if "apiModelSupport" in model:
