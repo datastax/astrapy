@@ -585,6 +585,10 @@ The following are special provision to manage features under evolution or not
 entirely deployed to all environments. Typically they require manually passing
 certain environment variables, otherwise the associated tests are excluded from CI.
 
+#### Cutting-edge features on `main`
+
+Prepend tests with a `ASTRAPY_TEST_LATEST_MAIN=y` for features found on `main` that are not released anywhere.
+
 #### Maps as tuples
 
 To enable the maps-as-tuples testing, prepend the test invocation with `ASTRAPY_TEST_MAP2TUPLES=y`.
