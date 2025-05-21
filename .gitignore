@@ -7,6 +7,7 @@
 .env
 node_modules
 venv
+.venv*
 dump.rdb
 .tmp
 npm-debug.log

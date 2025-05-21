@@ -84,42 +84,6 @@ class RerankServiceOptions:
 
 
 @dataclass
-class RerankingModelSupport:
-    """
-    A representation of the support status for a reranking model;
-    this models a part of the response from the
-    'findRerankingProviders' Data API endpoint.
-
-    Attributes:
-        status: the support status as a string, e.g. "SUPPORTED".
-    """
-
-    status: str
-
-    def __repr__(self) -> str:
-        return f"RerankingModelSupport('{self.status}')"
-
-    def as_dict(self) -> dict[str, Any]:
-        """Recast this object into a dictionary."""
-
-        return {
-            "status": self.status,
-        }
-
-    @classmethod
-    def _from_dict(cls, raw_dict: dict[str, Any]) -> RerankingModelSupport:
-        """
-        Create an instance of RerankingModelSupport from a dictionary
-        such as one from the Data API.
-        """
-
-        _warn_residual_keys(cls, raw_dict, {"status"})
-        return RerankingModelSupport(
-            status=raw_dict["status"],
-        )
-
-
-@dataclass
 class RerankingProviderParameter:
     """
     A representation of a parameter as returned by the 'findRerankingProviders'
@@ -198,6 +162,46 @@ class RerankingProviderParameter:
 
 
 @dataclass
+class RerankingAPIModelSupport:
+    """
+    A representation of the API support status for a reranking model.
+
+    Attributes:
+        status: a string describing the support status.
+    """
+
+    status: str
+
+    def __repr__(self) -> str:
+        return f"RerankingAPIModelSupport({self.status})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            "status": self.status,
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> RerankingAPIModelSupport:
+        """
+        Create an instance of RerankingAPIModelSupport from a dictionary
+        such as one from the Data API.
+        """
+
+        _warn_residual_keys(
+            cls,
+            raw_dict,
+            {
+                "status",
+            },
+        )
+        return RerankingAPIModelSupport(
+            status=raw_dict.get("status") or "SUPPORTED",
+        )
+
+
+@dataclass
 class RerankingProviderModel:
     """
     A representation of a reranking model as returned by the 'findRerankingProviders'
@@ -206,10 +210,12 @@ class RerankingProviderModel:
     Attributes:
         name: the model name as must be passed when issuing
             vectorize operations to the API.
+        is_default: a flag set by the Data API to mark a reranking model as the default.
+        url: an URL associated to invoking the reranking model.
+        properties: a free-form dictionary with string keys, describing the model.
         parameters: a list of the `RerankingProviderParameter` objects the model admits.
-        vector_dimension: an integer for the dimensionality of the reranking model.
-            if this is None, the dimension can assume multiple values as specified
-            by a corresponding parameter listed with the model.
+        api_model_support: the status of API support for the model, in the form
+            of a RerankingAPIModelSupport object.
     """
 
     name: str
@@ -217,7 +223,7 @@ class RerankingProviderModel:
     url: str | None
     properties: dict[str, Any] | None
     parameters: list[RerankingProviderParameter]
-    model_support: RerankingModelSupport | None
+    api_model_support: RerankingAPIModelSupport
 
     def __repr__(self) -> str:
         _default_desc = "<Default> " if self.is_default else ""
@@ -240,9 +246,7 @@ class RerankingProviderModel:
                     )
                     if self.parameters
                     else None,
-                    ("modelSupport", self.model_support.as_dict())
-                    if self.model_support
-                    else None,
+                    ("apiModelSupport", self.api_model_support.as_dict()),
                 ]
                 if pair is not None
             ]
@@ -264,7 +268,7 @@ class RerankingProviderModel:
                 "url",
                 "properties",
                 "parameters",
-                "modelSupport",
+                "apiModelSupport",
             },
         )
         return RerankingProviderModel(
@@ -276,9 +280,9 @@ class RerankingProviderModel:
                 RerankingProviderParameter._from_dict(param_dict)
                 for param_dict in raw_dict.get("parameters") or []
             ],
-            model_support=RerankingModelSupport._from_dict(raw_dict["modelSupport"])
-            if "modelSupport" in raw_dict
-            else None,
+            api_model_support=RerankingAPIModelSupport._from_dict(
+                raw_dict.get("apiModelSupport") or {},
+            ),
         )
 
 

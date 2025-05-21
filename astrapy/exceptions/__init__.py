@@ -511,7 +511,6 @@ __all__ = [
     "UnexpectedDevOpsAPIResponseException",
     "DevOpsAPIResponseException",
     "DataAPIErrorDescriptor",
-    "DataAPIDetailedErrorDescriptor",
     "DataAPIException",
     "DataAPIHttpException",
     "DataAPITimeoutException",
@@ -528,6 +527,5 @@ __all__ = [
 ]
 
 __pdoc__ = {
-    "to_dataapi_timeout_exception": False,
     "MultiCallTimeoutManager": False,
 }

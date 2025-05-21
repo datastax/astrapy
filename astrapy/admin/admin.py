@@ -1806,6 +1806,14 @@ class DatabaseAdmin(ABC):
     An abstract class defining the interface for a database admin object.
     This supports generic keyspace crud, as well as spawning databases,
     without committing to a specific database architecture (e.g. Astra DB).
+
+    Attributes:
+        environment: a string representing the target Data API environment.
+            It can be left unspecified for the default value of `Environment.PROD`.
+            Only Astra DB environments can be meaningfully supplied.
+        spawner_database: a Database object, possibly async, which originated
+            this admin. This reference is kept in order to mutate its working
+            keyspace when asked to do so.
     """
 
     environment: str
@@ -1911,7 +1919,323 @@ class DatabaseAdmin(ABC):
         ...
 
 
-class AstraDBDatabaseAdmin(DatabaseAdmin):
+class ProviderQueryingDatabaseAdmin(DatabaseAdmin):
+    """
+    This class captures the common behaviour of AstraDBDatabaseAdmin and
+    DataAPIDatabaseAdmin, i.e. the find-providers methods.
+
+    Attributes:
+        _api_commander: an APICommander for internal use, to query the Data API.
+        api_options: the database admin's API options in use.
+    """
+
+    _api_commander: APICommander
+    api_options: FullAPIOptions
+
+    def find_embedding_providers(
+        self,
+        *,
+        filter_model_status: str | None = None,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> FindEmbeddingProvidersResult:
+        """
+        Query the API for the full information on available embedding providers.
+
+        Args:
+            filter_model_status: A string to filter models by their support status.
+                Examples: "SUPPORTED", "DEPRECATED". Passing an empty string tells
+                the Data API to return all models, regardless of their support status.
+                If omitted, the Data API default behaviour is to return fully supported
+                models only.
+            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `database_admin_timeout_ms`.
+            timeout_ms: an alias for `database_admin_timeout_ms`.
+
+        Returns:
+            A `FindEmbeddingProvidersResult` object with the complete information
+            returned by the API about available embedding providers
+
+        Example
+            >>> # (output abridged and indented for clarity):
+            >>> admin_for_my_db.find_embedding_providers()
+            FindEmbeddingProvidersResult(embedding_providers=..., openai, ...)
+            >>> admin_for_my_db.find_embedding_providers().embedding_providers
+            {
+                'openai': EmbeddingProvider(
+                    display_name='OpenAI',
+                    models=[
+                        EmbeddingProviderModel(name='text-embedding-3-small'),
+                        ...
+                    ]
+                ),
+                ...
+            }
+        """
+
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+        fep_body = (
+            {}
+            if filter_model_status is None
+            else {"options": {"filterModelStatus": filter_model_status}}
+        )
+        logger.info("findEmbeddingProviders")
+        fe_response = self._api_commander.request(
+            payload={"findEmbeddingProviders": fep_body},
+            timeout_context=_TimeoutContext(
+                request_ms=_database_admin_timeout_ms, label=_da_label
+            ),
+        )
+        if "embeddingProviders" not in fe_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from findEmbeddingProviders API command.",
+                raw_response=fe_response,
+            )
+        else:
+            logger.info("finished findEmbeddingProviders")
+            return FindEmbeddingProvidersResult._from_dict(fe_response["status"])
+
+    async def async_find_embedding_providers(
+        self,
+        *,
+        filter_model_status: str | None = None,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> FindEmbeddingProvidersResult:
+        """
+        Query the API for the full information on available embedding providers.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            filter_model_status: A string to filter models by their support status.
+                Examples: "SUPPORTED", "DEPRECATED". Passing an empty string tells
+                the Data API to return all models, regardless of their support status.
+                If omitted, the Data API default behaviour is to return fully supported
+                models only.
+            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `database_admin_timeout_ms`.
+            timeout_ms: an alias for `database_admin_timeout_ms`.
+
+        Returns:
+            A `FindEmbeddingProvidersResult` object with the complete information
+            returned by the API about available embedding providers
+
+        Example:
+            >>> # (output abridged and indented for clarity):
+            >>> asyncio.run(admin_for_my_db.find_embedding_providers())
+            FindEmbeddingProvidersResult(embedding_providers=..., openai, ...)
+            >>> asyncio.run(
+            ...     admin_for_my_db.find_embedding_providers()
+            ... ).embedding_providers
+            {
+                'openai': EmbeddingProvider(
+                    display_name='OpenAI',
+                    models=[
+                        EmbeddingProviderModel(name='text-embedding-3-small'),
+                        ...
+                    ]
+                ),
+                ...
+            }
+        """
+
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+        fep_body = (
+            {}
+            if filter_model_status is None
+            else {"options": {"filterModelStatus": filter_model_status}}
+        )
+        logger.info("findEmbeddingProviders, async")
+        fe_response = await self._api_commander.async_request(
+            payload={"findEmbeddingProviders": fep_body},
+            timeout_context=_TimeoutContext(
+                request_ms=_database_admin_timeout_ms, label=_da_label
+            ),
+        )
+        if "embeddingProviders" not in fe_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from findEmbeddingProviders API command.",
+                raw_response=fe_response,
+            )
+        else:
+            logger.info("finished findEmbeddingProviders, async")
+            return FindEmbeddingProvidersResult._from_dict(fe_response["status"])
+
+    def find_reranking_providers(
+        self,
+        *,
+        filter_model_status: str | None = None,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> FindRerankingProvidersResult:
+        """
+        Query the API for the full information on available reranking providers.
+
+        Args:
+            filter_model_status: A string to filter models by their support status.
+                Examples: "SUPPORTED", "DEPRECATED". Passing an empty string tells
+                the Data API to return all models, regardless of their support status.
+                If omitted, the Data API default behaviour is to return fully supported
+                models only.
+            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `database_admin_timeout_ms`.
+            timeout_ms: an alias for `database_admin_timeout_ms`.
+
+        Returns:
+            A `FindRerankingProvidersResult` object with the complete information
+            returned by the API about available reranking providers
+
+        Example:
+            >>> # (output abridged and indented for clarity):
+            >>> admin_for_my_db.find_reranking_providers()
+            FindRerankingProvidersResult(reranking_providers=nvidia)
+            >>> admin_for_my_db.find_reranking_providers().reranking_providers
+            {
+                'nvidia': RerankingProvider(
+                    <Default>
+                    display_name='Nvidia',
+                    models=[
+                        RerankingProviderModel(
+                            <Default>
+                            name='nvidia/llama-3.2-nv-rerankqa-1b-v2'
+                        ),
+                        ...
+                    ]
+                ),
+                ...
+            }
+        """
+
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+        frp_body = (
+            {}
+            if filter_model_status is None
+            else {"options": {"filterModelStatus": filter_model_status}}
+        )
+        logger.info("findRerankingProviders")
+        fr_response = self._api_commander.request(
+            payload={"findRerankingProviders": frp_body},
+            timeout_context=_TimeoutContext(
+                request_ms=_database_admin_timeout_ms, label=_da_label
+            ),
+        )
+        if "rerankingProviders" not in fr_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from findRerankingProviders API command.",
+                raw_response=fr_response,
+            )
+        else:
+            logger.info("finished findRerankingProviders")
+            return FindRerankingProvidersResult._from_dict(fr_response["status"])
+
+    async def async_find_reranking_providers(
+        self,
+        *,
+        filter_model_status: str | None = None,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> FindRerankingProvidersResult:
+        """
+        Query the API for the full information on available reranking providers.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            filter_model_status: A string to filter models by their support status.
+                Examples: "SUPPORTED", "DEPRECATED". Passing an empty string tells
+                the Data API to return all models, regardless of their support status.
+                If omitted, the Data API default behaviour is to return fully supported
+                models only.
+            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `database_admin_timeout_ms`.
+            timeout_ms: an alias for `database_admin_timeout_ms`.
+
+        Returns:
+            A `FindRerankingProvidersResult` object with the complete information
+            returned by the API about available reranking providers
+
+        Example:
+            >>> # (output abridged and indented for clarity):
+            >>> asyncio.run(admin_for_my_db.find_reranking_providers())
+            FindRerankingProvidersResult(reranking_providers=nvidia)
+            >>> asyncio.run(
+            ...     admin_for_my_db.find_reranking_providers()
+            ... ).reranking_providers
+            {
+                'nvidia': RerankingProvider(
+                    <Default>
+                    display_name='Nvidia',
+                    models=[
+                        RerankingProviderModel(
+                            <Default>
+                            name='nvidia/llama-3.2-nv-rerankqa-1b-v2'
+                        ),
+                        ...
+                    ]
+                ),
+                ...
+            }
+        """
+
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+        frp_body = (
+            {}
+            if filter_model_status is None
+            else {"options": {"filterModelStatus": filter_model_status}}
+        )
+        logger.info("findRerankingProviders, async")
+        fr_response = await self._api_commander.async_request(
+            payload={"findRerankingProviders": frp_body},
+            timeout_context=_TimeoutContext(
+                request_ms=_database_admin_timeout_ms, label=_da_label
+            ),
+        )
+        if "rerankingProviders" not in fr_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from findRerankingProviders API command.",
+                raw_response=fr_response,
+            )
+        else:
+            logger.info("finished findRerankingProviders, async")
+            return FindRerankingProvidersResult._from_dict(fr_response["status"])
+
+
+class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
     """
     An "admin" object, able to perform administrative tasks at the keyspaces level
     (i.e. within a certain database), such as creating/listing/dropping keyspaces.
@@ -1963,6 +2287,16 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         in the Database, Collection and Table classes. Check the provided token
         if "Unauthorized" errors are encountered.
     """
+
+    # Formal assignments to convince pdoc to document these four inherited methods:
+    find_embedding_providers = ProviderQueryingDatabaseAdmin.find_embedding_providers
+    async_find_embedding_providers = (
+        ProviderQueryingDatabaseAdmin.async_find_embedding_providers
+    )
+    find_reranking_providers = ProviderQueryingDatabaseAdmin.find_reranking_providers
+    async_find_reranking_providers = (
+        ProviderQueryingDatabaseAdmin.async_find_reranking_providers
+    )
 
     def __init__(
         self,
@@ -3042,262 +3376,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             spawn_api_options=spawn_api_options,
         ).to_async()
 
-    def find_embedding_providers(
-        self,
-        *,
-        database_admin_timeout_ms: int | None = None,
-        request_timeout_ms: int | None = None,
-        timeout_ms: int | None = None,
-    ) -> FindEmbeddingProvidersResult:
-        """
-        Query the API for the full information on available embedding providers.
 
-        Args:
-            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, this object's defaults apply.
-                (This method issues a single API request, hence all timeout parameters
-                are treated the same.)
-            request_timeout_ms: an alias for `database_admin_timeout_ms`.
-            timeout_ms: an alias for `database_admin_timeout_ms`.
-
-        Returns:
-            A `FindEmbeddingProvidersResult` object with the complete information
-            returned by the API about available embedding providers
-
-        Example (output abridged and indented for clarity):
-            >>> admin_for_my_db.find_embedding_providers()
-            FindEmbeddingProvidersResult(embedding_providers=..., openai, ...)
-            >>> admin_for_my_db.find_embedding_providers().embedding_providers
-            {
-                'openai': EmbeddingProvider(
-                    display_name='OpenAI',
-                    models=[
-                        EmbeddingProviderModel(name='text-embedding-3-small'),
-                        ...
-                    ]
-                ),
-                ...
-            }
-        """
-
-        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
-            timeout_options=self.api_options.timeout_options,
-            database_admin_timeout_ms=database_admin_timeout_ms,
-            request_timeout_ms=request_timeout_ms,
-            timeout_ms=timeout_ms,
-        )
-        logger.info("findEmbeddingProviders")
-        fe_response = self._api_commander.request(
-            payload={"findEmbeddingProviders": {}},
-            timeout_context=_TimeoutContext(
-                request_ms=_database_admin_timeout_ms, label=_da_label
-            ),
-        )
-        if "embeddingProviders" not in fe_response.get("status", {}):
-            raise UnexpectedDataAPIResponseException(
-                text="Faulty response from findEmbeddingProviders API command.",
-                raw_response=fe_response,
-            )
-        else:
-            logger.info("finished findEmbeddingProviders")
-            return FindEmbeddingProvidersResult._from_dict(fe_response["status"])
-
-    async def async_find_embedding_providers(
-        self,
-        *,
-        database_admin_timeout_ms: int | None = None,
-        request_timeout_ms: int | None = None,
-        timeout_ms: int | None = None,
-    ) -> FindEmbeddingProvidersResult:
-        """
-        Query the API for the full information on available embedding providers.
-        Async version of the method, for use in an asyncio context.
-
-        Args:
-            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, this object's defaults apply.
-                (This method issues a single API request, hence all timeout parameters
-                are treated the same.)
-            request_timeout_ms: an alias for `database_admin_timeout_ms`.
-            timeout_ms: an alias for `database_admin_timeout_ms`.
-
-        Returns:
-            A `FindEmbeddingProvidersResult` object with the complete information
-            returned by the API about available embedding providers
-
-        Example (output abridged and indented for clarity):
-            >>> asyncio.run(admin_for_my_db.find_embedding_providers())
-            FindEmbeddingProvidersResult(embedding_providers=..., openai, ...)
-            >>> asyncio.run(
-            ...     admin_for_my_db.find_embedding_providers()
-            ... ).embedding_providers
-            {
-                'openai': EmbeddingProvider(
-                    display_name='OpenAI',
-                    models=[
-                        EmbeddingProviderModel(name='text-embedding-3-small'),
-                        ...
-                    ]
-                ),
-                ...
-            }
-        """
-
-        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
-            timeout_options=self.api_options.timeout_options,
-            database_admin_timeout_ms=database_admin_timeout_ms,
-            request_timeout_ms=request_timeout_ms,
-            timeout_ms=timeout_ms,
-        )
-        logger.info("findEmbeddingProviders, async")
-        fe_response = await self._api_commander.async_request(
-            payload={"findEmbeddingProviders": {}},
-            timeout_context=_TimeoutContext(
-                request_ms=_database_admin_timeout_ms, label=_da_label
-            ),
-        )
-        if "embeddingProviders" not in fe_response.get("status", {}):
-            raise UnexpectedDataAPIResponseException(
-                text="Faulty response from findEmbeddingProviders API command.",
-                raw_response=fe_response,
-            )
-        else:
-            logger.info("finished findEmbeddingProviders, async")
-            return FindEmbeddingProvidersResult._from_dict(fe_response["status"])
-
-    def find_reranking_providers(
-        self,
-        *,
-        database_admin_timeout_ms: int | None = None,
-        request_timeout_ms: int | None = None,
-        timeout_ms: int | None = None,
-    ) -> FindRerankingProvidersResult:
-        """
-        Query the API for the full information on available reranking providers.
-
-        Args:
-            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, this object's defaults apply.
-                (This method issues a single API request, hence all timeout parameters
-                are treated the same.)
-            request_timeout_ms: an alias for `database_admin_timeout_ms`.
-            timeout_ms: an alias for `database_admin_timeout_ms`.
-
-        Returns:
-            A `FindRerankingProvidersResult` object with the complete information
-            returned by the API about available reranking providers
-
-        Example (output abridged and indented for clarity):
-            >>> admin_for_my_db.find_reranking_providers()
-            FindRerankingProvidersResult(reranking_providers=nvidia)
-            >>> admin_for_my_db.find_reranking_providers().reranking_providers
-            {
-                'nvidia': RerankingProvider(
-                    <Default>
-                    display_name='Nvidia',
-                    models=[
-                        RerankingProviderModel(
-                            <Default>
-                            name='nvidia/llama-3.2-nv-rerankqa-1b-v2'
-                        ),
-                        ...
-                    ]
-                ),
-                ...
-            }
-        """
-
-        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
-            timeout_options=self.api_options.timeout_options,
-            database_admin_timeout_ms=database_admin_timeout_ms,
-            request_timeout_ms=request_timeout_ms,
-            timeout_ms=timeout_ms,
-        )
-        logger.info("findRerankingProviders")
-        fr_response = self._api_commander.request(
-            payload={"findRerankingProviders": {}},
-            timeout_context=_TimeoutContext(
-                request_ms=_database_admin_timeout_ms, label=_da_label
-            ),
-        )
-        if "rerankingProviders" not in fr_response.get("status", {}):
-            raise UnexpectedDataAPIResponseException(
-                text="Faulty response from findRerankingProviders API command.",
-                raw_response=fr_response,
-            )
-        else:
-            logger.info("finished findRerankingProviders")
-            return FindRerankingProvidersResult._from_dict(fr_response["status"])
-
-    async def async_find_reranking_providers(
-        self,
-        *,
-        database_admin_timeout_ms: int | None = None,
-        request_timeout_ms: int | None = None,
-        timeout_ms: int | None = None,
-    ) -> FindRerankingProvidersResult:
-        """
-        Query the API for the full information on available reranking providers.
-        Async version of the method, for use in an asyncio context.
-
-        Args:
-            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, this object's defaults apply.
-                (This method issues a single API request, hence all timeout parameters
-                are treated the same.)
-            request_timeout_ms: an alias for `database_admin_timeout_ms`.
-            timeout_ms: an alias for `database_admin_timeout_ms`.
-
-        Returns:
-            A `FindRerankingProvidersResult` object with the complete information
-            returned by the API about available reranking providers
-
-        Example (output abridged and indented for clarity):
-            >>> asyncio.run(admin_for_my_db.find_reranking_providers())
-            FindRerankingProvidersResult(reranking_providers=nvidia)
-            >>> asyncio.run(
-            ...     admin_for_my_db.find_reranking_providers()
-            ... ).reranking_providers
-            {
-                'nvidia': RerankingProvider(
-                    <Default>
-                    display_name='Nvidia',
-                    models=[
-                        RerankingProviderModel(
-                            <Default>
-                            name='nvidia/llama-3.2-nv-rerankqa-1b-v2'
-                        ),
-                        ...
-                    ]
-                ),
-                ...
-            }
-        """
-
-        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
-            timeout_options=self.api_options.timeout_options,
-            database_admin_timeout_ms=database_admin_timeout_ms,
-            request_timeout_ms=request_timeout_ms,
-            timeout_ms=timeout_ms,
-        )
-        logger.info("findRerankingProviders, async")
-        fr_response = await self._api_commander.async_request(
-            payload={"findRerankingProviders": {}},
-            timeout_context=_TimeoutContext(
-                request_ms=_database_admin_timeout_ms, label=_da_label
-            ),
-        )
-        if "rerankingProviders" not in fr_response.get("status", {}):
-            raise UnexpectedDataAPIResponseException(
-                text="Faulty response from findRerankingProviders API command.",
-                raw_response=fr_response,
-            )
-        else:
-            logger.info("finished findRerankingProviders, async")
-            return FindRerankingProvidersResult._from_dict(fr_response["status"])
-
-
-class DataAPIDatabaseAdmin(DatabaseAdmin):
+class DataAPIDatabaseAdmin(ProviderQueryingDatabaseAdmin):
     """
     An "admin" object for non-Astra Data API environments, to perform administrative
     tasks at the keyspaces level such as creating/listing/dropping keyspaces.
@@ -3343,6 +3423,16 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         in the Database, Collection and Table classes. Check the provided token
         if "Unauthorized" errors are encountered.
     """
+
+    # Formal assignments to convince pdoc to document these four inherited methods:
+    find_embedding_providers = ProviderQueryingDatabaseAdmin.find_embedding_providers
+    async_find_embedding_providers = (
+        ProviderQueryingDatabaseAdmin.async_find_embedding_providers
+    )
+    find_reranking_providers = ProviderQueryingDatabaseAdmin.find_reranking_providers
+    async_find_reranking_providers = (
+        ProviderQueryingDatabaseAdmin.async_find_reranking_providers
+    )
 
     def __init__(
         self,
@@ -3934,260 +4024,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             keyspace=keyspace,
             spawn_api_options=spawn_api_options,
         ).to_async()
-
-    def find_embedding_providers(
-        self,
-        *,
-        database_admin_timeout_ms: int | None = None,
-        request_timeout_ms: int | None = None,
-        timeout_ms: int | None = None,
-    ) -> FindEmbeddingProvidersResult:
-        """
-        Query the API for the full information on available embedding providers.
-
-        Args:
-            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, this object's defaults apply.
-                (This method issues a single API request, hence all timeout parameters
-                are treated the same.)
-            request_timeout_ms: an alias for `database_admin_timeout_ms`.
-            timeout_ms: an alias for `database_admin_timeout_ms`.
-
-        Returns:
-            A `FindEmbeddingProvidersResult` object with the complete information
-            returned by the API about available embedding providers
-
-        Example (output abridged and indented for clarity):
-            >>> admin_for_my_db.find_embedding_providers()
-            FindEmbeddingProvidersResult(embedding_providers=..., openai, ...)
-            >>> admin_for_my_db.find_embedding_providers().embedding_providers
-            {
-                'openai': EmbeddingProvider(
-                    display_name='OpenAI',
-                    models=[
-                        EmbeddingProviderModel(name='text-embedding-3-small'),
-                        ...
-                    ]
-                ),
-                ...
-            }
-        """
-
-        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
-            timeout_options=self.api_options.timeout_options,
-            database_admin_timeout_ms=database_admin_timeout_ms,
-            request_timeout_ms=request_timeout_ms,
-            timeout_ms=timeout_ms,
-        )
-        logger.info("findEmbeddingProviders")
-        fe_response = self._api_commander.request(
-            payload={"findEmbeddingProviders": {}},
-            timeout_context=_TimeoutContext(
-                request_ms=_database_admin_timeout_ms, label=_da_label
-            ),
-        )
-        if "embeddingProviders" not in fe_response.get("status", {}):
-            raise UnexpectedDataAPIResponseException(
-                text="Faulty response from findEmbeddingProviders API command.",
-                raw_response=fe_response,
-            )
-        else:
-            logger.info("finished findEmbeddingProviders")
-            return FindEmbeddingProvidersResult._from_dict(fe_response["status"])
-
-    async def async_find_embedding_providers(
-        self,
-        *,
-        database_admin_timeout_ms: int | None = None,
-        request_timeout_ms: int | None = None,
-        timeout_ms: int | None = None,
-    ) -> FindEmbeddingProvidersResult:
-        """
-        Query the API for the full information on available embedding providers.
-        Async version of the method, for use in an asyncio context.
-
-        Args:
-            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, this object's defaults apply.
-                (This method issues a single API request, hence all timeout parameters
-                are treated the same.)
-            request_timeout_ms: an alias for `database_admin_timeout_ms`.
-            timeout_ms: an alias for `database_admin_timeout_ms`.
-
-        Returns:
-            A `FindEmbeddingProvidersResult` object with the complete information
-            returned by the API about available embedding providers
-
-        Example (output abridged and indented for clarity):
-            >>> asyncio.run(admin_for_my_db.find_embedding_providers())
-            FindEmbeddingProvidersResult(embedding_providers=..., openai, ...)
-            >>> asyncio.run(
-            ...     admin_for_my_db.find_embedding_providers()
-            ... ).embedding_providers
-            {
-                'openai': EmbeddingProvider(
-                    display_name='OpenAI',
-                    models=[
-                        EmbeddingProviderModel(name='text-embedding-3-small'),
-                        ...
-                    ]
-                ),
-                ...
-            }
-        """
-
-        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
-            timeout_options=self.api_options.timeout_options,
-            database_admin_timeout_ms=database_admin_timeout_ms,
-            request_timeout_ms=request_timeout_ms,
-            timeout_ms=timeout_ms,
-        )
-        logger.info("findEmbeddingProviders, async")
-        fe_response = await self._api_commander.async_request(
-            payload={"findEmbeddingProviders": {}},
-            timeout_context=_TimeoutContext(
-                request_ms=_database_admin_timeout_ms, label=_da_label
-            ),
-        )
-        if "embeddingProviders" not in fe_response.get("status", {}):
-            raise UnexpectedDataAPIResponseException(
-                text="Faulty response from findEmbeddingProviders API command.",
-                raw_response=fe_response,
-            )
-        else:
-            logger.info("finished findEmbeddingProviders, async")
-            return FindEmbeddingProvidersResult._from_dict(fe_response["status"])
-
-    def find_reranking_providers(
-        self,
-        *,
-        database_admin_timeout_ms: int | None = None,
-        request_timeout_ms: int | None = None,
-        timeout_ms: int | None = None,
-    ) -> FindRerankingProvidersResult:
-        """
-        Query the API for the full information on available reranking providers.
-
-        Args:
-            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, this object's defaults apply.
-                (This method issues a single API request, hence all timeout parameters
-                are treated the same.)
-            request_timeout_ms: an alias for `database_admin_timeout_ms`.
-            timeout_ms: an alias for `database_admin_timeout_ms`.
-
-        Returns:
-            A `FindRerankingProvidersResult` object with the complete information
-            returned by the API about available reranking providers
-
-        Example (output abridged and indented for clarity):
-            >>> admin_for_my_db.find_reranking_providers()
-            FindRerankingProvidersResult(reranking_providers=nvidia)
-            >>> admin_for_my_db.find_reranking_providers().reranking_providers
-            {
-                'nvidia': RerankingProvider(
-                    <Default>
-                    display_name='Nvidia',
-                    models=[
-                        RerankingProviderModel(
-                            <Default>
-                            name='nvidia/llama-3.2-nv-rerankqa-1b-v2'
-                        ),
-                        ...
-                    ]
-                ),
-                ...
-            }
-        """
-
-        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
-            timeout_options=self.api_options.timeout_options,
-            database_admin_timeout_ms=database_admin_timeout_ms,
-            request_timeout_ms=request_timeout_ms,
-            timeout_ms=timeout_ms,
-        )
-        logger.info("findRerankingProviders")
-        fr_response = self._api_commander.request(
-            payload={"findRerankingProviders": {}},
-            timeout_context=_TimeoutContext(
-                request_ms=_database_admin_timeout_ms, label=_da_label
-            ),
-        )
-        if "rerankingProviders" not in fr_response.get("status", {}):
-            raise UnexpectedDataAPIResponseException(
-                text="Faulty response from findRerankingProviders API command.",
-                raw_response=fr_response,
-            )
-        else:
-            logger.info("finished findRerankingProviders")
-            return FindRerankingProvidersResult._from_dict(fr_response["status"])
-
-    async def async_find_reranking_providers(
-        self,
-        *,
-        database_admin_timeout_ms: int | None = None,
-        request_timeout_ms: int | None = None,
-        timeout_ms: int | None = None,
-    ) -> FindRerankingProvidersResult:
-        """
-        Query the API for the full information on available reranking providers.
-        Async version of the method, for use in an asyncio context.
-
-        Args:
-            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, this object's defaults apply.
-                (This method issues a single API request, hence all timeout parameters
-                are treated the same.)
-            request_timeout_ms: an alias for `database_admin_timeout_ms`.
-            timeout_ms: an alias for `database_admin_timeout_ms`.
-
-        Returns:
-            A `FindRerankingProvidersResult` object with the complete information
-            returned by the API about available reranking providers
-
-        Example (output abridged and indented for clarity):
-            >>> asyncio.run(admin_for_my_db.find_reranking_providers())
-            FindRerankingProvidersResult(reranking_providers=nvidia)
-            >>> asyncio.run(
-            ...     admin_for_my_db.find_reranking_providers()
-            ... ).reranking_providers
-            {
-                'nvidia': RerankingProvider(
-                    <Default>
-                    display_name='Nvidia',
-                    models=[
-                        RerankingProviderModel(
-                            <Default>
-                            name='nvidia/llama-3.2-nv-rerankqa-1b-v2'
-                        ),
-                        ...
-                    ]
-                ),
-                ...
-            }
-        """
-
-        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
-            timeout_options=self.api_options.timeout_options,
-            database_admin_timeout_ms=database_admin_timeout_ms,
-            request_timeout_ms=request_timeout_ms,
-            timeout_ms=timeout_ms,
-        )
-        logger.info("findRerankingProviders, async")
-        fr_response = await self._api_commander.async_request(
-            payload={"findRerankingProviders": {}},
-            timeout_context=_TimeoutContext(
-                request_ms=_database_admin_timeout_ms, label=_da_label
-            ),
-        )
-        if "rerankingProviders" not in fr_response.get("status", {}):
-            raise UnexpectedDataAPIResponseException(
-                text="Faulty response from findRerankingProviders API command.",
-                raw_response=fr_response,
-            )
-        else:
-            logger.info("finished findRerankingProviders, async")
-            return FindRerankingProvidersResult._from_dict(fr_response["status"])
 
 
 __all__ = [

@@ -14,15 +14,31 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from astrapy import AsyncDatabase
 from astrapy.info import EmbeddingProvider, FindEmbeddingProvidersResult
 
-from ..conftest import clean_nulls_from_dict
+from ..conftest import IS_ASTRA_DB, clean_nulls_from_dict
+
+
+def _count_models(fep_result: FindEmbeddingProvidersResult) -> int:
+    return len(
+        [
+            model
+            for prov_v in fep_result.embedding_providers.values()
+            for model in prov_v.models
+        ]
+    )
 
 
 class TestVectorizeOpsAsync:
+    @pytest.mark.skipif(
+        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
+        reason="No 'latest main' tests required.",
+    )
     @pytest.mark.describe("test of find_embedding_providers, async")
     async def test_findembeddingproviders_async(
         self,
@@ -51,4 +67,48 @@ class TestVectorizeOpsAsync:
         cleaned_raw_info = clean_nulls_from_dict(
             ep_result.raw_info["embeddingProviders"]  # type: ignore[index]
         )
+        # TODO remove this cleanup once Astra prod gets the support status flags
+        if IS_ASTRA_DB:
+            for emb_prov in cleaned_dict_mapping.values():
+                for model in emb_prov["models"]:
+                    if "apiModelSupport" in model:
+                        del model["apiModelSupport"]
         assert cleaned_dict_mapping == cleaned_raw_info
+
+    @pytest.mark.skipif(
+        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
+        reason="No 'latest main' tests required.",
+    )
+    @pytest.mark.skipif(IS_ASTRA_DB, reason="Filtering models not yet on Astra DB")
+    @pytest.mark.describe("test of find_embedding_providers filtering, async")
+    async def test_filtered_findembeddingproviders_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        database_admin = async_database.get_database_admin()
+        default_count = _count_models(
+            await database_admin.async_find_embedding_providers()
+        )
+
+        all_count = _count_models(
+            await database_admin.async_find_embedding_providers(filter_model_status="")
+        )
+
+        sup_count = _count_models(
+            await database_admin.async_find_embedding_providers(
+                filter_model_status="SUPPORTED"
+            )
+        )
+        dep_count = _count_models(
+            await database_admin.async_find_embedding_providers(
+                filter_model_status="DEPRECATED"
+            )
+        )
+        eol_count = _count_models(
+            await database_admin.async_find_embedding_providers(
+                filter_model_status="END_OF_LIFE"
+            )
+        )
+
+        assert sup_count + dep_count + eol_count == all_count
+        assert sup_count == default_count
