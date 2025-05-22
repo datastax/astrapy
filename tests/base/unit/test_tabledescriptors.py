@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from astrapy.data.info.table_descriptor.table_altering import AlterTableOperation
@@ -643,3 +645,77 @@ class TestListTableDescriptors:
         )
         dropv = AlterTableDropVectorize(columns=["col1", "col2"])
         assert dropv_o == dropv
+
+    @pytest.mark.describe(
+        "test of coerce normalizing column types for AlterTableAddColumns"
+    )
+    def test_altertableaddcolumns_normalizetypes(self) -> None:
+        short_form_dict = {
+            "columns": {
+                "col1": "int",
+                "col2": "text",
+            }
+        }
+        normalized_dict = {
+            "columns": {
+                "col1": {"type": "int"},
+                "col2": {"type": "text"},
+            }
+        }
+        alter_table_add_cols = AlterTableAddColumns._from_dict(short_form_dict)
+        assert alter_table_add_cols.as_dict() == normalized_dict
+
+    @pytest.mark.describe(
+        "test of coerce and as_dict for alter table operation classes"
+    )
+    @pytest.mark.parametrize(
+        ("operation_class", "test_dict"),
+        [
+            (
+                AlterTableAddColumns,
+                {
+                    "columns": {
+                        "col1": {"type": "int"},
+                        "col2": {"type": "text"},
+                    }
+                },
+            ),
+            (
+                AlterTableAddVectorize,
+                {
+                    "columns": {
+                        "vec_col": {
+                            "provider": "openai",
+                            "modelName": "text-embedding-3-small",
+                        }
+                    }
+                },
+            ),
+            (
+                AlterTableDropColumns,
+                {
+                    "columns": ["col1", "col2"],
+                },
+            ),
+            (
+                AlterTableDropVectorize,
+                {
+                    "columns": ["vec_col1", "vec_col2"],
+                },
+            ),
+        ],
+    )
+    def test_altertableoperation_coerce_asdict(
+        self,
+        operation_class: type[AlterTableOperation],
+        test_dict: dict[str, Any],
+    ) -> None:
+        # Test coerce with dict input
+        operation_from_dict = operation_class.coerce(test_dict)
+
+        # Test coerce with object input (should return same object)
+        operation_from_obj = operation_class.coerce(operation_from_dict)
+        assert operation_from_obj == operation_from_dict
+
+        # Test as_dict returns the original dict
+        assert operation_from_dict.as_dict() == test_dict

@@ -16,13 +16,15 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, cast
+from typing import Any, Dict, TypeVar, cast
 
 from astrapy.data.info.table_descriptor.table_columns import (
     TableColumnTypeDescriptor,
 )
 from astrapy.data.info.vectorize import VectorServiceOptions
 from astrapy.utils.parsing import _warn_residual_keys
+
+ATO = TypeVar("ATO", bound="AlterTableOperation")
 
 
 @dataclass
@@ -88,6 +90,10 @@ class AlterTableOperation(ABC):
                 f"Cannot parse a dict with keys {', '.join(sorted(key_set))} "
                 "into an AlterTableOperation"
             )
+
+    @classmethod
+    @abstractmethod
+    def coerce(cls: type[ATO], raw_input: ATO | dict[str, Any]) -> ATO: ...
 
 
 @dataclass
