@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import pickle
+
 import pytest
 
 from astrapy.data_types import DataAPISet
@@ -57,3 +59,8 @@ class TestDataAPISet:
         )
         assert ts1 ^ DataAPISet([[4], [2], [5]]) == DataAPISet([[1], [3], [4], [5]])
         assert ts1 & DataAPISet([[4], [2], [5]]) == DataAPISet([[2]])
+
+    @pytest.mark.describe("test pickling of DataAPISet")
+    def test_dataapiset_pickle(self) -> None:
+        the_set = DataAPISet([1, 2, 3])
+        assert pickle.loads(pickle.dumps(the_set)) == the_set

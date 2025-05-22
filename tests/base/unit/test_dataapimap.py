@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import pickle
+
 import pytest
 
 from astrapy.data_types import DataAPIMap
@@ -72,3 +74,8 @@ class TestDataAPIMap:
         assert list(mp1.items()) == items1
         assert len(mp1) == len(items1)
         assert list(mp1) == [[1], [2], [3]]
+
+    @pytest.mark.describe("test pickling of DataAPIMap")
+    def test_dataapimap_pickle(self) -> None:
+        the_map = DataAPIMap([("key1", 1), (None, 2), ("key3", {"a": 1})])
+        assert pickle.loads(pickle.dumps(the_map)) == the_map

@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import datetime
+import pickle
 
 import pytest
 
@@ -338,3 +339,8 @@ class TestDataAPIDuration:
         assert DataAPIDuration(
             +1, 15, 0, 130 * NANOS_PER_MINUTE
         ) == DataAPIDuration.from_c_string("1y3mo2h10m")
+
+    @pytest.mark.describe("test pickling of DataAPIDuration")
+    def test_dataapiduration_pickle(self) -> None:
+        the_duration = DataAPIDuration(signum=-1, months=1, days=2, nanoseconds=456)
+        assert pickle.loads(pickle.dumps(the_duration)) == the_duration

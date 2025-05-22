@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import datetime
+import pickle
 
 import pytest
 
@@ -188,3 +189,8 @@ class TestDataAPIDate:
         assert end_pleistocene <= modernity
         assert modernity > end_pleistocene
         assert modernity >= end_pleistocene
+
+    @pytest.mark.describe("test pickling of DataAPIDate")
+    def test_dataapidate_pickle(self) -> None:
+        the_date = DataAPIDate(2024, 3, 14)
+        assert pickle.loads(pickle.dumps(the_date)) == the_date

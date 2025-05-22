@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import datetime
+import pickle
 
 import pytest
 
@@ -116,3 +117,8 @@ class TestDataAPITime:
         assert t1 <= py_t2
         assert t2 > py_t1
         assert t2 >= py_t1
+
+    @pytest.mark.describe("test pickling of DataAPITime")
+    def test_dataapitime_pickle(self) -> None:
+        the_time = DataAPITime(12, 34, 56, 789)
+        assert pickle.loads(pickle.dumps(the_time)) == the_time
