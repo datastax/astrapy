@@ -25,6 +25,7 @@ from astrapy.data.info.collection_descriptor import (
 )
 from astrapy.data.info.database_info import (
     AstraDBAdminDatabaseInfo,
+    AstraDBAvailableRegionInfo,
     AstraDBDatabaseInfo,
 )
 from astrapy.data.info.reranking import (
@@ -93,6 +94,7 @@ __all__ = [
     "AlterTableDropColumns",
     "AlterTableDropVectorize",
     "AstraDBAdminDatabaseInfo",
+    "AstraDBAvailableRegionInfo",
     "AstraDBDatabaseInfo",
     "CollectionDefaultIDOptions",
     "CollectionDefinition",
