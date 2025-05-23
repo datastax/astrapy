@@ -858,7 +858,6 @@ class Database:
                 raw_response=dc_response,
             )
         logger.info(f"finished deleteCollection('{name}')")
-        return dc_response.get("status", {})  # type: ignore[no-any-return]
 
     def list_collections(
         self,
@@ -1519,7 +1518,6 @@ class Database:
                 raw_response=dt_response,
             )
         logger.info(f"finished dropTable('{name}')")
-        return dt_response.get("status", {})  # type: ignore[no-any-return]
 
     def list_tables(
         self,
@@ -2589,7 +2587,7 @@ class AsyncDatabase:
         collection_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         Drop a collection from the database, along with all documents therein.
 
@@ -2636,7 +2634,6 @@ class AsyncDatabase:
                 raw_response=dc_response,
             )
         logger.info(f"finished deleteCollection('{name}')")
-        return dc_response.get("status", {})  # type: ignore[no-any-return]
 
     async def list_collections(
         self,
@@ -3245,7 +3242,7 @@ class AsyncDatabase:
         table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         Drop a table from the database, along with all rows therein and related indexes.
 
@@ -3312,7 +3309,6 @@ class AsyncDatabase:
                 raw_response=dt_response,
             )
         logger.info(f"finished dropTable('{name}')")
-        return dt_response.get("status", {})  # type: ignore[no-any-return]
 
     async def list_tables(
         self,

@@ -5550,7 +5550,7 @@ class AsyncTable(Generic[ROW]):
         table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         Drop the table, i.e. delete it from the database along with
         all the rows stored therein.
@@ -5604,7 +5604,7 @@ class AsyncTable(Generic[ROW]):
         """
 
         logger.info(f"dropping table '{self.name}' (self)")
-        drop_result = await self.database.drop_table(
+        await self.database.drop_table(
             self.name,
             if_exists=if_exists,
             table_admin_timeout_ms=table_admin_timeout_ms,
@@ -5612,7 +5612,6 @@ class AsyncTable(Generic[ROW]):
             timeout_ms=timeout_ms,
         )
         logger.info(f"finished dropping table '{self.name}' (self)")
-        return drop_result
 
     async def command(
         self,
