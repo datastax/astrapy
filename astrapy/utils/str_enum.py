@@ -14,13 +14,38 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import Enum, EnumMeta
 from typing import TypeVar
 
 T = TypeVar("T", bound="StrEnum")
 
 
-class StrEnum(Enum):
+class StrEnumMeta(EnumMeta):
+    def _name_lookup(cls, value: str) -> str | None:
+        """Return a proper key in the enum if some matching logic works, or None."""
+        mmap = {k: v.value for k, v in cls._member_map_.items()}
+        # try exact key match
+        if value in mmap:
+            return value
+        # try case-insensitive key match
+        u_value = value.upper()
+        u_mmap = {k.upper(): k for k in mmap.keys()}
+        if u_value in u_mmap:
+            return u_mmap[u_value]
+        # try case-insensitive *value* match
+        v_mmap = {v.upper(): k for k, v in mmap.items()}
+        if u_value in v_mmap:
+            return v_mmap[u_value]
+        return None
+
+    def __contains__(cls, value: object) -> bool:
+        """Return True if the provided string belongs to the enum."""
+        if isinstance(value, str):
+            return cls._name_lookup(value) is not None
+        return False
+
+
+class StrEnum(Enum, metaclass=StrEnumMeta):
     @classmethod
     def coerce(cls: type[T], value: str | T) -> T:
         """
@@ -34,14 +59,9 @@ class StrEnum(Enum):
         if isinstance(value, cls):
             return value
         elif isinstance(value, str):
-            v_upper = value.upper()
-            uvalue_map = {k: v.value.upper() for k, v in cls._member_map_.items()}
-            if v_upper in uvalue_map:
-                return cls[value.upper()]
-            # try *value* lookup
-            keys = [k for k, v in uvalue_map.items() if v == v_upper]
-            if keys:
-                return cls[keys[0]]
+            norm_value = cls._name_lookup(value)
+            if norm_value is not None:
+                return cls[norm_value]
             # no matches
             raise ValueError(
                 f"Invalid value '{value}' for {cls.__name__}. "
