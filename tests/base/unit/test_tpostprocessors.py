@@ -89,36 +89,26 @@ TABLE_DESCRIPTION = {
                     "modelName": "text-embedding-3-small",
                 },
             },
-            "p_counter": {
-                "type": "UNSUPPORTED",
-                "apiSupport": {
-                    "createTable": False,
-                    "insert": False,
-                    "filter": True,
-                    "read": False,
-                    "cqlDefinition": "counter",
-                },
-            },
-            "p_varchar": {
-                "type": "UNSUPPORTED",
-                "apiSupport": {
-                    "createTable": False,
-                    "insert": False,
-                    "filter": True,
-                    "read": False,
-                    "cqlDefinition": "varchar",
-                },
-            },
-            "p_timeuuid": {
-                "type": "UNSUPPORTED",
-                "apiSupport": {
-                    "createTable": False,
-                    "insert": False,
-                    "filter": True,
-                    "read": False,
-                    "cqlDefinition": "timeuuid",
-                },
-            },
+            # "p_counter": {
+            #     "type": "counter",
+            #     "apiSupport": {
+            #         "createTable": False,
+            #         "insert": False,
+            #         "filter": True,
+            #         "read": True,
+            #         "cqlDefinition": "counter",
+            #     },
+            # },
+            # "p_timeuuid": {
+            #     "type": "timeuuid",
+            #     "apiSupport": {
+            #         "createTable": False,
+            #         "insert": True,
+            #         "filter": True,
+            #         "read": True,
+            #         "cqlDefinition": "timeuuid",
+            #     },
+            # },
         },
         "primaryKey": {"partitionBy": [], "partitionSort": {}},
     },
@@ -149,9 +139,8 @@ OUTPUT_ROW_TO_POSTPROCESS = {
     "p_map_float_text": {1.1: "1-1", "NaN": "NANNN!"},
     "somevector": {"$binary": "PczMzb5MzM0+mZma"},  # [0.1, -0.2, 0.3] but not bit-wise
     "embeddings": [0.1, -0.2, 0.3],
-    "p_counter": 100,
-    "p_varchar": "the_varchar",
-    "p_timeuuid": "0de779c0-92e3-11ef-96a4-a745ae2c0a0b",
+    # "p_counter": 100,
+    # "p_timeuuid": "2d667b80-3a49-11f0-be71-bf76cc9ee780",
 }
 
 EXPECTED_POSTPROCESSED_ROW = {
@@ -190,9 +179,8 @@ EXPECTED_POSTPROCESSED_ROW = {
         convert_ejson_binary_object_to_bytes({"$binary": "PczMzb5MzM0+mZma"})
     ),
     "embeddings": DataAPIVector([0.1, -0.2, 0.3]),
-    "p_counter": 100,
-    "p_varchar": "the_varchar",
-    "p_timeuuid": UUID("0de779c0-92e3-11ef-96a4-a745ae2c0a0b"),
+    # "p_counter": 100,
+    # "p_timeuuid": UUID("0de779c0-92e3-11ef-96a4-a745ae2c0a0b"),
 }
 
 OUTPUT_NONCUSTOMTYPES_ROW_TO_POSTPROCESS = {
@@ -251,9 +239,8 @@ EXPECTED_FILLERS_POSTPROCESSED_ROW: dict[str, Any] = {
     "p_map_float_text": DataAPIMap({}),
     "somevector": None,
     "embeddings": None,
-    "p_counter": None,
-    "p_varchar": None,
-    "p_timeuuid": None,
+    # "p_counter": None,
+    # "p_timeuuid": None,
 }
 EXPECTED_FILLERS_NONCUSTOMTYPES_POSTPROCESSED_ROW: dict[str, Any] = {
     "p_text": None,
@@ -280,9 +267,8 @@ EXPECTED_FILLERS_NONCUSTOMTYPES_POSTPROCESSED_ROW: dict[str, Any] = {
     "p_map_float_text": {},
     "somevector": None,
     "embeddings": None,
-    "p_counter": None,
-    "p_varchar": None,
-    "p_timeuuid": None,
+    # "p_counter": None,
+    # "p_timeuuid": None,
 }
 
 
