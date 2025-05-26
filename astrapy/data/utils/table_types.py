@@ -74,7 +74,16 @@ class TableVectorColumnType(StrEnum):
 
 class TableUnsupportedColumnType(StrEnum):
     """
-    An enum to describe the types of column falling into the 'unsupported' group.
+    An enum to describe the types of column falling into the 'unsupported' group
+    (read/describe path).
     """
 
     UNSUPPORTED = "UNSUPPORTED"
+
+
+class TablePassthroughColumnType(StrEnum):
+    """
+    An enum to describe the types for 'passthrough' columns (read/describe path).
+    """
+
+    PASSTHROUGH = "PASSTHROUGH"

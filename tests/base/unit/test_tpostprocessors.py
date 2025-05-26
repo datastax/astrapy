@@ -350,6 +350,140 @@ EXPECTED_PREPROCESSED_ROW = {
     "set_f": ["Infinity"],
 }
 
+ROGUE_TABLE_DESCRIPTION = {
+    "name": "table_rogue",
+    "definition": {
+        "columns": {
+            "col_static_list": {
+                "type": "list",
+                "apiSupport": {
+                    "createTable": False,
+                    "insert": True,
+                    "read": True,
+                    "filter": False,
+                    "cqlDefinition": "static list<int>",
+                },
+            },
+            "col_static_list_exotic": {
+                "type": "list",
+                "apiSupport": {
+                    "createTable": False,
+                    "insert": True,
+                    "read": True,
+                    "filter": False,
+                    "cqlDefinition": "static list<blob>",
+                },
+            },
+            "col_static_map": {
+                "type": "map",
+                "apiSupport": {
+                    "createTable": False,
+                    "insert": True,
+                    "read": True,
+                    "filter": False,
+                    "cqlDefinition": "static map<int, text>",
+                },
+            },
+            "col_static_map_exotic": {
+                "type": "map",
+                "apiSupport": {
+                    "createTable": False,
+                    "insert": True,
+                    "read": True,
+                    "filter": False,
+                    "cqlDefinition": "static map<blob, blob>",
+                },
+            },
+            "col_static_set": {
+                "type": "set",
+                "apiSupport": {
+                    "createTable": False,
+                    "insert": True,
+                    "read": True,
+                    "filter": False,
+                    "cqlDefinition": "static set<int>",
+                },
+            },
+            "col_static_set_exotic": {
+                "type": "set",
+                "apiSupport": {
+                    "createTable": False,
+                    "insert": True,
+                    "read": True,
+                    "filter": False,
+                    "cqlDefinition": "static set<blob>",
+                },
+            },
+            "col_static_timestamp": {
+                "type": "timestamp",
+                "apiSupport": {
+                    "createTable": False,
+                    "insert": True,
+                    "read": True,
+                    "filter": True,
+                    "cqlDefinition": "static timestamp",
+                },
+            },
+            "col_unsupported": {
+                "type": "UNSUPPORTED",
+                "apiSupport": {
+                    "createTable": False,
+                    "insert": False,
+                    "read": False,
+                    "filter": False,
+                    "cqlDefinition": (
+                        "frozen<list<frozen<map<frozen<set<float>>, smallint>>>>"
+                    ),
+                },
+            },
+        },
+        "primaryKey": {"partitionBy": [], "partitionSort": {}},
+    },
+}
+
+ROGUE_OUTPUT_ROW_TO_POSTPROCESS = {
+    "col_static_list": [1, 2, 3],
+    "col_static_list_exotic": [
+        {"$binary": "/w=="},
+        {"$binary": "/w=="},
+    ],
+    "col_static_map": [
+        [1, "one"],
+    ],
+    "col_static_map_exotic": [
+        [{"$binary": "/w=="}, {"$binary": "/w=="}],
+    ],
+    "col_static_set": [1, 2, 3],
+    "col_static_set_exotic": [
+        {"$binary": "/w=="},
+    ],
+    "col_static_timestamp": "2022-01-01T12:34:56Z",
+    "col_unsupported": {"not", "really:", "just", "testing", "passthrough", 123},
+}
+
+# Only for very specific cases of these columns do we expect a proper parsing:
+ROGUE_EXPECTED_POSTPROCESSED_ROW = {
+    "col_static_list": [1, 2, 3],
+    "col_static_list_exotic": [
+        {"$binary": "/w=="},
+        {"$binary": "/w=="},
+    ],
+    "col_static_map": [
+        [1, "one"],
+    ],
+    "col_static_map_exotic": [
+        [{"$binary": "/w=="}, {"$binary": "/w=="}],
+    ],
+    "col_static_set": [1, 2, 3],
+    "col_static_set_exotic": [
+        {"$binary": "/w=="},
+    ],
+    "col_static_timestamp": DataAPITimestamp.from_string(
+        ROGUE_OUTPUT_ROW_TO_POSTPROCESS["col_static_timestamp"]  # type: ignore[arg-type]
+    ),
+    "col_unsupported": {"not", "really:", "just", "testing", "passthrough", 123},
+}
+
 
 class TestTableConverters:
     @pytest.mark.describe("test of row postprocessors from schema")
@@ -604,3 +738,29 @@ class TestTableConverters:
         assert _repaint_NaNs(converted_column) == _repaint_NaNs(
             EXPECTED_FILLERS_NONCUSTOMTYPES_POSTPROCESSED_ROW
         )
+
+    @pytest.mark.describe("test of row postprocessors for rogue table")
+    def test_row_postprocessors_rogue_table(self) -> None:
+        """Rogue table: columns that are unsupported and/or not fully parseable."""
+        col_desc = ListTableDescriptor.coerce(ROGUE_TABLE_DESCRIPTION)
+        tpostprocessor = create_row_tpostprocessor(
+            columns=col_desc.definition.columns,
+            options=FullSerdesOptions(
+                binary_encode_vectors=True,
+                custom_datatypes_in_reading=True,
+                unroll_iterables_to_lists=False,
+                use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="never",
+                accept_naive_datetimes=False,
+                datetime_tzinfo=None,
+            ),
+            similarity_pseudocolumn=None,
+        )
+
+        converted_column = tpostprocessor(ROGUE_OUTPUT_ROW_TO_POSTPROCESS)
+        assert _repaint_NaNs(converted_column) == _repaint_NaNs(
+            ROGUE_EXPECTED_POSTPROCESSED_ROW
+        )
+
+        with pytest.raises(ValueError):
+            tpostprocessor({"bippy": 123})

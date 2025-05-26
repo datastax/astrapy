@@ -20,6 +20,7 @@ import decimal
 import hashlib
 import ipaddress
 import json
+import logging
 import math
 from typing import Any, Callable, Dict, Generic, cast
 
@@ -27,6 +28,7 @@ from astrapy.constants import ROW, MapEncodingMode
 from astrapy.data.info.table_descriptor.table_columns import (
     TableColumnTypeDescriptor,
     TableKeyValuedColumnTypeDescriptor,
+    TablePassthroughColumnTypeDescriptor,
     TableScalarColumnTypeDescriptor,
     TableUnsupportedColumnTypeDescriptor,
     TableValuedColumnTypeDescriptor,
@@ -39,7 +41,6 @@ from astrapy.data.utils.extended_json_converters import (
 from astrapy.data.utils.table_types import (
     ColumnType,
     TableKeyValuedColumnType,
-    TableUnsupportedColumnType,
     TableValuedColumnType,
     TableVectorColumnType,
 )
@@ -64,6 +65,8 @@ MINUS_INFINITY_FLOAT_STRING_REPRESENTATION = "-Infinity"
 DATETIME_TIME_FORMAT = "%H:%M:%S.%f"
 DATETIME_DATE_FORMAT = "%Y-%m-%d"
 DATETIME_DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
+
+logger = logging.getLogger(__name__)
 
 
 def _create_scalar_tpostprocessor(
@@ -254,28 +257,39 @@ def _create_scalar_tpostprocessor(
 
 
 def _create_unsupported_tpostprocessor(
-    # TODO: refine parameters here
-    cql_definition: str,
+    col_definition: TableUnsupportedColumnTypeDescriptor,
     options: FullSerdesOptions,
 ) -> Callable[[Any], Any]:
-    # if cql_definition == "counter":
-    #     return _create_scalar_tpostprocessor(
-    #         column_type=ColumnType.INT, options=options
-    #     )
-    # elif cql_definition == "varchar":
-    #     return _create_scalar_tpostprocessor(
-    #         column_type=ColumnType.TEXT, options=options
-    #     )
-    # elif cql_definition == "timeuuid":
-    #     return _create_scalar_tpostprocessor(
-    #         column_type=ColumnType.UUID, options=options
-    #     )
-    # else:
-    # TODO introduce passthrough noqa postprocessor + log a warning
-    if True:
-        raise ValueError(
-            f"Unrecognized table unsupported-column cqlDefinition for reads: {cql_definition}"
-        )
+    w_msg = (
+        "An 'UNSUPPORTED' column definition was encountered, unexpectedly, in the "
+        "schema information accompanying table read results. The values for the "
+        "column will be returned as the API provides them (full definition: "
+        f"{str(col_definition.as_dict())})."
+    )
+    logger.warning(w_msg)
+
+    def _tpostprocessor_unsupported(raw_value: Any) -> Any:
+        return raw_value
+
+    return _tpostprocessor_unsupported
+
+
+def _create_passthrough_tpostprocessor(
+    col_definition: TablePassthroughColumnTypeDescriptor,
+    options: FullSerdesOptions,
+) -> Callable[[Any], Any]:
+    w_msg = (
+        "The schema information, accompanying table read results, contains a column "
+        "definition that the client cannot properly parse. The values for the "
+        "column will be returned as the API provides them (full definition: "
+        f"{str(col_definition.as_dict())})."
+    )
+    logger.warning(w_msg)
+
+    def _tpostprocessor_passthrough(raw_value: Any) -> Any:
+        return raw_value
+
+    return _tpostprocessor_passthrough
 
 
 def _column_filler_value(
@@ -314,8 +328,10 @@ def _column_filler_value(
                 f"Unrecognized table key-valued-column descriptor for reads: {col_def.as_dict()}"
             )
     elif isinstance(col_def, TableUnsupportedColumnTypeDescriptor):
-        # For lack of better information,
-        # the filler for unreported unsupported columns is a None:
+        # For lack of better information, the filler is a None:
+        return None
+    elif isinstance(col_def, TablePassthroughColumnTypeDescriptor):
+        # Given the missing information, must fill with None:
         return None
     else:
         raise ValueError(
@@ -471,16 +487,12 @@ def _create_column_tpostprocessor(
                 f"Unrecognized table key-valued-column descriptor for reads: {col_def.as_dict()}"
             )
     elif isinstance(col_def, TableUnsupportedColumnTypeDescriptor):
-        if col_def.column_type == TableUnsupportedColumnType.UNSUPPORTED:
-            # if UNSUPPORTED columns encountered: find the 'type' in the right place:
-            return _create_unsupported_tpostprocessor(
-                cql_definition=col_def.api_support.cql_definition,
-                options=options,
-            )
-        else:
-            raise ValueError(
-                f"Unrecognized table unsupported-column descriptor for reads: {col_def.as_dict()}"
-            )
+        # 'Unsupported' columns (marked as such by the API) should never be
+        # returned in reading. However, this is no sufficient reason not to comply.
+        return _create_unsupported_tpostprocessor(col_def, options=options)
+    elif isinstance(col_def, TablePassthroughColumnTypeDescriptor):
+        # 'passthrough' columns (i.e. those that confuse the client parsing logic)
+        return _create_passthrough_tpostprocessor(col_def, options=options)
     else:
         raise ValueError(
             f"Unrecognized table column descriptor for reads: {col_def.as_dict()}"
