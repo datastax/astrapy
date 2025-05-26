@@ -254,22 +254,25 @@ def _create_scalar_tpostprocessor(
 
 
 def _create_unsupported_tpostprocessor(
+    # TODO: refine parameters here
     cql_definition: str,
     options: FullSerdesOptions,
 ) -> Callable[[Any], Any]:
-    if cql_definition == "counter":
-        return _create_scalar_tpostprocessor(
-            column_type=ColumnType.INT, options=options
-        )
-    elif cql_definition == "varchar":
-        return _create_scalar_tpostprocessor(
-            column_type=ColumnType.TEXT, options=options
-        )
-    elif cql_definition == "timeuuid":
-        return _create_scalar_tpostprocessor(
-            column_type=ColumnType.UUID, options=options
-        )
-    else:
+    # if cql_definition == "counter":
+    #     return _create_scalar_tpostprocessor(
+    #         column_type=ColumnType.INT, options=options
+    #     )
+    # elif cql_definition == "varchar":
+    #     return _create_scalar_tpostprocessor(
+    #         column_type=ColumnType.TEXT, options=options
+    #     )
+    # elif cql_definition == "timeuuid":
+    #     return _create_scalar_tpostprocessor(
+    #         column_type=ColumnType.UUID, options=options
+    #     )
+    # else:
+    # TODO introduce passthrough noqa postprocessor + log a warning
+    if True:
         raise ValueError(
             f"Unrecognized table unsupported-column cqlDefinition for reads: {cql_definition}"
         )
