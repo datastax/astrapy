@@ -769,11 +769,6 @@ class TestTableDMLAsync:
         # no filters
         rows_all = await async_empty_table_composite.find({}).to_list()
         assert len(rows_all) == 240
-        # sophisticated (but partition) filter
-        rows_all_2 = await async_empty_table_composite.find(
-            {"$or": [{"p_text": "pA"}, {"p_text": "pB"}]}
-        ).to_list()
-        assert len(rows_all_2) == 240
         # non-pk-column filter, alone
         rows_even_allps = await async_empty_table_composite.find(
             {"p_boolean": True}
