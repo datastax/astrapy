@@ -28,8 +28,8 @@ from blockbuster import BlockBuster, blockbuster_ctx
 from deprecation import UnsupportedWarning
 
 if TYPE_CHECKING:
-    import cassio
     from cassandra.cluster import Session
+    from cassio.config import get_session_and_keyspace
 
 from astrapy import AsyncDatabase, DataAPIClient, Database
 from astrapy.admin import parse_api_endpoint
@@ -59,8 +59,8 @@ from .preprocess_env import (
 
 CQL_AVAILABLE = False
 try:
-    import cassio
     from cassandra.cluster import Session
+    from cassio.config import get_session_and_keyspace
 
     CQL_AVAILABLE = True
 except ImportError:
@@ -93,6 +93,14 @@ def env_region_from_endpoint(api_endpoint: str) -> tuple[str, str]:
         return (parsed.environment, parsed.region)
     else:
         return (Environment.OTHER, "no-region")
+
+
+def database_id_from_endpoint(api_endpoint: str) -> str | None:
+    parsed = parse_api_endpoint(api_endpoint)
+    if parsed is not None:
+        return parsed.database_id
+    else:
+        return None
 
 
 def async_fail_if_not_removed(
@@ -246,13 +254,53 @@ def async_database(
 
 
 @pytest.fixture(scope="session")
-def cql_session(data_api_credentials_kwargs: DataAPICredentials) -> Iterable[Session]:
+def cql_session(
+    data_api_credentials_kwargs: DataAPICredentials,
+) -> Iterable[Session]:
     if IS_ASTRA_DB:
-        cassio.init()
-        session = cassio.config.resolve_session()
+        _env, _ = env_region_from_endpoint(data_api_credentials_kwargs["api_endpoint"])
+        _db_id = database_id_from_endpoint(data_api_credentials_kwargs["api_endpoint"])
+
+        if _db_id is None:
+            raise ValueError("Could not extract database id for cql_session")
+
+        _bundle_template: str
+        if _env == "prod":
+            _bundle_template = (
+                "https://api.astra.datastax.com/v2/databases"
+                "/{database_id}/secureBundleURL"
+            )
+        elif _env == "dev":
+            _bundle_template = (
+                "https://api.dev.cloud.datastax.com/v2/databases"
+                "/{database_id}/secureBundleURL"
+            )
+        elif _env == "test":
+            _bundle_template = (
+                "https://api.test.cloud.datastax.com/v2/databases"
+                "/{database_id}/secureBundleURL"
+            )
+        else:
+            raise ValueError(f"Unsupported Astra environment for cql_session: {_env}")
+
+        _token: str
+        if isinstance(data_api_credentials_kwargs["token"], TokenProvider):
+            _token = data_api_credentials_kwargs["token"].get_token() or ""
+        else:
+            _token = data_api_credentials_kwargs["token"]
+
+        if _token == "":
+            raise ValueError("Token not found for cql_session")
+
+        session, _ = get_session_and_keyspace(
+            token=_token,
+            database_id=_db_id,
+            bundle_url_template=_bundle_template,
+        )
+
         if session is None:
             raise ValueError("No CQL 'Session' was obtained")
-        session.execute(f"USE {data_api_credentials_kwargs['keyspace']}")
+        session.execute(f"USE {data_api_credentials_kwargs['keyspace']};")
         yield session
     else:
         raise NotImplementedError("Unavailable outside of Astra DB")

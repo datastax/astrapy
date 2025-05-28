@@ -29,6 +29,7 @@ from astrapy.exceptions import (
 from astrapy.results import TableInsertManyResult
 
 from ..conftest import (
+    IS_ASTRA_DB,
     DefaultTable,
     _repaint_NaNs,
     _typify_tuple,
@@ -749,6 +750,12 @@ class TestTableDMLSync:
         # no filters
         rows_all = sync_empty_table_composite.find({}).to_list()
         assert len(rows_all) == 240
+        if not IS_ASTRA_DB:  # TODO: remove this condition once #2089 gets to Astra
+            # a logically-combined condition on the partition key should fail from DB:
+            with pytest.raises(DataAPIResponseException):
+                sync_empty_table_composite.find(
+                    {"$or": [{"p_text": "pA"}, {"p_text": "pB"}]}
+                ).to_list()
         # non-pk-column filter, alone
         rows_even_allps = sync_empty_table_composite.find({"p_boolean": True}).to_list()
         assert len(rows_even_allps) == 2 * sum(1 - i % 2 for i in range(120))

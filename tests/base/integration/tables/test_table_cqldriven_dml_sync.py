@@ -18,7 +18,25 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from astrapy import Database
+from astrapy.exceptions import DataAPIResponseException
+
 from ..conftest import CQL_AVAILABLE
+from .table_cql_assets import (
+    CREATE_TABLE_COUNTER,
+    CREATE_TABLE_LOWSUPPORT,
+    DROP_TABLE_COUNTER,
+    DROP_TABLE_LOWSUPPORT,
+    EXPECTED_ROW_COUNTER,
+    EXPECTED_ROW_LOWSUPPORT,
+    FILTER_COUNTER,
+    FILTER_LOWSUPPORT,
+    INSERTS_TABLE_COUNTER,
+    INSERTS_TABLE_LOWSUPPORT,
+    PROJECTION_LOWSUPPORT,
+    TABLE_NAME_COUNTER,
+    TABLE_NAME_LOWSUPPORT,
+)
 
 if TYPE_CHECKING:
     from cassandra.cluster import Session
@@ -37,5 +55,46 @@ class TestTableCQLDrivenDMLSync:
     def test_table_cqldriven_counter_sync(
         self,
         cql_session: Session,
+        sync_database: Database,
     ) -> None:
-        pass
+        try:
+            cql_session.execute(CREATE_TABLE_COUNTER)
+            for insert_statement in INSERTS_TABLE_COUNTER:
+                cql_session.execute(insert_statement)
+
+            table = sync_database.get_table(TABLE_NAME_COUNTER)
+            row = table.find_one(filter=FILTER_COUNTER)
+            assert row == EXPECTED_ROW_COUNTER
+            table.delete_one(filter=FILTER_COUNTER)
+            row = table.find_one(filter=FILTER_COUNTER)
+            assert row is None
+        finally:
+            cql_session.execute(DROP_TABLE_COUNTER)
+
+    @pytest.mark.describe(
+        "test of reading from a CQL-driven table with limited-support columns, sync"
+    )
+    def test_table_cqldriven_lowsupport_sync(
+        self,
+        cql_session: Session,
+        sync_database: Database,
+    ) -> None:
+        try:
+            cql_session.execute(CREATE_TABLE_LOWSUPPORT)
+            for insert_statement in INSERTS_TABLE_LOWSUPPORT:
+                cql_session.execute(insert_statement)
+
+            table = sync_database.get_table(TABLE_NAME_LOWSUPPORT)
+            with pytest.raises(DataAPIResponseException):
+                table.find_one(filter=FILTER_LOWSUPPORT)
+            row = table.find_one(
+                filter=FILTER_LOWSUPPORT, projection=PROJECTION_LOWSUPPORT
+            )
+            assert row == EXPECTED_ROW_LOWSUPPORT
+            table.delete_one(filter=FILTER_LOWSUPPORT)
+            row = table.find_one(
+                filter=FILTER_LOWSUPPORT, projection=PROJECTION_LOWSUPPORT
+            )
+            assert row is None
+        finally:
+            cql_session.execute(DROP_TABLE_LOWSUPPORT)
