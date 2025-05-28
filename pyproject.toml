@@ -42,6 +42,7 @@ Changelog = "https://github.com/datastax/astrapy/blob/main/CHANGES"
 dev = [
     "blockbuster ~= 1.5.5",
     "build >= 1.0.0",
+    "cassio ~= 0.1.10; python_version >= '3.9'",
     "faker ~= 23.1.0",
     "mypy ~= 1.9.0",
     "ruff >= 0.11.9,<0.12",

@@ -21,11 +21,19 @@ from __future__ import annotations
 import functools
 import warnings
 from collections.abc import Iterator
-from typing import Any, Awaitable, Callable, Iterable, TypedDict
+from typing import Any, Awaitable, Callable, Iterable, TypedDict, TYPE_CHECKING
 
 import pytest
 from blockbuster import BlockBuster, blockbuster_ctx
 from deprecation import UnsupportedWarning
+
+if TYPE_CHECKING:
+    from cassandra.cluster import Session
+
+try:
+    from cassandra.cluster import Session
+except ImportError:
+    pass
 
 from astrapy import AsyncDatabase, DataAPIClient, Database
 from astrapy.admin import parse_api_endpoint
@@ -230,6 +238,14 @@ def async_database(
     sync_database: Database,
 ) -> Iterable[AsyncDatabase]:
     yield sync_database.to_async()
+
+
+@pytest.fixture(scope="session")
+def cql_session() -> "Session":
+    if IS_ASTRA_DB:
+        # TODO
+    else:
+        raise NotImplementedError("Unavailable outside of Astra DB")
 
 
 __all__ = [
