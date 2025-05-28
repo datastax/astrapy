@@ -48,7 +48,7 @@ from .preprocess_env import (
     HEADER_EMBEDDING_API_KEY_OPENAI,
     HEADER_RERANKING_API_KEY_NVIDIA,
     IS_ASTRA_DB,
-    LOCAL_DATA_API_APPLICATION_TOKEN,
+    LOCAL_CASSANDRA_CONTACT_POINT,
     LOCAL_DATA_API_ENDPOINT,
     LOCAL_DATA_API_KEYSPACE,
     LOCAL_DATA_API_PASSWORD,
@@ -303,7 +303,19 @@ def cql_session(
         session.execute(f"USE {data_api_credentials_kwargs['keyspace']};")
         yield session
     else:
-        raise NotImplementedError("Unavailable outside of Astra DB")
+        if LOCAL_CASSANDRA_CONTACT_POINT is None:
+            raise ValueError("No Cassandra contact point defined")
+
+        session, _ = get_session_and_keyspace(
+            contact_points=LOCAL_CASSANDRA_CONTACT_POINT,
+            username=LOCAL_DATA_API_USERNAME,
+            password=LOCAL_DATA_API_PASSWORD,
+        )
+
+        if session is None:
+            raise ValueError("No CQL 'Session' was obtained")
+        session.execute(f"USE {data_api_credentials_kwargs['keyspace']};")
+        yield session
 
 
 __all__ = [
@@ -315,11 +327,8 @@ __all__ = [
     "HEADER_EMBEDDING_API_KEY_OPENAI",
     "HEADER_RERANKING_API_KEY_NVIDIA",
     "IS_ASTRA_DB",
-    "LOCAL_DATA_API_APPLICATION_TOKEN",
     "LOCAL_DATA_API_ENDPOINT",
     "LOCAL_DATA_API_KEYSPACE",
-    "LOCAL_DATA_API_PASSWORD",
-    "LOCAL_DATA_API_USERNAME",
     "SECONDARY_KEYSPACE",
     "ADMIN_ENV_LIST",
     "ADMIN_ENV_VARIABLE_MAP",

@@ -45,8 +45,8 @@ ASTRA_DB_APPLICATION_TOKEN: str | None = None
 ASTRA_DB_KEYSPACE: str | None = None
 LOCAL_DATA_API_USERNAME: str | None = None
 LOCAL_DATA_API_PASSWORD: str | None = None
-LOCAL_DATA_API_APPLICATION_TOKEN: str | None = None
 LOCAL_DATA_API_ENDPOINT: str | None = None
+LOCAL_CASSANDRA_CONTACT_POINT: str | None = None
 LOCAL_DATA_API_KEYSPACE: str | None = None
 
 ASTRA_DB_TOKEN_PROVIDER: TokenProvider | None = None
@@ -58,10 +58,8 @@ if "LOCAL_DATA_API_ENDPOINT" in os.environ:
     DOCKER_COMPOSE_LOCAL_DATA_API = False
     LOCAL_DATA_API_USERNAME = os.environ.get("LOCAL_DATA_API_USERNAME")
     LOCAL_DATA_API_PASSWORD = os.environ.get("LOCAL_DATA_API_PASSWORD")
-    LOCAL_DATA_API_APPLICATION_TOKEN = os.environ.get(
-        "LOCAL_DATA_API_APPLICATION_TOKEN"
-    )
     LOCAL_DATA_API_ENDPOINT = os.environ["LOCAL_DATA_API_ENDPOINT"]
+    LOCAL_CASSANDRA_CONTACT_POINT = os.environ["LOCAL_CASSANDRA_CONTACT_POINT"]
     LOCAL_DATA_API_KEYSPACE = os.environ.get("LOCAL_DATA_API_KEYSPACE")
     # no reason not to use it
     SECONDARY_KEYSPACE = os.environ.get(
@@ -92,15 +90,11 @@ else:
 if IS_ASTRA_DB:
     ASTRA_DB_TOKEN_PROVIDER = StaticTokenProvider(ASTRA_DB_APPLICATION_TOKEN)
 else:
-    # either token or user/pwd pair (the latter having precedence)
+    # there must be a user/pwd pair
     if LOCAL_DATA_API_USERNAME and LOCAL_DATA_API_PASSWORD:
         LOCAL_DATA_API_TOKEN_PROVIDER = UsernamePasswordTokenProvider(
             username=LOCAL_DATA_API_USERNAME,
             password=LOCAL_DATA_API_PASSWORD,
-        )
-    elif LOCAL_DATA_API_APPLICATION_TOKEN:
-        LOCAL_DATA_API_TOKEN_PROVIDER = StaticTokenProvider(
-            LOCAL_DATA_API_APPLICATION_TOKEN
         )
     else:
         raise ValueError("No full authentication data for local Data API")
