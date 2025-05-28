@@ -17,6 +17,7 @@ from __future__ import annotations
 from ..conftest import (
     ADMIN_ENV_LIST,
     ADMIN_ENV_VARIABLE_MAP,
+    CQL_AVAILABLE,
     HEADER_EMBEDDING_API_KEY_OPENAI,
     IS_ASTRA_DB,
     SECONDARY_KEYSPACE,
@@ -45,6 +46,7 @@ __all__ = [
     "IS_ASTRA_DB",
     "ADMIN_ENV_LIST",
     "ADMIN_ENV_VARIABLE_MAP",
+    "CQL_AVAILABLE",
     "SECONDARY_KEYSPACE",
     "TEST_COLLECTION_NAME",
     "VECTORIZE_TEXTS",

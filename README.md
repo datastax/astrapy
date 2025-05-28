@@ -522,7 +522,10 @@ uv venv --python 3.8 .venv-3.8
 uv sync --dev --active
 ```
 
-Then, with the desired virtual env active, you will simply run e.g. `pytest [...]`.
+Then, with the desired virtual env active, you will simply run e.g. `uv run pytest [...]`.
+
+Most make targets will also support running in the named virtual env:
+assuming you activated a certain virtual env, you can run e.g.: `make format VENV=true`.
 
 #### Adding/changing dependencies
 

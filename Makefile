@@ -5,6 +5,13 @@ SHELL := /bin/bash
 all: help
 
 FMT_FLAGS ?= --check
+VENV ?= false
+
+ifeq ($(VENV), true)
+  VENV_FLAGS := --active
+else
+  VENV_FLAGS :=
+endif
 
 venv:
 	uv venv
@@ -13,14 +20,14 @@ venv:
 format: format-src format-tests
 
 format-tests:
-	uv run ruff check tests
-	uv run ruff format tests $(FMT_FLAGS)
-	uv run mypy tests
+	uv run $(VENV_FLAGS) ruff check tests
+	uv run $(VENV_FLAGS) ruff format tests $(FMT_FLAGS)
+	uv run $(VENV_FLAGS) mypy tests
 
 format-src:
-	uv run ruff check astrapy
-	uv run ruff format astrapy $(FMT_FLAGS)
-	uv run mypy astrapy
+	uv run $(VENV_FLAGS) ruff check astrapy
+	uv run $(VENV_FLAGS) ruff format astrapy $(FMT_FLAGS)
+	uv run $(VENV_FLAGS) mypy astrapy
 
 format-fix: format-fix-src format-fix-tests
 
@@ -31,10 +38,10 @@ format-fix-tests: FMT_FLAGS=
 format-fix-tests: format-tests
 
 test-integration:
-	uv run pytest tests/base -vv
+	uv run $(VENV_FLAGS) pytest tests/base -vv
 
 test:
-	uv run pytest tests/base/unit -vv
+	uv run $(VENV_FLAGS) pytest tests/base/unit -vv
 
 docker-test-integration:
 	DOCKER_COMPOSE_LOCAL_DATA_API="yes" uv run pytest tests/base -vv

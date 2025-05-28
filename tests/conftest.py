@@ -21,19 +21,15 @@ from __future__ import annotations
 import functools
 import warnings
 from collections.abc import Iterator
-from typing import Any, Awaitable, Callable, Iterable, TypedDict, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Iterable, TypedDict
 
 import pytest
 from blockbuster import BlockBuster, blockbuster_ctx
 from deprecation import UnsupportedWarning
 
 if TYPE_CHECKING:
+    import cassio
     from cassandra.cluster import Session
-
-try:
-    from cassandra.cluster import Session
-except ImportError:
-    pass
 
 from astrapy import AsyncDatabase, DataAPIClient, Database
 from astrapy.admin import parse_api_endpoint
@@ -60,6 +56,15 @@ from .preprocess_env import (
     LOCAL_DATA_API_USERNAME,
     SECONDARY_KEYSPACE,
 )
+
+CQL_AVAILABLE = False
+try:
+    import cassio
+    from cassandra.cluster import Session
+
+    CQL_AVAILABLE = True
+except ImportError:
+    pass
 
 
 @pytest.fixture(autouse=True)
@@ -241,9 +246,14 @@ def async_database(
 
 
 @pytest.fixture(scope="session")
-def cql_session() -> "Session":
+def cql_session(data_api_credentials_kwargs: DataAPICredentials) -> Iterable[Session]:
     if IS_ASTRA_DB:
-        # TODO
+        cassio.init()
+        session = cassio.config.resolve_session()
+        if session is None:
+            raise ValueError("No CQL 'Session' was obtained")
+        session.execute(f"USE {data_api_credentials_kwargs['keyspace']}")
+        yield session
     else:
         raise NotImplementedError("Unavailable outside of Astra DB")
 
@@ -252,6 +262,7 @@ __all__ = [
     "ASTRA_DB_API_ENDPOINT",
     "ASTRA_DB_APPLICATION_TOKEN",
     "ASTRA_DB_KEYSPACE",
+    "CQL_AVAILABLE",
     "DOCKER_COMPOSE_LOCAL_DATA_API",
     "HEADER_EMBEDDING_API_KEY_OPENAI",
     "HEADER_RERANKING_API_KEY_NVIDIA",

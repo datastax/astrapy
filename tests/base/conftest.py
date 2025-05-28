@@ -43,6 +43,7 @@ from astrapy.utils.unset import _UNSET, UnsetType
 from ..conftest import (
     ADMIN_ENV_LIST,
     ADMIN_ENV_VARIABLE_MAP,
+    CQL_AVAILABLE,
     HEADER_EMBEDDING_API_KEY_OPENAI,
     HEADER_RERANKING_API_KEY_NVIDIA,
     IS_ASTRA_DB,
@@ -670,6 +671,7 @@ __all__ = [
     "IS_ASTRA_DB",
     "ADMIN_ENV_LIST",
     "ADMIN_ENV_VARIABLE_MAP",
+    "CQL_AVAILABLE",
     "SECONDARY_KEYSPACE",
     "VECTORIZE_TEXTS",
     "_repaint_NaNs",
