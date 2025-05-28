@@ -71,6 +71,7 @@ elif "DOCKER_COMPOSE_LOCAL_DATA_API" in os.environ:
     LOCAL_DATA_API_USERNAME = "cassandra"
     LOCAL_DATA_API_PASSWORD = "cassandra"
     LOCAL_DATA_API_ENDPOINT = "http://localhost:8181"
+    LOCAL_CASSANDRA_CONTACT_POINT = "127.0.0.1"
     LOCAL_DATA_API_KEYSPACE = os.environ.get("LOCAL_DATA_API_KEYSPACE")
     # no reason not to use it
     SECONDARY_KEYSPACE = os.environ.get(
