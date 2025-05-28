@@ -47,6 +47,7 @@ from astrapy.data.info.table_descriptor.table_altering import (
 from astrapy.data.info.table_descriptor.table_columns import (
     TableAPISupportDescriptor,
     TableKeyValuedColumnTypeDescriptor,
+    TablePassthroughColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
     TableUnsupportedColumnTypeDescriptor,
@@ -132,6 +133,7 @@ __all__ = [
     "TableInfo",
     "TableKeyValuedColumnType",
     "TableKeyValuedColumnTypeDescriptor",
+    "TablePassthroughColumnTypeDescriptor",
     "TablePrimaryKeyDescriptor",
     "TableScalarColumnTypeDescriptor",
     "TableUnsupportedColumnTypeDescriptor",

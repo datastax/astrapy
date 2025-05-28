@@ -22,6 +22,7 @@ from astrapy.data.info.vectorize import VectorServiceOptions
 from astrapy.data.utils.table_types import (
     ColumnType,
     TableKeyValuedColumnType,
+    TablePassthroughColumnType,
     TableUnsupportedColumnType,
     TableValuedColumnType,
     TableVectorColumnType,
@@ -127,6 +128,7 @@ class TableColumnTypeDescriptor(ABC):
         | TableKeyValuedColumnType
         | TableVectorColumnType
         | TableUnsupportedColumnType
+        | TablePassthroughColumnType
     )
     api_support: TableAPISupportDescriptor | None
 
@@ -146,12 +148,17 @@ class TableColumnTypeDescriptor(ABC):
             return TableKeyValuedColumnTypeDescriptor._from_dict(raw_dict)
         elif "valueType" in raw_dict:
             return TableValuedColumnTypeDescriptor._from_dict(raw_dict)
-        elif raw_dict["type"] == "vector":
+        elif raw_dict["type"] in TableVectorColumnType:
             return TableVectorColumnTypeDescriptor._from_dict(raw_dict)
-        elif raw_dict["type"] == "UNSUPPORTED":
+        elif raw_dict["type"] in ColumnType:
+            return TableScalarColumnTypeDescriptor._from_dict(raw_dict)
+        elif raw_dict["type"] in TableUnsupportedColumnType:
             return TableUnsupportedColumnTypeDescriptor._from_dict(raw_dict)
         else:
-            return TableScalarColumnTypeDescriptor._from_dict(raw_dict)
+            # This case must not error, rather return a 'passthrough' column type
+            # (future-proof for yet-unknown column types to come and incomplete info
+            # such as e.g. 'map' without key/value type info because static).
+            return TablePassthroughColumnTypeDescriptor._from_dict(raw_dict)
 
     @classmethod
     def coerce(
@@ -512,6 +519,69 @@ class TableUnsupportedColumnTypeDescriptor(TableColumnTypeDescriptor):
         return TableUnsupportedColumnTypeDescriptor(
             column_type=raw_dict["type"],
             api_support=TableAPISupportDescriptor._from_dict(raw_dict["apiSupport"]),
+        )
+
+
+@dataclass
+class TablePassthroughColumnTypeDescriptor(TableColumnTypeDescriptor):
+    """
+    Represents and describes a column in a Table wich, for lack of information
+    or understanding from the client, needs to be conveyed to the caller as-is.
+    This is used during certain (schema- or data-) read operations.
+
+    This class is not meant for direct instantiation by the client user. Note that
+    the `column_type` attribute is *not* mapped to the "type" key in the corresponding
+    dictionary form.
+
+    Attributes:
+        column_type: a `TablePassthroughColumnType` value. This can be omitted when
+            creating the object. It only ever assumes the "PASSTHROUGH" value.
+        raw_descriptor: a free-form dictionary expressing the complete column
+            description as it comes from the Data API. Part of this information
+            is available in `api_support`, if such is provided.
+        api_support: a `TableAPISupportDescriptor` object giving more details.
+    """
+
+    column_type: TablePassthroughColumnType
+    raw_descriptor: dict[str, Any]
+    api_support: TableAPISupportDescriptor
+
+    def __init__(
+        self,
+        *,
+        column_type: str
+        | TablePassthroughColumnType = TablePassthroughColumnType.PASSTHROUGH,
+        raw_descriptor: dict[str, Any],
+        api_support: TableAPISupportDescriptor | None = None,
+    ) -> None:
+        self.raw_descriptor = raw_descriptor
+        super().__init__(
+            column_type=TablePassthroughColumnType.coerce(column_type),
+            api_support=api_support,
+        )
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({str(self.as_dict())})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return self.raw_descriptor
+
+    @classmethod
+    def _from_dict(
+        cls, raw_dict: dict[str, Any]
+    ) -> TablePassthroughColumnTypeDescriptor:
+        """
+        Create an instance of TablePassthroughColumnTypeDescriptor from a dictionary
+        such as one from the Data API.
+        """
+
+        return TablePassthroughColumnTypeDescriptor(
+            raw_descriptor=raw_dict,
+            api_support=TableAPISupportDescriptor._from_dict(raw_dict["apiSupport"])
+            if raw_dict.get("apiSupport")
+            else None,
         )
 
 

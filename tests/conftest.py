@@ -21,11 +21,15 @@ from __future__ import annotations
 import functools
 import warnings
 from collections.abc import Iterator
-from typing import Any, Awaitable, Callable, Iterable, TypedDict
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Iterable, TypedDict
 
 import pytest
 from blockbuster import BlockBuster, blockbuster_ctx
 from deprecation import UnsupportedWarning
+
+if TYPE_CHECKING:
+    from cassandra.cluster import Session
+    from cassio.config import get_session_and_keyspace
 
 from astrapy import AsyncDatabase, DataAPIClient, Database
 from astrapy.admin import parse_api_endpoint
@@ -44,7 +48,7 @@ from .preprocess_env import (
     HEADER_EMBEDDING_API_KEY_OPENAI,
     HEADER_RERANKING_API_KEY_NVIDIA,
     IS_ASTRA_DB,
-    LOCAL_DATA_API_APPLICATION_TOKEN,
+    LOCAL_CASSANDRA_CONTACT_POINT,
     LOCAL_DATA_API_ENDPOINT,
     LOCAL_DATA_API_KEYSPACE,
     LOCAL_DATA_API_PASSWORD,
@@ -52,6 +56,15 @@ from .preprocess_env import (
     LOCAL_DATA_API_USERNAME,
     SECONDARY_KEYSPACE,
 )
+
+CQL_AVAILABLE = False
+try:
+    from cassandra.cluster import Session
+    from cassio.config import get_session_and_keyspace
+
+    CQL_AVAILABLE = True
+except ImportError:
+    pass
 
 
 @pytest.fixture(autouse=True)
@@ -80,6 +93,14 @@ def env_region_from_endpoint(api_endpoint: str) -> tuple[str, str]:
         return (parsed.environment, parsed.region)
     else:
         return (Environment.OTHER, "no-region")
+
+
+def database_id_from_endpoint(api_endpoint: str) -> str | None:
+    parsed = parse_api_endpoint(api_endpoint)
+    if parsed is not None:
+        return parsed.database_id
+    else:
+        return None
 
 
 def async_fail_if_not_removed(
@@ -232,19 +253,82 @@ def async_database(
     yield sync_database.to_async()
 
 
+@pytest.fixture(scope="session")
+def cql_session(
+    data_api_credentials_kwargs: DataAPICredentials,
+) -> Iterable[Session]:
+    if IS_ASTRA_DB:
+        _env, _ = env_region_from_endpoint(data_api_credentials_kwargs["api_endpoint"])
+        _db_id = database_id_from_endpoint(data_api_credentials_kwargs["api_endpoint"])
+
+        if _db_id is None:
+            raise ValueError("Could not extract database id for cql_session")
+
+        _bundle_template: str
+        if _env == "prod":
+            _bundle_template = (
+                "https://api.astra.datastax.com/v2/databases"
+                "/{database_id}/secureBundleURL"
+            )
+        elif _env == "dev":
+            _bundle_template = (
+                "https://api.dev.cloud.datastax.com/v2/databases"
+                "/{database_id}/secureBundleURL"
+            )
+        elif _env == "test":
+            _bundle_template = (
+                "https://api.test.cloud.datastax.com/v2/databases"
+                "/{database_id}/secureBundleURL"
+            )
+        else:
+            raise ValueError(f"Unsupported Astra environment for cql_session: {_env}")
+
+        _token: str
+        if isinstance(data_api_credentials_kwargs["token"], TokenProvider):
+            _token = data_api_credentials_kwargs["token"].get_token() or ""
+        else:
+            _token = data_api_credentials_kwargs["token"]
+
+        if _token == "":
+            raise ValueError("Token not found for cql_session")
+
+        session, _ = get_session_and_keyspace(
+            token=_token,
+            database_id=_db_id,
+            bundle_url_template=_bundle_template,
+        )
+
+        if session is None:
+            raise ValueError("No CQL 'Session' was obtained")
+        session.execute(f"USE {data_api_credentials_kwargs['keyspace']};")
+        yield session
+    else:
+        if LOCAL_CASSANDRA_CONTACT_POINT is None:
+            raise ValueError("No Cassandra contact point defined")
+
+        session, _ = get_session_and_keyspace(
+            contact_points=LOCAL_CASSANDRA_CONTACT_POINT,
+            username=LOCAL_DATA_API_USERNAME,
+            password=LOCAL_DATA_API_PASSWORD,
+        )
+
+        if session is None:
+            raise ValueError("No CQL 'Session' was obtained")
+        session.execute(f"USE {data_api_credentials_kwargs['keyspace']};")
+        yield session
+
+
 __all__ = [
     "ASTRA_DB_API_ENDPOINT",
     "ASTRA_DB_APPLICATION_TOKEN",
     "ASTRA_DB_KEYSPACE",
+    "CQL_AVAILABLE",
     "DOCKER_COMPOSE_LOCAL_DATA_API",
     "HEADER_EMBEDDING_API_KEY_OPENAI",
     "HEADER_RERANKING_API_KEY_NVIDIA",
     "IS_ASTRA_DB",
-    "LOCAL_DATA_API_APPLICATION_TOKEN",
     "LOCAL_DATA_API_ENDPOINT",
     "LOCAL_DATA_API_KEYSPACE",
-    "LOCAL_DATA_API_PASSWORD",
-    "LOCAL_DATA_API_USERNAME",
     "SECONDARY_KEYSPACE",
     "ADMIN_ENV_LIST",
     "ADMIN_ENV_VARIABLE_MAP",

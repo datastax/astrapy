@@ -90,32 +90,22 @@ TABLE_DESCRIPTION = {
                 },
             },
             "p_counter": {
-                "type": "UNSUPPORTED",
+                "type": "counter",
                 "apiSupport": {
                     "createTable": False,
                     "insert": False,
                     "filter": True,
-                    "read": False,
+                    "read": True,
                     "cqlDefinition": "counter",
                 },
             },
-            "p_varchar": {
-                "type": "UNSUPPORTED",
-                "apiSupport": {
-                    "createTable": False,
-                    "insert": False,
-                    "filter": True,
-                    "read": False,
-                    "cqlDefinition": "varchar",
-                },
-            },
             "p_timeuuid": {
-                "type": "UNSUPPORTED",
+                "type": "timeuuid",
                 "apiSupport": {
                     "createTable": False,
-                    "insert": False,
+                    "insert": True,
                     "filter": True,
-                    "read": False,
+                    "read": True,
                     "cqlDefinition": "timeuuid",
                 },
             },
@@ -132,7 +122,7 @@ OUTPUT_ROW_TO_POSTPROCESS = {
     "p_float_nan": "NaN",
     "p_float_pinf": "Infinity",
     "p_float_minf": "-Infinity",
-    "p_blob": {"$binary": "YWJjMTIz"},  # b"abc123",
+    "p_blob": {"$binary": "YWJjMTIz"},  # i.e. b"abc123"
     "p_uuid": "9c5b94b1-35ad-49bb-b118-8e8fc24abf80",
     "p_decimal": decimal.Decimal("123.456"),
     "p_date": "+11111-09-30",
@@ -147,10 +137,9 @@ OUTPUT_ROW_TO_POSTPROCESS = {
     "p_set_float": [1.1, "NaN", "-Infinity", 9.9],
     "p_map_text_float": {"a": 0.1, "b": 0.2},
     "p_map_float_text": {1.1: "1-1", "NaN": "NANNN!"},
-    "somevector": {"$binary": "PczMzb5MzM0+mZma"},  # [0.1, -0.2, 0.3] but not bit-wise
+    "somevector": {"$binary": "PczMzb5MzM0+mZma"},  # i.e. [0.1,-0.2,0.3], not bitwise
     "embeddings": [0.1, -0.2, 0.3],
     "p_counter": 100,
-    "p_varchar": "the_varchar",
     "p_timeuuid": "0de779c0-92e3-11ef-96a4-a745ae2c0a0b",
 }
 
@@ -191,7 +180,6 @@ EXPECTED_POSTPROCESSED_ROW = {
     ),
     "embeddings": DataAPIVector([0.1, -0.2, 0.3]),
     "p_counter": 100,
-    "p_varchar": "the_varchar",
     "p_timeuuid": UUID("0de779c0-92e3-11ef-96a4-a745ae2c0a0b"),
 }
 
@@ -252,7 +240,6 @@ EXPECTED_FILLERS_POSTPROCESSED_ROW: dict[str, Any] = {
     "somevector": None,
     "embeddings": None,
     "p_counter": None,
-    "p_varchar": None,
     "p_timeuuid": None,
 }
 EXPECTED_FILLERS_NONCUSTOMTYPES_POSTPROCESSED_ROW: dict[str, Any] = {
@@ -281,7 +268,6 @@ EXPECTED_FILLERS_NONCUSTOMTYPES_POSTPROCESSED_ROW: dict[str, Any] = {
     "somevector": None,
     "embeddings": None,
     "p_counter": None,
-    "p_varchar": None,
     "p_timeuuid": None,
 }
 
@@ -362,6 +348,140 @@ EXPECTED_PREPROCESSED_ROW = {
     "list_f": [0.1, "Infinity", 0.3],
     "DataAPISet_f": [0.1, "Infinity", 0.3],
     "set_f": ["Infinity"],
+}
+
+ROGUE_TABLE_DESCRIPTION = {
+    "name": "table_rogue",
+    "definition": {
+        "columns": {
+            "col_static_list": {
+                "type": "list",
+                "apiSupport": {
+                    "createTable": False,
+                    "insert": True,
+                    "read": True,
+                    "filter": False,
+                    "cqlDefinition": "static list<int>",
+                },
+            },
+            "col_static_list_exotic": {
+                "type": "list",
+                "apiSupport": {
+                    "createTable": False,
+                    "insert": True,
+                    "read": True,
+                    "filter": False,
+                    "cqlDefinition": "static list<blob>",
+                },
+            },
+            "col_static_map": {
+                "type": "map",
+                "apiSupport": {
+                    "createTable": False,
+                    "insert": True,
+                    "read": True,
+                    "filter": False,
+                    "cqlDefinition": "static map<int, text>",
+                },
+            },
+            "col_static_map_exotic": {
+                "type": "map",
+                "apiSupport": {
+                    "createTable": False,
+                    "insert": True,
+                    "read": True,
+                    "filter": False,
+                    "cqlDefinition": "static map<blob, blob>",
+                },
+            },
+            "col_static_set": {
+                "type": "set",
+                "apiSupport": {
+                    "createTable": False,
+                    "insert": True,
+                    "read": True,
+                    "filter": False,
+                    "cqlDefinition": "static set<int>",
+                },
+            },
+            "col_static_set_exotic": {
+                "type": "set",
+                "apiSupport": {
+                    "createTable": False,
+                    "insert": True,
+                    "read": True,
+                    "filter": False,
+                    "cqlDefinition": "static set<blob>",
+                },
+            },
+            "col_static_timestamp": {
+                "type": "timestamp",
+                "apiSupport": {
+                    "createTable": False,
+                    "insert": True,
+                    "read": True,
+                    "filter": True,
+                    "cqlDefinition": "static timestamp",
+                },
+            },
+            "col_unsupported": {
+                "type": "UNSUPPORTED",
+                "apiSupport": {
+                    "createTable": False,
+                    "insert": False,
+                    "read": False,
+                    "filter": False,
+                    "cqlDefinition": (
+                        "frozen<list<frozen<map<frozen<set<float>>, smallint>>>>"
+                    ),
+                },
+            },
+        },
+        "primaryKey": {"partitionBy": [], "partitionSort": {}},
+    },
+}
+
+ROGUE_OUTPUT_ROW_TO_POSTPROCESS = {
+    "col_static_list": [1, 2, 3],
+    "col_static_list_exotic": [
+        {"$binary": "/w=="},
+        {"$binary": "/w=="},
+    ],
+    "col_static_map": [
+        [1, "one"],
+    ],
+    "col_static_map_exotic": [
+        [{"$binary": "/w=="}, {"$binary": "/w=="}],
+    ],
+    "col_static_set": [1, 2, 3],
+    "col_static_set_exotic": [
+        {"$binary": "/w=="},
+    ],
+    "col_static_timestamp": "2022-01-01T12:34:56Z",
+    "col_unsupported": {"not", "really:", "just", "testing", "passthrough", 123},
+}
+
+# Only for very specific cases of these columns do we expect a proper parsing:
+ROGUE_EXPECTED_POSTPROCESSED_ROW = {
+    "col_static_list": [1, 2, 3],
+    "col_static_list_exotic": [
+        {"$binary": "/w=="},
+        {"$binary": "/w=="},
+    ],
+    "col_static_map": [
+        [1, "one"],
+    ],
+    "col_static_map_exotic": [
+        [{"$binary": "/w=="}, {"$binary": "/w=="}],
+    ],
+    "col_static_set": [1, 2, 3],
+    "col_static_set_exotic": [
+        {"$binary": "/w=="},
+    ],
+    "col_static_timestamp": DataAPITimestamp.from_string(
+        ROGUE_OUTPUT_ROW_TO_POSTPROCESS["col_static_timestamp"]  # type: ignore[arg-type]
+    ),
+    "col_unsupported": {"not", "really:", "just", "testing", "passthrough", 123},
 }
 
 
@@ -618,3 +738,29 @@ class TestTableConverters:
         assert _repaint_NaNs(converted_column) == _repaint_NaNs(
             EXPECTED_FILLERS_NONCUSTOMTYPES_POSTPROCESSED_ROW
         )
+
+    @pytest.mark.describe("test of row postprocessors for rogue table")
+    def test_row_postprocessors_rogue_table(self) -> None:
+        """Rogue table: columns that are unsupported and/or not fully parseable."""
+        col_desc = ListTableDescriptor.coerce(ROGUE_TABLE_DESCRIPTION)
+        tpostprocessor = create_row_tpostprocessor(
+            columns=col_desc.definition.columns,
+            options=FullSerdesOptions(
+                binary_encode_vectors=True,
+                custom_datatypes_in_reading=True,
+                unroll_iterables_to_lists=False,
+                use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="never",
+                accept_naive_datetimes=False,
+                datetime_tzinfo=None,
+            ),
+            similarity_pseudocolumn=None,
+        )
+
+        converted_column = tpostprocessor(ROGUE_OUTPUT_ROW_TO_POSTPROCESS)
+        assert _repaint_NaNs(converted_column) == _repaint_NaNs(
+            ROGUE_EXPECTED_POSTPROCESSED_ROW
+        )
+
+        with pytest.raises(ValueError):
+            tpostprocessor({"bippy": 123})
