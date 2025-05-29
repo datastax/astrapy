@@ -35,7 +35,7 @@ from astrapy import AsyncDatabase, DataAPIClient, Database
 from astrapy.admin import parse_api_endpoint
 from astrapy.authentication import TokenProvider
 from astrapy.constants import Environment
-from astrapy.settings.defaults import DEFAULT_ASTRA_DB_KEYSPACE
+from astrapy.settings.defaults import DEFAULT_ASTRA_DB_KEYSPACE, DEV_OPS_URL_ENV_MAP
 
 from .preprocess_env import (
     ADMIN_ENV_LIST,
@@ -264,24 +264,9 @@ def cql_session(
         if _db_id is None:
             raise ValueError("Could not extract database id for cql_session")
 
-        _bundle_template: str
-        if _env == "prod":
-            _bundle_template = (
-                "https://api.astra.datastax.com/v2/databases"
-                "/{database_id}/secureBundleURL"
-            )
-        elif _env == "dev":
-            _bundle_template = (
-                "https://api.dev.cloud.datastax.com/v2/databases"
-                "/{database_id}/secureBundleURL"
-            )
-        elif _env == "test":
-            _bundle_template = (
-                "https://api.test.cloud.datastax.com/v2/databases"
-                "/{database_id}/secureBundleURL"
-            )
-        else:
-            raise ValueError(f"Unsupported Astra environment for cql_session: {_env}")
+        _bundle_template = (
+            f"{DEV_OPS_URL_ENV_MAP[_env]}/v2/databases/{{database_id}}/secureBundleURL"
+        )
 
         _token: str
         if isinstance(data_api_credentials_kwargs["token"], TokenProvider):
