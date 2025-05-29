@@ -144,9 +144,9 @@ class TableColumnTypeDescriptor(ABC):
         This method switches to the proper subclass depending on the input.
         """
 
-        if "keyType" in raw_dict:
+        if "keyType" in raw_dict and raw_dict["type"] in TableKeyValuedColumnType:
             return TableKeyValuedColumnTypeDescriptor._from_dict(raw_dict)
-        elif "valueType" in raw_dict:
+        elif "valueType" in raw_dict and raw_dict["type"] in TableValuedColumnType:
             return TableValuedColumnTypeDescriptor._from_dict(raw_dict)
         elif raw_dict["type"] in TableVectorColumnType:
             return TableVectorColumnTypeDescriptor._from_dict(raw_dict)
