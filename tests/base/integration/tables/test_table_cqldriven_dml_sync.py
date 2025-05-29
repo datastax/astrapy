@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING
 
 import pytest
@@ -25,12 +26,15 @@ from ..conftest import CQL_AVAILABLE
 from .table_cql_assets import (
     CREATE_TABLE_COUNTER,
     CREATE_TABLE_LOWSUPPORT,
+    CREATE_TYPE_LOWSUPPORT,
     DROP_TABLE_COUNTER,
     DROP_TABLE_LOWSUPPORT,
+    DROP_TYPE_LOWSUPPORT,
     EXPECTED_ROW_COUNTER,
     EXPECTED_ROW_LOWSUPPORT,
     FILTER_COUNTER,
     FILTER_LOWSUPPORT,
+    ILLEGAL_PROJECTIONS_LOWSUPPORT,
     INSERTS_TABLE_COUNTER,
     INSERTS_TABLE_LOWSUPPORT,
     PROJECTION_LOWSUPPORT,
@@ -61,8 +65,10 @@ class TestTableCQLDrivenDMLSync:
             cql_session.execute(CREATE_TABLE_COUNTER)
             for insert_statement in INSERTS_TABLE_COUNTER:
                 cql_session.execute(insert_statement)
+            time.sleep(1.5)  # delay for schema propagation
 
             table = sync_database.get_table(TABLE_NAME_COUNTER)
+            table.definition()
             row = table.find_one(filter=FILTER_COUNTER)
             assert row == EXPECTED_ROW_COUNTER
             table.delete_one(filter=FILTER_COUNTER)
@@ -80,13 +86,17 @@ class TestTableCQLDrivenDMLSync:
         sync_database: Database,
     ) -> None:
         try:
+            cql_session.execute(CREATE_TYPE_LOWSUPPORT)
             cql_session.execute(CREATE_TABLE_LOWSUPPORT)
             for insert_statement in INSERTS_TABLE_LOWSUPPORT:
                 cql_session.execute(insert_statement)
+            time.sleep(1.5)  # delay for schema propagation
 
             table = sync_database.get_table(TABLE_NAME_LOWSUPPORT)
-            with pytest.raises(DataAPIResponseException):
-                table.find_one(filter=FILTER_LOWSUPPORT)
+            table.definition()
+            for ill_proj in ILLEGAL_PROJECTIONS_LOWSUPPORT:
+                with pytest.raises(DataAPIResponseException):
+                    table.find_one(filter=FILTER_LOWSUPPORT)
             row = table.find_one(
                 filter=FILTER_LOWSUPPORT, projection=PROJECTION_LOWSUPPORT
             )
@@ -98,3 +108,4 @@ class TestTableCQLDrivenDMLSync:
             assert row is None
         finally:
             cql_session.execute(DROP_TABLE_LOWSUPPORT)
+            cql_session.execute(DROP_TYPE_LOWSUPPORT)
