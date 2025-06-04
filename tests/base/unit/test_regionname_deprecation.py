@@ -58,8 +58,9 @@ class TestRegionNameDeprecation:
         with pytest.warns(DeprecationWarning) as w_checker:
             r1 = region_info.region_name
         assert len(w_checker.list) == 1
-        assert isinstance(w_checker.list[0], DeprecatedWarning)
-        assert is_future_version(w_checker.list[0].message.removed_in)
+        warning0 = w_checker.list[0].message
+        assert isinstance(warning0, DeprecatedWarning)
+        assert is_future_version(warning0.removed_in)
 
         assert r0 == r1
 
@@ -82,7 +83,8 @@ class TestRegionNameDeprecation:
             r1 = available_region_info.region_name
 
         assert len(w_checker.list) == 1
-        assert isinstance(w_checker.list[0], DeprecatedWarning)
-        assert is_future_version(w_checker.list[0].message.removed_in)
+        warning0 = w_checker.list[0].message
+        assert isinstance(warning0, DeprecatedWarning)
+        assert is_future_version(warning0.removed_in)
 
         assert r0 == r1
