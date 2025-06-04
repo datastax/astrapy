@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from cassandra.cluster import Session
     from cassio.config import get_session_and_keyspace
 
+import astrapy
 from astrapy import AsyncDatabase, DataAPIClient, Database
 from astrapy.admin import parse_api_endpoint
 from astrapy.authentication import TokenProvider
@@ -101,6 +102,12 @@ def database_id_from_endpoint(api_endpoint: str) -> str | None:
         return parsed.database_id
     else:
         return None
+
+
+def is_future_version(v_string: str) -> bool:
+    current_tuple = tuple(int(pc) for pc in astrapy.__version__.split("."))
+    v_tuple = tuple(int(pc) for pc in v_string.split("."))
+    return v_tuple > current_tuple
 
 
 def async_fail_if_not_removed(

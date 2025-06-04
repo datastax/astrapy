@@ -52,6 +52,7 @@ from ..conftest import (
     DataAPICredentialsInfo,
     async_fail_if_not_removed,
     clean_nulls_from_dict,
+    is_future_version,
     sync_fail_if_not_removed,
 )
 from .table_structure_assets import (
@@ -666,6 +667,7 @@ __all__ = [
     "DataAPICredentialsInfo",
     "async_fail_if_not_removed",
     "clean_nulls_from_dict",
+    "is_future_version",
     "sync_fail_if_not_removed",
     "HEADER_EMBEDDING_API_KEY_OPENAI",
     "IS_ASTRA_DB",
