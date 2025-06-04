@@ -20,6 +20,7 @@ from typing import Any
 
 from astrapy.admin.endpoints import build_api_endpoint, parse_api_endpoint
 from astrapy.data_types import DataAPITimestamp
+from astrapy.utils.meta import deprecated_property
 from astrapy.utils.parsing import _warn_residual_keys
 
 
@@ -41,9 +42,8 @@ class AstraDBAdminDatabaseRegionInfo:
     can have one or several entries, each a `AstraDBAdminDatabaseRegionInfo` instance.
 
     Attributes:
-        region_name: the name of the region. This is what the DevOps API calls "region"
-            in its raw response and can be used as an identifier rather than a
-            pretty-printable descriptive string.
+        region: the short, ID-like name of the region. This can be used as an
+            identifier since it determines a region uniquely.
         id: This is the datacenter ID, usually composed by the database ID followed
             by a dash and a further integer identifier.
         api_endpoint: the API endpoint one can use to connect to the database through
@@ -51,7 +51,7 @@ class AstraDBAdminDatabaseRegionInfo:
         created_at: information on when the region was added to the database.
     """
 
-    region_name: str
+    region: str
     id: str
     api_endpoint: str
     created_at: datetime.datetime | None
@@ -63,7 +63,7 @@ class AstraDBAdminDatabaseRegionInfo:
         environment: str,
         database_id: str,
     ) -> None:
-        self.region_name = raw_datacenter_dict["region"]
+        self.region = raw_datacenter_dict["region"]
         self.id = raw_datacenter_dict["id"]
         self.api_endpoint = build_api_endpoint(
             environment=environment,
@@ -74,12 +74,21 @@ class AstraDBAdminDatabaseRegionInfo:
 
     def __repr__(self) -> str:
         pieces = [
-            f"region_name={self.region_name}",
+            f"region={self.region}",
             f"id={self.id}",
             f"api_endpoint={self.api_endpoint}",
             f"created_at={self.created_at}",
         ]
         return f"{self.__class__.__name__}({', '.join(pieces)})"
+
+    @property
+    @deprecated_property(
+        new_name="region",
+        deprecated_in="2.0.1",
+        removed_in="2.3.0",
+    )
+    def region_name(self) -> str:
+        return self.region
 
 
 @dataclass
@@ -321,9 +330,9 @@ class AstraDBAvailableRegionInfo:
         cloud_provider: one of 'gcp', 'aws' or 'azure'.
         display_name: a region "pretty name" e.g. for printing messages.
         enabled: a boolean flag marking whether the region is enabled.
-        region_name: the name of the region. This is what the DevOps API calls "region"
-            in its raw response and can be used as an identifier rather than a
-            pretty-printable descriptive string.
+        region: the short, ID-like name of the region. This can be used as an
+            identifier since it determines a region uniquely. In the raw response
+            from the DevOps API endpoint, this attribute is called `"name"`.
         reserved_for_qualified_users: a boolean flag marking availability settings.
         zone: macro-zone for the region, e.g. "na" or "emea".
     """
@@ -332,12 +341,12 @@ class AstraDBAvailableRegionInfo:
     cloud_provider: str
     display_name: str
     enabled: bool
-    region_name: str
+    region: str
     reserved_for_qualified_users: bool
     zone: str
 
     def __repr__(self) -> str:
-        body = f'{self.cloud_provider}/{self.region_name}: "{self.display_name}", ...'
+        body = f'{self.cloud_provider}/{self.region}: "{self.display_name}", ...'
         return f"{self.__class__.__name__}({body})"
 
     def as_dict(self) -> dict[str, Any]:
@@ -350,11 +359,20 @@ class AstraDBAvailableRegionInfo:
             "cloudProvider": self.cloud_provider,
             "displayName": self.display_name,
             "enabled": self.enabled,
-            "name": self.region_name,
+            "name": self.region,
             "region_type": "vector",
             "reservedForQualifiedUsers": self.reserved_for_qualified_users,
             "zone": self.zone,
         }
+
+    @property
+    @deprecated_property(
+        new_name="region",
+        deprecated_in="2.0.1",
+        removed_in="2.3.0",
+    )
+    def region_name(self) -> str:
+        return self.region
 
     @classmethod
     def _from_dict(cls, raw_dict: dict[str, Any]) -> AstraDBAvailableRegionInfo:
@@ -382,7 +400,7 @@ class AstraDBAvailableRegionInfo:
             cloud_provider=raw_dict["cloudProvider"],
             display_name=raw_dict["displayName"],
             enabled=raw_dict["enabled"],
-            region_name=raw_dict["name"],
+            region=raw_dict["name"],
             reserved_for_qualified_users=raw_dict["reservedForQualifiedUsers"],
             zone=raw_dict["zone"],
         )
