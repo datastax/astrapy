@@ -1879,7 +1879,7 @@ class AstraDBAdmin:
             AstraDBAvailableRegionInfo(GCP/us-east1: "Moncks Corner, [...]", ...)
             >>> regions[0].cloud_provider
             'GCP'
-            >>> regions[0].region_name
+            >>> regions[0].region
             'us-east1'
             >>> regions[0].display_name
             'Moncks Corner, South Carolina'
@@ -1969,7 +1969,7 @@ class AstraDBAdmin:
             AstraDBAvailableRegionInfo(GCP/us-east1: "Moncks Corner, [...]", ...)
             >>> regions[0].cloud_provider
             'GCP'
-            >>> regions[0].region_name
+            >>> regions[0].region
             'us-east1'
             >>> regions[0].display_name
             'Moncks Corner, South Carolina'
