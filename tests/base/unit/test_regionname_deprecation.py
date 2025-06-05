@@ -54,7 +54,7 @@ class TestRegionNameDeprecation:
             database_id="D",
         )
 
-        r0 = region_info.region
+        r0 = region_info.name
         with pytest.warns(DeprecationWarning) as w_checker:
             r1 = region_info.region_name
         assert len(w_checker.list) == 1
@@ -78,7 +78,7 @@ class TestRegionNameDeprecation:
         }
         available_region_info = AstraDBAvailableRegionInfo._from_dict(ar0)
 
-        r0 = available_region_info.region
+        r0 = available_region_info.name
         with pytest.warns(DeprecationWarning) as w_checker:
             r1 = available_region_info.region_name
 
