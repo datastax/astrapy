@@ -1,6 +1,6 @@
 main
 ====
-Admin, renamed 'region_name' ==> `region` in `AstraDBAdminDatabaseRegionInfo` and `AstraDBAvailableRegionInfo` (the old name kept as a deprecated alias)
+Admin, renamed 'region_name' ==> `name` in `AstraDBAdminDatabaseRegionInfo` and `AstraDBAvailableRegionInfo` (the old name kept as a deprecated alias)
 Introduced the notion of 'passthrough columns' to cover all of the cql-only partially/completely unsupported columns in the read/schema-read path
 Fix: methods `drop_[collection|table]` of `[Async]Database`, and their Collection/Table sugar methods, now consistently return None.
 AstraDBAdmin: introduced `[async_]find_available_regions()` method (and related response objects)
