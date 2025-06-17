@@ -21,9 +21,7 @@ from enum import Enum
 from typing import Any, Generic, TypeVar
 
 from astrapy.data_types import DataAPIVector
-from astrapy.exceptions import (
-    CursorException,
-)
+from astrapy.exceptions import CursorException
 from astrapy.utils.api_options import FullSerdesOptions
 from astrapy.utils.unset import _UNSET, UnsetType
 
@@ -247,7 +245,11 @@ class AbstractCursor(ABC, Generic[TRAW]):
         occurred on the table or collection the results may be different if a cursor
         is browsed a second time after rewinding it.
 
-        TODO: arg
+        Args:
+            initial_page_state: if a value is provided, it must be the `next_page_state`
+                from the response of `fetch_next_page()` called on a cursor with the
+                same settings. In that case, the repositioning of this cursor is such
+                that the next data-fetch will specify the page state to the Data API.
 
         This is an in-place modification of the cursor.
         """

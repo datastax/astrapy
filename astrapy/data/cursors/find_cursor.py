@@ -32,15 +32,13 @@ from astrapy.data.cursors.cursor import (
     _ensure_vector,
     _revise_timeouts_for_cursor_copy,
 )
+from astrapy.data.cursors.pagination import FindPage
 from astrapy.data.cursors.query_engine import (
     _CollectionFindQueryEngine,
     _TableFindQueryEngine,
 )
 from astrapy.data_types import DataAPIVector
-from astrapy.exceptions import (
-    CursorException,
-    MultiCallTimeoutManager,
-)
+from astrapy.exceptions import CursorException, MultiCallTimeoutManager
 from astrapy.utils.unset import _UNSET, UnsetType
 
 
@@ -763,6 +761,54 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         else:
             return None
 
+    def fetch_next_page(self) -> FindPage[T]:
+        """
+        Retrieve a single, whole page of results from the Data API and return it
+        at once, together with associated "out-of-band" information.
+
+        This method is meant to be the way a cursor is consumed when the caller
+        needs to explicitly operate on a page-by-page basis, and is to be paired
+        with creation of cursor objects 'set to start from a certain page' via the
+        `initial_page_state` constructor parameter/builder method.
+        In this case, the supplied initial page state typically comes from having
+        consumed a previous page, for the same find operation: the page state, a string,
+        is found within the `FindPage` object returned by this method.
+
+        Returns:
+            # TODO: returns
+
+        Example:
+            # TODO: example
+        """
+
+        self._ensure_alive()
+        if self._buffer:
+            msg = "Paginated retrieval cannot be mixed with regular cursor iteration."
+            raise CursorException(
+                text=msg,
+                cursor_state=self._state.value,
+            )
+
+        self._try_ensure_fill_buffer()
+
+        _buffer_count = len(self._buffer)
+        _tr_next_ps = self._next_page_state
+        _tr_results = [document for _, document in zip(range(_buffer_count), self)]
+        _tr_sort_vector: list[float] | DataAPIVector | None
+        if self._last_response_status:
+            _tr_sort_vector = _ensure_vector(
+                self._last_response_status.get("sortVector"),
+                self.data_source.api_options.serdes_options,
+            )
+        else:
+            _tr_sort_vector = None
+
+        return FindPage(
+            results=_tr_results,
+            next_page_state=_tr_next_ps,
+            sort_vector=_tr_sort_vector,
+        )
+
 
 class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     """
@@ -1389,6 +1435,57 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             )
         else:
             return None
+
+    async def fetch_next_page(self) -> FindPage[T]:
+        """
+        Retrieve a single, whole page of results from the Data API and return it
+        at once, together with associated "out-of-band" information.
+
+        This method is meant to be the way a cursor is consumed when the caller
+        needs to explicitly operate on a page-by-page basis, and is to be paired
+        with creation of cursor objects 'set to start from a certain page' via the
+        `initial_page_state` constructor parameter/builder method.
+        In this case, the supplied initial page state typically comes from having
+        consumed a previous page, for the same find operation: the page state, a string,
+        is found within the `FindPage` object returned by this method.
+
+
+        Returns:
+            # TODO: returns
+
+        Example:
+            # TODO: example, check if async has examples
+        """
+
+        self._ensure_alive()
+        if self._buffer:
+            msg = "Paginated retrieval cannot be mixed with regular cursor iteration."
+            raise CursorException(
+                text=msg,
+                cursor_state=self._state.value,
+            )
+
+        await self._try_ensure_fill_buffer()
+
+        _buffer_count = len(self._buffer)
+        _tr_next_ps = self._next_page_state
+        _tr_results: list[T] = []
+        for _ in range(_buffer_count):
+            _tr_results.append(await self.__anext__())
+        _tr_sort_vector: list[float] | DataAPIVector | None
+        if self._last_response_status:
+            _tr_sort_vector = _ensure_vector(
+                self._last_response_status.get("sortVector"),
+                self.data_source.api_options.serdes_options,
+            )
+        else:
+            _tr_sort_vector = None
+
+        return FindPage(
+            results=_tr_results,
+            next_page_state=_tr_next_ps,
+            sort_vector=_tr_sort_vector,
+        )
 
 
 class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
@@ -2108,6 +2205,54 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         else:
             return None
 
+    def fetch_next_page(self) -> FindPage[T]:
+        """
+        Retrieve a single, whole page of results from the Data API and return it
+        at once, together with associated "out-of-band" information.
+
+        This method is meant to be the way a cursor is consumed when the caller
+        needs to explicitly operate on a page-by-page basis, and is to be paired
+        with creation of cursor objects 'set to start from a certain page' via the
+        `initial_page_state` constructor parameter/builder method.
+        In this case, the supplied initial page state typically comes from having
+        consumed a previous page, for the same find operation: the page state, a string,
+        is found within the `FindPage` object returned by this method.
+
+        Returns:
+            # TODO: returns
+
+        Example:
+            # TODO: example
+        """
+
+        self._ensure_alive()
+        if self._buffer:
+            msg = "Paginated retrieval cannot be mixed with regular cursor iteration."
+            raise CursorException(
+                text=msg,
+                cursor_state=self._state.value,
+            )
+
+        self._try_ensure_fill_buffer()
+
+        _buffer_count = len(self._buffer)
+        _tr_next_ps = self._next_page_state
+        _tr_results = [document for _, document in zip(range(_buffer_count), self)]
+        _tr_sort_vector: list[float] | DataAPIVector | None
+        if self._last_response_status:
+            _tr_sort_vector = _ensure_vector(
+                self._last_response_status.get("sortVector"),
+                self.data_source.api_options.serdes_options,
+            )
+        else:
+            _tr_sort_vector = None
+
+        return FindPage(
+            results=_tr_results,
+            next_page_state=_tr_next_ps,
+            sort_vector=_tr_sort_vector,
+        )
+
 
 class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     """
@@ -2733,3 +2878,53 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             )
         else:
             return None
+
+    async def fetch_next_page(self) -> FindPage[T]:
+        """
+        Retrieve a single, whole page of results from the Data API and return it
+        at once, together with associated "out-of-band" information.
+
+        This method is meant to be the way a cursor is consumed when the caller
+        needs to explicitly operate on a page-by-page basis, and is to be paired
+        with creation of cursor objects 'set to start from a certain page' via the
+        `initial_page_state` constructor parameter/builder method.
+        In this case, the supplied initial page state typically comes from having
+        consumed a previous page, for the same find operation: the page state, a string,
+        is found within the `FindPage` object returned by this method.
+
+        Returns:
+            # TODO: returns
+
+        Example:
+            # TODO: example, check if async has examples
+        """
+
+        self._ensure_alive()
+        if self._buffer:
+            msg = "Paginated retrieval cannot be mixed with regular cursor iteration."
+            raise CursorException(
+                text=msg,
+                cursor_state=self._state.value,
+            )
+
+        await self._try_ensure_fill_buffer()
+
+        _buffer_count = len(self._buffer)
+        _tr_next_ps = self._next_page_state
+        _tr_results: list[T] = []
+        for _ in range(_buffer_count):
+            _tr_results.append(await self.__anext__())
+        _tr_sort_vector: list[float] | DataAPIVector | None
+        if self._last_response_status:
+            _tr_sort_vector = _ensure_vector(
+                self._last_response_status.get("sortVector"),
+                self.data_source.api_options.serdes_options,
+            )
+        else:
+            _tr_sort_vector = None
+
+        return FindPage(
+            results=_tr_results,
+            next_page_state=_tr_next_ps,
+            sort_vector=_tr_sort_vector,
+        )

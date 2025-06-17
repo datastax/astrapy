@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from astrapy.data.cursors.cursor import (
     AbstractCursor,
     CursorState,
@@ -26,16 +28,19 @@ from astrapy.data.cursors.find_cursor import (
     CollectionFindCursor,
     TableFindCursor,
 )
+from astrapy.data.cursors.pagination import FindAndRerankPage, FindPage
 from astrapy.data.cursors.reranked_result import RerankedResult
 
 __all__ = [
+    "AbstractCursor",
     "AsyncCollectionFindAndRerankCursor",
     "AsyncCollectionFindCursor",
     "AsyncTableFindCursor",
     "CollectionFindAndRerankCursor",
     "CollectionFindCursor",
-    "AbstractCursor",
     "CursorState",
+    "FindAndRerankPage",
+    "FindPage",
     "RerankedResult",
     "TableFindCursor",
 ]
