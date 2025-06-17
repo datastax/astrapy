@@ -979,6 +979,7 @@ class Collection(Generic[DOC]):
         document_type: None = None,
         skip: int | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -995,6 +996,7 @@ class Collection(Generic[DOC]):
         document_type: type[DOC2],
         skip: int | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -1010,6 +1012,7 @@ class Collection(Generic[DOC]):
         document_type: type[DOC2] | None = None,
         skip: int | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -1066,6 +1069,13 @@ class Collection(Generic[DOC]):
             limit: this (integer) parameter sets a limit over how many documents
                 are returned. Once `limit` is reached (or the cursor is exhausted
                 for lack of matching documents), nothing more is returned.
+            initial_page_state: if a value is provided, it must be the `next_page_state`
+                from the response of `fetch_next_page()` called on a previous cursor.
+                This value is used as the first page state when the first request
+                to consume the cursor is issued.
+                This pattern is what enables the caller to control consuming the
+                results page by page in a caller-driven fashion. See Examples for more.
+                If supplied, this parameter must be string: passing None is forbidden.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each
                 returned document. It can be used meaningfully only in a vector
@@ -1452,6 +1462,7 @@ class Collection(Generic[DOC]):
         document_type: None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
@@ -1470,6 +1481,7 @@ class Collection(Generic[DOC]):
         document_type: type[DOC2],
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
@@ -1488,6 +1500,7 @@ class Collection(Generic[DOC]):
         document_type: type[DOC2] | None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
@@ -1551,6 +1564,10 @@ class Collection(Generic[DOC]):
                 numbers, the latter case expressing different counts for the different
                 retrievals. For example: `hybrid_limits=50`,
                 `hybrid_limits={"$vector": 20, "$lexical": 10}`.
+            initial_page_state: this parameter allows to start consuming the cursor
+                with a non-empty page state already (see the equivalent `find` parameter
+                for more details). As long as the findAndRerank Data API command does
+                not paginate its results, this parameter should never be used.
             include_scores: a boolean to request the scores to be returned along with
                 the resulting documents. If this is set, the scores can be read in the
                 the map `scores` attribute of each RerankedResult (the map is
@@ -3897,6 +3914,7 @@ class AsyncCollection(Generic[DOC]):
         document_type: None = None,
         skip: int | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -3913,6 +3931,7 @@ class AsyncCollection(Generic[DOC]):
         document_type: type[DOC2],
         skip: int | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -3928,6 +3947,7 @@ class AsyncCollection(Generic[DOC]):
         document_type: type[DOC2] | None = None,
         skip: int | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -3984,6 +4004,13 @@ class AsyncCollection(Generic[DOC]):
             limit: this (integer) parameter sets a limit over how many documents
                 are returned. Once `limit` is reached (or the cursor is exhausted
                 for lack of matching documents), nothing more is returned.
+            initial_page_state: if a value is provided, it must be the `next_page_state`
+                from the response of `fetch_next_page()` called on a previous cursor.
+                This value is used as the first page state when the first request
+                to consume the cursor is issued.
+                This pattern is what enables the caller to control consuming the
+                results page by page in a caller-driven fashion. See Examples for more.
+                If supplied, this parameter must be string: passing None is forbidden.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each
                 returned document. It can be used meaningfully only in a vector
@@ -4408,6 +4435,7 @@ class AsyncCollection(Generic[DOC]):
         document_type: None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
@@ -4426,6 +4454,7 @@ class AsyncCollection(Generic[DOC]):
         document_type: type[DOC2],
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
@@ -4444,6 +4473,7 @@ class AsyncCollection(Generic[DOC]):
         document_type: type[DOC2] | None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
@@ -4507,6 +4537,10 @@ class AsyncCollection(Generic[DOC]):
                 numbers, the latter case expressing different counts for the different
                 retrievals. For example: `hybrid_limits=50`,
                 `hybrid_limits={"$vector": 20, "$lexical": 10}`.
+            initial_page_state: this parameter allows to start consuming the cursor
+                with a non-empty page state already (see the equivalent `find` parameter
+                for more details). As long as the findAndRerank Data API command does
+                not paginate its results, this parameter should never be used.
             include_scores: a boolean to request the scores to be returned along with
                 the resulting documents. If this is set, the scores can be read in the
                 the map `scores` attribute of each RerankedResult (the map is
