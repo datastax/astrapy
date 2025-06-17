@@ -608,3 +608,72 @@ class TestCollectionCursorSync:
         assert isinstance(sv_v0_d1[0], float)
         assert isinstance(sv_v1_d0, DataAPIVector)
         assert isinstance(sv_v1_d1, DataAPIVector)
+
+    @pytest.mark.describe("test of farr collection cursors fetch_next_page, sync")
+    def test_collection_farrcursors_fetchnextpage_sync(
+        self,
+        filled_vectorize_collection: DefaultCollection,
+    ) -> None:
+        # A very limited test since FARR is one-page-only
+        cur = filled_vectorize_collection.find_and_rerank(
+            sort={"$hybrid": "a sentence."},
+            limit=5,
+        )
+        cur_fp = filled_vectorize_collection.find_and_rerank(
+            sort={"$hybrid": "a sentence."},
+            limit=5,
+        )
+        lst = cur.to_list()
+        page_fp = cur_fp.fetch_next_page()
+        assert page_fp.next_page_state is None
+        assert page_fp.sort_vector is None
+        docs_from_cursor = [rr.document for rr in lst]
+        docs_from_page = [rr_fp.document for rr_fp in page_fp.results]
+        assert docs_from_cursor == docs_from_page
+
+        # rewind behaviour
+        cur.rewind(initial_page_state="some string")
+        cur.rewind()
+        with pytest.raises(ValueError, match="null"):
+            cur.rewind(initial_page_state=None)  # type: ignore[arg-type]
+
+        # forbidden: mixing pagination and ordinary usage
+        cur.__next__()
+        with pytest.raises(CursorException):
+            cur.fetch_next_page()
+        cur.to_list()
+        with pytest.raises(CursorException):
+            cur.fetch_next_page()
+
+        # behaviour re: include_sort_vector and its format
+        coll_noncustom = filled_vectorize_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=False),
+            )
+        )
+        coll_custom = filled_vectorize_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=True),
+            )
+        )
+
+        vcur0_nc = coll_noncustom.find_and_rerank(
+            sort={"$hybrid": "a sentence."},
+            limit=5,
+            include_sort_vector=True,
+        )
+        vpage0_nc = vcur0_nc.fetch_next_page()
+        assert vpage0_nc.next_page_state is None
+        assert len(vpage0_nc.results) == 5
+        assert isinstance(vpage0_nc.sort_vector, list)
+        assert not isinstance(vpage0_nc.sort_vector, DataAPIVector)
+
+        vcur0_c = coll_custom.find_and_rerank(
+            sort={"$hybrid": "a sentence."},
+            limit=5,
+            include_sort_vector=True,
+        )
+        vpage0_c = vcur0_c.fetch_next_page()
+        assert vpage0_c.next_page_state is None
+        assert len(vpage0_c.results) == 5
+        assert isinstance(vpage0_c.sort_vector, DataAPIVector)
