@@ -1713,6 +1713,10 @@ class Table(Generic[ROW]):
                 projection is given.
             skip: if provided, it is a number of rows that would be obtained first
                 in the response and are instead skipped.
+                Please note that for applications that need to retrieve entries on
+                a page-by-page basis, the suggested approach is to consume a find cursor
+                through their pagination API (see the cursors' `fetch_next_page` method
+                and examples reported there).
             limit: a maximum amount of rows to get from the table. The returned cursor
                 will stop yielding rows when either this number is reached or there
                 really are no more matches in the table.
@@ -4493,6 +4497,10 @@ class AsyncTable(Generic[ROW]):
                 projection is given.
             skip: if provided, it is a number of rows that would be obtained first
                 in the response and are instead skipped.
+                Please note that for applications that need to retrieve entries on
+                a page-by-page basis, the suggested approach is to consume a find cursor
+                through their pagination API (see the cursors' `fetch_next_page` method
+                and examples reported there).
             limit: a maximum amount of rows to get from the table. The returned cursor
                 will stop yielding rows when either this number is reached or there
                 really are no more matches in the table.

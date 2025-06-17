@@ -775,10 +775,37 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         is found within the `FindPage` object returned by this method.
 
         Returns:
-            # TODO: returns
+            a `FindPage` object expressing the full Data API response, including
+            the resulting documents (after applying the cursor mapping function,
+            if one is defined), as well as the state to use to query for the next
+            page (a string) and the sort vector if requested and applicable.
 
         Example:
-            # TODO: example
+            >>> # A cursor to get the first page:
+            >>> cursor0 = collection.find({})
+            >>> page0 = cursor0.fetch_next_page()
+            >>> page0
+            FindPage(results=<20 entries>, next_page_state=...)
+            >>> page0.results[0]
+            {'_id': 40, 'text': 'doc num 40', 'even': True}
+            >>> page0.next_page_state
+            'CwAAAAECAAAAAjg5APB////rAA=='
+            >>>
+            >>> # Get the next page through a new cursor:
+            >>> cursor1 = collection.find(
+            ...     {},
+            ...     initial_page_state=page0.next_page_state,
+            ... )
+            >>> page1 = cursor1.fetch_next_page()
+            >>> page1.results[0]
+            {'_id': 124, 'text': 'doc num 124', 'even': True}
+            >>> page1.next_page_state
+            'CgAAAAECAAAAATYA8H///9cA'
+            >>>
+            >>> # (...)
+            >>> # Eventually there's nothing more to retrieve:
+            >>> page_N.next_page_state is None
+            True
         """
 
         self._ensure_alive()
@@ -1449,12 +1476,11 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         consumed a previous page, for the same find operation: the page state, a string,
         is found within the `FindPage` object returned by this method.
 
-
         Returns:
-            # TODO: returns
-
-        Example:
-            # TODO: example, check if async has examples
+            a `FindPage` object expressing the full Data API response, including
+            the resulting documents (after applying the cursor mapping function,
+            if one is defined), as well as the state to use to query for the next
+            page (a string) and the sort vector if requested and applicable.
         """
 
         self._ensure_alive()
@@ -2219,10 +2245,36 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         is found within the `FindPage` object returned by this method.
 
         Returns:
-            # TODO: returns
+            a `FindPage` object expressing the full Data API response, including
+            the resulting rows (after applying the cursor mapping function,
+            if one is defined), as well as the state to use to query for the next
+            page (a string) and the sort vector if requested and applicable.
 
         Example:
-            # TODO: example
+            >>> # A cursor to get the first page:
+            >>> cursor0 = table.find({})
+            >>> page0 = cursor0.fetch_next_page()
+            >>> page0
+            FindPage(results=<20 entries>, next_page_state=...)
+            >>> page0.results[0]
+            {'id': 'row_31', 'value': 31}
+            >>> page0.next_page_state
+            'BXJvd18zAPB////rAA=='
+            >>> # Get the next page through a new cursor:
+            >>> cursor1 = table.find(
+            ...     {},
+            ...     initial_page_state=page0.next_page_state,
+            ... )
+            >>> page1 = cursor1.fetch_next_page()
+            >>> page1.results[0]
+            {'id': 'row_25', 'value': 25}
+            >>> page1.next_page_state
+            'BnJvd18zOQDwf///1wA='
+            >>>
+            >>> # (...)
+            >>> # Eventually there's nothing more to retrieve:
+            >>> page_N.next_page_state is None
+            True
         """
 
         self._ensure_alive()
@@ -2893,10 +2945,10 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         is found within the `FindPage` object returned by this method.
 
         Returns:
-            # TODO: returns
-
-        Example:
-            # TODO: example, check if async has examples
+            a `FindPage` object expressing the full Data API response, including
+            the resulting rows (after applying the cursor mapping function,
+            if one is defined), as well as the state to use to query for the next
+            page (a string) and the sort vector if requested and applicable.
         """
 
         self._ensure_alive()

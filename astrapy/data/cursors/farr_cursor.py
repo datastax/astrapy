@@ -862,11 +862,15 @@ class CollectionFindAndRerankCursor(
         consumed a previous page, for the same find operation: the page state, a string,
         is found within the `FindAndRerankPage` object returned by this method.
 
-        Returns:
-            # TODO: returns
+        Note: As long as the findAndRerank Data API command does not paginate
+        its results, returning all results at once, this method is of little interest.
 
-        Example:
-            # TODO: example
+        Returns:
+            a `FindAndRerankPage` object for the full Data API response, including
+            the resulting `RerankedResult` items (or suitable objects from the cursor
+            mapping function, if one is defined), as well as the state to use to
+            query for the next page (a string) and the sort vector if requested
+            and applicable.
         """
 
         self._ensure_alive()
@@ -1615,11 +1619,15 @@ class AsyncCollectionFindAndRerankCursor(
         consumed a previous page, for the same find operation: the page state, a string,
         is found within the `FindAndRerankPage` object returned by this method.
 
-        Returns:
-            # TODO: returns
+        Note: As long as the findAndRerank Data API command does not paginate
+        its results, returning all results at once, this method is of little interest.
 
-        Example:
-            # TODO: example
+        Returns:
+            a `FindAndRerankPage` object for the full Data API response, including
+            the resulting `RerankedResult` items (or suitable objects from the cursor
+            mapping function, if one is defined), as well as the state to use to
+            query for the next page (a string) and the sort vector if requested
+            and applicable.
         """
 
         self._ensure_alive()

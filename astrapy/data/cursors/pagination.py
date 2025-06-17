@@ -29,14 +29,35 @@ class FindPage(Generic[TRAW]):
     explicitly.
 
     Attributes:
-        results: X TODO: docstrings
-        next_page_state: X
-        sort_vector: X
+        results: the list of entries obtained on the retrieved page (possibly
+            after applying a mapping function, if one is specified in the cursor).
+        next_page_state: a string encoding the pagination state. If the find
+            operation does not admit any further page, this is returned as None.
+            Otherwise, its value can be used to resume consuming the `find`
+            results on another cursor instantiated independently later on.
+        sort_vector: if the find operation was done with the "include
+            sort vector" flag set to True, and the sort criterion is a vector sorting,
+            this contains the query vector used for the search. The query vector is
+            expressed as a list of floats or a DataAPIVector depending on the serdes
+            settings for the collection/table that originated the cursor.
+            If not applicable, this attribute is returned as None.
     """
 
     results: list[TRAW]
     next_page_state: str | None
     sort_vector: list[float] | DataAPIVector | None
+
+    def __repr__(self) -> str:
+        pieces = [
+            pc
+            for pc in (
+                f"results=<{len(self.results)} entries>",
+                "next_page_state=..." if self.next_page_state else None,
+                "sort_vector=..." if self.sort_vector else None,
+            )
+            if pc is not None
+        ]
+        return f"{self.__class__.__name__}({', '.join(pieces)})"
 
 
 @dataclass
@@ -47,11 +68,33 @@ class FindAndRerankPage(Generic[TRAW]):
     explicitly.
 
     Attributes:
-        results: X TODO: docstrings
-        next_page_state: X
-        sort_vector: X
+        results: the list of entries obtained on the retrieved page (possibly
+            after applying a mapping function, if one is specified in the cursor).
+            In absence of mapping functions, this is a list of RerankedResult objects.
+        next_page_state: a string encoding the pagination state. If the find-and-rerank
+            operation does not admit any further page, this is returned as None.
+            Otherwise, its value can be used to resume consuming the `find_and_rerank`
+            results on another cursor instantiated independently later on.
+        sort_vector: if the find-and-rerank operation was done with the "include
+            sort vector" flag set to True, and the sort criterion is a vector sorting,
+            this contains the query vector used for the search. The query vector is
+            expressed as a list of floats or a DataAPIVector depending on the serdes
+            settings for the collection/table that originated the cursor.
+            If not applicable, this attribute is returned as None.
     """
 
     results: list[TRAW]
     next_page_state: str | None
     sort_vector: list[float] | DataAPIVector | None
+
+    def __repr__(self) -> str:
+        pieces = [
+            pc
+            for pc in (
+                f"results=<{len(self.results)} entries>",
+                "next_page_state=..." if self.next_page_state else None,
+                "sort_vector=..." if self.sort_vector else None,
+            )
+            if pc is not None
+        ]
+        return f"{self.__class__.__name__}({', '.join(pieces)})"

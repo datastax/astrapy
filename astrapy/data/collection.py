@@ -1066,6 +1066,10 @@ class Collection(Generic[DOC]):
                 This parameter can be used only in conjunction with an explicit
                 `sort` criterion of the ascending/descending type (i.e. it cannot
                 be used when not sorting, nor with vector-based ANN search).
+                Please note that for applications that need to retrieve entries on
+                a page-by-page basis, the suggested approach is to consume a find cursor
+                through their pagination API (see the cursors' `fetch_next_page` method
+                and examples reported there).
             limit: this (integer) parameter sets a limit over how many documents
                 are returned. Once `limit` is reached (or the cursor is exhausted
                 for lack of matching documents), nothing more is returned.
@@ -4003,6 +4007,10 @@ class AsyncCollection(Generic[DOC]):
                 This parameter can be used only in conjunction with an explicit
                 `sort` criterion of the ascending/descending type (i.e. it cannot
                 be used when not sorting, nor with vector-based ANN search).
+                Please note that for applications that need to retrieve entries on
+                a page-by-page basis, the suggested approach is to consume a find cursor
+                through their pagination API (see the cursors' `fetch_next_page` method
+                and examples reported there).
             limit: this (integer) parameter sets a limit over how many documents
                 are returned. Once `limit` is reached (or the cursor is exhausted
                 for lack of matching documents), nothing more is returned.
