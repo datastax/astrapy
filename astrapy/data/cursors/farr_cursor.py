@@ -98,6 +98,7 @@ class CollectionFindAndRerankCursor(
     _sort: HybridSortType | None
     _limit: int | None
     _hybrid_limits: int | dict[str, int] | None
+    _initial_page_state: str | UnsetType
     _include_scores: bool | None
     _include_sort_vector: bool | None
     _rerank_on: str | None
@@ -117,6 +118,7 @@ class CollectionFindAndRerankCursor(
         sort: HybridSortType | None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
@@ -128,6 +130,7 @@ class CollectionFindAndRerankCursor(
         self._sort = deepcopy(sort)
         self._limit = limit
         self._hybrid_limits = deepcopy(hybrid_limits)
+        self._initial_page_state = initial_page_state
         self._include_scores = include_scores
         self._include_sort_vector = include_sort_vector
         self._rerank_on = rerank_on
@@ -150,7 +153,7 @@ class CollectionFindAndRerankCursor(
             rerank_on=self._rerank_on,
             rerank_query=self._rerank_query,
         )
-        AbstractCursor.__init__(self)
+        AbstractCursor.__init__(self, initial_page_state=initial_page_state)
         self._timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=self._overall_timeout_ms,
             timeout_label=self._overall_timeout_label,
@@ -168,6 +171,7 @@ class CollectionFindAndRerankCursor(
         sort: dict[str, Any] | None | UnsetType = _UNSET,
         limit: int | None | UnsetType = _UNSET,
         hybrid_limits: int | dict[str, int] | None | UnsetType = _UNSET,
+        initial_page_state: str | None | UnsetType = _UNSET,
         include_scores: bool | None | UnsetType = _UNSET,
         include_sort_vector: bool | None | UnsetType = _UNSET,
         rerank_on: str | None | UnsetType = _UNSET,
@@ -198,6 +202,10 @@ class CollectionFindAndRerankCursor(
             hybrid_limits=self._hybrid_limits
             if isinstance(hybrid_limits, UnsetType)
             else hybrid_limits,
+            # special treatment: passing None erases (hence we must supply unset and not None):
+            initial_page_state=self._initial_page_state
+            if isinstance(initial_page_state, UnsetType)
+            else (initial_page_state if initial_page_state is not None else _UNSET),
             include_scores=self._include_scores
             if isinstance(include_scores, UnsetType)
             else include_scores,
@@ -326,6 +334,7 @@ class CollectionFindAndRerankCursor(
             sort=self._sort,
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
+            initial_page_state=self._initial_page_state,
             include_scores=self._include_scores,
             include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
@@ -441,6 +450,28 @@ class CollectionFindAndRerankCursor(
 
         self._ensure_idle()
         return self._copy(hybrid_limits=hybrid_limits)
+
+    def initial_page_state(
+        self, initial_page_state: str | UnsetType
+    ) -> CollectionFindAndRerankCursor[TRAW, T]:
+        """
+        Return a copy of this cursor with a new initial_page_state setting.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the Collection `find` method.
+
+        Args:
+            initial_page_state: a new initial_page_state setting to apply to the
+                returned new cursor. Passing an explicit None raises an error.
+
+        Returns:
+            a new CollectionFindAndRerankCursor with the same settings as this one,
+                except for `initial_page_state` which is the provided value.
+        """
+
+        self._ensure_idle()
+        return self._copy(initial_page_state=initial_page_state)
 
     def include_scores(
         self, include_scores: bool | None
@@ -604,6 +635,7 @@ class CollectionFindAndRerankCursor(
             sort=self._sort,
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
+            initial_page_state=self._initial_page_state,
             include_scores=self._include_scores,
             include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
@@ -863,6 +895,7 @@ class AsyncCollectionFindAndRerankCursor(
     _sort: HybridSortType | None
     _limit: int | None
     _hybrid_limits: int | dict[str, int] | None
+    _initial_page_state: str | UnsetType
     _include_scores: bool | None
     _include_sort_vector: bool | None
     _rerank_on: str | None
@@ -882,6 +915,7 @@ class AsyncCollectionFindAndRerankCursor(
         sort: HybridSortType | None = None,
         limit: int | None = None,
         hybrid_limits: int | dict[str, int] | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_scores: bool | None = None,
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
@@ -893,6 +927,7 @@ class AsyncCollectionFindAndRerankCursor(
         self._sort = deepcopy(sort)
         self._limit = limit
         self._hybrid_limits = deepcopy(hybrid_limits)
+        self._initial_page_state = initial_page_state
         self._include_scores = include_scores
         self._include_sort_vector = include_sort_vector
         self._rerank_on = rerank_on
@@ -915,7 +950,7 @@ class AsyncCollectionFindAndRerankCursor(
             rerank_on=self._rerank_on,
             rerank_query=self._rerank_query,
         )
-        AbstractCursor.__init__(self)
+        AbstractCursor.__init__(self, initial_page_state=initial_page_state)
         self._timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=self._overall_timeout_ms,
             timeout_label=self._overall_timeout_label,
@@ -933,6 +968,7 @@ class AsyncCollectionFindAndRerankCursor(
         sort: dict[str, Any] | None | UnsetType = _UNSET,
         limit: int | None | UnsetType = _UNSET,
         hybrid_limits: int | dict[str, int] | None | UnsetType = _UNSET,
+        initial_page_state: str | None | UnsetType = _UNSET,
         include_scores: bool | None | UnsetType = _UNSET,
         include_sort_vector: bool | None | UnsetType = _UNSET,
         rerank_on: str | None | UnsetType = _UNSET,
@@ -963,6 +999,10 @@ class AsyncCollectionFindAndRerankCursor(
             hybrid_limits=self._hybrid_limits
             if isinstance(hybrid_limits, UnsetType)
             else hybrid_limits,
+            # special treatment: passing None erases (hence we must supply unset and not None):
+            initial_page_state=self._initial_page_state
+            if isinstance(initial_page_state, UnsetType)
+            else (initial_page_state if initial_page_state is not None else _UNSET),
             include_scores=self._include_scores
             if isinstance(include_scores, UnsetType)
             else include_scores,
@@ -1074,6 +1114,7 @@ class AsyncCollectionFindAndRerankCursor(
             sort=self._sort,
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
+            initial_page_state=self._initial_page_state,
             include_scores=self._include_scores,
             include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
@@ -1189,6 +1230,28 @@ class AsyncCollectionFindAndRerankCursor(
 
         self._ensure_idle()
         return self._copy(hybrid_limits=hybrid_limits)
+
+    def initial_page_state(
+        self, initial_page_state: str | UnsetType
+    ) -> AsyncCollectionFindAndRerankCursor[TRAW, T]:
+        """
+        Return a copy of this cursor with a new initial_page_state setting.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the Collection `find` method.
+
+        Args:
+            initial_page_state: a new initial_page_state setting to apply to the
+                returned new cursor. Passing an explicit None raises an error.
+
+        Returns:
+            a new AsyncCollectionFindAndRerankCursor with the same settings as this one,
+                except for `initial_page_state` which is the provided value.
+        """
+
+        self._ensure_idle()
+        return self._copy(initial_page_state=initial_page_state)
 
     def include_scores(
         self, include_scores: bool | None
@@ -1324,6 +1387,7 @@ class AsyncCollectionFindAndRerankCursor(
             sort=self._sort,
             limit=self._limit,
             hybrid_limits=self._hybrid_limits,
+            initial_page_state=self._initial_page_state,
             include_scores=self._include_scores,
             include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,

@@ -88,6 +88,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     _projection: ProjectionType | None
     _sort: dict[str, Any] | None
     _limit: int | None
+    _initial_page_state: str | UnsetType
     _include_similarity: bool | None
     _include_sort_vector: bool | None
     _skip: int | None
@@ -105,6 +106,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         projection: ProjectionType | None = None,
         sort: dict[str, Any] | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         skip: int | None = None,
@@ -114,6 +116,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         self._projection = projection
         self._sort = deepcopy(sort)
         self._limit = limit
+        self._initial_page_state = initial_page_state
         self._include_similarity = include_similarity
         self._include_sort_vector = include_sort_vector
         self._skip = skip
@@ -133,7 +136,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
         )
-        AbstractCursor.__init__(self)
+        AbstractCursor.__init__(self, initial_page_state=initial_page_state)
         self._timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=self._overall_timeout_ms,
             timeout_label=self._overall_timeout_label,
@@ -150,6 +153,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         projection: ProjectionType | None | UnsetType = _UNSET,
         sort: dict[str, Any] | None | UnsetType = _UNSET,
         limit: int | None | UnsetType = _UNSET,
+        initial_page_state: str | None | UnsetType = _UNSET,
         include_similarity: bool | None | UnsetType = _UNSET,
         include_sort_vector: bool | None | UnsetType = _UNSET,
         skip: int | None | UnsetType = _UNSET,
@@ -176,6 +180,10 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             else projection,
             sort=self._sort if isinstance(sort, UnsetType) else sort,
             limit=self._limit if isinstance(limit, UnsetType) else limit,
+            # special treatment: passing None erases (hence we must supply unset and not None):
+            initial_page_state=self._initial_page_state
+            if isinstance(initial_page_state, UnsetType)
+            else (initial_page_state if initial_page_state is not None else _UNSET),
             include_similarity=self._include_similarity
             if isinstance(include_similarity, UnsetType)
             else include_similarity,
@@ -290,6 +298,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             projection=self._projection,
             sort=self._sort,
             limit=self._limit,
+            initial_page_state=self._initial_page_state,
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
@@ -379,6 +388,28 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
 
         self._ensure_idle()
         return self._copy(limit=limit)
+
+    def initial_page_state(
+        self, initial_page_state: str | UnsetType
+    ) -> CollectionFindCursor[TRAW, T]:
+        """
+        Return a copy of this cursor with a new initial_page_state setting.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the Collection `find` method.
+
+        Args:
+            initial_page_state: a new initial_page_state setting to apply to the
+                returned new cursor. Passing an explicit None raises an error.
+
+        Returns:
+            a new CollectionFindCursor with the same settings as this one,
+                except for `initial_page_state` which is the provided value.
+        """
+
+        self._ensure_idle()
+        return self._copy(initial_page_state=initial_page_state)
 
     def include_similarity(
         self, include_similarity: bool | None
@@ -520,6 +551,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             projection=self._projection,
             sort=self._sort,
             limit=self._limit,
+            initial_page_state=self._initial_page_state,
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
@@ -765,6 +797,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     _projection: ProjectionType | None
     _sort: dict[str, Any] | None
     _limit: int | None
+    _initial_page_state: str | UnsetType
     _include_similarity: bool | None
     _include_sort_vector: bool | None
     _skip: int | None
@@ -782,6 +815,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         projection: ProjectionType | None = None,
         sort: dict[str, Any] | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         skip: int | None = None,
@@ -791,6 +825,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         self._projection = projection
         self._sort = deepcopy(sort)
         self._limit = limit
+        self._initial_page_state = initial_page_state
         self._include_similarity = include_similarity
         self._include_sort_vector = include_sort_vector
         self._skip = skip
@@ -810,7 +845,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
         )
-        AbstractCursor.__init__(self)
+        AbstractCursor.__init__(self, initial_page_state=initial_page_state)
         self._timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=self._overall_timeout_ms,
             timeout_label=self._overall_timeout_label,
@@ -827,6 +862,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         projection: ProjectionType | None | UnsetType = _UNSET,
         sort: dict[str, Any] | None | UnsetType = _UNSET,
         limit: int | None | UnsetType = _UNSET,
+        initial_page_state: str | None | UnsetType = _UNSET,
         include_similarity: bool | None | UnsetType = _UNSET,
         include_sort_vector: bool | None | UnsetType = _UNSET,
         skip: int | None | UnsetType = _UNSET,
@@ -853,6 +889,10 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             else projection,
             sort=self._sort if isinstance(sort, UnsetType) else sort,
             limit=self._limit if isinstance(limit, UnsetType) else limit,
+            # special treatment: passing None erases (hence we must supply unset and not None):
+            initial_page_state=self._initial_page_state
+            if isinstance(initial_page_state, UnsetType)
+            else (initial_page_state if initial_page_state is not None else _UNSET),
             include_similarity=self._include_similarity
             if isinstance(include_similarity, UnsetType)
             else include_similarity,
@@ -958,6 +998,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             projection=self._projection,
             sort=self._sort,
             limit=self._limit,
+            initial_page_state=self._initial_page_state,
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
@@ -1047,6 +1088,28 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
 
         self._ensure_idle()
         return self._copy(limit=limit)
+
+    def initial_page_state(
+        self, initial_page_state: str | UnsetType
+    ) -> AsyncCollectionFindCursor[TRAW, T]:
+        """
+        Return a copy of this cursor with a new initial_page_state setting.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the Collection `find` method.
+
+        Args:
+            initial_page_state: a new initial_page_state setting to apply to the
+                returned new cursor. Passing an explicit None raises an error.
+
+        Returns:
+            a new AsyncCollectionFindCursor with the same settings as this one,
+                except for `initial_page_state` which is the provided value.
+        """
+
+        self._ensure_idle()
+        return self._copy(initial_page_state=initial_page_state)
 
     def include_similarity(
         self, include_similarity: bool | None
@@ -1160,6 +1223,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             projection=self._projection,
             sort=self._sort,
             limit=self._limit,
+            initial_page_state=self._initial_page_state,
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
@@ -1371,6 +1435,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     _projection: ProjectionType | None
     _sort: dict[str, Any] | None
     _limit: int | None
+    _initial_page_state: str | UnsetType
     _include_similarity: bool | None
     _include_sort_vector: bool | None
     _skip: int | None
@@ -1388,6 +1453,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         projection: ProjectionType | None = None,
         sort: dict[str, Any] | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         skip: int | None = None,
@@ -1397,6 +1463,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         self._projection = projection
         self._sort = deepcopy(sort)
         self._limit = limit
+        self._initial_page_state = initial_page_state
         self._include_similarity = include_similarity
         self._include_sort_vector = include_sort_vector
         self._skip = skip
@@ -1416,7 +1483,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
         )
-        AbstractCursor.__init__(self)
+        AbstractCursor.__init__(self, initial_page_state=initial_page_state)
         self._timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=self._overall_timeout_ms,
             timeout_label=self._overall_timeout_label,
@@ -1433,6 +1500,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         projection: ProjectionType | None | UnsetType = _UNSET,
         sort: dict[str, Any] | None | UnsetType = _UNSET,
         limit: int | None | UnsetType = _UNSET,
+        initial_page_state: str | None | UnsetType = _UNSET,
         include_similarity: bool | None | UnsetType = _UNSET,
         include_sort_vector: bool | None | UnsetType = _UNSET,
         skip: int | None | UnsetType = _UNSET,
@@ -1459,6 +1527,10 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             else projection,
             sort=self._sort if isinstance(sort, UnsetType) else sort,
             limit=self._limit if isinstance(limit, UnsetType) else limit,
+            # special treatment: passing None erases (hence we must supply unset and not None):
+            initial_page_state=self._initial_page_state
+            if isinstance(initial_page_state, UnsetType)
+            else (initial_page_state if initial_page_state is not None else _UNSET),
             include_similarity=self._include_similarity
             if isinstance(include_similarity, UnsetType)
             else include_similarity,
@@ -1573,6 +1645,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             projection=self._projection,
             sort=self._sort,
             limit=self._limit,
+            initial_page_state=self._initial_page_state,
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
@@ -1660,6 +1733,28 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
 
         self._ensure_idle()
         return self._copy(limit=limit)
+
+    def initial_page_state(
+        self, initial_page_state: str | UnsetType
+    ) -> TableFindCursor[TRAW, T]:
+        """
+        Return a copy of this cursor with a new initial_page_state setting.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the Collection `find` method.
+
+        Args:
+            initial_page_state: a new initial_page_state setting to apply to the
+                returned new cursor. Passing an explicit None raises an error.
+
+        Returns:
+            a new TableFindCursor with the same settings as this one,
+                except for `initial_page_state` which is the provided value.
+        """
+
+        self._ensure_idle()
+        return self._copy(initial_page_state=initial_page_state)
 
     def include_similarity(
         self, include_similarity: bool | None
@@ -1801,6 +1896,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             projection=self._projection,
             sort=self._sort,
             limit=self._limit,
+            initial_page_state=self._initial_page_state,
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
@@ -2046,6 +2142,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     _projection: ProjectionType | None
     _sort: dict[str, Any] | None
     _limit: int | None
+    _initial_page_state: str | UnsetType
     _include_similarity: bool | None
     _include_sort_vector: bool | None
     _skip: int | None
@@ -2063,6 +2160,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         projection: ProjectionType | None = None,
         sort: dict[str, Any] | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         skip: int | None = None,
@@ -2072,6 +2170,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         self._projection = projection
         self._sort = deepcopy(sort)
         self._limit = limit
+        self._initial_page_state = initial_page_state
         self._include_similarity = include_similarity
         self._include_sort_vector = include_sort_vector
         self._skip = skip
@@ -2091,7 +2190,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
         )
-        AbstractCursor.__init__(self)
+        AbstractCursor.__init__(self, initial_page_state=initial_page_state)
         self._timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=self._overall_timeout_ms,
             timeout_label=self._overall_timeout_label,
@@ -2108,6 +2207,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         projection: ProjectionType | None | UnsetType = _UNSET,
         sort: dict[str, Any] | None | UnsetType = _UNSET,
         limit: int | None | UnsetType = _UNSET,
+        initial_page_state: str | None | UnsetType = _UNSET,
         include_similarity: bool | None | UnsetType = _UNSET,
         include_sort_vector: bool | None | UnsetType = _UNSET,
         skip: int | None | UnsetType = _UNSET,
@@ -2134,6 +2234,10 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             else projection,
             sort=self._sort if isinstance(sort, UnsetType) else sort,
             limit=self._limit if isinstance(limit, UnsetType) else limit,
+            # special treatment: passing None erases (hence we must supply unset and not None):
+            initial_page_state=self._initial_page_state
+            if isinstance(initial_page_state, UnsetType)
+            else (initial_page_state if initial_page_state is not None else _UNSET),
             include_similarity=self._include_similarity
             if isinstance(include_similarity, UnsetType)
             else include_similarity,
@@ -2238,6 +2342,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             projection=self._projection,
             sort=self._sort,
             limit=self._limit,
+            initial_page_state=self._initial_page_state,
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
@@ -2327,6 +2432,28 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
 
         self._ensure_idle()
         return self._copy(limit=limit)
+
+    def initial_page_state(
+        self, initial_page_state: str | UnsetType
+    ) -> AsyncTableFindCursor[TRAW, T]:
+        """
+        Return a copy of this cursor with a new initial_page_state setting.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the Collection `find` method.
+
+        Args:
+            initial_page_state: a new initial_page_state setting to apply to the
+                returned new cursor. Passing an explicit None raises an error.
+
+        Returns:
+            a new AsyncTableFindCursor with the same settings as this one,
+                except for `initial_page_state` which is the provided value.
+        """
+
+        self._ensure_idle()
+        return self._copy(initial_page_state=initial_page_state)
 
     def include_similarity(
         self, include_similarity: bool | None
@@ -2440,6 +2567,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             projection=self._projection,
             sort=self._sort,
             limit=self._limit,
+            initial_page_state=self._initial_page_state,
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
