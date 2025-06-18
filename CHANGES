@@ -1,5 +1,6 @@
 main
 ====
+Tables, introduced method `list_indexes()`
 Cursors (all types): introduced the "pagination API":
     - `.fetch_next_page()` method
     - `initial_page_state` cursor constructor parameter / builder interface method

@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -344,7 +343,7 @@ class TestTableLifecycle:
                 ),
             ),
         ]
-        assert sorted(await table._list_indexes(), key=lambda id: id.name) == sorted(
+        assert sorted(await table.list_indexes(), key=lambda id: id.name) == sorted(
             expected_index_list, key=lambda id: id.name
         )
 
@@ -406,10 +405,6 @@ class TestTableLifecycle:
         finally:
             await atable.drop()
 
-    @pytest.mark.skipif(
-        "ASTRAPY_TEST_LISTINDEXES" not in os.environ,
-        reason="list_indexes method not publicly available yet",
-    )
     @pytest.mark.describe("test of collection indexes, async")
     async def test_table_collectionindexes_async(
         self,
@@ -436,10 +431,6 @@ class TestTableLifecycle:
                     value_type="int",
                 ),
                 "map_text_int_e": TableKeyValuedColumnTypeDescriptor(
-                    key_type="text",
-                    value_type="int",
-                ),
-                "map_text_int_e2": TableKeyValuedColumnTypeDescriptor(
                     key_type="text",
                     value_type="int",
                 ),
@@ -475,7 +466,6 @@ class TestTableLifecycle:
             idx_t_list_int_column = "list_int"
             idx_t_list_int_column2 = {"list_int2": "$values"}
             idx_t_map_text_int_e_column = "map_text_int_e"
-            idx_t_map_text_int_e_column2 = {"map_text_int_e2": "$entries"}
             idx_t_map_text_int_k_column = {"map_text_int_k": "$keys"}
             idx_t_map_text_int_v_column = {"map_text_int_v": "$values"}
 
@@ -490,9 +480,6 @@ class TestTableLifecycle:
                 "idx_t_map_text_int_e", idx_t_map_text_int_e_column
             )
             await atable.create_index(
-                "idx_t_map_text_int_e2", idx_t_map_text_int_e_column2
-            )
-            await atable.create_index(
                 "idx_t_map_text_int_k", idx_t_map_text_int_k_column
             )
             await atable.create_index(
@@ -500,7 +487,7 @@ class TestTableLifecycle:
             )
 
             listed_indexes = sorted(
-                await atable._list_indexes(),
+                await atable.list_indexes(),
                 key=lambda idx_desc: idx_desc.name,
             )
             expected_indexes = sorted(
@@ -548,15 +535,7 @@ class TestTableLifecycle:
                     TableIndexDescriptor(
                         name="idx_t_map_text_int_e",
                         definition=TableIndexDefinition(
-                            column={idx_t_map_text_int_e_column: "$entries"},
-                            options=TableIndexOptions(),
-                        ),
-                        index_type=TableIndexType.REGULAR,
-                    ),
-                    TableIndexDescriptor(
-                        name="idx_t_map_text_int_e2",
-                        definition=TableIndexDefinition(
-                            column=idx_t_map_text_int_e_column2,
+                            column=idx_t_map_text_int_e_column,
                             options=TableIndexOptions(),
                         ),
                         index_type=TableIndexType.REGULAR,
@@ -588,7 +567,6 @@ class TestTableLifecycle:
             await atable.database.drop_table_index("idx_t_list_int")
             await atable.database.drop_table_index("idx_t_list_int2")
             await atable.database.drop_table_index("idx_t_map_text_int_e")
-            await atable.database.drop_table_index("idx_t_map_text_int_e2")
             await atable.database.drop_table_index("idx_t_map_text_int_k")
             await atable.database.drop_table_index("idx_t_map_text_int_v")
         finally:
