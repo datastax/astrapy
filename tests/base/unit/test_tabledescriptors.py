@@ -33,6 +33,8 @@ from astrapy.info import (
     TableIndexOptions,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
+    TableTextIndexDefinition,
+    TableTextIndexOptions,
     TableUnsupportedIndexDefinition,
     TableVectorIndexDefinition,
     TableVectorIndexOptions,
@@ -309,6 +311,32 @@ VECTOR_INDEX_DEFINITION_DICT_PARTIAL = {
 }
 VECTOR_INDEX_DEFINITION_DICT_MINIMAL = {"column": "the_v_column"}
 VECTOR_INDEX_DEFINITION_DICT_COERCEABLE_MINIMAL = {"column": "the_v_column"}
+
+TEXT_INDEX_DEFINITION_SHORT_DICT = {
+    "column": "the_analyz_column1",
+    "options": {
+        "analyzer": "STANDARD",
+    },
+}
+TEXT_INDEX_DEFINITION_SHORT = TableTextIndexDefinition(
+    column="the_analyz_column1",
+    options=TableTextIndexOptions(analyzer="STANDARD"),
+)
+TEXT_INDEX_DEFINITION_LONG_DICT = {
+    "column": "the_analyz_column1",
+    "options": {"analyzer": {"tokenizer": {"name": "whitespace"}}},
+}
+TEXT_INDEX_DEFINITION_LONG = TableTextIndexDefinition(
+    column="the_analyz_column1",
+    options=TableTextIndexOptions(
+        analyzer={
+            "tokenizer": {
+                "name": "whitespace",
+            },
+        }
+    ),
+)
+
 UNSUPPORTED_INDEX_DEFINITION = TableUnsupportedIndexDefinition(
     column="UNKNOWN",
     api_support=TableAPIIndexSupportDescriptor(
@@ -536,6 +564,20 @@ class TestListTableDescriptors:
             VECTOR_INDEX_DEFINITION_DICT_COERCEABLE_MINIMAL,
         )
         assert VECTOR_INDEX_DEFINITION_DICT_MINIMAL == tvi_coerceable_minimal.as_dict()
+
+    @pytest.mark.describe("test of parsing of text index definitions")
+    def test_textindexdefinition_parsing(self) -> None:
+        tti_short = TableTextIndexDefinition.coerce(
+            TEXT_INDEX_DEFINITION_SHORT_DICT,
+        )
+        assert TEXT_INDEX_DEFINITION_SHORT_DICT == tti_short.as_dict()
+        assert tti_short == TEXT_INDEX_DEFINITION_SHORT
+
+        tti_long = TableTextIndexDefinition.coerce(
+            TEXT_INDEX_DEFINITION_LONG_DICT,
+        )
+        assert TEXT_INDEX_DEFINITION_LONG_DICT == tti_long.as_dict()
+        assert tti_long == TEXT_INDEX_DEFINITION_LONG
 
     @pytest.mark.describe("test of parsing of unsupported index definitions")
     def test_unsupportedindexdefinition_parsing(self) -> None:

@@ -1,5 +1,7 @@
 main
 ====
+Tables, support for "text indexes":
+    - classes `TableTextIndexDefinition` and `TableTextIndexOptions` (e.g. for `list_indexes()` method)
 Tables, introduced method `list_indexes()`
 Cursors (all types): introduced the "pagination API":
     - `.fetch_next_page()` method
