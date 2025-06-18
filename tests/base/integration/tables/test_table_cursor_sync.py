@@ -27,6 +27,7 @@ from astrapy.exceptions import CursorException
 from ..conftest import DefaultTable
 
 NUM_ROWS = 25  # keep this between 20 and 39
+NUM_DOCS_PAGINATION = 90  # keep this above 2 * (2 * 20) and below 2 * (3 * 20)
 
 
 @pytest.fixture
@@ -39,6 +40,24 @@ def filled_composite_table(sync_empty_table_composite: DefaultTable) -> DefaultT
                 "p_vector": DataAPIVector([i, 1, 0]),
             }
             for i in range(NUM_ROWS)
+        ]
+    )
+    return sync_empty_table_composite
+
+
+@pytest.fixture
+def filled_pagination_composite_table(
+    sync_empty_table_composite: DefaultTable,
+) -> DefaultTable:
+    sync_empty_table_composite.insert_many(
+        [
+            {
+                "p_text": "pA",
+                "p_int": i,
+                "p_boolean": i % 2 == 0,
+                "p_vector": DataAPIVector([i, 1, 0]),
+            }
+            for i in range(NUM_DOCS_PAGINATION)
         ]
     )
     return sync_empty_table_composite
@@ -386,3 +405,128 @@ class TestTableCursorSync:
         custom_rows = custom_compo_table.find({}).to_list()
         assert len(custom_rows) == NUM_ROWS
         assert all(isinstance(crow["p_vector"], DataAPIVector) for crow in custom_rows)
+
+    @pytest.mark.describe("test of table cursors, initial_page_state, sync")
+    def test_table_cursors_initialpagestate_sync(
+        self,
+        filled_pagination_composite_table: DefaultTable,
+    ) -> None:
+        page_size = 20
+
+        cur0 = filled_pagination_composite_table.find(filter={"p_boolean": True})
+        ids0 = [doc["p_int"] for _, doc in zip(range(page_size), cur0)]
+        nps0 = cur0._next_page_state
+        assert isinstance(nps0, str)
+
+        cur1 = filled_pagination_composite_table.find(
+            filter={"p_boolean": True},
+            initial_page_state=nps0,
+        )
+        ids1 = [doc["p_int"] for _, doc in zip(range(page_size), cur1)]
+        nps1 = cur1._next_page_state
+        assert isinstance(nps1, str)
+
+        cur2 = filled_pagination_composite_table.find(
+            filter={"p_boolean": True},
+            initial_page_state=nps1,
+        )
+        ids2 = [doc["p_int"] for _, doc in zip(range(page_size), cur2)]
+        assert cur2._next_page_state is None
+
+        expected_ids = [i for i in range(NUM_DOCS_PAGINATION) if i % 2 == 0]
+        retrieved_ids = ids0 + ids1 + ids2
+        assert len(retrieved_ids) == len(set(retrieved_ids))
+        assert sorted(retrieved_ids) == expected_ids
+
+        # rewind behaviour
+        cur2.rewind()
+        cur2.rewind(initial_page_state="some string")
+        with pytest.raises(ValueError, match="null"):
+            cur2.rewind(initial_page_state=None)  # type: ignore[arg-type]
+
+    @pytest.mark.describe("test of table cursors, fetch_next_page, sync")
+    def test_table_cursors_fetchnextpage_sync(
+        self,
+        filled_pagination_composite_table: DefaultTable,
+    ) -> None:
+        cur0 = filled_pagination_composite_table.find(filter={"p_boolean": True})
+        page0 = cur0.fetch_next_page()
+        ids0 = [doc["p_int"] for doc in page0.results]
+        nps0 = page0.next_page_state
+        assert isinstance(nps0, str)
+
+        cur1 = filled_pagination_composite_table.find(
+            filter={"p_boolean": True},
+            initial_page_state=nps0,
+        )
+        page1 = cur1.fetch_next_page()
+        ids1 = [doc["p_int"] for doc in page1.results]
+        nps1 = page1.next_page_state
+        assert isinstance(nps1, str)
+
+        cur2 = filled_pagination_composite_table.find(
+            filter={"p_boolean": True},
+            initial_page_state=nps1,
+        )
+        page2 = cur2.fetch_next_page()
+        ids2 = [doc["p_int"] for doc in page2.results]
+        assert page2.next_page_state is None
+
+        expected_ids = [i for i in range(NUM_DOCS_PAGINATION) if i % 2 == 0]
+        retrieved_ids = ids0 + ids1 + ids2
+        assert len(retrieved_ids) == len(set(retrieved_ids))
+        assert sorted(retrieved_ids) == expected_ids
+
+        # fetching consecutive pages on a given cursor
+        cur0x = filled_pagination_composite_table.find(filter={"p_boolean": True})
+        cur0x.fetch_next_page()
+        page1x = cur0x.fetch_next_page()
+        assert page1x == page1
+
+        # forbidden: mixing pagination and ordinary usage
+        cur0x.__next__()
+        with pytest.raises(CursorException):
+            cur0x.fetch_next_page()
+        cur0x.to_list()
+        with pytest.raises(CursorException):
+            cur0x.fetch_next_page()
+
+        # mapping
+        cur0y = filled_pagination_composite_table.find(filter={"p_boolean": True}).map(
+            lambda doc: doc["p_int"]
+        )
+        page0y = cur0y.fetch_next_page()
+        assert page0y.results == ids0
+
+        # vector ANN one-page behaviour re: include_sort_vector and its format
+        table_noncustom = filled_pagination_composite_table.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=False),
+            )
+        )
+        table_custom = filled_pagination_composite_table.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=True),
+            )
+        )
+
+        vcur0_nc = table_noncustom.find(
+            sort={"p_vector": [1, 1, 1]},
+            include_sort_vector=True,
+            limit=15,
+        )
+        vpage0_nc = vcur0_nc.fetch_next_page()
+        assert vpage0_nc.next_page_state is None
+        assert len(vpage0_nc.results) == 15
+        assert isinstance(vpage0_nc.sort_vector, list)
+        assert not isinstance(vpage0_nc.sort_vector, DataAPIVector)
+
+        vcur0_c = table_custom.find(
+            sort={"p_vector": [1, 1, 1]},
+            include_sort_vector=True,
+            limit=15,
+        )
+        vpage0_c = vcur0_c.fetch_next_page()
+        assert vpage0_c.next_page_state is None
+        assert len(vpage0_c.results) == 15
+        assert isinstance(vpage0_c.sort_vector, DataAPIVector)

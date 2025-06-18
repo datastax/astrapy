@@ -21,10 +21,9 @@ from enum import Enum
 from typing import Any, Generic, TypeVar
 
 from astrapy.data_types import DataAPIVector
-from astrapy.exceptions import (
-    CursorException,
-)
+from astrapy.exceptions import CursorException
 from astrapy.utils.api_options import FullSerdesOptions
+from astrapy.utils.unset import _UNSET, UnsetType
 
 # A cursor reads TRAW from DB and maps them to T if any mapping.
 # A new cursor returned by .map will map to TNEW
@@ -142,8 +141,12 @@ class AbstractCursor(ABC, Generic[TRAW]):
     _next_page_state: str | None
     _last_response_status: dict[str, Any] | None
 
-    def __init__(self) -> None:
-        self.rewind()
+    def __init__(
+        self,
+        *,
+        initial_page_state: str | UnsetType,
+    ) -> None:
+        self.rewind(initial_page_state=initial_page_state)
 
     def _imprint_internal_state(self, other: AbstractCursor[TRAW]) -> None:
         """Mutably copy the internal state of this cursor onto another one."""
@@ -228,7 +231,11 @@ class AbstractCursor(ABC, Generic[TRAW]):
         self._state = CursorState.CLOSED
         self._buffer = []
 
-    def rewind(self) -> None:
+    def rewind(
+        self,
+        *,
+        initial_page_state: str | UnsetType = _UNSET,
+    ) -> None:
         """
         Rewind the cursor, bringing it back to its pristine state of no items
         retrieved/consumed yet, regardless of its current state.
@@ -238,13 +245,25 @@ class AbstractCursor(ABC, Generic[TRAW]):
         occurred on the table or collection the results may be different if a cursor
         is browsed a second time after rewinding it.
 
+        Args:
+            initial_page_state: if a value is provided, it must be the `next_page_state`
+                from the response of `fetch_next_page()` called on a cursor with the
+                same settings. In that case, the repositioning of this cursor is such
+                that the next data-fetch will specify the page state to the Data API.
+
         This is an in-place modification of the cursor.
         """
         self._state = CursorState.IDLE
         self._buffer = []
         self._pages_retrieved = 0
         self._consumed = 0
-        self._next_page_state = None
+        if initial_page_state is None:
+            msg = "Passing an explicit null for initial_page_state is not allowed."
+            raise ValueError(msg)
+        elif isinstance(initial_page_state, UnsetType):
+            self._next_page_state = None
+        else:
+            self._next_page_state = initial_page_state
         self._last_response_status = None
 
     def consume_buffer(self, n: int | None = None) -> list[TRAW]:

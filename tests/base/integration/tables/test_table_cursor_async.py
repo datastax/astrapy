@@ -27,6 +27,7 @@ from astrapy.exceptions import CursorException
 from ..conftest import DefaultAsyncTable
 
 NUM_ROWS = 25  # keep this between 20 and 39
+NUM_DOCS_PAGINATION = 90  # keep this above 2 * (2 * 20) and below 2 * (3 * 20)
 
 
 @pytest.fixture
@@ -41,6 +42,24 @@ async def filled_composite_atable(
                 "p_vector": DataAPIVector([i, 1, 0]),
             }
             for i in range(NUM_ROWS)
+        ]
+    )
+    return async_empty_table_composite
+
+
+@pytest.fixture
+async def filled_pagination_composite_atable(
+    async_empty_table_composite: DefaultAsyncTable,
+) -> DefaultAsyncTable:
+    await async_empty_table_composite.insert_many(
+        [
+            {
+                "p_text": "pA",
+                "p_int": i,
+                "p_boolean": i % 2 == 0,
+                "p_vector": DataAPIVector([i, 1, 0]),
+            }
+            for i in range(NUM_DOCS_PAGINATION)
         ]
     )
     return async_empty_table_composite
@@ -466,3 +485,134 @@ class TestTableCursorSync:
         custom_rows = await custom_compo_table.find({}).to_list()
         assert len(custom_rows) == NUM_ROWS
         assert all(isinstance(crow["p_vector"], DataAPIVector) for crow in custom_rows)
+
+    @pytest.mark.describe("test of table cursors, initial_page_state, async")
+    async def test_table_cursors_initialpagestate_async(
+        self,
+        filled_pagination_composite_atable: DefaultAsyncTable,
+    ) -> None:
+        page_size = 20
+
+        cur0 = filled_pagination_composite_atable.find(filter={"p_boolean": True})
+        ids0: list[int] = []
+        for _ in range(page_size):
+            doc = await cur0.__anext__()
+            ids0.append(doc["p_int"])
+        nps0 = cur0._next_page_state
+        assert isinstance(nps0, str)
+
+        cur1 = filled_pagination_composite_atable.find(
+            filter={"p_boolean": True},
+            initial_page_state=nps0,
+        )
+        ids1: list[int] = []
+        for _ in range(page_size):
+            doc = await cur1.__anext__()
+            ids1.append(doc["p_int"])
+        nps1 = cur1._next_page_state
+        assert isinstance(nps1, str)
+
+        cur2 = filled_pagination_composite_atable.find(
+            filter={"p_boolean": True},
+            initial_page_state=nps1,
+        )
+        ids2 = [doc["p_int"] async for doc in cur2]
+        assert cur2._next_page_state is None
+
+        expected_ids = [i for i in range(NUM_DOCS_PAGINATION) if i % 2 == 0]
+        retrieved_ids = ids0 + ids1 + ids2
+        assert len(retrieved_ids) == len(set(retrieved_ids))
+        assert sorted(retrieved_ids) == expected_ids
+
+        # rewind behaviour
+        cur2.rewind()
+        cur2.rewind(initial_page_state="some string")
+        with pytest.raises(ValueError, match="null"):
+            cur2.rewind(initial_page_state=None)  # type: ignore[arg-type]
+
+    @pytest.mark.describe("test of table cursors, fetch_next_page, async")
+    async def test_table_cursors_fetchnextpage_async(
+        self,
+        filled_pagination_composite_atable: DefaultAsyncTable,
+    ) -> None:
+        cur0 = filled_pagination_composite_atable.find(filter={"p_boolean": True})
+        page0 = await cur0.fetch_next_page()
+        ids0 = [doc["p_int"] for doc in page0.results]
+        nps0 = page0.next_page_state
+        assert isinstance(nps0, str)
+
+        cur1 = filled_pagination_composite_atable.find(
+            filter={"p_boolean": True},
+            initial_page_state=nps0,
+        )
+        page1 = await cur1.fetch_next_page()
+        ids1 = [doc["p_int"] for doc in page1.results]
+        nps1 = page1.next_page_state
+        assert isinstance(nps1, str)
+
+        cur2 = filled_pagination_composite_atable.find(
+            filter={"p_boolean": True},
+            initial_page_state=nps1,
+        )
+        page2 = await cur2.fetch_next_page()
+        ids2 = [doc["p_int"] for doc in page2.results]
+        assert page2.next_page_state is None
+
+        expected_ids = [i for i in range(NUM_DOCS_PAGINATION) if i % 2 == 0]
+        retrieved_ids = ids0 + ids1 + ids2
+        assert len(retrieved_ids) == len(set(retrieved_ids))
+        assert sorted(retrieved_ids) == expected_ids
+
+        # fetching consecutive pages on a given cursor
+        cur0x = filled_pagination_composite_atable.find(filter={"p_boolean": True})
+        await cur0x.fetch_next_page()
+        page1x = await cur0x.fetch_next_page()
+        assert page1x == page1
+
+        # forbidden: mixing pagination and ordinary usage
+        await cur0x.__anext__()
+        with pytest.raises(CursorException):
+            await cur0x.fetch_next_page()
+        await cur0x.to_list()
+        with pytest.raises(CursorException):
+            await cur0x.fetch_next_page()
+
+        # mapping
+        cur0y = filled_pagination_composite_atable.find(filter={"p_boolean": True}).map(
+            lambda doc: doc["p_int"]
+        )
+        page0y = await cur0y.fetch_next_page()
+        assert page0y.results == ids0
+
+        # vector ANN one-page behaviour re: include_sort_vector and its format
+        table_noncustom = filled_pagination_composite_atable.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=False),
+            )
+        )
+        table_custom = filled_pagination_composite_atable.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=True),
+            )
+        )
+
+        vcur0_nc = table_noncustom.find(
+            sort={"p_vector": [1, 1, 1]},
+            include_sort_vector=True,
+            limit=15,
+        )
+        vpage0_nc = await vcur0_nc.fetch_next_page()
+        assert vpage0_nc.next_page_state is None
+        assert len(vpage0_nc.results) == 15
+        assert isinstance(vpage0_nc.sort_vector, list)
+        assert not isinstance(vpage0_nc.sort_vector, DataAPIVector)
+
+        vcur0_c = table_custom.find(
+            sort={"p_vector": [1, 1, 1]},
+            include_sort_vector=True,
+            limit=15,
+        )
+        vpage0_c = await vcur0_c.fetch_next_page()
+        assert vpage0_c.next_page_state is None
+        assert len(vpage0_c.results) == 15
+        assert isinstance(vpage0_c.sort_vector, DataAPIVector)

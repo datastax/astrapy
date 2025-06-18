@@ -1633,6 +1633,7 @@ class Table(Generic[ROW]):
         row_type: None = None,
         skip: int | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -1649,6 +1650,7 @@ class Table(Generic[ROW]):
         row_type: type[ROW2],
         skip: int | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -1664,6 +1666,7 @@ class Table(Generic[ROW]):
         row_type: type[ROW2] | None = None,
         skip: int | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -1710,9 +1713,20 @@ class Table(Generic[ROW]):
                 projection is given.
             skip: if provided, it is a number of rows that would be obtained first
                 in the response and are instead skipped.
+                Please note that for applications that need to retrieve entries on
+                a page-by-page basis, the suggested approach is to consume a find cursor
+                through their pagination API (see the cursors' `fetch_next_page` method
+                and examples reported there).
             limit: a maximum amount of rows to get from the table. The returned cursor
                 will stop yielding rows when either this number is reached or there
                 really are no more matches in the table.
+            initial_page_state: if a value is provided, it must be the `next_page_state`
+                from the response of `fetch_next_page()` called on a previous cursor.
+                This value is used as the first page state when the first request
+                to consume the cursor is issued.
+                This pattern is what enables the caller to control consuming the
+                results page by page in a caller-driven fashion. See Examples for more.
+                If supplied, this parameter must be string: passing None is forbidden.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each returned
                 row. It can be used meaningfully only in a vector search (see `sort`).
@@ -1927,6 +1941,7 @@ class Table(Generic[ROW]):
             .skip(skip)
             .limit(limit)
             .sort(sort)
+            .initial_page_state(initial_page_state)
             .include_similarity(include_similarity)
             .include_sort_vector(include_sort_vector)
         )
@@ -4402,6 +4417,7 @@ class AsyncTable(Generic[ROW]):
         row_type: None = None,
         skip: int | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -4418,6 +4434,7 @@ class AsyncTable(Generic[ROW]):
         row_type: type[ROW2],
         skip: int | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -4433,6 +4450,7 @@ class AsyncTable(Generic[ROW]):
         row_type: type[ROW2] | None = None,
         skip: int | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -4479,9 +4497,20 @@ class AsyncTable(Generic[ROW]):
                 projection is given.
             skip: if provided, it is a number of rows that would be obtained first
                 in the response and are instead skipped.
+                Please note that for applications that need to retrieve entries on
+                a page-by-page basis, the suggested approach is to consume a find cursor
+                through their pagination API (see the cursors' `fetch_next_page` method
+                and examples reported there).
             limit: a maximum amount of rows to get from the table. The returned cursor
                 will stop yielding rows when either this number is reached or there
                 really are no more matches in the table.
+            initial_page_state: if a value is provided, it must be the `next_page_state`
+                from the response of `fetch_next_page()` called on a previous cursor.
+                This value is used as the first page state when the first request
+                to consume the cursor is issued.
+                This pattern is what enables the caller to control consuming the
+                results page by page in a caller-driven fashion. See Examples for more.
+                If supplied, this parameter must be string: passing None is forbidden.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each returned
                 row. It can be used meaningfully only in a vector search (see `sort`).
@@ -4719,6 +4748,7 @@ class AsyncTable(Generic[ROW]):
             .skip(skip)
             .limit(limit)
             .sort(sort)
+            .initial_page_state(initial_page_state)
             .include_similarity(include_similarity)
             .include_sort_vector(include_sort_vector)
         )

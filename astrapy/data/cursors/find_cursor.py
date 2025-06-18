@@ -32,15 +32,13 @@ from astrapy.data.cursors.cursor import (
     _ensure_vector,
     _revise_timeouts_for_cursor_copy,
 )
+from astrapy.data.cursors.pagination import FindPage
 from astrapy.data.cursors.query_engine import (
     _CollectionFindQueryEngine,
     _TableFindQueryEngine,
 )
 from astrapy.data_types import DataAPIVector
-from astrapy.exceptions import (
-    CursorException,
-    MultiCallTimeoutManager,
-)
+from astrapy.exceptions import CursorException, MultiCallTimeoutManager
 from astrapy.utils.unset import _UNSET, UnsetType
 
 
@@ -88,6 +86,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     _projection: ProjectionType | None
     _sort: dict[str, Any] | None
     _limit: int | None
+    _initial_page_state: str | UnsetType
     _include_similarity: bool | None
     _include_sort_vector: bool | None
     _skip: int | None
@@ -105,6 +104,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         projection: ProjectionType | None = None,
         sort: dict[str, Any] | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         skip: int | None = None,
@@ -114,6 +114,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         self._projection = projection
         self._sort = deepcopy(sort)
         self._limit = limit
+        self._initial_page_state = initial_page_state
         self._include_similarity = include_similarity
         self._include_sort_vector = include_sort_vector
         self._skip = skip
@@ -133,7 +134,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
         )
-        AbstractCursor.__init__(self)
+        AbstractCursor.__init__(self, initial_page_state=initial_page_state)
         self._timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=self._overall_timeout_ms,
             timeout_label=self._overall_timeout_label,
@@ -150,6 +151,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         projection: ProjectionType | None | UnsetType = _UNSET,
         sort: dict[str, Any] | None | UnsetType = _UNSET,
         limit: int | None | UnsetType = _UNSET,
+        initial_page_state: str | None | UnsetType = _UNSET,
         include_similarity: bool | None | UnsetType = _UNSET,
         include_sort_vector: bool | None | UnsetType = _UNSET,
         skip: int | None | UnsetType = _UNSET,
@@ -176,6 +178,10 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             else projection,
             sort=self._sort if isinstance(sort, UnsetType) else sort,
             limit=self._limit if isinstance(limit, UnsetType) else limit,
+            # special treatment: passing None erases (hence we must supply unset and not None):
+            initial_page_state=self._initial_page_state
+            if isinstance(initial_page_state, UnsetType)
+            else (initial_page_state if initial_page_state is not None else _UNSET),
             include_similarity=self._include_similarity
             if isinstance(include_similarity, UnsetType)
             else include_similarity,
@@ -290,6 +296,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             projection=self._projection,
             sort=self._sort,
             limit=self._limit,
+            initial_page_state=self._initial_page_state,
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
@@ -379,6 +386,28 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
 
         self._ensure_idle()
         return self._copy(limit=limit)
+
+    def initial_page_state(
+        self, initial_page_state: str | UnsetType
+    ) -> CollectionFindCursor[TRAW, T]:
+        """
+        Return a copy of this cursor with a new initial_page_state setting.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the Collection `find` method.
+
+        Args:
+            initial_page_state: a new initial_page_state setting to apply to the
+                returned new cursor. Passing an explicit None raises an error.
+
+        Returns:
+            a new CollectionFindCursor with the same settings as this one,
+                except for `initial_page_state` which is the provided value.
+        """
+
+        self._ensure_idle()
+        return self._copy(initial_page_state=initial_page_state)
 
     def include_similarity(
         self, include_similarity: bool | None
@@ -520,6 +549,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             projection=self._projection,
             sort=self._sort,
             limit=self._limit,
+            initial_page_state=self._initial_page_state,
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
@@ -731,6 +761,81 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         else:
             return None
 
+    def fetch_next_page(self) -> FindPage[T]:
+        """
+        Retrieve a single, whole page of results from the Data API and return it
+        at once, together with associated "out-of-band" information.
+
+        This method is meant to be the way a cursor is consumed when the caller
+        needs to explicitly operate on a page-by-page basis, and is to be paired
+        with creation of cursor objects 'set to start from a certain page' via the
+        `initial_page_state` constructor parameter/builder method.
+        In this case, the supplied initial page state typically comes from having
+        consumed a previous page, for the same find operation: the page state, a string,
+        is found within the `FindPage` object returned by this method.
+
+        Returns:
+            a `FindPage` object expressing the full Data API response, including
+            the resulting documents (after applying the cursor mapping function,
+            if one is defined), as well as the state to use to query for the next
+            page (a string) and the sort vector if requested and applicable.
+
+        Example:
+            >>> # A cursor to get the first page:
+            >>> cursor0 = collection.find({})
+            >>> page0 = cursor0.fetch_next_page()
+            >>> page0
+            FindPage(results=<20 entries>, next_page_state=...)
+            >>> page0.results[0]
+            {'_id': 40, 'text': 'doc num 40', 'even': True}
+            >>> page0.next_page_state
+            'CwAAAAECAAAAAjg5APB////rAA=='
+            >>>
+            >>> # Get the next page through a new cursor:
+            >>> cursor1 = collection.find(
+            ...     {},
+            ...     initial_page_state=page0.next_page_state,
+            ... )
+            >>> page1 = cursor1.fetch_next_page()
+            >>> page1.results[0]
+            {'_id': 124, 'text': 'doc num 124', 'even': True}
+            >>> page1.next_page_state
+            'CgAAAAECAAAAATYA8H///9cA'
+            >>>
+            >>> # (...)
+            >>> # Eventually there's nothing more to retrieve:
+            >>> page_N.next_page_state is None
+            True
+        """
+
+        self._ensure_alive()
+        if self._buffer:
+            msg = "Paginated retrieval cannot be mixed with regular cursor iteration."
+            raise CursorException(
+                text=msg,
+                cursor_state=self._state.value,
+            )
+
+        self._try_ensure_fill_buffer()
+
+        _buffer_count = len(self._buffer)
+        _tr_next_ps = self._next_page_state
+        _tr_results = [document for _, document in zip(range(_buffer_count), self)]
+        _tr_sort_vector: list[float] | DataAPIVector | None
+        if self._last_response_status:
+            _tr_sort_vector = _ensure_vector(
+                self._last_response_status.get("sortVector"),
+                self.data_source.api_options.serdes_options,
+            )
+        else:
+            _tr_sort_vector = None
+
+        return FindPage(
+            results=_tr_results,
+            next_page_state=_tr_next_ps,
+            sort_vector=_tr_sort_vector,
+        )
+
 
 class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     """
@@ -765,6 +870,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     _projection: ProjectionType | None
     _sort: dict[str, Any] | None
     _limit: int | None
+    _initial_page_state: str | UnsetType
     _include_similarity: bool | None
     _include_sort_vector: bool | None
     _skip: int | None
@@ -782,6 +888,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         projection: ProjectionType | None = None,
         sort: dict[str, Any] | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         skip: int | None = None,
@@ -791,6 +898,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         self._projection = projection
         self._sort = deepcopy(sort)
         self._limit = limit
+        self._initial_page_state = initial_page_state
         self._include_similarity = include_similarity
         self._include_sort_vector = include_sort_vector
         self._skip = skip
@@ -810,7 +918,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
         )
-        AbstractCursor.__init__(self)
+        AbstractCursor.__init__(self, initial_page_state=initial_page_state)
         self._timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=self._overall_timeout_ms,
             timeout_label=self._overall_timeout_label,
@@ -827,6 +935,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         projection: ProjectionType | None | UnsetType = _UNSET,
         sort: dict[str, Any] | None | UnsetType = _UNSET,
         limit: int | None | UnsetType = _UNSET,
+        initial_page_state: str | None | UnsetType = _UNSET,
         include_similarity: bool | None | UnsetType = _UNSET,
         include_sort_vector: bool | None | UnsetType = _UNSET,
         skip: int | None | UnsetType = _UNSET,
@@ -853,6 +962,10 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             else projection,
             sort=self._sort if isinstance(sort, UnsetType) else sort,
             limit=self._limit if isinstance(limit, UnsetType) else limit,
+            # special treatment: passing None erases (hence we must supply unset and not None):
+            initial_page_state=self._initial_page_state
+            if isinstance(initial_page_state, UnsetType)
+            else (initial_page_state if initial_page_state is not None else _UNSET),
             include_similarity=self._include_similarity
             if isinstance(include_similarity, UnsetType)
             else include_similarity,
@@ -958,6 +1071,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             projection=self._projection,
             sort=self._sort,
             limit=self._limit,
+            initial_page_state=self._initial_page_state,
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
@@ -1047,6 +1161,28 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
 
         self._ensure_idle()
         return self._copy(limit=limit)
+
+    def initial_page_state(
+        self, initial_page_state: str | UnsetType
+    ) -> AsyncCollectionFindCursor[TRAW, T]:
+        """
+        Return a copy of this cursor with a new initial_page_state setting.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the Collection `find` method.
+
+        Args:
+            initial_page_state: a new initial_page_state setting to apply to the
+                returned new cursor. Passing an explicit None raises an error.
+
+        Returns:
+            a new AsyncCollectionFindCursor with the same settings as this one,
+                except for `initial_page_state` which is the provided value.
+        """
+
+        self._ensure_idle()
+        return self._copy(initial_page_state=initial_page_state)
 
     def include_similarity(
         self, include_similarity: bool | None
@@ -1160,6 +1296,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             projection=self._projection,
             sort=self._sort,
             limit=self._limit,
+            initial_page_state=self._initial_page_state,
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
@@ -1326,6 +1463,56 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         else:
             return None
 
+    async def fetch_next_page(self) -> FindPage[T]:
+        """
+        Retrieve a single, whole page of results from the Data API and return it
+        at once, together with associated "out-of-band" information.
+
+        This method is meant to be the way a cursor is consumed when the caller
+        needs to explicitly operate on a page-by-page basis, and is to be paired
+        with creation of cursor objects 'set to start from a certain page' via the
+        `initial_page_state` constructor parameter/builder method.
+        In this case, the supplied initial page state typically comes from having
+        consumed a previous page, for the same find operation: the page state, a string,
+        is found within the `FindPage` object returned by this method.
+
+        Returns:
+            a `FindPage` object expressing the full Data API response, including
+            the resulting documents (after applying the cursor mapping function,
+            if one is defined), as well as the state to use to query for the next
+            page (a string) and the sort vector if requested and applicable.
+        """
+
+        self._ensure_alive()
+        if self._buffer:
+            msg = "Paginated retrieval cannot be mixed with regular cursor iteration."
+            raise CursorException(
+                text=msg,
+                cursor_state=self._state.value,
+            )
+
+        await self._try_ensure_fill_buffer()
+
+        _buffer_count = len(self._buffer)
+        _tr_next_ps = self._next_page_state
+        _tr_results: list[T] = []
+        for _ in range(_buffer_count):
+            _tr_results.append(await self.__anext__())
+        _tr_sort_vector: list[float] | DataAPIVector | None
+        if self._last_response_status:
+            _tr_sort_vector = _ensure_vector(
+                self._last_response_status.get("sortVector"),
+                self.data_source.api_options.serdes_options,
+            )
+        else:
+            _tr_sort_vector = None
+
+        return FindPage(
+            results=_tr_results,
+            next_page_state=_tr_next_ps,
+            sort_vector=_tr_sort_vector,
+        )
+
 
 class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     """
@@ -1371,6 +1558,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     _projection: ProjectionType | None
     _sort: dict[str, Any] | None
     _limit: int | None
+    _initial_page_state: str | UnsetType
     _include_similarity: bool | None
     _include_sort_vector: bool | None
     _skip: int | None
@@ -1388,6 +1576,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         projection: ProjectionType | None = None,
         sort: dict[str, Any] | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         skip: int | None = None,
@@ -1397,6 +1586,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         self._projection = projection
         self._sort = deepcopy(sort)
         self._limit = limit
+        self._initial_page_state = initial_page_state
         self._include_similarity = include_similarity
         self._include_sort_vector = include_sort_vector
         self._skip = skip
@@ -1416,7 +1606,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
         )
-        AbstractCursor.__init__(self)
+        AbstractCursor.__init__(self, initial_page_state=initial_page_state)
         self._timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=self._overall_timeout_ms,
             timeout_label=self._overall_timeout_label,
@@ -1433,6 +1623,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         projection: ProjectionType | None | UnsetType = _UNSET,
         sort: dict[str, Any] | None | UnsetType = _UNSET,
         limit: int | None | UnsetType = _UNSET,
+        initial_page_state: str | None | UnsetType = _UNSET,
         include_similarity: bool | None | UnsetType = _UNSET,
         include_sort_vector: bool | None | UnsetType = _UNSET,
         skip: int | None | UnsetType = _UNSET,
@@ -1459,6 +1650,10 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             else projection,
             sort=self._sort if isinstance(sort, UnsetType) else sort,
             limit=self._limit if isinstance(limit, UnsetType) else limit,
+            # special treatment: passing None erases (hence we must supply unset and not None):
+            initial_page_state=self._initial_page_state
+            if isinstance(initial_page_state, UnsetType)
+            else (initial_page_state if initial_page_state is not None else _UNSET),
             include_similarity=self._include_similarity
             if isinstance(include_similarity, UnsetType)
             else include_similarity,
@@ -1573,6 +1768,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             projection=self._projection,
             sort=self._sort,
             limit=self._limit,
+            initial_page_state=self._initial_page_state,
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
@@ -1660,6 +1856,28 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
 
         self._ensure_idle()
         return self._copy(limit=limit)
+
+    def initial_page_state(
+        self, initial_page_state: str | UnsetType
+    ) -> TableFindCursor[TRAW, T]:
+        """
+        Return a copy of this cursor with a new initial_page_state setting.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the Collection `find` method.
+
+        Args:
+            initial_page_state: a new initial_page_state setting to apply to the
+                returned new cursor. Passing an explicit None raises an error.
+
+        Returns:
+            a new TableFindCursor with the same settings as this one,
+                except for `initial_page_state` which is the provided value.
+        """
+
+        self._ensure_idle()
+        return self._copy(initial_page_state=initial_page_state)
 
     def include_similarity(
         self, include_similarity: bool | None
@@ -1801,6 +2019,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             projection=self._projection,
             sort=self._sort,
             limit=self._limit,
+            initial_page_state=self._initial_page_state,
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
@@ -2012,6 +2231,80 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         else:
             return None
 
+    def fetch_next_page(self) -> FindPage[T]:
+        """
+        Retrieve a single, whole page of results from the Data API and return it
+        at once, together with associated "out-of-band" information.
+
+        This method is meant to be the way a cursor is consumed when the caller
+        needs to explicitly operate on a page-by-page basis, and is to be paired
+        with creation of cursor objects 'set to start from a certain page' via the
+        `initial_page_state` constructor parameter/builder method.
+        In this case, the supplied initial page state typically comes from having
+        consumed a previous page, for the same find operation: the page state, a string,
+        is found within the `FindPage` object returned by this method.
+
+        Returns:
+            a `FindPage` object expressing the full Data API response, including
+            the resulting rows (after applying the cursor mapping function,
+            if one is defined), as well as the state to use to query for the next
+            page (a string) and the sort vector if requested and applicable.
+
+        Example:
+            >>> # A cursor to get the first page:
+            >>> cursor0 = table.find({})
+            >>> page0 = cursor0.fetch_next_page()
+            >>> page0
+            FindPage(results=<20 entries>, next_page_state=...)
+            >>> page0.results[0]
+            {'id': 'row_31', 'value': 31}
+            >>> page0.next_page_state
+            'BXJvd18zAPB////rAA=='
+            >>> # Get the next page through a new cursor:
+            >>> cursor1 = table.find(
+            ...     {},
+            ...     initial_page_state=page0.next_page_state,
+            ... )
+            >>> page1 = cursor1.fetch_next_page()
+            >>> page1.results[0]
+            {'id': 'row_25', 'value': 25}
+            >>> page1.next_page_state
+            'BnJvd18zOQDwf///1wA='
+            >>>
+            >>> # (...)
+            >>> # Eventually there's nothing more to retrieve:
+            >>> page_N.next_page_state is None
+            True
+        """
+
+        self._ensure_alive()
+        if self._buffer:
+            msg = "Paginated retrieval cannot be mixed with regular cursor iteration."
+            raise CursorException(
+                text=msg,
+                cursor_state=self._state.value,
+            )
+
+        self._try_ensure_fill_buffer()
+
+        _buffer_count = len(self._buffer)
+        _tr_next_ps = self._next_page_state
+        _tr_results = [document for _, document in zip(range(_buffer_count), self)]
+        _tr_sort_vector: list[float] | DataAPIVector | None
+        if self._last_response_status:
+            _tr_sort_vector = _ensure_vector(
+                self._last_response_status.get("sortVector"),
+                self.data_source.api_options.serdes_options,
+            )
+        else:
+            _tr_sort_vector = None
+
+        return FindPage(
+            results=_tr_results,
+            next_page_state=_tr_next_ps,
+            sort_vector=_tr_sort_vector,
+        )
+
 
 class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     """
@@ -2046,6 +2339,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
     _projection: ProjectionType | None
     _sort: dict[str, Any] | None
     _limit: int | None
+    _initial_page_state: str | UnsetType
     _include_similarity: bool | None
     _include_sort_vector: bool | None
     _skip: int | None
@@ -2063,6 +2357,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         projection: ProjectionType | None = None,
         sort: dict[str, Any] | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         skip: int | None = None,
@@ -2072,6 +2367,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         self._projection = projection
         self._sort = deepcopy(sort)
         self._limit = limit
+        self._initial_page_state = initial_page_state
         self._include_similarity = include_similarity
         self._include_sort_vector = include_sort_vector
         self._skip = skip
@@ -2091,7 +2387,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
         )
-        AbstractCursor.__init__(self)
+        AbstractCursor.__init__(self, initial_page_state=initial_page_state)
         self._timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=self._overall_timeout_ms,
             timeout_label=self._overall_timeout_label,
@@ -2108,6 +2404,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         projection: ProjectionType | None | UnsetType = _UNSET,
         sort: dict[str, Any] | None | UnsetType = _UNSET,
         limit: int | None | UnsetType = _UNSET,
+        initial_page_state: str | None | UnsetType = _UNSET,
         include_similarity: bool | None | UnsetType = _UNSET,
         include_sort_vector: bool | None | UnsetType = _UNSET,
         skip: int | None | UnsetType = _UNSET,
@@ -2134,6 +2431,10 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             else projection,
             sort=self._sort if isinstance(sort, UnsetType) else sort,
             limit=self._limit if isinstance(limit, UnsetType) else limit,
+            # special treatment: passing None erases (hence we must supply unset and not None):
+            initial_page_state=self._initial_page_state
+            if isinstance(initial_page_state, UnsetType)
+            else (initial_page_state if initial_page_state is not None else _UNSET),
             include_similarity=self._include_similarity
             if isinstance(include_similarity, UnsetType)
             else include_similarity,
@@ -2238,6 +2539,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             projection=self._projection,
             sort=self._sort,
             limit=self._limit,
+            initial_page_state=self._initial_page_state,
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
@@ -2327,6 +2629,28 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
 
         self._ensure_idle()
         return self._copy(limit=limit)
+
+    def initial_page_state(
+        self, initial_page_state: str | UnsetType
+    ) -> AsyncTableFindCursor[TRAW, T]:
+        """
+        Return a copy of this cursor with a new initial_page_state setting.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the Collection `find` method.
+
+        Args:
+            initial_page_state: a new initial_page_state setting to apply to the
+                returned new cursor. Passing an explicit None raises an error.
+
+        Returns:
+            a new AsyncTableFindCursor with the same settings as this one,
+                except for `initial_page_state` which is the provided value.
+        """
+
+        self._ensure_idle()
+        return self._copy(initial_page_state=initial_page_state)
 
     def include_similarity(
         self, include_similarity: bool | None
@@ -2440,6 +2764,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             projection=self._projection,
             sort=self._sort,
             limit=self._limit,
+            initial_page_state=self._initial_page_state,
             include_similarity=self._include_similarity,
             include_sort_vector=self._include_sort_vector,
             skip=self._skip,
@@ -2605,3 +2930,53 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
             )
         else:
             return None
+
+    async def fetch_next_page(self) -> FindPage[T]:
+        """
+        Retrieve a single, whole page of results from the Data API and return it
+        at once, together with associated "out-of-band" information.
+
+        This method is meant to be the way a cursor is consumed when the caller
+        needs to explicitly operate on a page-by-page basis, and is to be paired
+        with creation of cursor objects 'set to start from a certain page' via the
+        `initial_page_state` constructor parameter/builder method.
+        In this case, the supplied initial page state typically comes from having
+        consumed a previous page, for the same find operation: the page state, a string,
+        is found within the `FindPage` object returned by this method.
+
+        Returns:
+            a `FindPage` object expressing the full Data API response, including
+            the resulting rows (after applying the cursor mapping function,
+            if one is defined), as well as the state to use to query for the next
+            page (a string) and the sort vector if requested and applicable.
+        """
+
+        self._ensure_alive()
+        if self._buffer:
+            msg = "Paginated retrieval cannot be mixed with regular cursor iteration."
+            raise CursorException(
+                text=msg,
+                cursor_state=self._state.value,
+            )
+
+        await self._try_ensure_fill_buffer()
+
+        _buffer_count = len(self._buffer)
+        _tr_next_ps = self._next_page_state
+        _tr_results: list[T] = []
+        for _ in range(_buffer_count):
+            _tr_results.append(await self.__anext__())
+        _tr_sort_vector: list[float] | DataAPIVector | None
+        if self._last_response_status:
+            _tr_sort_vector = _ensure_vector(
+                self._last_response_status.get("sortVector"),
+                self.data_source.api_options.serdes_options,
+            )
+        else:
+            _tr_sort_vector = None
+
+        return FindPage(
+            results=_tr_results,
+            next_page_state=_tr_next_ps,
+            sort_vector=_tr_sort_vector,
+        )
