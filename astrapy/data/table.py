@@ -53,6 +53,8 @@ from astrapy.info import (
     TableIndexDescriptor,
     TableIndexOptions,
     TableInfo,
+    TableTextIndexDefinition,
+    TableTextIndexOptions,
     TableVectorIndexDefinition,
     TableVectorIndexOptions,
 )
@@ -666,6 +668,8 @@ class Table(Generic[ROW]):
         is created and ready to use.
 
         For creation of a vector index, see method `create_vector_index` instead.
+        For creation of a text index (used for lexicographical matching), see
+        method `create_text_index` instead.
 
         Args:
             name: the name of the index. Index names must be unique across the keyspace.
@@ -800,6 +804,97 @@ class Table(Generic[ROW]):
             options=TableVectorIndexOptions.coerce(options),
         ).as_dict()
         ci_command = "createVectorIndex"
+        return self._create_generic_index(
+            i_name=name,
+            ci_definition=ci_definition,
+            ci_command=ci_command,
+            if_not_exists=if_not_exists,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+
+    def create_text_index(
+        self,
+        name: str,
+        column: str,
+        *,
+        options: TableTextIndexOptions | dict[str, Any] | None = None,
+        if_not_exists: bool | None = None,
+        table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> None:
+        """
+        Create a text index on a vector column of the table, enabling lexicographical
+        matching operations on it.
+
+        This is a blocking operation: the method returns once the index
+        is created and ready to use.
+
+        For creation of a full-text index, see method `create_index` instead.
+
+        Args:
+            name: the name of the index. Index names must be unique across the keyspace.
+            column: the column, of type "text"/"ascii", on which to create the index.
+            options: an instance of `TableTextIndexOptions`, or an equivalent
+                dictionary, which specifies settings for the text index,
+                in particular the "analyzer" configuration.
+                If omitted, the Data API defaults will apply for the index.
+                See the `astrapy.info.TableTextIndexOptions` class for more details.
+            if_not_exists: if set to True, the command will succeed even if an index
+                with the specified name already exists (in which case no actual
+                index creation takes place on the database). The API default of False
+                means that an error is raised by the API in case of name collision.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
+
+        Example:
+            >>> from astrapy.info import TableTextIndexOptions
+            >>>
+            >>> # create a text index with the 'whitespace' analyzer
+            >>> my_table.create_text_index(
+            ...     "m_text_index",
+            ...     column="m_text_column",
+            ...     options=TableTextIndexOptions(analyzer="whitespace"),
+            ... )
+            >>> # omit the analyzer setting: the default of "standard" will be used.
+            >>> # (if an index with this name exists, this operation won't do nothing
+            >>> # because of if_not_exists.)
+            >>> my_table.create_text_index(
+            ...     "m_text_index_default",
+            ...     column="m_another_text_column",
+            ...     if_not_exists=True,
+            ... )
+            >>> # provide a full object for the analyzer configuration:
+            >>> # (this one is suitable for English prose.)
+            >>> my_table.create_text_index(
+            ...     "m_text_index_2",
+            ...     column="m_yet_another_text_column",
+            ...     options=TableTextIndexOptions(
+            ...         analyzer={
+            ...             "tokenizer": {"name": "standard", "args": {}},
+            ...             "filters": [
+            ...                 {"name": "lowercase"},
+            ...                 {"name": "stop"},
+            ...                 {"name": "porterstem"},
+            ...                 {"name": "asciifolding"},
+            ...             ],
+            ...             "charFilters": [],
+            ...         },
+            ...     ),
+            ... )
+        """
+
+        ci_definition: dict[str, Any] = TableTextIndexDefinition(
+            column=column,
+            options=TableTextIndexOptions.coerce(options),
+        ).as_dict()
+        ci_command = "createTextIndex"
         return self._create_generic_index(
             i_name=name,
             ci_definition=ci_definition,
@@ -3443,6 +3538,8 @@ class AsyncTable(Generic[ROW]):
         is created and ready to use.
 
         For creation of a vector index, see method `create_vector_index` instead.
+        For creation of a text index (used for lexicographical matching), see
+        method `create_text_index` instead.
 
         Args:
             name: the name of the index. Index names must be unique across the keyspace.
@@ -3581,6 +3678,99 @@ class AsyncTable(Generic[ROW]):
             options=TableVectorIndexOptions.coerce(options),
         ).as_dict()
         ci_command = "createVectorIndex"
+        return await self._create_generic_index(
+            i_name=name,
+            ci_definition=ci_definition,
+            ci_command=ci_command,
+            if_not_exists=if_not_exists,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+
+    async def create_text_index(
+        self,
+        name: str,
+        column: str,
+        *,
+        options: TableTextIndexOptions | dict[str, Any] | None = None,
+        if_not_exists: bool | None = None,
+        table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> None:
+        """
+        Create a text index on a vector column of the table, enabling lexicographical
+        matching operations on it.
+
+        This is a blocking operation: the method returns once the index
+        is created and ready to use.
+
+        For creation of a full-text index, see method `create_index` instead.
+
+        Args:
+            name: the name of the index. Index names must be unique across the keyspace.
+            column: the column, of type "text"/"ascii", on which to create the index.
+            options: an instance of `TableTextIndexOptions`, or an equivalent
+                dictionary, which specifies settings for the text index,
+                in particular the "analyzer" configuration.
+                If omitted, the Data API defaults will apply for the index.
+                See the `astrapy.info.TableTextIndexOptions` class for more details.
+            if_not_exists: if set to True, the command will succeed even if an index
+                with the specified name already exists (in which case no actual
+                index creation takes place on the database). The API default of False
+                means that an error is raised by the API in case of name collision.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
+
+        Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
+            >>> from astrapy.info import TableTextIndexOptions
+            >>>
+            >>> # create a text index with the 'whitespace' analyzer
+            >>> await my_table.create_text_index(
+            ...     "m_text_index",
+            ...     column="m_text_column",
+            ...     options=TableTextIndexOptions(analyzer="whitespace"),
+            ... )
+            >>> # omit the analyzer setting: the default of "standard" will be used.
+            >>> # (if an index with this name exists, this operation won't do nothing
+            >>> # because of if_not_exists.)
+            >>> await my_table.create_text_index(
+            ...     "m_text_index_default",
+            ...     column="m_another_text_column",
+            ...     if_not_exists=True,
+            ... )
+            >>> # provide a full object for the analyzer configuration:
+            >>> # (this one is suitable for English prose.)
+            >>> await my_table.create_text_index(
+            ...     "m_text_index_2",
+            ...     column="m_yet_another_text_column",
+            ...     options=TableTextIndexOptions(
+            ...         analyzer={
+            ...             "tokenizer": {"name": "standard", "args": {}},
+            ...             "filters": [
+            ...                 {"name": "lowercase"},
+            ...                 {"name": "stop"},
+            ...                 {"name": "porterstem"},
+            ...                 {"name": "asciifolding"},
+            ...             ],
+            ...             "charFilters": [],
+            ...         },
+            ...     ),
+            ... )
+        """
+
+        ci_definition: dict[str, Any] = TableTextIndexDefinition(
+            column=column,
+            options=TableTextIndexOptions.coerce(options),
+        ).as_dict()
+        ci_command = "createTextIndex"
         return await self._create_generic_index(
             i_name=name,
             ci_definition=ci_definition,

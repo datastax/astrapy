@@ -2,6 +2,7 @@ main
 ====
 Tables, support for "text indexes":
     - classes `TableTextIndexDefinition` and `TableTextIndexOptions` (e.g. for `list_indexes()` method)
+    - tables got a `.create_text_index()` method
 Tables, introduced method `list_indexes()`
 Cursors (all types): introduced the "pagination API":
     - `.fetch_next_page()` method
