@@ -33,6 +33,8 @@ from astrapy.info import (
     TableIndexOptions,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
+    TableTextIndexDefinition,
+    TableTextIndexOptions,
     TableUnsupportedIndexDefinition,
     TableVectorIndexDefinition,
     TableVectorIndexOptions,
@@ -309,6 +311,32 @@ VECTOR_INDEX_DEFINITION_DICT_PARTIAL = {
 }
 VECTOR_INDEX_DEFINITION_DICT_MINIMAL = {"column": "the_v_column"}
 VECTOR_INDEX_DEFINITION_DICT_COERCEABLE_MINIMAL = {"column": "the_v_column"}
+
+TEXT_INDEX_DEFINITION_SHORT_DICT = {
+    "column": "the_analyz_column1",
+    "options": {
+        "analyzer": "STANDARD",
+    },
+}
+TEXT_INDEX_DEFINITION_SHORT = TableTextIndexDefinition(
+    column="the_analyz_column1",
+    options=TableTextIndexOptions(analyzer="STANDARD"),
+)
+TEXT_INDEX_DEFINITION_LONG_DICT = {
+    "column": "the_analyz_column1",
+    "options": {"analyzer": {"tokenizer": {"name": "whitespace"}}},
+}
+TEXT_INDEX_DEFINITION_LONG = TableTextIndexDefinition(
+    column="the_analyz_column1",
+    options=TableTextIndexOptions(
+        analyzer={
+            "tokenizer": {
+                "name": "whitespace",
+            },
+        }
+    ),
+)
+
 UNSUPPORTED_INDEX_DEFINITION = TableUnsupportedIndexDefinition(
     column="UNKNOWN",
     api_support=TableAPIIndexSupportDescriptor(
@@ -325,18 +353,6 @@ UNSUPPORTED_INDEX_DEFINITION_DICT = {
         "cqlDefinition": "CREATE INDEX SO-AND-SO!",
     },
 }
-
-COLLECTIONTABLE_COLUMNS = CreateTableDefinition.coerce(
-    {
-        "columns": {
-            "the_map": {"type": "map", "keyType": "text", "valueType": "text"},
-            "the_list": {"type": "list", "valueType": "text"},
-            "the_set": {"type": "set", "valueType": "text"},
-            "the_text": "text",
-        },
-        "primaryKey": "text",
-    }
-).columns
 
 
 class TestListTableDescriptors:
@@ -490,109 +506,83 @@ class TestListTableDescriptors:
     def test_indexdefinition_parsing(self) -> None:
         ti_full = TableIndexDefinition.coerce(
             INDEX_DEFINITION_DICT_FULL,
-            columns={},
         )
         assert INDEX_DEFINITION_DICT_FULL == ti_full.as_dict()
         assert ti_full == INDEX_DEFINITION_FULL
 
         ti_partial = TableIndexDefinition.coerce(
             INDEX_DEFINITION_DICT_PARTIAL,
-            columns={},
         )
         assert INDEX_DEFINITION_DICT_PARTIAL == ti_partial.as_dict()
 
         ti_minimal = TableIndexDefinition.coerce(
             INDEX_DEFINITION_DICT_MINIMAL,
-            columns={},
         )
         assert INDEX_DEFINITION_DICT_MINIMAL == ti_minimal.as_dict()
 
         ti_coerceable_minimal = TableIndexDefinition.coerce(
             INDEX_DEFINITION_DICT_COERCEABLE_MINIMAL,
-            columns={},
         )
         assert INDEX_DEFINITION_DICT_MINIMAL == ti_coerceable_minimal.as_dict()
 
     @pytest.mark.describe("test of parsing of map index definitions")
     def test_map_indexdefinition_parsing(self) -> None:
         assert TableIndexDefinition.coerce(
-            {"column": "the_text"}, columns=COLLECTIONTABLE_COLUMNS
+            {"column": "the_text"}
         ) == TableIndexDefinition(column="the_text", options=TableIndexOptions())
+
         assert TableIndexDefinition.coerce(
-            {"column": "missing_col"}, columns=COLLECTIONTABLE_COLUMNS
-        ) == TableIndexDefinition(column="missing_col", options=TableIndexOptions())
-        assert TableIndexDefinition.coerce(
-            {"column": "the_map"}, columns=COLLECTIONTABLE_COLUMNS
-        ) == TableIndexDefinition(
-            column={"the_map": "$entries"}, options=TableIndexOptions()
-        )
-        assert TableIndexDefinition.coerce(
-            {"column": {"the_map": "$entries"}}, columns=COLLECTIONTABLE_COLUMNS
-        ) == TableIndexDefinition(
-            column={"the_map": "$entries"}, options=TableIndexOptions()
-        )
-        assert TableIndexDefinition.coerce(
-            {"column": {"the_map": "$keys"}}, columns=COLLECTIONTABLE_COLUMNS
+            {"column": {"the_map": "$keys"}}
         ) == TableIndexDefinition(
             column={"the_map": "$keys"}, options=TableIndexOptions()
         )
+
         assert TableIndexDefinition.coerce(
-            {"column": {"the_map": "$values"}}, columns=COLLECTIONTABLE_COLUMNS
+            {"column": {"the_map": "$values"}}
         ) == TableIndexDefinition(
             column={"the_map": "$values"}, options=TableIndexOptions()
-        )
-        assert TableIndexDefinition.coerce(
-            {"column": "the_list"}, columns=COLLECTIONTABLE_COLUMNS
-        ) == TableIndexDefinition(
-            column={"the_list": "$values"}, options=TableIndexOptions()
-        )
-        assert TableIndexDefinition.coerce(
-            {"column": {"the_list": "$values"}}, columns=COLLECTIONTABLE_COLUMNS
-        ) == TableIndexDefinition(
-            column={"the_list": "$values"}, options=TableIndexOptions()
-        )
-        assert TableIndexDefinition.coerce(
-            {"column": "the_set"}, columns=COLLECTIONTABLE_COLUMNS
-        ) == TableIndexDefinition(
-            column={"the_set": "$values"}, options=TableIndexOptions()
-        )
-        assert TableIndexDefinition.coerce(
-            {"column": {"the_set": "$values"}}, columns=COLLECTIONTABLE_COLUMNS
-        ) == TableIndexDefinition(
-            column={"the_set": "$values"}, options=TableIndexOptions()
         )
 
     @pytest.mark.describe("test of parsing of vector index definitions")
     def test_vectorindexdefinition_parsing(self) -> None:
         tvi_full = TableVectorIndexDefinition.coerce(
             VECTOR_INDEX_DEFINITION_DICT_FULL,
-            columns={},
         )
         assert VECTOR_INDEX_DEFINITION_DICT_FULL == tvi_full.as_dict()
         assert tvi_full == VECTOR_INDEX_DEFINITION_FULL
 
         tvi_partial = TableVectorIndexDefinition.coerce(
             VECTOR_INDEX_DEFINITION_DICT_PARTIAL,
-            columns={},
         )
         assert VECTOR_INDEX_DEFINITION_DICT_PARTIAL == tvi_partial.as_dict()
         tvi_minimal = TableVectorIndexDefinition.coerce(
             VECTOR_INDEX_DEFINITION_DICT_MINIMAL,
-            columns={},
         )
         assert VECTOR_INDEX_DEFINITION_DICT_MINIMAL == tvi_minimal.as_dict()
 
         tvi_coerceable_minimal = TableVectorIndexDefinition.coerce(
             VECTOR_INDEX_DEFINITION_DICT_COERCEABLE_MINIMAL,
-            columns={},
         )
         assert VECTOR_INDEX_DEFINITION_DICT_MINIMAL == tvi_coerceable_minimal.as_dict()
+
+    @pytest.mark.describe("test of parsing of text index definitions")
+    def test_textindexdefinition_parsing(self) -> None:
+        tti_short = TableTextIndexDefinition.coerce(
+            TEXT_INDEX_DEFINITION_SHORT_DICT,
+        )
+        assert TEXT_INDEX_DEFINITION_SHORT_DICT == tti_short.as_dict()
+        assert tti_short == TEXT_INDEX_DEFINITION_SHORT
+
+        tti_long = TableTextIndexDefinition.coerce(
+            TEXT_INDEX_DEFINITION_LONG_DICT,
+        )
+        assert TEXT_INDEX_DEFINITION_LONG_DICT == tti_long.as_dict()
+        assert tti_long == TEXT_INDEX_DEFINITION_LONG
 
     @pytest.mark.describe("test of parsing of unsupported index definitions")
     def test_unsupportedindexdefinition_parsing(self) -> None:
         tui_full = TableUnsupportedIndexDefinition.coerce(
             UNSUPPORTED_INDEX_DEFINITION_DICT,
-            columns={},
         )
         assert UNSUPPORTED_INDEX_DEFINITION_DICT == tui_full.as_dict()
         assert tui_full == UNSUPPORTED_INDEX_DEFINITION
