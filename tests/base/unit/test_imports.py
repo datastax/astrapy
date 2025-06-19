@@ -165,6 +165,7 @@ def test_imports() -> None:
         CollectionVectorOptions,
         ColumnType,
         CreateTableDefinition,
+        CreateTypeDefinition,
         EmbeddingProvider,
         EmbeddingProviderAuthentication,
         EmbeddingProviderModel,

@@ -45,6 +45,7 @@ from astrapy.info import (
     CollectionDefinition,
     CollectionDescriptor,
     CreateTableDefinition,
+    CreateTypeDefinition,
     ListTableDescriptor,
 )
 from astrapy.settings.defaults import (
@@ -1477,8 +1478,8 @@ class Database:
             >>> database.drop_table("fighters")
             >>> database.list_table_names()
             ['games']
-            >>> # not erroring because of if_not_exists:
-            >>> database.drop_table("fighters", if_not_exists=True)
+            >>> # not erroring because of if_exists:
+            >>> database.drop_table("fighters", if_exists=True)
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
@@ -1650,6 +1651,166 @@ class Database:
         else:
             logger.info("finished listTables")
             return lt_response["status"]["tables"]  # type: ignore[no-any-return]
+
+    def create_type(
+        self,
+        name: str,
+        *,
+        definition: CreateTypeDefinition | dict[str, Any],
+        keyspace: str | None = None,
+        if_not_exists: bool | None = None,
+        table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> None:
+        """
+        Creates a user-defined type (UDT) on the database.
+
+        A user-defined type is scoped to a keyspace: unless otherwise specified,
+        the UDT creation targets the database's working keyspace.
+
+        Args:
+            name: the name of the type to create. This will be subsequently used
+                e.g. for defining UDT-valued columns when creating a table.
+            definition: a complete type definition. This can be an
+                instance of `CreateTypeDefinition` or an equivalent (nested) dictionary,
+                in which case it will be parsed into a `CreateTypeDefinition`.
+                See the `astrapy.info.CreateTypeDefinition` class for more details.
+            keyspace: the keyspace where the type is to be created.
+                If not specified, the general setting for this database is used.
+            if_not_exists: if set to True, the command will succeed even if a type
+                with the specified name already exists (in which case no actual
+                creation takes place on the database). Defaults to False,
+                i.e. an error is raised by the API in case of type-name collision.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
+
+        Example:
+            >>> from astrapy.info import CreateTypeDefinition
+            >>> type_definition = CreateTypeDefinition.coerce(
+            ...     {"fields": {"genus": "text", "species": "text"}}
+            ... )
+            >>> database.create_type("sci_name", definition=type_definition)
+        """
+        cty_options: dict[str, bool]
+        if if_not_exists is not None:
+            cty_options = {"ifNotExists": if_not_exists}
+        else:
+            cty_options = {}
+        cty_definition: dict[str, Any] = CreateTypeDefinition.coerce(
+            definition
+        ).as_dict()
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+        driver_commander = self._get_driver_commander(keyspace=keyspace)
+        cty_payload = {
+            "createType": {
+                k: v
+                for k, v in {
+                    "name": name,
+                    "definition": cty_definition,
+                    "options": cty_options,
+                }.items()
+                if v is not None
+                if v != {}
+            }
+        }
+        logger.info(f"createType('{name}')")
+        cty_response = driver_commander.request(
+            payload=cty_payload,
+            timeout_context=_TimeoutContext(
+                request_ms=_table_admin_timeout_ms, label=_ta_label
+            ),
+        )
+        if cty_response.get("status") != {"ok": 1}:
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from createType API command.",
+                raw_response=cty_response,
+            )
+        logger.info(f"finished createType('{name}')")
+
+    def drop_type(
+        self,
+        name: str,
+        *,
+        keyspace: str | None = None,
+        if_exists: bool | None = None,
+        table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> None:
+        """
+        Drop a user-defined type (UDT) from the database
+
+        User-defined types are scoped to a keyspace: the drop operation always
+        targets a specific keyspace, which if not explicitly provided is the
+        database's working keyspace.
+
+        Args:
+            name: the name of the UDT to drop.
+            keyspace: the keyspace where the type resides. If not specified,
+                the database working keyspace is assumed.
+            if_exists: if passed as True, trying to drop a non-existing type
+                will not error, just silently do nothing instead. If not provided,
+                the API default behaviour will hold.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
+
+        Example:
+            >>> database.drop_type("sciname")
+            >>> # not erroring because of if_exists:
+            >>> database.drop_type("sciname", if_exists=True)
+        """
+
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+        _keyspace = keyspace or self.keyspace
+        dty_options: dict[str, bool]
+        if if_exists is not None:
+            dty_options = {"ifExists": if_exists}
+        else:
+            dty_options = {}
+        driver_commander = self._get_driver_commander(keyspace=_keyspace)
+        dty_payload = {
+            "dropType": {
+                k: v
+                for k, v in {
+                    "name": name,
+                    "options": dty_options,
+                }.items()
+                if v is not None
+                if v != {}
+            }
+        }
+        logger.info(f"dropType('{name}')")
+        dty_response = driver_commander.request(
+            payload=dty_payload,
+            timeout_context=_TimeoutContext(
+                request_ms=_table_admin_timeout_ms, label=_ta_label
+            ),
+        )
+        if dty_response.get("status") != {"ok": 1}:
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from dropType API command.",
+                raw_response=dty_response,
+            )
+        logger.info(f"finished dropType('{name}')")
 
     def command(
         self,
@@ -3268,8 +3429,8 @@ class AsyncDatabase:
             >>> asyncio.run(async_database.drop_table("fighters"))
             >>> asyncio.run(async_database.list_table_names())
             ['games']
-            >>> # not erroring because of if_not_exists:
-            >>> asyncio.run(async_database.drop_table("fighters", if_not_exists=True))
+            >>> # not erroring because of if_exists:
+            >>> asyncio.run(async_database.drop_table("fighters", if_exists=True))
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(

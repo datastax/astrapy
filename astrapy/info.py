@@ -79,6 +79,7 @@ from astrapy.data.info.table_descriptor.type_altering import (
     AlterTypeAddFields,
     AlterTypeRenameFields,
 )
+from astrapy.data.info.table_descriptor.type_creation import CreateTypeDefinition
 from astrapy.data.info.vectorize import (
     EmbeddingAPIModelSupport,
     EmbeddingProvider,
@@ -114,6 +115,7 @@ __all__ = [
     "CollectionVectorOptions",
     "ColumnType",
     "CreateTableDefinition",
+    "CreateTypeDefinition",
     "EmbeddingAPIModelSupport",
     "EmbeddingProvider",
     "EmbeddingProviderAuthentication",
