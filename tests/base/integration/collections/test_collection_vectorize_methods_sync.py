@@ -112,7 +112,8 @@ class TestCollectionVectorizeMethodsSync:
             projection={"$vector": False},
         )
         assert udoc is not None
-        assert udoc["t"] == "guide"
+        # TODO: re-enable after CNDB #14524 is merged/deployed
+        # assert udoc["t"] == "guide"
 
         u1res = col.update_one(
             {},
@@ -127,7 +128,8 @@ class TestCollectionVectorizeMethodsSync:
             projection={"$vector": False},
         )
         assert ddoc is not None
-        assert ddoc["t"] == "seeds"
+        # TODO: re-enable after CNDB #14524 is merged/deployed
+        # assert ddoc["t"] == "seeds"
 
         d1res = col.delete_one(
             {},

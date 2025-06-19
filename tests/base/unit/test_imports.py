@@ -189,6 +189,8 @@ def test_imports() -> None:
         TableKeyValuedColumnTypeDescriptor,
         TablePrimaryKeyDescriptor,
         TableScalarColumnTypeDescriptor,
+        TableTextIndexDefinition,
+        TableTextIndexOptions,
         TableUnsupportedColumnTypeDescriptor,
         TableUnsupportedIndexDefinition,
         TableValuedColumnType,

@@ -117,7 +117,8 @@ class TestCollectionVectorizeMethodsAsync:
             projection={"$vector": False},
         )
         assert udoc is not None
-        assert udoc["t"] == "guide"
+        # TODO: re-enable after CNDB #14524 is merged/deployed
+        # assert udoc["t"] == "guide"
 
         u1res = await acol.update_one(
             {},
@@ -132,7 +133,8 @@ class TestCollectionVectorizeMethodsAsync:
             projection={"$vector": False},
         )
         assert ddoc is not None
-        assert ddoc["t"] == "seeds"
+        # TODO: re-enable after CNDB #14524 is merged/deployed
+        # assert ddoc["t"] == "seeds"
 
         d1res = await acol.delete_one(
             {},
