@@ -36,8 +36,8 @@ STDLIB_OPTIONS = APIOptions(
 
 
 @pytest.mark.skipif(
-    "ASTRAPY_TEST_MAP2TUPLES" not in os.environ,
-    reason="Disabled except on bleeding-edge main so far",
+    "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
+    reason="maps-as-tuples require 'latest main' testing for now.",
 )
 class TestTableMapsAsTuplesSync:
     @pytest.mark.describe("test of table maps-as-tuples, insert one and find one, sync")

@@ -18,6 +18,7 @@ allow sending `"$vector": None` when inserting into collections
 support for modelSupport in findRerankingProviders
 CollectionDefinition fluent interface: set_lexical and set_rerank accept also just 'enabled'
 find_and_rerank scores' type enlarged to: `float|int|null`
+maintenance: subsumed the specific testing opt-in env. var 'ASTRAPY_TEST_MAP2TUPLES=y' into the catch-all 'cutting-edge main' `ASTRAPY_TEST_LATEST_MAIN=y`
 maintenance: switched to uv (from poetry)
 maintenance: promoted findAndRerank testing to the 'regular' IT (adjusted readme and env templates accordingly)
 maintenance: pin h11 to 0.16.0 or higher (after a vulnerability report)

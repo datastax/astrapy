@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -574,6 +575,10 @@ class TestTableLifecycle:
         finally:
             await atable.drop()
 
+    @pytest.mark.skipif(
+        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
+        reason="Text indexes testable only on latest main for now",
+    )
     @pytest.mark.describe("test of text indexes, async")
     async def test_table_textindexes_async(
         self,
