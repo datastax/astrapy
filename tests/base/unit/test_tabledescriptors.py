@@ -19,12 +19,15 @@ from typing import Any
 import pytest
 
 from astrapy.data.info.table_descriptor.table_altering import AlterTableOperation
+from astrapy.data.info.table_descriptor.type_altering import AlterTypeOperation
 from astrapy.data.utils.table_types import ColumnType
 from astrapy.info import (
     AlterTableAddColumns,
     AlterTableAddVectorize,
     AlterTableDropColumns,
     AlterTableDropVectorize,
+    AlterTypeAddFields,
+    AlterTypeRenameFields,
     CreateTableDefinition,
     ListTableDefinition,
     ListTableDescriptor,
@@ -719,3 +722,27 @@ class TestListTableDescriptors:
 
         # Test as_dict returns the original dict
         assert operation_from_dict.as_dict() == test_dict
+
+    @pytest.mark.describe("test of parsing AlterTypeOperation classes")
+    def test_altertypeoperation_parsing(self) -> None:
+        addf_o = AlterTypeOperation.from_full_dict(
+            {"add": {"fields": {"p_text": "text", "p_int": {"type": "int"}}}},
+        )
+        addf = AlterTypeAddFields(
+            fields={
+                "p_text": TableScalarColumnTypeDescriptor(column_type=ColumnType.TEXT),
+                "p_int": TableScalarColumnTypeDescriptor(column_type=ColumnType.INT),
+            }
+        )
+        assert addf_o == addf
+
+        renf_o = AlterTypeOperation.from_full_dict(
+            {"rename": {"fields": {"p_text": "new_p_text", "p_int": "new_p_int"}}},
+        )
+        renf = AlterTypeRenameFields(
+            fields={
+                "p_text": "new_p_text",
+                "p_int": "new_p_int",
+            }
+        )
+        assert renf_o == renf

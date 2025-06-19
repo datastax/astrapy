@@ -152,6 +152,8 @@ def test_imports() -> None:
         AlterTableAddVectorize,
         AlterTableDropColumns,
         AlterTableDropVectorize,
+        AlterTypeAddFields,
+        AlterTypeRenameFields,
         AstraDBAdminDatabaseInfo,
         AstraDBDatabaseInfo,
         CollectionDefaultIDOptions,

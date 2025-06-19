@@ -73,6 +73,10 @@ from astrapy.data.info.table_descriptor.table_listing import (
     ListTableDescriptor,
     TableInfo,
 )
+from astrapy.data.info.table_descriptor.type_altering import (
+    AlterTypeAddFields,
+    AlterTypeRenameFields,
+)
 from astrapy.data.info.vectorize import (
     EmbeddingAPIModelSupport,
     EmbeddingProvider,
@@ -94,6 +98,8 @@ __all__ = [
     "AlterTableAddVectorize",
     "AlterTableDropColumns",
     "AlterTableDropVectorize",
+    "AlterTypeAddFields",
+    "AlterTypeRenameFields",
     "AstraDBAdminDatabaseInfo",
     "AstraDBAvailableRegionInfo",
     "AstraDBDatabaseInfo",
