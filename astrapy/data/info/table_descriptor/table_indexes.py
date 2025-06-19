@@ -19,11 +19,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
 
-from astrapy.data.info.table_descriptor.table_columns import TableColumnTypeDescriptor
-from astrapy.data.utils.table_types import (
-    TableKeyValuedColumnType,
-    TableValuedColumnType,
-)
 from astrapy.utils.parsing import _warn_residual_keys
 from astrapy.utils.str_enum import StrEnum
 from astrapy.utils.unset import _UNSET, UnsetType
@@ -40,26 +35,6 @@ class TableIndexType(StrEnum):
     TEXT = "text"
     UNKNOWN = "UNKNOWN"
     VECTOR = "vector"
-
-
-def _serialize_index_column_spec(
-    column_spec: str | dict[str, str],
-) -> str | dict[str, str]:
-    """Ensure to re-cast str / dict index 'column' specification in a payload form.
-
-    This amounts to leaving anything unchanged, except: {"col": "$entries"} ==> "col".
-    """
-
-    if isinstance(column_spec, str):
-        return column_spec
-    if len(column_spec) != 1:
-        msg = f"Unrecognized column_spec for table index: {column_spec}"
-        raise ValueError(msg)
-    key, value = next(iter(column_spec.items()))
-    if value == "$entries":
-        return key
-    else:
-        return column_spec
 
 
 @dataclass
@@ -155,7 +130,7 @@ class TableVectorIndexOptions:
     that enables vector (ANN) search on a column.
 
     Both when creating indexes and retrieving index metadata from the API, instances
-    of TableIndexOptions are used to express the corresponding index settings.
+    of TableVectorIndexOptions are used to express the corresponding index settings.
 
     Attributes:
         metric: the similarity metric used in the index. It must be one of the strings
@@ -199,7 +174,7 @@ class TableVectorIndexOptions:
     @classmethod
     def _from_dict(cls, raw_dict: dict[str, Any]) -> TableVectorIndexOptions:
         """
-        Create an instance of TableIndexOptions from a dictionary
+        Create an instance of TableVectorIndexOptions from a dictionary
         such as one from the Data API.
         """
 
@@ -229,6 +204,77 @@ class TableVectorIndexOptions:
 
 
 @dataclass
+class TableTextIndexOptions:
+    """
+    An object describing the options for a table text index, which is the index
+    that enables lexicographical matching on a text column.
+
+    Both when creating indexes and retrieving index metadata from the API, instances
+    of TableTextIndexOptions are used to express the corresponding index settings.
+
+    Attributes:
+        analyzer: A string describing a built-in analyzer, or a dictionary
+            describing an analyzer configuration in full.
+    """
+
+    analyzer: str | dict[str, Any] | UnsetType = _UNSET
+
+    def __repr__(self) -> str:
+        if isinstance(self.analyzer, UnsetType):
+            return f"{self.__class__.__name__}()"
+        else:
+            analyzer_desc = (
+                self.analyzer
+                if isinstance(self.analyzer, str)
+                else f"{str(self.analyzer)[:25]}..."
+            )
+            return f'{self.__class__.__name__}(analyzer_desc="{analyzer_desc}")'
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            k: v
+            for k, v in {
+                "analyzer": None
+                if isinstance(self.analyzer, UnsetType)
+                else self.analyzer,
+            }.items()
+            if v is not None
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableTextIndexOptions:
+        """
+        Create an instance of TableTextIndexOptions from a dictionary
+        such as one from the Data API.
+        """
+
+        _warn_residual_keys(cls, raw_dict, {"analyzer"})
+        return TableTextIndexOptions(
+            analyzer=raw_dict["analyzer"]
+            if raw_dict.get("analyzer") is not None
+            else _UNSET,
+        )
+
+    @classmethod
+    def coerce(
+        cls, raw_input: TableTextIndexOptions | dict[str, Any] | None
+    ) -> TableTextIndexOptions:
+        """
+        Normalize the input, whether an object already or a plain dictionary
+        of the right structure, into a TableTextIndexOptions.
+        """
+
+        if isinstance(raw_input, TableTextIndexOptions):
+            return raw_input
+        elif raw_input is None:
+            return cls(analyzer=_UNSET)
+        else:
+            return cls._from_dict(raw_input)
+
+
+@dataclass
 class TableBaseIndexDefinition(ABC):
     """
     An object describing an index definition, including the name of the indexed column
@@ -251,8 +297,6 @@ class TableBaseIndexDefinition(ABC):
     def _from_dict(
         cls,
         raw_input: dict[str, Any],
-        *,
-        columns: dict[str, TableColumnTypeDescriptor],
     ) -> TableBaseIndexDefinition:
         """
         Create an instance of TableBaseIndexDefinition from a dictionary
@@ -262,16 +306,16 @@ class TableBaseIndexDefinition(ABC):
 
         if "options" not in raw_input:
             if raw_input["column"] == "UNKNOWN" and "apiSupport" in raw_input:
-                return TableUnsupportedIndexDefinition.coerce(
-                    raw_input, columns=columns
-                )
+                return TableUnsupportedIndexDefinition.coerce(raw_input)
             else:
-                return TableIndexDefinition.coerce(raw_input, columns=columns)
+                return TableIndexDefinition.coerce(raw_input)
         else:
             if "metric" in raw_input["options"]:
-                return TableVectorIndexDefinition.coerce(raw_input, columns=columns)
+                return TableVectorIndexDefinition.coerce(raw_input)
+            elif "analyzer" in raw_input["options"]:
+                return TableTextIndexDefinition.coerce(raw_input)
             else:
-                return TableIndexDefinition.coerce(raw_input, columns=columns)
+                return TableIndexDefinition.coerce(raw_input)
 
 
 @dataclass
@@ -308,7 +352,7 @@ class TableIndexDefinition(TableBaseIndexDefinition):
         return {
             k: v
             for k, v in {
-                "column": _serialize_index_column_spec(self.column),
+                "column": self.column,
                 "options": self.options.as_dict(),
             }.items()
             if v
@@ -318,32 +362,15 @@ class TableIndexDefinition(TableBaseIndexDefinition):
     def _from_dict(
         cls,
         raw_dict: dict[str, Any],
-        *,
-        columns: dict[str, TableColumnTypeDescriptor],
     ) -> TableIndexDefinition:
         """
         Create an instance of TableIndexDefinition from a dictionary
         such as one from the Data API.
         """
 
-        # Handling 'col_name' becoming either 'col_name' / {'col_name': '$entries'}:
-
-        col_spec = raw_dict["column"]
-        recast_column: str | dict[str, str]
-        if isinstance(col_spec, str) and col_spec in columns:
-            column_type = columns[col_spec].column_type
-            if isinstance(column_type, TableKeyValuedColumnType):
-                recast_column = {col_spec: "$entries"}
-            elif isinstance(column_type, TableValuedColumnType):
-                recast_column = {col_spec: "$values"}
-            else:
-                recast_column = col_spec
-        else:
-            recast_column = col_spec
-
         _warn_residual_keys(cls, raw_dict, {"column", "options"})
         return TableIndexDefinition(
-            column=recast_column,
+            column=raw_dict["column"],
             options=TableIndexOptions.coerce(raw_dict.get("options") or {}),
         )
 
@@ -351,8 +378,6 @@ class TableIndexDefinition(TableBaseIndexDefinition):
     def coerce(
         cls,
         raw_input: TableIndexDefinition | dict[str, Any],
-        *,
-        columns: dict[str, TableColumnTypeDescriptor],
     ) -> TableIndexDefinition:
         """
         Normalize the input, whether an object already or a plain dictionary
@@ -363,7 +388,7 @@ class TableIndexDefinition(TableBaseIndexDefinition):
             return raw_input
         else:
             _filled_raw_input = {**{"options": {}}, **raw_input}
-            return cls._from_dict(_filled_raw_input, columns=columns)
+            return cls._from_dict(_filled_raw_input)
 
 
 @dataclass
@@ -408,11 +433,9 @@ class TableVectorIndexDefinition(TableBaseIndexDefinition):
     def _from_dict(
         cls,
         raw_dict: dict[str, Any],
-        *,
-        columns: dict[str, TableColumnTypeDescriptor],
     ) -> TableVectorIndexDefinition:
         """
-        Create an instance of TableIndexDefinition from a dictionary
+        Create an instance of TableVectorIndexDefinition from a dictionary
         such as one from the Data API.
         """
 
@@ -426,8 +449,6 @@ class TableVectorIndexDefinition(TableBaseIndexDefinition):
     def coerce(
         cls,
         raw_input: TableVectorIndexDefinition | dict[str, Any],
-        *,
-        columns: dict[str, TableColumnTypeDescriptor],
     ) -> TableVectorIndexDefinition:
         """
         Normalize the input, whether an object already or a plain dictionary
@@ -438,7 +459,78 @@ class TableVectorIndexDefinition(TableBaseIndexDefinition):
             return raw_input
         else:
             _filled_raw_input = {**{"options": {}}, **raw_input}
-            return cls._from_dict(_filled_raw_input, columns=columns)
+            return cls._from_dict(_filled_raw_input)
+
+
+@dataclass
+class TableTextIndexDefinition(TableBaseIndexDefinition):
+    """
+    An object describing a text index definition,
+    including the name of the indexed column and the index options.
+
+    Attributes:
+        column: the name of the indexed column.
+        options: a `TableTextIndexOptions` detailing the index configuration.
+    """
+
+    column: str
+    options: TableTextIndexOptions
+
+    def __init__(
+        self,
+        column: str,
+        options: TableTextIndexOptions,
+    ) -> None:
+        self._index_type = TableIndexType.TEXT
+        self.column = column
+        self.options = options
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.column}, options={self.options})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            k: v
+            for k, v in {
+                "column": self.column,
+                "options": self.options.as_dict(),
+            }.items()
+            if v
+        }
+
+    @classmethod
+    def _from_dict(
+        cls,
+        raw_dict: dict[str, Any],
+    ) -> TableTextIndexDefinition:
+        """
+        Create an instance of TableTextIndexDefinition from a dictionary
+        such as one from the Data API.
+        """
+
+        _warn_residual_keys(cls, raw_dict, {"column", "options"})
+        return TableTextIndexDefinition(
+            column=raw_dict["column"],
+            options=TableTextIndexOptions.coerce(raw_dict.get("options") or {}),
+        )
+
+    @classmethod
+    def coerce(
+        cls,
+        raw_input: TableTextIndexDefinition | dict[str, Any],
+    ) -> TableTextIndexDefinition:
+        """
+        Normalize the input, whether an object already or a plain dictionary
+        of the right structure, into a TableVectorIndexDefinition.
+        """
+
+        if isinstance(raw_input, TableTextIndexDefinition):
+            return raw_input
+        else:
+            _filled_raw_input = {**{"options": {}}, **raw_input}
+            return cls._from_dict(_filled_raw_input)
 
 
 @dataclass
@@ -540,8 +632,6 @@ class TableUnsupportedIndexDefinition(TableBaseIndexDefinition):
     def _from_dict(
         cls,
         raw_dict: dict[str, Any],
-        *,
-        columns: dict[str, TableColumnTypeDescriptor],
     ) -> TableUnsupportedIndexDefinition:
         """
         Create an instance of TableIndexDefinition from a dictionary
@@ -560,8 +650,6 @@ class TableUnsupportedIndexDefinition(TableBaseIndexDefinition):
     def coerce(
         cls,
         raw_input: TableUnsupportedIndexDefinition | dict[str, Any],
-        *,
-        columns: dict[str, TableColumnTypeDescriptor],
     ) -> TableUnsupportedIndexDefinition:
         """
         Normalize the input, whether an object already or a plain dictionary
@@ -571,7 +659,7 @@ class TableUnsupportedIndexDefinition(TableBaseIndexDefinition):
         if isinstance(raw_input, TableUnsupportedIndexDefinition):
             return raw_input
         else:
-            return cls._from_dict(raw_input, columns=columns)
+            return cls._from_dict(raw_input)
 
 
 @dataclass
@@ -632,9 +720,7 @@ class TableIndexDescriptor:
         }
 
     @classmethod
-    def _from_dict(
-        cls, raw_dict: dict[str, Any], *, columns: dict[str, TableColumnTypeDescriptor]
-    ) -> TableIndexDescriptor:
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableIndexDescriptor:
         """
         Create an instance of TableIndexDescriptor from a dictionary
         such as one from the Data API.
@@ -648,18 +734,13 @@ class TableIndexDescriptor:
             idx_type = raw_dict["indexType"]
             idx_def = raw_dict["definition"]
             if idx_type == TableIndexType.REGULAR.value:
-                index_definition = TableIndexDefinition._from_dict(
-                    idx_def,
-                    columns=columns,
-                )
+                index_definition = TableIndexDefinition._from_dict(idx_def)
             elif idx_type == TableIndexType.VECTOR.value:
-                index_definition = TableVectorIndexDefinition._from_dict(
-                    idx_def, columns=columns
-                )
+                index_definition = TableVectorIndexDefinition._from_dict(idx_def)
+            elif idx_type == TableIndexType.TEXT.value:
+                index_definition = TableTextIndexDefinition._from_dict(idx_def)
             elif idx_type == TableIndexType.UNKNOWN.value:
-                index_definition = TableUnsupportedIndexDefinition._from_dict(
-                    idx_def, columns=columns
-                )
+                index_definition = TableUnsupportedIndexDefinition._from_dict(idx_def)
             else:
                 # not throwing here. Log a warning and try the inspection path
                 logger.warning(
@@ -668,8 +749,7 @@ class TableIndexDescriptor:
                     f"index definition."
                 )
                 index_definition = TableBaseIndexDefinition._from_dict(
-                    raw_dict["definition"],
-                    columns=columns,
+                    raw_dict["definition"]
                 )
         else:
             # fall back to the 'inspection' path
@@ -679,8 +759,7 @@ class TableIndexDescriptor:
                 f"index definition."
             )
             index_definition = TableBaseIndexDefinition._from_dict(
-                raw_dict["definition"],
-                columns=columns,
+                raw_dict["definition"]
             )
 
         return TableIndexDescriptor(
@@ -690,8 +769,6 @@ class TableIndexDescriptor:
 
     def coerce(
         raw_input: TableIndexDescriptor | dict[str, Any],
-        *,
-        columns: dict[str, TableColumnTypeDescriptor],
     ) -> TableIndexDescriptor:
         """
         Normalize the input, whether an object already or a plain dictionary
@@ -701,4 +778,4 @@ class TableIndexDescriptor:
         if isinstance(raw_input, TableIndexDescriptor):
             return raw_input
         else:
-            return TableIndexDescriptor._from_dict(raw_input, columns=columns)
+            return TableIndexDescriptor._from_dict(raw_input)

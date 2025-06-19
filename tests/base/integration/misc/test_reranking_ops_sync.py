@@ -60,7 +60,7 @@ class TestRerankingOpsSync:
 
     @pytest.mark.skipif(
         "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
-        reason="No 'latest main' tests required.",
+        reason="'latest main' tests not requested.",
     )
     @pytest.mark.skipif(IS_ASTRA_DB, reason="Filtering models not yet on Astra DB")
     @pytest.mark.describe("test of find_reranking_providers filtering, sync")

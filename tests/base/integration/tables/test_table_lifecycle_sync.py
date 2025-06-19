@@ -32,6 +32,8 @@ from astrapy.info import (
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
+    TableTextIndexDefinition,
+    TableTextIndexOptions,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
     TableVectorIndexDefinition,
@@ -343,7 +345,7 @@ class TestTableLifecycle:
                 ),
             ),
         ]
-        assert sorted(table._list_indexes(), key=lambda id: id.name) == sorted(
+        assert sorted(table.list_indexes(), key=lambda id: id.name) == sorted(
             expected_index_list, key=lambda id: id.name
         )
 
@@ -407,10 +409,6 @@ class TestTableLifecycle:
         finally:
             table.drop()
 
-    @pytest.mark.skipif(
-        "ASTRAPY_TEST_LISTINDEXES" not in os.environ,
-        reason="list_indexes method not publicly available yet",
-    )
     @pytest.mark.describe("test of collection indexes, sync")
     def test_table_collectionindexes_sync(
         self,
@@ -437,10 +435,6 @@ class TestTableLifecycle:
                     value_type="int",
                 ),
                 "map_text_int_e": TableKeyValuedColumnTypeDescriptor(
-                    key_type="text",
-                    value_type="int",
-                ),
-                "map_text_int_e2": TableKeyValuedColumnTypeDescriptor(
                     key_type="text",
                     value_type="int",
                 ),
@@ -476,7 +470,6 @@ class TestTableLifecycle:
             idx_t_list_int_column = "list_int"
             idx_t_list_int_column2 = {"list_int2": "$values"}
             idx_t_map_text_int_e_column = "map_text_int_e"
-            idx_t_map_text_int_e_column2 = {"map_text_int_e2": "$entries"}
             idx_t_map_text_int_k_column = {"map_text_int_k": "$keys"}
             idx_t_map_text_int_v_column = {"map_text_int_v": "$values"}
 
@@ -486,12 +479,11 @@ class TestTableLifecycle:
             table.create_index("idx_t_list_int", idx_t_list_int_column)
             table.create_index("idx_t_list_int2", idx_t_list_int_column2)
             table.create_index("idx_t_map_text_int_e", idx_t_map_text_int_e_column)
-            table.create_index("idx_t_map_text_int_e2", idx_t_map_text_int_e_column2)
             table.create_index("idx_t_map_text_int_k", idx_t_map_text_int_k_column)
             table.create_index("idx_t_map_text_int_v", idx_t_map_text_int_v_column)
 
             listed_indexes = sorted(
-                table._list_indexes(),
+                table.list_indexes(),
                 key=lambda idx_desc: idx_desc.name,
             )
             expected_indexes = sorted(
@@ -539,15 +531,7 @@ class TestTableLifecycle:
                     TableIndexDescriptor(
                         name="idx_t_map_text_int_e",
                         definition=TableIndexDefinition(
-                            column={idx_t_map_text_int_e_column: "$entries"},
-                            options=TableIndexOptions(),
-                        ),
-                        index_type=TableIndexType.REGULAR,
-                    ),
-                    TableIndexDescriptor(
-                        name="idx_t_map_text_int_e2",
-                        definition=TableIndexDefinition(
-                            column=idx_t_map_text_int_e_column2,
+                            column=idx_t_map_text_int_e_column,
                             options=TableIndexOptions(),
                         ),
                         index_type=TableIndexType.REGULAR,
@@ -579,8 +563,93 @@ class TestTableLifecycle:
             table.database.drop_table_index("idx_t_list_int")
             table.database.drop_table_index("idx_t_list_int2")
             table.database.drop_table_index("idx_t_map_text_int_e")
-            table.database.drop_table_index("idx_t_map_text_int_e2")
             table.database.drop_table_index("idx_t_map_text_int_k")
             table.database.drop_table_index("idx_t_map_text_int_v")
+        finally:
+            table.drop()
+
+    @pytest.mark.skipif(
+        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
+        reason="Text indexes testable only on latest main for now",
+    )
+    @pytest.mark.describe("test of text indexes, sync")
+    def test_table_textindexes_sync(
+        self,
+        sync_database: Database,
+    ) -> None:
+        table_textidx_def = CreateTableDefinition(
+            columns={
+                "id": TableScalarColumnTypeDescriptor(column_type="text"),
+                "txt_d": TableScalarColumnTypeDescriptor(column_type="text"),
+                "txt_s": TableScalarColumnTypeDescriptor(column_type="text"),
+                "txt_l": TableScalarColumnTypeDescriptor(column_type="text"),
+            },
+            primary_key=TablePrimaryKeyDescriptor(
+                partition_by=["id"],
+                partition_sort={},
+            ),
+        )
+        table = sync_database.create_table(
+            "table_textindexes",
+            definition=table_textidx_def,
+        )
+
+        try:
+            # create, list and drop various analyzer text-column indexes
+            tx_id_opts_s = TableTextIndexOptions(analyzer="whitespace")
+            tx_id_opts_l = TableTextIndexOptions(
+                analyzer={
+                    "tokenizer": {"name": "standard", "args": {}},
+                    "filters": [
+                        {"name": "lowercase"},
+                        {"name": "stop"},
+                        {"name": "porterstem"},
+                        {"name": "asciifolding"},
+                    ],
+                    "charFilters": [],
+                },
+            )
+            table.create_text_index("idx_txt_d", "txt_d")
+            table.create_text_index("idx_txt_s", "txt_s", options=tx_id_opts_s)
+            table.create_text_index("idx_txt_l", "txt_l", options=tx_id_opts_l)
+
+            listed_indexes = sorted(
+                table.list_indexes(),
+                key=lambda idx_desc: idx_desc.name,
+            )
+            expected_indexes = sorted(
+                [
+                    TableIndexDescriptor(
+                        name="idx_txt_d",
+                        definition=TableTextIndexDefinition(
+                            column="txt_d",
+                            options=TableTextIndexOptions(analyzer="standard"),
+                        ),
+                        index_type=TableIndexType.TEXT,
+                    ),
+                    TableIndexDescriptor(
+                        name="idx_txt_s",
+                        definition=TableTextIndexDefinition(
+                            column="txt_s",
+                            options=tx_id_opts_s,
+                        ),
+                        index_type=TableIndexType.TEXT,
+                    ),
+                    TableIndexDescriptor(
+                        name="idx_txt_l",
+                        definition=TableTextIndexDefinition(
+                            column="txt_l",
+                            options=tx_id_opts_l,
+                        ),
+                        index_type=TableIndexType.TEXT,
+                    ),
+                ],
+                key=lambda idx_desc: idx_desc.name,
+            )
+            assert listed_indexes == expected_indexes
+
+            table.database.drop_table_index("idx_txt_d")
+            table.database.drop_table_index("idx_txt_s")
+            table.database.drop_table_index("idx_txt_l")
         finally:
             table.drop()

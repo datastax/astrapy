@@ -592,9 +592,8 @@ certain environment variables, otherwise the associated tests are excluded from 
 
 Prepend tests with a `ASTRAPY_TEST_LATEST_MAIN=y` for features found on `main` that are not released anywhere.
 
-#### Maps as tuples
-
-To enable the maps-as-tuples testing, prepend the test invocation with `ASTRAPY_TEST_MAP2TUPLES=y`.
+(This subsumes various heterogeneous cutting-edge tests: text indexes to maps-as-tuples, and so on according
+to the release/deploy status)
 
 ## Appendices
 

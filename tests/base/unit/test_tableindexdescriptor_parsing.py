@@ -210,7 +210,7 @@ class TestTableIndexDescriptionParsing:
         faulty_it_resp: dict[str, Any],
     ) -> None:
         descriptors = [
-            TableIndexDescriptor.coerce(response["status"]["indexes"][0], columns={})
+            TableIndexDescriptor.coerce(response["status"]["indexes"][0])
             for response in [
                 PROD_U_RESPONSE,
                 LOCAL_U_RESPONSE,
@@ -218,9 +218,7 @@ class TestTableIndexDescriptionParsing:
         ]
         with caplog.at_level(logging.WARNING):
             descriptors.append(
-                TableIndexDescriptor.coerce(
-                    LOCAL_U_RESPONSE_W["status"]["indexes"][0], columns={}
-                )
+                TableIndexDescriptor.coerce(LOCAL_U_RESPONSE_W["status"]["indexes"][0])
             )
 
         warnings = [rec for rec in caplog.records if rec.levelname == "WARNING"]
