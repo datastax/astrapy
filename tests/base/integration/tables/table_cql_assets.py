@@ -14,7 +14,15 @@
 
 from __future__ import annotations
 
+import re
+from typing import TYPE_CHECKING
+
 from astrapy.data_types import DataAPITimestamp
+from astrapy.info import CreateTypeDefinition
+
+if TYPE_CHECKING:
+    from cassandra.cluster import Session
+
 
 TABLE_NAME_COUNTER = "test_table_counter"
 CREATE_TABLE_COUNTER = (
@@ -104,3 +112,36 @@ EXPECTED_ROW_LOWSUPPORT = {
     "col_static_list": [1, 2, 3],
     "col_static_set_exotic": [{"$binary": "/w=="}],
 }
+
+
+def _extract_udt_definition(
+    session: Session, keyspace: str, udt_name: str
+) -> CreateTypeDefinition | None:
+    udt_names: list[str] = [
+        row.name
+        for row in session.execute("desc types;")
+        if row.keyspace_name == "default_keyspace"
+    ]
+    if udt_name not in udt_names:
+        return None
+    udt_create_stmt = session.execute(f"desc type {udt_name};").one().create_statement
+
+    full_type_name = f"{keyspace}.{udt_name}"
+    pattern = re.compile(
+        rf"(?i)\bCREATE\s+TYPE\s+{re.escape(full_type_name)}\s*\(\s*(.*?)\s*\);",
+        re.DOTALL,
+    )
+    match = pattern.search(udt_create_stmt)
+
+    fields: list[tuple[str, str]]
+    if match:
+        fields_str = match.group(1)
+        fields = [
+            tuple(map(str.strip, line.split(None, 1)))  # type: ignore[misc]
+            for line in re.split(r",\s*(?![^(]*\))", fields_str.strip())
+            if line.strip()
+        ]
+    else:
+        fields = []
+
+    return CreateTypeDefinition(fields=dict(fields))

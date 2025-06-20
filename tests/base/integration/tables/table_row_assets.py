@@ -29,6 +29,11 @@ from astrapy.data_types import (
     DataAPIVector,
 )
 from astrapy.ids import UUID
+from astrapy.info import (
+    AlterTypeAddFields,
+    AlterTypeRenameFields,
+    CreateTypeDefinition,
+)
 
 AR_ROW_PK_0 = {
     "p_ascii": "abc",
@@ -417,3 +422,25 @@ ALLMAPS_CUSTOMTYPES_ROW = {
         ]
     ),
 }
+
+
+UDT_NAME = "test_udt"
+UDT_DEF0 = CreateTypeDefinition(
+    fields={
+        "f_float0": "float",
+        "f_float1": "float",
+        "f_float2": "float",
+    }
+)
+UDT_ALTER_OPS = [
+    AlterTypeAddFields(fields={"f_text0": "text"}),
+    AlterTypeRenameFields(fields={"f_float0": "z_float0"}),
+]
+UDT_DEF1 = CreateTypeDefinition(
+    fields={
+        "z_float0": "float",
+        "f_float1": "float",
+        "f_float2": "float",
+        "f_text0": "text",
+    }
+)

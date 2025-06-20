@@ -15,82 +15,19 @@
 from __future__ import annotations
 
 import os
-import re
 from typing import TYPE_CHECKING
 
 import pytest
 
 from astrapy import Database
 from astrapy.exceptions import DataAPIResponseException
-from astrapy.info import (
-    AlterTypeAddFields,
-    AlterTypeRenameFields,
-    CreateTypeDefinition,
-)
 
 from ..conftest import CQL_AVAILABLE, DataAPICredentials
+from .table_cql_assets import _extract_udt_definition
+from .table_row_assets import UDT_ALTER_OPS, UDT_DEF0, UDT_DEF1, UDT_NAME
 
 if TYPE_CHECKING:
     from cassandra.cluster import Session
-
-try:
-    from cassandra.cluster import Session
-except ImportError:
-    pass
-
-UDT_NAME = "test_udt"
-UDT_DEF0 = CreateTypeDefinition(
-    fields={
-        "f_float0": "float",
-        "f_float1": "float",
-        "f_float2": "float",
-    }
-)
-UDT_ALTER_OPS = [
-    AlterTypeAddFields(fields={"f_text0": "text"}),
-    AlterTypeRenameFields(fields={"f_float0": "z_float0"}),
-]
-UDT_DEF1 = CreateTypeDefinition(
-    fields={
-        "z_float0": "float",
-        "f_float1": "float",
-        "f_float2": "float",
-        "f_text0": "text",
-    }
-)
-
-
-def _extract_udt_definition(
-    session: Session, keyspace: str, udt_name: str
-) -> CreateTypeDefinition | None:
-    udt_names: list[str] = [
-        row.name
-        for row in session.execute("desc types;")
-        if row.keyspace_name == "default_keyspace"
-    ]
-    if udt_name not in udt_names:
-        return None
-    udt_create_stmt = session.execute(f"desc type {udt_name};").one().create_statement
-
-    full_type_name = f"{keyspace}.{udt_name}"
-    pattern = re.compile(
-        rf"(?i)\bCREATE\s+TYPE\s+{re.escape(full_type_name)}\s*\(\s*(.*?)\s*\);",
-        re.DOTALL,
-    )
-    match = pattern.search(udt_create_stmt)
-
-    fields: list[tuple[str, str]]
-    if match:
-        fields_str = match.group(1)
-        fields = [
-            tuple(map(str.strip, line.split(None, 1)))  # type: ignore[misc]
-            for line in re.split(r",\s*(?![^(]*\))", fields_str.strip())
-            if line.strip()
-        ]
-    else:
-        fields = []
-
-    return CreateTypeDefinition(fields=dict(fields))
 
 
 @pytest.mark.skipif(
