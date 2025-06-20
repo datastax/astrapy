@@ -1833,14 +1833,7 @@ class Database:
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
 
-        grouped_ops: dict[str, list[AlterTypeOperation]] = {}
-        for op in operations:
-            grouped_ops[op._name] = grouped_ops.get(op._name, []) + [op]
-
-        stacked_op_map: dict[str, AlterTypeOperation] = {
-            op_name: op_list[0].stack(op_list)
-            for op_name, op_list in grouped_ops.items()
-        }
+        stacked_op_map = AlterTypeOperation.stack_by_name(operations)
         stacked_op_dict = {
             op_name: op.as_dict() for op_name, op in stacked_op_map.items()
         }
@@ -3922,14 +3915,7 @@ class AsyncDatabase:
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
 
-        grouped_ops: dict[str, list[AlterTypeOperation]] = {}
-        for op in operations:
-            grouped_ops[op._name] = grouped_ops.get(op._name, []) + [op]
-
-        stacked_op_map: dict[str, AlterTypeOperation] = {
-            op_name: op_list[0].stack(op_list)
-            for op_name, op_list in grouped_ops.items()
-        }
+        stacked_op_map = AlterTypeOperation.stack_by_name(operations)
         stacked_op_dict = {
             op_name: op.as_dict() for op_name, op in stacked_op_map.items()
         }

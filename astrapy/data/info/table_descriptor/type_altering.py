@@ -93,6 +93,20 @@ class AlterTypeOperation(ABC):
     @abstractmethod
     def stack(cls: type[AYO], operations: list[AYO]) -> AYO: ...
 
+    @classmethod
+    def stack_by_name(
+        cls, operations: list[AlterTypeOperation]
+    ) -> dict[str, AlterTypeOperation]:
+        grouped_ops: dict[str, list[AlterTypeOperation]] = {}
+        for op in operations:
+            grouped_ops[op._name] = grouped_ops.get(op._name, []) + [op]
+
+        stacked_op_map: dict[str, AlterTypeOperation] = {
+            op_name: op_list[0].stack(op_list)
+            for op_name, op_list in grouped_ops.items()
+        }
+        return stacked_op_map
+
 
 @dataclass
 class AlterTypeAddFields(AlterTypeOperation):

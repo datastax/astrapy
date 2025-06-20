@@ -861,3 +861,35 @@ class TestListTableDescriptors:
             CreateTypeDefinition.coerce(type_definition_objects)
             == type_definition_objects
         )
+
+    @pytest.mark.describe("test of AlterTypeOperation stack_by_name")
+    def test_altertypeoperation_stackbybname(self) -> None:
+        ops = [
+            AlterTypeAddFields(fields={"a0": "text", "a1": {"type": "int"}}),
+            AlterTypeRenameFields(fields={"b0": "rb0", "b1": "rb1"}),
+            AlterTypeAddFields(fields={"a1": "int", "a2": "float", "a3": "timestamp"}),
+            AlterTypeRenameFields(fields={"b1": "rz1", "b2": "rz2"}),
+            AlterTypeAddFields(fields={"a2": "ascii"}),
+        ]
+
+        expected_op_map = {
+            "add": AlterTypeAddFields(
+                fields={
+                    "a0": "text",
+                    "a1": "int",
+                    "a2": "ascii",
+                    "a3": "timestamp",
+                }
+            ),
+            "rename": AlterTypeRenameFields(
+                fields={
+                    "b0": "rb0",
+                    "b1": "rz1",
+                    "b2": "rz2",
+                }
+            ),
+        }
+
+        stacked_op_map = AlterTypeOperation.stack_by_name(ops)
+
+        assert stacked_op_map == expected_op_map
