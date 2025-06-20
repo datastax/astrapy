@@ -51,7 +51,7 @@ except ImportError:
     pass
 
 
-@pytest.mark.skipif(not CQL_AVAILABLE, reason="Not CQL session available")
+@pytest.mark.skipif(not CQL_AVAILABLE, reason="No CQL session available")
 class TestTableCQLDrivenDMLSync:
     @pytest.mark.describe(
         "test of reading from a CQL-driven table with a Counter, sync"
