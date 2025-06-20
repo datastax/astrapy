@@ -740,3 +740,50 @@ class TestListTableDescriptors:
         assert renf_o == renf
 
         assert AlterTypeRenameFields.coerce(renf.as_dict()) == renf
+
+    @pytest.mark.parametrize(
+        ["ops_to_stack", "expected_op", "op_class"],
+        [
+            (
+                [
+                    AlterTypeAddFields(fields={"f_text": "blob", "f_int": "int"}),
+                    AlterTypeAddFields(fields={"f_float": "blob"}),
+                    AlterTypeAddFields(fields={"f_text": "text", "f_float": "float"}),
+                ],
+                AlterTypeAddFields(
+                    fields={
+                        "f_text": "text",
+                        "f_int": "int",
+                        "f_float": "float",
+                    }
+                ),
+                AlterTypeAddFields,
+            ),
+            (
+                [
+                    AlterTypeRenameFields(fields={"f_text": "x", "f_int": "F_INT"}),
+                    AlterTypeRenameFields(fields={"f_float": "x"}),
+                    AlterTypeRenameFields(
+                        fields={"f_text": "F_TEXT", "f_float": "F_FLOAT"}
+                    ),
+                ],
+                AlterTypeRenameFields(
+                    fields={
+                        "f_text": "F_TEXT",
+                        "f_int": "F_INT",
+                        "f_float": "F_FLOAT",
+                    }
+                ),
+                AlterTypeRenameFields,
+            ),
+        ],
+        ids=["add", "rename"],
+    )
+    @pytest.mark.describe("test of AlterTypeOperation class stacking")
+    def test_altertypeoperation_stacking(
+        self,
+        ops_to_stack: list[AlterTypeOperation],
+        expected_op: AlterTypeOperation,
+        op_class: type[AlterTypeOperation],
+    ) -> None:
+        assert op_class.stack(ops_to_stack) == expected_op
