@@ -713,8 +713,8 @@ class TestListTableDescriptors:
         # Test as_dict returns the original dict
         assert operation_from_dict.as_dict() == test_dict
 
-    @pytest.mark.describe("test of parsing AlterTypeOperation classes")
-    def test_altertypeoperation_parsing(self) -> None:
+    @pytest.mark.describe("test of AlterTypeOperation classes")
+    def test_altertypeoperation_parsing_coerce_asdict(self) -> None:
         addf_o = AlterTypeOperation.from_full_dict(
             {"add": {"fields": {"p_text": "text", "p_int": {"type": "int"}}}},
         )
@@ -726,6 +726,8 @@ class TestListTableDescriptors:
         )
         assert addf_o == addf
 
+        assert AlterTypeAddFields.coerce(addf.as_dict()) == addf
+
         renf_o = AlterTypeOperation.from_full_dict(
             {"rename": {"fields": {"p_text": "new_p_text", "p_int": "new_p_int"}}},
         )
@@ -736,3 +738,5 @@ class TestListTableDescriptors:
             }
         )
         assert renf_o == renf
+
+        assert AlterTypeRenameFields.coerce(renf.as_dict()) == renf

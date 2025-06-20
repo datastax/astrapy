@@ -89,6 +89,10 @@ class AlterTypeOperation(ABC):
     @abstractmethod
     def coerce(cls: type[AYO], raw_input: AYO | dict[str, Any]) -> AYO: ...
 
+    @classmethod
+    @abstractmethod
+    def stack(cls: type[AYO], operations: list[AYO]) -> AYO: ...
+
 
 @dataclass
 class AlterTypeAddFields(AlterTypeOperation):
@@ -104,9 +108,16 @@ class AlterTypeAddFields(AlterTypeOperation):
 
     fields: dict[str, TableColumnTypeDescriptor]
 
-    def __init__(self, *, fields: dict[str, TableColumnTypeDescriptor]) -> None:
+    def __init__(
+        self,
+        *,
+        fields: dict[str, TableColumnTypeDescriptor | dict[str, Any] | str],
+    ) -> None:
         self._name = "add"
-        self.fields = fields
+        self.fields = {
+            fld_n: TableColumnTypeDescriptor.coerce(fld_v)
+            for fld_n, fld_v in fields.items()
+        }
 
     def __repr__(self) -> str:
         _fld_desc = f"fields=[{','.join(sorted(self.fields.keys()))}]"
@@ -114,8 +125,15 @@ class AlterTypeAddFields(AlterTypeOperation):
 
     def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
+        # TEMPORARY SHORTCUT. TODO replace with the part below once {type: xxx} accepted
+        # return {
+        #     "fields": {fld_n: fld_v.as_dict() for fld_n, fld_v in self.fields.items()}
+        # }
+        # THIS WON'T WORK FOR NON-SCALAR FIELDS:
         return {
-            "fields": {fld_n: fld_v.as_dict() for fld_n, fld_v in self.fields.items()}
+            "fields": {
+                fld_n: fld_v.column_type.value for fld_n, fld_v in self.fields.items()
+            }
         }
 
     @classmethod
@@ -126,12 +144,7 @@ class AlterTypeAddFields(AlterTypeOperation):
         """
 
         _warn_residual_keys(cls, raw_dict, {"fields"})
-        return AlterTypeAddFields(
-            fields={
-                col_n: TableColumnTypeDescriptor.coerce(col_v)
-                for col_n, col_v in raw_dict["fields"].items()
-            },
-        )
+        return AlterTypeAddFields(fields=raw_dict["fields"])
 
     @classmethod
     def coerce(
@@ -146,6 +159,13 @@ class AlterTypeAddFields(AlterTypeOperation):
             return raw_input
         else:
             return cls._from_dict(raw_input)
+
+    @classmethod
+    def stack(cls, operations: list[AlterTypeAddFields]) -> AlterTypeAddFields:
+        fields_dict: dict[str, TableColumnTypeDescriptor | dict[str, Any] | str] = {}
+        for ataf in operations:
+            fields_dict = {**fields_dict, **ataf.fields}
+        return AlterTypeAddFields(fields=fields_dict)
 
 
 @dataclass
@@ -201,3 +221,10 @@ class AlterTypeRenameFields(AlterTypeOperation):
             return raw_input
         else:
             return cls._from_dict(raw_input)
+
+    @classmethod
+    def stack(cls, operations: list[AlterTypeRenameFields]) -> AlterTypeRenameFields:
+        fields_dict: dict[str, str] = {}
+        for ataf in operations:
+            fields_dict = {**fields_dict, **ataf.fields}
+        return AlterTypeRenameFields(fields=fields_dict)

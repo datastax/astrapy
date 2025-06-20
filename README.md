@@ -122,7 +122,7 @@ for more on this topic.
 
 ### Hybrid search
 
-AstraPy supports the supports the "find and rerank" Data API command,
+AstraPy supports the "findAndRerank" Data API command,
 which performs a hybrid search by combining results from a lexical search
 and a vector-based search in a single operation.
 
@@ -137,8 +137,8 @@ for r_result in r_results:
     print(r_result.document, r_results.scores)
 ```
 
-The Data API must support the primitive (and one must not have
-disabled the feature at collection-creation time).
+This command will execute if the collection was created with the required settings
+(they are enabled by default).
 
 See the Data API reference, and the docstring for the `find_and_rerank` method,
 for more on this topic.

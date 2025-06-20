@@ -81,6 +81,16 @@ class CreateTypeDefinition:
 
     fields: dict[str, TableColumnTypeDescriptor]
 
+    def __init__(
+        self,
+        *,
+        fields: dict[str, TableColumnTypeDescriptor | dict[str, Any] | str],
+    ) -> None:
+        self.fields = {
+            fld_n: TableColumnTypeDescriptor.coerce(fld_v)
+            for fld_n, fld_v in fields.items()
+        }
+
     def __repr__(self) -> str:
         fld_desc = f"fields=[{','.join(sorted(self.fields.keys()))}]"
         return f"{self.__class__.__name__}({fld_desc})"
