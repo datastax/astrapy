@@ -29,6 +29,7 @@ from astrapy.info import (
     AlterTypeAddFields,
     AlterTypeRenameFields,
     CreateTableDefinition,
+    CreateTypeDefinition,
     ListTableDefinition,
     ListTableDescriptor,
     TableAPIIndexSupportDescriptor,
@@ -658,9 +659,6 @@ class TestListTableDescriptors:
         alter_table_add_cols = AlterTableAddColumns._from_dict(short_form_dict)
         assert alter_table_add_cols.as_dict() == normalized_dict
 
-    @pytest.mark.describe(
-        "test of coerce and as_dict for alter table operation classes"
-    )
     @pytest.mark.parametrize(
         ("operation_class", "test_dict"),
         [
@@ -697,6 +695,10 @@ class TestListTableDescriptors:
                 },
             ),
         ],
+        ids=["addcolumns", "addvectorize", "dropcolumns", "dropvectorize"],
+    )
+    @pytest.mark.describe(
+        "test of coerce and as_dict for alter table operation classes"
     )
     def test_altertableoperation_coerce_asdict(
         self,
@@ -715,14 +717,33 @@ class TestListTableDescriptors:
 
     @pytest.mark.describe("test of AlterTypeOperation classes")
     def test_altertypeoperation_parsing_coerce_asdict(self) -> None:
-        addf_o = AlterTypeOperation.from_full_dict(
-            {"add": {"fields": {"p_text": "text", "p_int": {"type": "int"}}}},
-        )
         addf = AlterTypeAddFields(
             fields={
                 "p_text": TableScalarColumnTypeDescriptor(column_type=ColumnType.TEXT),
                 "p_int": TableScalarColumnTypeDescriptor(column_type=ColumnType.INT),
             }
+        )
+
+        # constructor signatures
+        addf_constr_simple = AlterTypeAddFields(
+            fields={
+                "p_text": "text",
+                "p_int": "int",
+            }
+        )
+        addf_constr_dicts = AlterTypeAddFields(
+            fields={
+                "p_text": {"type": "text"},
+                "p_int": {"type": "int"},
+            }
+        )
+
+        assert addf == addf_constr_simple
+        assert addf == addf_constr_dicts
+
+        # other ways to construct
+        addf_o = AlterTypeOperation.from_full_dict(
+            {"add": {"fields": {"p_text": "text", "p_int": {"type": "int"}}}},
         )
         assert addf_o == addf
 
@@ -787,3 +808,56 @@ class TestListTableDescriptors:
         op_class: type[AlterTypeOperation],
     ) -> None:
         assert op_class.stack(ops_to_stack) == expected_op
+
+    @pytest.mark.describe("test of CreateTypeDefinition")
+    def test_createtypedefinition_parsing(self) -> None:
+        type_definition_objects = CreateTypeDefinition(
+            fields={
+                "tagline": TableScalarColumnTypeDescriptor(ColumnType.TEXT),
+                "score": TableScalarColumnTypeDescriptor(ColumnType.INT),
+                "weight": TableScalarColumnTypeDescriptor(ColumnType.FLOAT),
+            },
+        )
+
+        fields_dict_simple = {
+            "fields": {
+                "tagline": "text",
+                "score": "int",
+                "weight": "float",
+            },
+        }
+        type_definition_simple = CreateTypeDefinition.coerce(fields_dict_simple)
+
+        fields_dict_dicts = {
+            "fields": {
+                "tagline": {"type": "text"},
+                "score": {"type": "int"},
+                "weight": {"type": "float"},
+            },
+        }
+        type_definition_dicts = CreateTypeDefinition.coerce(fields_dict_dicts)
+
+        fields_dict_mixed = {
+            "fields": {
+                "tagline": TableScalarColumnTypeDescriptor(ColumnType.TEXT),
+                "score": "int",
+                "weight": {"type": "float"},
+            },
+        }
+        type_definition_mixed = CreateTypeDefinition.coerce(fields_dict_mixed)
+
+        assert type_definition_objects == type_definition_simple
+        assert type_definition_objects == type_definition_dicts
+        assert type_definition_objects == type_definition_mixed
+
+        # TODO: this expects the short-form for udt types to be the accepted syntax
+        assert type_definition_objects.as_dict() == fields_dict_simple
+
+        assert (
+            CreateTypeDefinition.coerce(type_definition_objects.as_dict())
+            == type_definition_objects
+        )
+        assert (
+            CreateTypeDefinition.coerce(type_definition_objects)
+            == type_definition_objects
+        )

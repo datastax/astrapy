@@ -40,15 +40,7 @@ class CreateTypeDefinition:
 
     Example:
             >>> from astrapy.info import CreateTypeDefinition
-            >>> from astrapy.info import (
-            ...     CreateTableDefinition,
-            ...     TablePrimaryKeyDescriptor,
-            ...     ColumnType,
-            ...     TableScalarColumnTypeDescriptor,
-            ...     TableValuedColumnType,
-            ...     TableValuedColumnTypeDescriptor,
-            ...     TableVectorColumnTypeDescriptor,
-            ... )
+            >>> from astrapy.info import ColumnType, TableScalarColumnTypeDescriptor
             >>>
             >>> type_definition_1 = CreateTypeDefinition(fields={
             ...     "tagline": TableScalarColumnTypeDescriptor(ColumnType.TEXT),
