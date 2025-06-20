@@ -106,7 +106,6 @@ class TestTableUserDefinedTypes:
         cql_session: Session,
         sync_database: Database,
     ) -> None:
-        # create/recreateERR/recreateIF/alter/re-alter erroring/drop/redropIF/recreate/drop
         try:
             sync_database.create_type(UDT_NAME, definition=UDT_DEF0)
             with pytest.raises(DataAPIResponseException):
