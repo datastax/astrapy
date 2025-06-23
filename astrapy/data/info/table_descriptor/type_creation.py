@@ -90,15 +90,8 @@ class CreateTypeDefinition:
     def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
 
-        # TEMPORARY SHORTCUT. TODO replace with the part below once {type: xxx} accepted
-        # return {
-        #     "fields": {col_n: col_v.as_dict() for col_n, col_v in self.fields.items()},
-        # }
-        # THIS WON'T WORK FOR NON-SCALAR FIELDS:
         return {
-            "fields": {
-                col_n: col_v.column_type.value for col_n, col_v in self.fields.items()
-            }
+            "fields": {col_n: col_v.as_dict() for col_n, col_v in self.fields.items()},
         }
 
     @classmethod

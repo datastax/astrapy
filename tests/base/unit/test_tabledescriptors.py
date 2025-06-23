@@ -850,8 +850,7 @@ class TestListTableDescriptors:
         assert type_definition_objects == type_definition_dicts
         assert type_definition_objects == type_definition_mixed
 
-        # TODO: this expects the short-form for udt types to be the accepted syntax
-        assert type_definition_objects.as_dict() == fields_dict_simple
+        assert type_definition_objects.as_dict() == fields_dict_dicts
 
         assert (
             CreateTypeDefinition.coerce(type_definition_objects.as_dict())

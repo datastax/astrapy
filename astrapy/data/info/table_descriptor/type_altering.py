@@ -139,15 +139,9 @@ class AlterTypeAddFields(AlterTypeOperation):
 
     def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
-        # TEMPORARY SHORTCUT. TODO replace with the part below once {type: xxx} accepted
-        # return {
-        #     "fields": {fld_n: fld_v.as_dict() for fld_n, fld_v in self.fields.items()}
-        # }
-        # THIS WON'T WORK FOR NON-SCALAR FIELDS:
+
         return {
-            "fields": {
-                fld_n: fld_v.column_type.value for fld_n, fld_v in self.fields.items()
-            }
+            "fields": {fld_n: fld_v.as_dict() for fld_n, fld_v in self.fields.items()}
         }
 
     @classmethod
