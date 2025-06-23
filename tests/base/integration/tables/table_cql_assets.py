@@ -18,6 +18,7 @@ import re
 from typing import TYPE_CHECKING
 
 from astrapy.data_types import DataAPITimestamp
+from astrapy.ids import UUID
 from astrapy.info import CreateTypeDefinition
 
 if TYPE_CHECKING:
@@ -44,6 +45,7 @@ CREATE_TYPE_LOWSUPPORT = (
 CREATE_TABLE_LOWSUPPORT = f"""CREATE TABLE {TABLE_NAME_LOWSUPPORT} (
   a TEXT,
   b TEXT,
+  col_timeuuid TIMEUUID,
   col_static_timestamp TIMESTAMP STATIC,
   col_static_list LIST<INT> STATIC,
   col_static_list_exotic LIST<BLOB> STATIC,
@@ -63,6 +65,7 @@ INSERTS_TABLE_LOWSUPPORT = [
         "    ("
         "    a,"
         "    b,"
+        "    col_timeuuid,"
         "    col_static_timestamp,"
         "    col_static_list,"
         "    col_static_list_exotic,"
@@ -75,6 +78,7 @@ INSERTS_TABLE_LOWSUPPORT = [
         ") VALUES ("
         "    'a',"
         "    'b',"
+        "    caba4d50-5078-11f0-b63e-bf76cc9ee780,"
         "    '2022-01-01T12:34:56.000',"
         "    [1, 2, 3],"
         "    [0xff, 0xff],"
@@ -96,6 +100,7 @@ PROJECTION_LOWSUPPORT = {"col_unsupported": False, "col_udt": False}
 EXPECTED_ROW_LOWSUPPORT = {
     "a": "a",
     "b": "b",
+    "col_timeuuid": UUID("caba4d50-5078-11f0-b63e-bf76cc9ee780"),
     "col_static_list_exotic": [
         {"$binary": "/w=="},
         {"$binary": "/w=="},
