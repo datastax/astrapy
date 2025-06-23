@@ -153,6 +153,7 @@ def test_imports() -> None:
         AlterTableDropColumns,
         AlterTableDropVectorize,
         AlterTypeAddFields,
+        AlterTypeOperation,
         AlterTypeRenameFields,
         AstraDBAdminDatabaseInfo,
         AstraDBDatabaseInfo,
@@ -212,3 +213,8 @@ def test_imports() -> None:
         TableInsertManyResult,
         TableInsertOneResult,
     )
+    from astrapy.utils.document_paths import (
+        escape_field_names,
+        unescape_field_path,
+    )
+    from astrapy.utils.api_options import defaultAPIOptions

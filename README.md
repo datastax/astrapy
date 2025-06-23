@@ -697,6 +697,9 @@ from astrapy.info import (
     AlterTableAddVectorize,
     AlterTableDropColumns,
     AlterTableDropVectorize,
+    AlterTypeAddFields,
+    AlterTypeOperation,
+    AlterTypeRenameFields,
     AstraDBAdminDatabaseInfo,
     AstraDBDatabaseInfo,
     CollectionDefaultIDOptions,
@@ -708,6 +711,7 @@ from astrapy.info import (
     CollectionVectorOptions,
     ColumnType,
     CreateTableDefinition,
+    CreateTypeDefinition,
     EmbeddingProvider,
     EmbeddingProviderAuthentication,
     EmbeddingProviderModel,
@@ -734,6 +738,8 @@ from astrapy.info import (
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
+    TableTextIndexDefinition,
+    TableTextIndexOptions,
     TableUnsupportedColumnTypeDescriptor,
     TableUnsupportedIndexDefinition,
     TableValuedColumnType,
@@ -754,6 +760,25 @@ from astrapy.authentication import (
     EmbeddingAPIKeyHeaderProvider,
     AWSEmbeddingHeadersProvider,
 )
+```
+
+Miscellaneous utilities:
+
+```python
+# Parsing API Endpoints for Astra DB:
+from astrapy.admin import (
+    ParsedAPIEndpoint,
+    parse_api_endpoint,
+)
+
+# Escaping/unescaping document paths:
+from astrapy.utils.document_paths import (
+    escape_field_names,
+    unescape_field_path,
+)
+
+# API Options defaults:
+from astrapy.utils.api_options import defaultAPIOptions
 ```
 
 ### Appendix B: compatibility with pre-1.0.0 library

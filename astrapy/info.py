@@ -77,6 +77,7 @@ from astrapy.data.info.table_descriptor.table_listing import (
 )
 from astrapy.data.info.table_descriptor.type_altering import (
     AlterTypeAddFields,
+    AlterTypeOperation,
     AlterTypeRenameFields,
 )
 from astrapy.data.info.table_descriptor.type_creation import CreateTypeDefinition
@@ -102,6 +103,7 @@ __all__ = [
     "AlterTableDropColumns",
     "AlterTableDropVectorize",
     "AlterTypeAddFields",
+    "AlterTypeOperation",
     "AlterTypeRenameFields",
     "AstraDBAdminDatabaseInfo",
     "AstraDBAvailableRegionInfo",
