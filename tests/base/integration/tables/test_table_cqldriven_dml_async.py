@@ -21,6 +21,7 @@ import pytest
 
 from astrapy import AsyncDatabase
 from astrapy.exceptions import DataAPIResponseException
+from astrapy.ids import UUID
 
 from ..conftest import CQL_AVAILABLE
 from .table_cql_assets import (
@@ -37,6 +38,10 @@ from .table_cql_assets import (
     ILLEGAL_PROJECTIONS_LOWSUPPORT,
     INSERTS_TABLE_COUNTER,
     INSERTS_TABLE_LOWSUPPORT,
+    LOWSUPPORT_TIMEUUID_DOC0,
+    LOWSUPPORT_TIMEUUID_DOC1,
+    LOWSUPPORT_TIMEUUID_PK0,
+    LOWSUPPORT_TIMEUUID_PK1,
     PROJECTION_LOWSUPPORT,
     TABLE_NAME_COUNTER,
     TABLE_NAME_LOWSUPPORT,
@@ -106,6 +111,24 @@ class TestTableCQLDrivenDMLAsync:
                 filter=FILTER_LOWSUPPORT, projection=PROJECTION_LOWSUPPORT
             )
             assert row is None
+
+            # writing timeuuid, passing strings and an UUID object to insert_one
+            await atable.insert_one(LOWSUPPORT_TIMEUUID_DOC0)
+            r_timeuuid_doc0 = await atable.find_one(
+                filter=LOWSUPPORT_TIMEUUID_PK0,
+                projection={col: True for col in LOWSUPPORT_TIMEUUID_DOC0},
+            )
+            assert r_timeuuid_doc0 == LOWSUPPORT_TIMEUUID_DOC0
+            await atable.insert_one(LOWSUPPORT_TIMEUUID_DOC1)
+            r_timeuuid_doc1 = await atable.find_one(
+                filter=LOWSUPPORT_TIMEUUID_PK1,
+                projection={col: True for col in LOWSUPPORT_TIMEUUID_DOC1},
+            )
+            # the UUID form is expected when reading:
+            assert r_timeuuid_doc1 is not None
+            assert r_timeuuid_doc1["col_timeuuid"] == UUID(
+                LOWSUPPORT_TIMEUUID_DOC1["col_timeuuid"]
+            )
         finally:
             cql_session.execute(DROP_TABLE_LOWSUPPORT)
             cql_session.execute(DROP_TYPE_LOWSUPPORT)

@@ -213,8 +213,8 @@ def test_imports() -> None:
         TableInsertManyResult,
         TableInsertOneResult,
     )
+    from astrapy.utils.api_options import defaultAPIOptions
     from astrapy.utils.document_paths import (
         escape_field_names,
         unescape_field_path,
     )
-    from astrapy.utils.api_options import defaultAPIOptions

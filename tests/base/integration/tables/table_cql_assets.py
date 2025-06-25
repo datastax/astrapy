@@ -117,6 +117,23 @@ EXPECTED_ROW_LOWSUPPORT = {
     "col_static_list": [1, 2, 3],
     "col_static_set_exotic": [{"$binary": "/w=="}],
 }
+LOWSUPPORT_TIMEUUID_STRING = "dd5907d0-520c-11f0-a406-bf76cc9ee780"
+LOWSUPPORT_TIMEUUID_PK0 = {
+    "a": "xA0",
+    "b": "xB0",
+}
+LOWSUPPORT_TIMEUUID_DOC0 = {
+    "col_timeuuid": UUID(LOWSUPPORT_TIMEUUID_STRING),
+    **LOWSUPPORT_TIMEUUID_PK0,
+}
+LOWSUPPORT_TIMEUUID_PK1 = {
+    "a": "xA1",
+    "b": "xB1",
+}
+LOWSUPPORT_TIMEUUID_DOC1 = {
+    "col_timeuuid": LOWSUPPORT_TIMEUUID_STRING,
+    **LOWSUPPORT_TIMEUUID_PK1,
+}
 
 
 def _extract_udt_definition(
