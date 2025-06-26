@@ -50,6 +50,7 @@ from .preprocess_env import (
     HEADER_RERANKING_API_KEY_NVIDIA,
     IS_ASTRA_DB,
     LOCAL_CASSANDRA_CONTACT_POINT,
+    LOCAL_CASSANDRA_PORT,
     LOCAL_DATA_API_ENDPOINT,
     LOCAL_DATA_API_KEYSPACE,
     LOCAL_DATA_API_PASSWORD,
@@ -60,7 +61,8 @@ from .preprocess_env import (
 
 CQL_AVAILABLE = False
 try:
-    from cassandra.cluster import Session
+    from cassandra.auth import PlainTextAuthProvider
+    from cassandra.cluster import Cluster, Session
     from cassio.config import get_session_and_keyspace
 
     CQL_AVAILABLE = True
@@ -298,14 +300,23 @@ def cql_session(
         if LOCAL_CASSANDRA_CONTACT_POINT is None:
             raise ValueError("No Cassandra contact point defined")
 
-        session, _ = get_session_and_keyspace(
-            contact_points=LOCAL_CASSANDRA_CONTACT_POINT,
+        auth_provider = PlainTextAuthProvider(
             username=LOCAL_DATA_API_USERNAME,
             password=LOCAL_DATA_API_PASSWORD,
         )
-
-        if session is None:
-            raise ValueError("No CQL 'Session' was obtained")
+        additional_kwargs = {
+            argk: argv
+            for argk, argv in {
+                "port": LOCAL_CASSANDRA_PORT,
+            }.items()
+            if argv is not None
+        }
+        cluster = Cluster(
+            contact_points=[LOCAL_CASSANDRA_CONTACT_POINT],
+            auth_provider=auth_provider,
+            **additional_kwargs,
+        )
+        session = cluster.connect()
         session.execute(f"USE {data_api_credentials_kwargs['keyspace']};")
         yield session
 
