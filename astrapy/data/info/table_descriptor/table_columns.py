@@ -24,6 +24,7 @@ from astrapy.data.utils.table_types import (
     TableKeyValuedColumnType,
     TablePassthroughColumnType,
     TableUnsupportedColumnType,
+    TableUserDefinedColumnType,
     TableValuedColumnType,
     TableVectorColumnType,
 )
@@ -128,6 +129,7 @@ class TableColumnTypeDescriptor(ABC):
         | TableKeyValuedColumnType
         | TableVectorColumnType
         | TableUnsupportedColumnType
+        | TableUserDefinedColumnType
         | TablePassthroughColumnType
     )
     api_support: TableAPISupportDescriptor | None
@@ -144,7 +146,10 @@ class TableColumnTypeDescriptor(ABC):
         This method switches to the proper subclass depending on the input.
         """
 
-        if "keyType" in raw_dict and raw_dict["type"] in TableKeyValuedColumnType:
+        if "udtName" in raw_dict:
+            # TODO: temporarily, 'type' may still be missing so this comes first
+            return TableUserDefinedColumnTypeDescriptor._from_dict(raw_dict)
+        elif "keyType" in raw_dict and raw_dict["type"] in TableKeyValuedColumnType:
             return TableKeyValuedColumnTypeDescriptor._from_dict(raw_dict)
         elif "valueType" in raw_dict and raw_dict["type"] in TableValuedColumnType:
             return TableValuedColumnTypeDescriptor._from_dict(raw_dict)
@@ -455,6 +460,73 @@ class TableKeyValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
             column_type=raw_dict["type"],
             key_type=raw_dict["keyType"],
             value_type=raw_dict["valueType"],
+            api_support=TableAPISupportDescriptor._from_dict(raw_dict["apiSupport"])
+            if raw_dict.get("apiSupport")
+            else None,
+        )
+
+@dataclass
+class TableUserDefinedColumnTypeDescriptor(TableColumnTypeDescriptor):
+    """
+    Represents and describes a column in a Table, of a user-defined type (UDT) type,
+    i.e. a previously-defined set of named fields, each with its type.
+
+    Attributes:
+        column_type: a `TableUserDefinedColumnType` value. This can be omitted when
+            creating the object. It only ever assumes the "USERDEFINED" value.
+        udt_name: the name of the user-defined type for this column.
+        # TODO: keep "definition" coming sometimes from listTables? (now discarded).
+        api_support: a `TableAPISupportDescriptor` object giving more details.
+    """
+
+    column_type: TableUserDefinedColumnType
+    udt_name: str
+
+    def __init__(
+        self,
+        *,
+        udt_name: str,
+        column_type: str | TableUserDefinedColumnType = TableUserDefinedColumnType.USERDEFINED,
+        api_support: TableAPISupportDescriptor | None = None,
+    ) -> None:
+        self.udt_name = udt_name
+        super().__init__(
+            column_type=TableUserDefinedColumnType.coerce(column_type),
+            api_support=api_support,
+        )
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.udt_name})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            k: v
+            for k, v in {
+                "type": self.column_type.value,
+                "udtName": self.udt_name,
+                "apiSupport": self.api_support.as_dict() if self.api_support else None,
+            }.items()
+            if v is not None
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableUserDefinedColumnTypeDescriptor:
+        """
+        Create an instance of TableUserDefinedColumnTypeDescriptor from a dictionary
+        such as one from the Data API.
+        """
+
+        _warn_residual_keys(
+            cls,
+            raw_dict,
+            {"type", "udtName", "apiSupport"},
+        )
+        return TableUserDefinedColumnTypeDescriptor(
+            # TODO: handling a missing 'type' here:
+            column_type=raw_dict.get("type", TableUserDefinedColumnType.USERDEFINED),
+            udt_name=raw_dict.get("udtName"),
             api_support=TableAPISupportDescriptor._from_dict(raw_dict["apiSupport"])
             if raw_dict.get("apiSupport")
             else None,

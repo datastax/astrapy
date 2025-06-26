@@ -196,6 +196,7 @@ def test_imports() -> None:
         TableTextIndexDefinition,
         TableTextIndexOptions,
         TableUnsupportedColumnTypeDescriptor,
+        TableUserDefinedColumnTypeDescriptor,
         TableUnsupportedIndexDefinition,
         TableValuedColumnType,
         TableValuedColumnTypeDescriptor,

@@ -742,6 +742,7 @@ from astrapy.info import (
     TableTextIndexOptions,
     TableUnsupportedColumnTypeDescriptor,
     TableUnsupportedIndexDefinition,
+    TableUserDefinedColumnTypeDescriptor,
     TableValuedColumnType,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
