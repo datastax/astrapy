@@ -167,7 +167,7 @@ class TableColumnTypeDescriptor(ABC):
 
     @classmethod
     def coerce(
-        cls, raw_input: TableColumnTypeDescriptor | dict[str, Any] | str
+        cls, raw_input: ColumnType | TableColumnTypeDescriptor | dict[str, Any] | str
     ) -> TableColumnTypeDescriptor:
         """
         Normalize the input, whether an object already or a plain dictionary
@@ -176,6 +176,8 @@ class TableColumnTypeDescriptor(ABC):
 
         if isinstance(raw_input, TableColumnTypeDescriptor):
             return raw_input
+        elif isinstance(raw_input, ColumnType):
+            return cls._from_dict({"type": raw_input.value})
         elif isinstance(raw_input, str):
             return cls._from_dict({"type": raw_input})
         else:
@@ -331,32 +333,29 @@ class TableValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
         column_type: an instance of `TableValuedColumnType`. When creating the
             object, simple strings such as "list" or "set" are also accepted.
         value_type: the type of the individual items stored in the column.
-            This is a `ColumnType`, but when creating the object,
-            strings such as "TEXT" or "UUID" are also accepted.
+            This is a `TableColumnTypeDescriptor`, but when creating the object,
+            strings such as "TEXT" or "UUID", or ColumnType entries, are also accepted.
         api_support: a `TableAPISupportDescriptor` object giving more details.
     """
 
     column_type: TableValuedColumnType
-    value_type: ColumnType
+    value_type: TableColumnTypeDescriptor
 
     def __init__(
         self,
         *,
         column_type: str | TableValuedColumnType,
-        value_type: str | ColumnType,
+        value_type: str | dict[Any, str] | ColumnType | TableColumnTypeDescriptor,
         api_support: TableAPISupportDescriptor | None = None,
     ) -> None:
-        self.value_type = ColumnType.coerce(value_type)
+        self.value_type = TableColumnTypeDescriptor.coerce(value_type)
         super().__init__(
             column_type=TableValuedColumnType.coerce(column_type),
             api_support=api_support,
         )
 
     def __repr__(self) -> str:
-        return (
-            f"{self.__class__.__name__}({self.column_type.value}"
-            f"<{self.value_type.value}>)"
-        )
+        return f"{self.__class__.__name__}({self.column_type.value}<{self.value_type}>)"
 
     def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
@@ -365,7 +364,7 @@ class TableValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
             k: v
             for k, v in {
                 "type": self.column_type.value,
-                "valueType": self.value_type.value,
+                "valueType": self.value_type.as_dict(),
                 "apiSupport": self.api_support.as_dict() if self.api_support else None,
             }.items()
             if v is not None
@@ -399,28 +398,28 @@ class TableKeyValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
         column_type: an instance of `TableKeyValuedColumnType`. When creating the
             object, this can be omitted as it only ever assumes the "MAP" value.
         key_type: the type of the individual keys in the map column.
-            This is a `ColumnType`, but when creating the object,
-            strings such as "TEXT" or "UUID" are also accepted.
+            This is a `TableColumnTypeDescriptor`, but when creating the object,
+            strings such as "TEXT" or "UUID", or ColumnType entries, are also accepted.
         value_type: the type of the individual values stored in the map for a single key.
-            This is a `ColumnType`, but when creating the object,
-            strings such as "TEXT" or "UUID" are also accepted.
+            This is a `TableColumnTypeDescriptor`, but when creating the object,
+            strings such as "TEXT" or "UUID", or ColumnType entries, are also accepted.
         api_support: a `TableAPISupportDescriptor` object giving more details.
     """
 
     column_type: TableKeyValuedColumnType
-    key_type: ColumnType
-    value_type: ColumnType
+    key_type: TableColumnTypeDescriptor
+    value_type: TableColumnTypeDescriptor
 
     def __init__(
         self,
         *,
-        value_type: str | ColumnType,
-        key_type: str | ColumnType,
+        value_type: str | dict[str, Any] | ColumnType | TableColumnTypeDescriptor,
+        key_type: str | dict[str, Any] | ColumnType | TableColumnTypeDescriptor,
         column_type: str | TableKeyValuedColumnType = TableKeyValuedColumnType.MAP,
         api_support: TableAPISupportDescriptor | None = None,
     ) -> None:
-        self.key_type = ColumnType.coerce(key_type)
-        self.value_type = ColumnType.coerce(value_type)
+        self.key_type = TableColumnTypeDescriptor.coerce(key_type)
+        self.value_type = TableColumnTypeDescriptor.coerce(value_type)
         super().__init__(
             column_type=TableKeyValuedColumnType.coerce(column_type),
             api_support=api_support,
@@ -429,7 +428,7 @@ class TableKeyValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}({self.column_type.value}"
-            f"<{self.key_type.value},{self.value_type.value}>)"
+            f"<{self.key_type},{self.value_type}>)"
         )
 
     def as_dict(self) -> dict[str, Any]:
@@ -439,8 +438,8 @@ class TableKeyValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
             k: v
             for k, v in {
                 "type": self.column_type.value,
-                "keyType": self.key_type.value,
-                "valueType": self.value_type.value,
+                "keyType": self.key_type.as_dict(),
+                "valueType": self.value_type.as_dict(),
                 "apiSupport": self.api_support.as_dict() if self.api_support else None,
             }.items()
             if v is not None
@@ -465,6 +464,7 @@ class TableKeyValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
             else None,
         )
 
+
 @dataclass
 class TableUserDefinedColumnTypeDescriptor(TableColumnTypeDescriptor):
     """
@@ -486,7 +486,8 @@ class TableUserDefinedColumnTypeDescriptor(TableColumnTypeDescriptor):
         self,
         *,
         udt_name: str,
-        column_type: str | TableUserDefinedColumnType = TableUserDefinedColumnType.USERDEFINED,
+        column_type: str
+        | TableUserDefinedColumnType = TableUserDefinedColumnType.USERDEFINED,
         api_support: TableAPISupportDescriptor | None = None,
     ) -> None:
         self.udt_name = udt_name
@@ -512,7 +513,9 @@ class TableUserDefinedColumnTypeDescriptor(TableColumnTypeDescriptor):
         }
 
     @classmethod
-    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableUserDefinedColumnTypeDescriptor:
+    def _from_dict(
+        cls, raw_dict: dict[str, Any]
+    ) -> TableUserDefinedColumnTypeDescriptor:
         """
         Create an instance of TableUserDefinedColumnTypeDescriptor from a dictionary
         such as one from the Data API.
@@ -526,7 +529,7 @@ class TableUserDefinedColumnTypeDescriptor(TableColumnTypeDescriptor):
         return TableUserDefinedColumnTypeDescriptor(
             # TODO: handling a missing 'type' here:
             column_type=raw_dict.get("type", TableUserDefinedColumnType.USERDEFINED),
-            udt_name=raw_dict.get("udtName"),
+            udt_name=raw_dict["udtName"],
             api_support=TableAPISupportDescriptor._from_dict(raw_dict["apiSupport"])
             if raw_dict.get("apiSupport")
             else None,
