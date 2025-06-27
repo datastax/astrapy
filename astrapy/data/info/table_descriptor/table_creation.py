@@ -277,7 +277,9 @@ class CreateTableDefinition:
         return self.add_scalar_column(column_name=column_name, column_type=column_type)
 
     def add_set_column(
-        self, column_name: str, value_type: str | ColumnType
+        self,
+        column_name: str,
+        value_type: str | dict[Any, str] | ColumnType | TableColumnTypeDescriptor,
     ) -> CreateTableDefinition:
         """
         Return a new table definition object with an added column
@@ -288,8 +290,10 @@ class CreateTableDefinition:
 
         Args:
             column_name: the name of the new column to add to the definition.
-            value_type: a string, or a `ColumnType` value, defining
-                the data type for the items in the set.
+            value_type: the type of the individual items stored in the set.
+                This is a `TableColumnTypeDescriptor`, but when creating the object,
+                equivalent dictionaries, as well as strings such as "TEXT" or "UUID"
+                or ColumnType entries, are also accepted.
 
         Returns:
             a CreateTableDefinition obtained by adding (or replacing) the desired
@@ -309,7 +313,9 @@ class CreateTableDefinition:
         )
 
     def add_list_column(
-        self, column_name: str, value_type: str | ColumnType
+        self,
+        column_name: str,
+        value_type: str | dict[Any, str] | ColumnType | TableColumnTypeDescriptor,
     ) -> CreateTableDefinition:
         """
         Return a new table definition object with an added column
@@ -320,8 +326,10 @@ class CreateTableDefinition:
 
         Args:
             column_name: the name of the new column to add to the definition.
-            value_type: a string, or a `ColumnType` value, defining
-                the data type for the items in the list.
+            value_type: the type of the individual items stored in the set.
+                This is a `TableColumnTypeDescriptor`, but when creating the object,
+                equivalent dictionaries, as well as strings such as "TEXT" or "UUID"
+                or ColumnType entries, are also accepted.
 
         Returns:
             a CreateTableDefinition obtained by adding (or replacing) the desired
@@ -343,8 +351,8 @@ class CreateTableDefinition:
     def add_map_column(
         self,
         column_name: str,
-        key_type: str | ColumnType,
-        value_type: str | ColumnType,
+        key_type: str | dict[Any, str] | ColumnType | TableColumnTypeDescriptor,
+        value_type: str | dict[Any, str] | ColumnType | TableColumnTypeDescriptor,
     ) -> CreateTableDefinition:
         """
         Return a new table definition object with an added column
@@ -355,10 +363,15 @@ class CreateTableDefinition:
 
         Args:
             column_name: the name of the new column to add to the definition.
-            key_type: a string, or a `ColumnType` value, defining
-                the data type for the keys in the map.
-            value_type: a string, or a `ColumnType` value, defining
-                the data type for the values in the map.
+            key_type: the type of the individual keys in the map column.
+                This is a `TableColumnTypeDescriptor`, but when creating the object,
+                equivalent dictionaries, as well as strings such as "TEXT" or "UUID"
+                or ColumnType entries, are also accepted. Using a column type not
+                eligible to be a key will return a Data API error.
+            value_type: the type of the individual items stored in the column.
+                This is a `TableColumnTypeDescriptor`, but when creating the object,
+                equivalent dictionaries, as well as strings such as "TEXT" or "UUID"
+                or ColumnType entries, are also accepted.
 
         Returns:
             a CreateTableDefinition obtained by adding (or replacing) the desired

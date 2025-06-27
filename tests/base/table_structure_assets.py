@@ -18,6 +18,7 @@ from astrapy.constants import SortMode
 from astrapy.info import (
     ColumnType,
     CreateTableDefinition,
+    CreateTypeDefinition,
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
@@ -199,6 +200,15 @@ TEST_KMS_VECTORIZE_TABLE_VECTOR_INDEX_COLUMN = TEST_SIMPLE_TABLE_VECTOR_INDEX_CO
 TEST_KMS_VECTORIZE_TABLE_VECTOR_INDEX_DEFINITION = (
     TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS
 )
+
+TEST_SIMPLE_UDT_NAME = "test_simple_udt"
+TEST_SIMPLE_UDT_DEFINITION = CreateTypeDefinition(
+    fields={
+        "udt_text": TableScalarColumnTypeDescriptor(column_type=ColumnType.TEXT),
+        "udt_int": TableScalarColumnTypeDescriptor(column_type=ColumnType.INT),
+    }
+)
+
 
 VECTORIZE_TEXTS = [
     "The world is the totality of facts, not of things.",

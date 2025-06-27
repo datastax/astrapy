@@ -76,6 +76,8 @@ from .table_structure_assets import (
     TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN,
     TEST_SIMPLE_TABLE_VECTOR_INDEX_NAME,
     TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS,
+    TEST_SIMPLE_UDT_DEFINITION,
+    TEST_SIMPLE_UDT_NAME,
     TEST_VECTORIZE_TABLE_DEFINITION,
     TEST_VECTORIZE_TABLE_NAME,
     TEST_VECTORIZE_TABLE_VECTOR_INDEX_NAME,
@@ -378,6 +380,20 @@ def async_empty_farr_vector_collection(
 ) -> Iterable[DefaultAsyncCollection]:
     """Emptied for each test function"""
     yield sync_empty_farr_vector_collection.to_async()
+
+
+@pytest.fixture(scope="session")
+def simple_udt(
+    sync_database: Database,
+) -> Iterable[str]:
+    """Creation (and then cleanup) of a UDT. Returns the type name."""
+    sync_database.create_type(
+        TEST_SIMPLE_UDT_NAME,
+        definition=TEST_SIMPLE_UDT_DEFINITION,
+    )
+    yield TEST_SIMPLE_UDT_NAME
+
+    sync_database.drop_type(TEST_SIMPLE_UDT_NAME)
 
 
 @pytest.fixture(scope="session")

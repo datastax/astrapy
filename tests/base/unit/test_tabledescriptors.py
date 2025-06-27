@@ -430,8 +430,12 @@ class TestListTableDescriptors:
             .add_column("p_int", "int")
             .add_column("p_boolean", "boolean")
             .add_scalar_column("p_float", "float")
-            .add_set_column("p_set", "int")
-            .add_map_column("p_map", "text", "int")
+            .add_set_column("p_set", ColumnType.INT)
+            .add_map_column(
+                "p_map",
+                {"type": "text"},
+                TableScalarColumnTypeDescriptor(column_type=ColumnType.INT),
+            )
             .add_vector_column("p_vector", dimension=191)
             .add_vector_column(
                 "p_vectorize",

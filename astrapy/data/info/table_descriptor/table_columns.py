@@ -334,7 +334,8 @@ class TableValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
             object, simple strings such as "list" or "set" are also accepted.
         value_type: the type of the individual items stored in the column.
             This is a `TableColumnTypeDescriptor`, but when creating the object,
-            strings such as "TEXT" or "UUID", or ColumnType entries, are also accepted.
+            equivalent dictionaries, as well as strings such as "TEXT" or "UUID"
+            or ColumnType entries, are also accepted.
         api_support: a `TableAPISupportDescriptor` object giving more details.
     """
 
@@ -399,10 +400,13 @@ class TableKeyValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
             object, this can be omitted as it only ever assumes the "MAP" value.
         key_type: the type of the individual keys in the map column.
             This is a `TableColumnTypeDescriptor`, but when creating the object,
-            strings such as "TEXT" or "UUID", or ColumnType entries, are also accepted.
-        value_type: the type of the individual values stored in the map for a single key.
+            equivalent dictionaries, as well as strings such as "TEXT" or "UUID"
+            or ColumnType entries, are also accepted. Using a column type not
+            eligible to be a key will return a Data API error.
+        value_type: the type of the individual items stored in the column.
             This is a `TableColumnTypeDescriptor`, but when creating the object,
-            strings such as "TEXT" or "UUID", or ColumnType entries, are also accepted.
+            equivalent dictionaries, as well as strings such as "TEXT" or "UUID"
+            or ColumnType entries, are also accepted.
         api_support: a `TableAPISupportDescriptor` object giving more details.
     """
 

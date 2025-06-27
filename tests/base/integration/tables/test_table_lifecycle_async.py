@@ -23,6 +23,7 @@ from astrapy.exceptions import DataAPIResponseException
 from astrapy.info import (
     AlterTableAddColumns,
     AlterTableAddVectorize,
+    AlterTableDropColumns,
     AlterTableDropVectorize,
     CreateTableDefinition,
     TableIndexDefinition,
@@ -34,6 +35,7 @@ from astrapy.info import (
     TableScalarColumnTypeDescriptor,
     TableTextIndexDefinition,
     TableTextIndexOptions,
+    TableUserDefinedColumnTypeDescriptor,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
     TableVectorIndexDefinition,
@@ -658,5 +660,99 @@ class TestTableLifecycle:
             await atable.database.drop_table_index("idx_txt_d")
             await atable.database.drop_table_index("idx_txt_s")
             await atable.database.drop_table_index("idx_txt_l")
+        finally:
+            await atable.drop()
+
+    @pytest.mark.skipif(
+        "ASTRAPY_TEST_UDT" not in os.environ,
+        reason="UDT testing not enabled",
+    )
+    @pytest.mark.describe("test of create/verify/delete table with a simple UDT, async")
+    async def test_table_simpleudt_crd_async(
+        self,
+        async_database: AsyncDatabase,
+        simple_udt: str,
+    ) -> None:
+        udt_col_desc = TableUserDefinedColumnTypeDescriptor(udt_name=simple_udt)
+        table_simple_udt_def = CreateTableDefinition(
+            columns={
+                "id": TableScalarColumnTypeDescriptor("text"),
+                "udt_map": TableKeyValuedColumnTypeDescriptor(
+                    key_type=TableScalarColumnTypeDescriptor("ascii"),
+                    value_type=udt_col_desc,
+                ),
+                "udt_set": TableValuedColumnTypeDescriptor(
+                    column_type="set",
+                    value_type=udt_col_desc,
+                ),
+                "udt_list": TableValuedColumnTypeDescriptor(
+                    column_type="list",
+                    value_type=udt_col_desc,
+                ),
+                "udt_scalar": udt_col_desc,
+            },
+            primary_key=TablePrimaryKeyDescriptor(
+                partition_by=["id"],
+                partition_sort={},
+            ),
+        )
+        try:
+            atable = await async_database.create_table(
+                "table_simple_udt",
+                definition=table_simple_udt_def,
+            )
+            assert (
+                _remove_apisupport((await atable.definition()).as_dict())
+                == table_simple_udt_def.as_dict()
+            )
+
+            add_udt_columns = AlterTableAddColumns(
+                columns={
+                    "altered_udt_map": TableKeyValuedColumnTypeDescriptor(
+                        key_type=TableScalarColumnTypeDescriptor("ascii"),
+                        value_type=udt_col_desc,
+                    ),
+                    "altered_udt_set": TableValuedColumnTypeDescriptor(
+                        column_type="set",
+                        value_type=udt_col_desc,
+                    ),
+                    "altered_udt_list": TableValuedColumnTypeDescriptor(
+                        column_type="list",
+                        value_type=udt_col_desc,
+                    ),
+                    "altered_udt_scalar": udt_col_desc,
+                },
+            )
+            await atable.alter(add_udt_columns)
+            drop_udt_columns = AlterTableDropColumns(
+                columns=["udt_map", "udt_set", "udt_list", "udt_scalar"]
+            )
+            await atable.alter(drop_udt_columns)
+            altered_table_simple_udt_def = CreateTableDefinition(
+                columns={
+                    "id": TableScalarColumnTypeDescriptor("text"),
+                    "altered_udt_map": TableKeyValuedColumnTypeDescriptor(
+                        key_type=TableScalarColumnTypeDescriptor("ascii"),
+                        value_type=udt_col_desc,
+                    ),
+                    "altered_udt_set": TableValuedColumnTypeDescriptor(
+                        column_type="set",
+                        value_type=udt_col_desc,
+                    ),
+                    "altered_udt_list": TableValuedColumnTypeDescriptor(
+                        column_type="list",
+                        value_type=udt_col_desc,
+                    ),
+                    "altered_udt_scalar": udt_col_desc,
+                },
+                primary_key=TablePrimaryKeyDescriptor(
+                    partition_by=["id"],
+                    partition_sort={},
+                ),
+            )
+            assert (
+                _remove_apisupport((await atable.definition()).as_dict())
+                == altered_table_simple_udt_def.as_dict()
+            )
         finally:
             await atable.drop()
