@@ -22,12 +22,17 @@ from astrapy.data.info.table_descriptor.table_columns import (
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
+    TableUserDefinedColumnTypeDescriptor,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
 )
 from astrapy.data.info.vectorize import VectorServiceOptions
 from astrapy.data.utils.table_types import (
     ColumnType,
+    TableKeyValuedColumnType,
+    TableUserDefinedColumnType,
+    TableValuedColumnType,
+    TableVectorColumnType,
 )
 from astrapy.utils.parsing import _warn_residual_keys
 
@@ -305,7 +310,7 @@ class CreateTableDefinition:
                 **self.columns,
                 **{
                     column_name: TableValuedColumnTypeDescriptor(
-                        column_type="set", value_type=value_type
+                        column_type=TableValuedColumnType.SET, value_type=value_type
                     )
                 },
             },
@@ -341,7 +346,7 @@ class CreateTableDefinition:
                 **self.columns,
                 **{
                     column_name: TableValuedColumnTypeDescriptor(
-                        column_type="list", value_type=value_type
+                        column_type=TableValuedColumnType.LIST, value_type=value_type
                     )
                 },
             },
@@ -383,7 +388,9 @@ class CreateTableDefinition:
                 **self.columns,
                 **{
                     column_name: TableKeyValuedColumnTypeDescriptor(
-                        column_type="map", key_type=key_type, value_type=value_type
+                        column_type=TableKeyValuedColumnType.MAP,
+                        key_type=key_type,
+                        value_type=value_type,
                     )
                 },
             },
@@ -426,9 +433,43 @@ class CreateTableDefinition:
                 **self.columns,
                 **{
                     column_name: TableVectorColumnTypeDescriptor(
-                        column_type="vector",
+                        column_type=TableVectorColumnType.VECTOR,
                         dimension=dimension,
                         service=VectorServiceOptions.coerce(service),
+                    )
+                },
+            },
+            primary_key=self.primary_key,
+        )
+
+    def add_userdefinedtype_column(
+        self,
+        column_name: str,
+        udt_name: str,
+    ) -> CreateTableDefinition:
+        """
+        Return a new table definition object with an added column
+        of 'user defined' type (UDT). This method is for use within the
+        fluent interface for progressively building a complete table definition.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Args:
+            column_name: the name of the new column to add to the definition.
+            udt_name: the name of the user-defined type for this column.
+
+        Returns:
+            a CreateTableDefinition obtained by adding (or replacing) the desired
+            column to this table definition.
+        """
+
+        return CreateTableDefinition(
+            columns={
+                **self.columns,
+                **{
+                    column_name: TableUserDefinedColumnTypeDescriptor(
+                        column_type=TableUserDefinedColumnType.USERDEFINED,
+                        udt_name=udt_name,
                     )
                 },
             },

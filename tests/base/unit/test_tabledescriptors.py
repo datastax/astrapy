@@ -40,6 +40,7 @@ from astrapy.info import (
     TableTextIndexDefinition,
     TableTextIndexOptions,
     TableUnsupportedIndexDefinition,
+    TableUserDefinedColumnTypeDescriptor,
     TableVectorIndexDefinition,
     TableVectorIndexOptions,
     VectorServiceOptions,
@@ -431,6 +432,7 @@ class TestListTableDescriptors:
             .add_column("p_boolean", "boolean")
             .add_scalar_column("p_float", "float")
             .add_set_column("p_set", ColumnType.INT)
+            .add_list_column("p_list", ColumnType.FLOAT)
             .add_map_column(
                 "p_map",
                 {"type": "text"},
@@ -445,6 +447,19 @@ class TestListTableDescriptors:
                     model_name="mistral-embed",
                 ),
             )
+            .add_userdefinedtype_column("p_udt", "the_udt")
+            .add_set_column(
+                "p_set_udt", {"type": "userDefined", "udtName": "the_udt_s"}
+            )
+            .add_list_column(
+                "p_list_udt",
+                TableUserDefinedColumnTypeDescriptor(udt_name="the_udt_l"),
+            )
+            .add_map_column(
+                "p_map_udt",
+                {"type": "text"},
+                {"type": "userDefined", "udtName": "the_udt_m"},
+            )
             .add_partition_by(["p_text", "p_int"])
             .add_partition_sort({"p_boolean": -1, "p_float": 1})
             .build()
@@ -457,6 +472,7 @@ class TestListTableDescriptors:
                     "p_boolean": {"type": "boolean"},
                     "p_float": {"type": "float"},
                     "p_set": {"type": "set", "valueType": "int"},
+                    "p_list": {"type": "list", "valueType": "float"},
                     "p_map": {"type": "map", "keyType": "text", "valueType": "int"},
                     "p_vector": {"type": "vector", "dimension": 191},
                     "p_vectorize": {
@@ -465,6 +481,32 @@ class TestListTableDescriptors:
                         "service": {
                             "provider": "mistral",
                             "modelName": "mistral-embed",
+                        },
+                    },
+                    "p_udt": {
+                        "type": "userDefined",
+                        "udtName": "the_udt",
+                    },
+                    "p_set_udt": {
+                        "type": "set",
+                        "valueType": {
+                            "type": "userDefined",
+                            "udtName": "the_udt_s",
+                        },
+                    },
+                    "p_list_udt": {
+                        "type": "list",
+                        "valueType": {
+                            "type": "userDefined",
+                            "udtName": "the_udt_l",
+                        },
+                    },
+                    "p_map_udt": {
+                        "type": "map",
+                        "keyType": "text",
+                        "valueType": {
+                            "type": "userDefined",
+                            "udtName": "the_udt_m",
                         },
                     },
                 },
