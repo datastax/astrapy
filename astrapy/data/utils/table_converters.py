@@ -392,7 +392,7 @@ def _create_column_tpostprocessor(
             )
     elif isinstance(col_def, TableValuedColumnTypeDescriptor):
         if col_def.column_type == TableValuedColumnType.LIST:
-            value_tpostprocessor = _create_scalar_tpostprocessor(
+            value_tpostprocessor = _create_column_tpostprocessor(
                 col_def.value_type, options=options
             )
 
@@ -404,7 +404,7 @@ def _create_column_tpostprocessor(
             return _tpostprocessor_list
 
         elif TableValuedColumnType.SET:
-            value_tpostprocessor = _create_scalar_tpostprocessor(
+            value_tpostprocessor = _create_column_tpostprocessor(
                 col_def.value_type, options=options
             )
 
@@ -436,10 +436,10 @@ def _create_column_tpostprocessor(
             )
     elif isinstance(col_def, TableKeyValuedColumnTypeDescriptor):
         if col_def.column_type == TableKeyValuedColumnType.MAP:
-            key_tpostprocessor = _create_scalar_tpostprocessor(
+            key_tpostprocessor = _create_column_tpostprocessor(
                 col_def.key_type, options=options
             )
-            value_tpostprocessor = _create_scalar_tpostprocessor(
+            value_tpostprocessor = _create_column_tpostprocessor(
                 col_def.value_type, options=options
             )
 

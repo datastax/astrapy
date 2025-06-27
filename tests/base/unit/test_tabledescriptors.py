@@ -149,12 +149,12 @@ TABLE_DICTS = [
                 },
                 "p_list": {
                     "type": "list",
-                    "valueType": "text",
+                    "valueType": {"type": "text"},
                 },
                 "p_map": {
                     "type": "map",
-                    "keyType": "text",
-                    "valueType": "text",
+                    "keyType": {"type": "text"},
+                    "valueType": {"type": "text"},
                 },
                 "p_vector": {
                     "type": "vector",
@@ -190,7 +190,7 @@ TABLE_DICTS = [
                 },
                 "p_list": {
                     "type": "list",
-                    "valueType": "text",
+                    "valueType": {"type": "text"},
                     "apiSupport": {
                         "createTable": True,
                         "insert": True,
@@ -201,8 +201,8 @@ TABLE_DICTS = [
                 },
                 "p_map": {
                     "type": "map",
-                    "keyType": "text",
-                    "valueType": "text",
+                    "keyType": {"type": "text"},
+                    "valueType": {"type": "text"},
                     "apiSupport": {
                         "createTable": True,
                         "insert": True,
