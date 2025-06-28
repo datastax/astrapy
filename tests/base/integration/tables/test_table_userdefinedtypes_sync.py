@@ -24,7 +24,13 @@ from astrapy.exceptions import DataAPIResponseException
 
 from ..conftest import CQL_AVAILABLE, DataAPICredentials
 from .table_cql_assets import _extract_udt_definition
-from .table_row_assets import UDT_ALTER_OPS, UDT_DEF0, UDT_DEF1, UDT_NAME
+from .table_row_assets import (
+    UDT_ALTER_OP_1,
+    UDT_ALTER_OP_2,
+    UDT_DEF0,
+    UDT_DEF1,
+    UDT_NAME,
+)
 
 if TYPE_CHECKING:
     from cassandra.cluster import Session
@@ -55,9 +61,10 @@ class TestTableUserDefinedTypes:
                 UDT_NAME,
             )
 
-            sync_database.alter_type(UDT_NAME, operations=UDT_ALTER_OPS)
+            sync_database.alter_type(UDT_NAME, operation=UDT_ALTER_OP_1)
+            sync_database.alter_type(UDT_NAME, operation=UDT_ALTER_OP_2)
             with pytest.raises(DataAPIResponseException):
-                sync_database.alter_type(UDT_NAME, operations=UDT_ALTER_OPS)
+                sync_database.alter_type(UDT_NAME, operation=UDT_ALTER_OP_1)
 
             assert UDT_DEF1 == _extract_udt_definition(
                 cql_session,

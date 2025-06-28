@@ -432,10 +432,8 @@ UDT_DEF0 = CreateTypeDefinition(
         "f_float2": "float",
     }
 )
-UDT_ALTER_OPS = [
-    AlterTypeAddFields(fields={"f_text0": "text"}),
-    AlterTypeRenameFields(fields={"f_float0": "z_float0"}),
-]
+UDT_ALTER_OP_1 = AlterTypeAddFields(fields={"f_text0": "text"})
+UDT_ALTER_OP_2 = AlterTypeRenameFields(fields={"f_float0": "z_float0"})
 UDT_DEF1 = CreateTypeDefinition(
     fields={
         "z_float0": "float",

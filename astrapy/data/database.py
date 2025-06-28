@@ -1741,7 +1741,7 @@ class Database:
     def alter_type(
         self,
         name: str,
-        operations: list[AlterTypeOperation],
+        operation: AlterTypeOperation,
         *,
         keyspace: str | None = None,
         table_admin_timeout_ms: int | None = None,
@@ -1749,23 +1749,16 @@ class Database:
         timeout_ms: int | None = None,
     ) -> None:
         """
-        Apply one or more changes to a user-defined type (UDT), e.g. adding fields.
+        Apply a change to a user-defined type (UDT), e.g. add fields.
 
         The UDT must be already present on the database, in the targeted keyspace.
         If not specified, the keyspace is the database's working keyspace.
 
-        The input of this method is a list of operations, each expressing a change
-        to the user-defined type: those will be re-expressed as a single operation
-        and sent to the Data API as a single command invocation.
-
         Args:
             name: the name of the user-defined type to modify. The type must be
                 found on the database, in the keyspace targeted by this call.
-            operations: a list of zero, one or several `astrapy.info.AlterTypeOperation`
-                objects representing the desired changes to apply to the UDT. These can
-                be of heterogeneous type (for example, some field being renamed and
-                other new fields being added). In case a field is referenced multiple
-                times across the operations, the last directive will be kept.
+            operation: an `astrapy.info.AlterTypeOperation` object representing
+                the desired change to apply to the UDT.
             keyspace: the keyspace where the type scoped.
                 If not specified, the general setting for this database is used.
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
@@ -1782,46 +1775,19 @@ class Database:
             >>> # add two fields to the type:
             >>> database.alter_type(
             ...     "sci_name",
-            ...     operations=[
-            ...         AlterTypeAddFields(fields={
-            ...             "observations": TableScalarColumnTypeDescriptor(
-            ...                 ColumnType.INT,
-            ...             ),
-            ...             "family": TableScalarColumnTypeDescriptor(
-            ...                 ColumnType.TEXT,
-            ...             ),
-            ...         }),
-            ...     ],
+            ...     AlterTypeAddFields(fields={
+            ...         "observations": TableScalarColumnTypeDescriptor(
+            ...             ColumnType.INT,
+            ...         ),
+            ...         "family": TableScalarColumnTypeDescriptor(
+            ...             ColumnType.TEXT,
+            ...         ),
+            ...     }),
             ... )
             >>> # rename an existing field in the type:
             >>> database.alter_type(
             ...     "sci_name",
-            ...     operations=[
-            ...         AlterTypeRenameFields(fields={"family": "species_family"}),
-            ...     ],
-            ... )
-            >>> # combine various operations into one invocation:
-            >>> database.alter_type(
-            ...     "sci_name",
-            ...     operations=[
-            ...         AlterTypeAddFields(
-            ...             fields={
-            ...                 "common_name": TableScalarColumnTypeDescriptor(
-            ...                     ColumnType.TEXT,
-            ...                 ),
-            ...             },
-            ...         ),
-            ...         AlterTypeRenameFields(
-            ...             fields={"observations": "num_observations"},
-            ...         ),
-            ...         AlterTypeAddFields(
-            ...             fields={
-            ...                 "phylum": TableScalarColumnTypeDescriptor(
-            ...                     ColumnType.TEXT,
-            ...                 ),
-            ...             },
-            ...         ),
-            ...     ],
+            ...     AlterTypeRenameFields(fields={"family": "species_family"}),
             ... )
         """
 
@@ -1833,14 +1799,11 @@ class Database:
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
 
-        stacked_op_map = AlterTypeOperation.stack_by_name(operations)
-        stacked_op_dict = {
-            op_name: op.as_dict() for op_name, op in stacked_op_map.items()
-        }
+        op_dict = {operation._name: operation.as_dict()}
         aty_payload = {
             "alterType": {
                 "name": name,
-                **stacked_op_dict,
+                **op_dict,
             }
         }
         logger.info(f"alterType('{name}')")
@@ -3821,7 +3784,7 @@ class AsyncDatabase:
     async def alter_type(
         self,
         name: str,
-        operations: list[AlterTypeOperation],
+        operation: AlterTypeOperation,
         *,
         keyspace: str | None = None,
         table_admin_timeout_ms: int | None = None,
@@ -3829,23 +3792,16 @@ class AsyncDatabase:
         timeout_ms: int | None = None,
     ) -> None:
         """
-        Apply one or more changes to a user-defined type (UDT), e.g. adding fields.
+        Apply a change to a user-defined type (UDT), e.g. add fields.
 
         The UDT must be already present on the database, in the targeted keyspace.
         If not specified, the keyspace is the database's working keyspace.
 
-        The input of this method is a list of operations, each expressing a change
-        to the user-defined type: those will be re-expressed as a single operation
-        and sent to the Data API as a single command invocation.
-
         Args:
             name: the name of the user-defined type to modify. The type must be
                 found on the database, in the keyspace targeted by this call.
-            operations: a list of zero, one or several `astrapy.info.AlterTypeOperation`
-                objects representing the desired changes to apply to the UDT. These can
-                be of heterogeneous type (for example, some field being renamed and
-                other new fields being added). In case a field is referenced multiple
-                times across the operations, the last directive will be kept.
+            operation: an `astrapy.info.AlterTypeOperation` object representing
+                the desired change to apply to the UDT.
             keyspace: the keyspace where the type scoped.
                 If not specified, the general setting for this database is used.
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
@@ -3864,46 +3820,19 @@ class AsyncDatabase:
             >>> # add two fields to the type:
             >>> await async_database.alter_type(
             ...     "sci_name",
-            ...     operations=[
-            ...         AlterTypeAddFields(fields={
-            ...             "observations": TableScalarColumnTypeDescriptor(
-            ...                 ColumnType.INT,
-            ...             ),
-            ...             "family": TableScalarColumnTypeDescriptor(
-            ...                 ColumnType.TEXT,
-            ...             ),
-            ...         }),
-            ...     ],
+            ...     AlterTypeAddFields(fields={
+            ...         "observations": TableScalarColumnTypeDescriptor(
+            ...             ColumnType.INT,
+            ...         ),
+            ...         "family": TableScalarColumnTypeDescriptor(
+            ...             ColumnType.TEXT,
+            ...         ),
+            ...     }),
             ... )
             >>> # rename an existing field in the type:
             >>> await async_database.alter_type(
             ...     "sci_name",
-            ...     operations=[
-            ...         AlterTypeRenameFields(fields={"family": "species_family"}),
-            ...     ],
-            ... )
-            >>> # combine various operations into one invocation:
-            >>> await async_database.alter_type(
-            ...     "sci_name",
-            ...     operations=[
-            ...         AlterTypeAddFields(
-            ...             fields={
-            ...                 "common_name": TableScalarColumnTypeDescriptor(
-            ...                     ColumnType.TEXT,
-            ...                 ),
-            ...             },
-            ...         ),
-            ...         AlterTypeRenameFields(
-            ...             fields={"observations": "num_observations"},
-            ...         ),
-            ...         AlterTypeAddFields(
-            ...             fields={
-            ...                 "phylum": TableScalarColumnTypeDescriptor(
-            ...                     ColumnType.TEXT,
-            ...                 ),
-            ...             },
-            ...         ),
-            ...     ],
+            ...     AlterTypeRenameFields(fields={"family": "species_family"}),
             ... )
         """
 
@@ -3915,14 +3844,11 @@ class AsyncDatabase:
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
 
-        stacked_op_map = AlterTypeOperation.stack_by_name(operations)
-        stacked_op_dict = {
-            op_name: op.as_dict() for op_name, op in stacked_op_map.items()
-        }
+        op_dict = {operation._name: operation.as_dict()}
         aty_payload = {
             "alterType": {
                 "name": name,
-                **stacked_op_dict,
+                **op_dict,
             }
         }
         logger.info(f"alterType('{name}')")
