@@ -64,6 +64,26 @@ def _remove_apisupport(def_dict: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _remove_definition(def_dict: dict[str, Any]) -> dict[str, Any]:
+    """
+    Strip definition keys from columns since its presence
+    is != between sending and receiving. Useful for UDT columns
+    """
+
+    def _clean_col(col_dict: dict[str, Any]) -> dict[str, Any]:
+        # 'definition' may appear nested, e.g. for a map with UDT values
+        return {
+            k: _clean_col(v) if isinstance(v, dict) else v
+            for k, v in col_dict.items()
+            if k != "definition"
+        }
+
+    return {
+        k: v if k != "columns" else {colk: _clean_col(colv) for colk, colv in v.items()}
+        for k, v in def_dict.items()
+    }
+
+
 class TestTableLifecycle:
     @pytest.mark.describe("test of create/verify/delete tables, async")
     async def test_table_basic_crd_async(
@@ -702,7 +722,9 @@ class TestTableLifecycle:
                 definition=table_simple_udt_def,
             )
             assert (
-                _remove_apisupport((await atable.definition()).as_dict())
+                _remove_definition(
+                    _remove_apisupport((await atable.definition()).as_dict())
+                )
                 == table_simple_udt_def.as_dict()
             )
 
@@ -751,7 +773,9 @@ class TestTableLifecycle:
                 ),
             )
             assert (
-                _remove_apisupport((await atable.definition()).as_dict())
+                _remove_definition(
+                    _remove_apisupport((await atable.definition()).as_dict())
+                )
                 == altered_table_simple_udt_def.as_dict()
             )
         finally:

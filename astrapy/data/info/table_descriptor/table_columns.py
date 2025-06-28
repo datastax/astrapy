@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from astrapy.data.info.vectorize import VectorServiceOptions
 from astrapy.data.utils.table_types import (
@@ -29,6 +29,9 @@ from astrapy.data.utils.table_types import (
     TableVectorColumnType,
 )
 from astrapy.utils.parsing import _warn_residual_keys
+
+if TYPE_CHECKING:
+    from astrapy.data.info.table_descriptor.type_creation import CreateTypeDefinition
 
 
 @dataclass
@@ -479,11 +482,16 @@ class TableUserDefinedColumnTypeDescriptor(TableColumnTypeDescriptor):
         column_type: a `TableUserDefinedColumnType` value. This can be omitted when
             creating the object. It only ever assumes the "USERDEFINED" value.
         udt_name: the name of the user-defined type for this column.
-        # TODO: keep "definition" coming sometimes from listTables? (now discarded).
+        definition: a full type definition in the form of an object of type
+            `astrapy.info.CreateTypeDefinition` object. This attribute is optional,
+            and as a matter of fact is only used to retain the full information
+            when the Data API returns a table schema and provides the whole structure
+            of a UDT field as part of the table definition.
         api_support: a `TableAPISupportDescriptor` object giving more details.
     """
 
     column_type: TableUserDefinedColumnType
+    definition: CreateTypeDefinition | None
     udt_name: str
 
     def __init__(
@@ -493,8 +501,17 @@ class TableUserDefinedColumnTypeDescriptor(TableColumnTypeDescriptor):
         column_type: str
         | TableUserDefinedColumnType = TableUserDefinedColumnType.USERDEFINED,
         api_support: TableAPISupportDescriptor | None = None,
+        definition: CreateTypeDefinition | None = None,
     ) -> None:
+        # lazy-import here to avoid circular import issues
+        from astrapy.data.info.table_descriptor.type_creation import (
+            CreateTypeDefinition,
+        )
+
         self.udt_name = udt_name
+        self.definition = (
+            None if definition is None else CreateTypeDefinition.coerce(definition)
+        )
         super().__init__(
             column_type=TableUserDefinedColumnType.coerce(column_type),
             api_support=api_support,
@@ -511,6 +528,7 @@ class TableUserDefinedColumnTypeDescriptor(TableColumnTypeDescriptor):
             for k, v in {
                 "type": self.column_type.value,
                 "udtName": self.udt_name,
+                "definition": self.definition.as_dict() if self.definition else None,
                 "apiSupport": self.api_support.as_dict() if self.api_support else None,
             }.items()
             if v is not None
@@ -525,15 +543,23 @@ class TableUserDefinedColumnTypeDescriptor(TableColumnTypeDescriptor):
         such as one from the Data API.
         """
 
+        # lazy-import here to avoid circular import issues
+        from astrapy.data.info.table_descriptor.type_creation import (
+            CreateTypeDefinition,
+        )
+
         _warn_residual_keys(
             cls,
             raw_dict,
-            {"type", "udtName", "apiSupport"},
+            {"type", "udtName", "apiSupport", "definition"},
         )
         return TableUserDefinedColumnTypeDescriptor(
             # TODO: handling a missing 'type' here:
             column_type=raw_dict.get("type", TableUserDefinedColumnType.USERDEFINED),
             udt_name=raw_dict["udtName"],
+            definition=CreateTypeDefinition._from_dict(raw_dict["definition"])
+            if raw_dict.get("definition")
+            else None,
             api_support=TableAPISupportDescriptor._from_dict(raw_dict["apiSupport"])
             if raw_dict.get("apiSupport")
             else None,
