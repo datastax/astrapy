@@ -29,12 +29,34 @@ from astrapy.info import CreateTypeDefinition
 
 @dataclass
 class Player:
+    """
+    An example dataclass which may be used to represent a user-defined type (UDT)
+    such as one would define, and create on the database, with this code:
+
+    .. code-block:: python
+
+        from astrapy.info import CreateTypeDefinition, ColumnType
+
+        player_udt_def = CreateTypeDefinition(fields={
+            "name": ColumnType.TEXT,
+            "age": ColumnType.INT,
+        })
+
+        database.create_type("player_udt", definition=player_udt_def)
+    """
+
     name: str
     age: int
 
 
 class PlayerDataAPIUDT(DataAPIUserDefinedType[Player]):
-    # TODO: docstring
+    """
+    A concrete Data API type wrapper for the `Player` dataclass
+    (defined in this module), exemplifying the usage for writes and reads through
+    the Data API.
+
+    See the test functions in this module for actual usage examples.
+    """
 
     def as_dict(self) -> dict[str, Any]:
         return self.value.__dict__
