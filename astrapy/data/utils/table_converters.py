@@ -329,6 +329,9 @@ def _column_filler_value(
             raise ValueError(
                 f"Unrecognized table key-valued-column descriptor for reads: {col_def.as_dict()}"
             )
+    elif isinstance(col_def, TableUserDefinedColumnTypeDescriptor):
+        # TODO: verify about fillers/null UDTs
+        return None
     elif isinstance(col_def, TableUnsupportedColumnTypeDescriptor):
         # For lack of better information, the filler is a None:
         return None
@@ -489,7 +492,33 @@ def _create_column_tpostprocessor(
                 f"Unrecognized table key-valued-column descriptor for reads: {col_def.as_dict()}"
             )
     elif isinstance(col_def, TableUserDefinedColumnTypeDescriptor):
-        raise NotImplementedError(col_def.udt_name)
+        udt_class = (
+            options.udt_class_map.get(col_def.udt_name) or options.udt_default_class
+        )
+        # first the incoming dictionary must be deserialized in its types,
+        # then the class constructor is invoked.
+        if col_def.definition is None:
+            raise ValueError(
+                f"Schema information lacks 'definition' field for {col_def.udt_name}."
+            )
+        values_tpostprocessor_map = {
+            k_fieldname: _create_column_tpostprocessor(k_fieldtype, options=options)
+            for k_fieldname, k_fieldtype in col_def.definition.fields.items()
+        }
+
+        #
+        def _tpostprocessor_udt(raw_items: dict[Any, Any] | None) -> Any:
+            if raw_items is None:
+                return None
+            return udt_class.from_dict(
+                {
+                    k_fieldname: values_tpostprocessor_map[k_fieldname](v_fieldraw)
+                    for k_fieldname, v_fieldraw in raw_items.items()
+                },
+                definition=col_def.definition,  # type: ignore[arg-type]
+            )
+
+        return _tpostprocessor_udt
     elif isinstance(col_def, TableUnsupportedColumnTypeDescriptor):
         # 'Unsupported' columns (marked as such by the API) should never be
         # returned in reading. However, this is no sufficient reason not to comply.
