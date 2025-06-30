@@ -31,6 +31,7 @@ from astrapy.data.info.table_descriptor.table_columns import (
     TablePassthroughColumnTypeDescriptor,
     TableScalarColumnTypeDescriptor,
     TableUnsupportedColumnTypeDescriptor,
+    TableUserDefinedColumnTypeDescriptor,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
 )
@@ -52,6 +53,7 @@ from astrapy.data_types import (
     DataAPISet,
     DataAPITime,
     DataAPITimestamp,
+    DataAPIUserDefinedType,
     DataAPIVector,
 )
 from astrapy.ids import UUID, ObjectId
@@ -486,12 +488,14 @@ def _create_column_tpostprocessor(
             raise ValueError(
                 f"Unrecognized table key-valued-column descriptor for reads: {col_def.as_dict()}"
             )
+    elif isinstance(col_def, TableUserDefinedColumnTypeDescriptor):
+        raise NotImplementedError(col_def.udt_name)
     elif isinstance(col_def, TableUnsupportedColumnTypeDescriptor):
         # 'Unsupported' columns (marked as such by the API) should never be
         # returned in reading. However, this is no sufficient reason not to comply.
         return _create_unsupported_tpostprocessor(col_def, options=options)
     elif isinstance(col_def, TablePassthroughColumnTypeDescriptor):
-        # 'passthrough' columns (i.e. those that confuse the client parsing logic)
+        # 'passthrough' columns (i.e. those whose schema the client cannot parse)
         return _create_passthrough_tpostprocessor(col_def, options=options)
     else:
         raise ValueError(
@@ -720,6 +724,17 @@ def preprocess_table_payload_value(
             "Values of type ObjectId are not supported. Consider switching to "
             "using UUID-based identifiers instead."
         )
+    elif isinstance(value, DataAPIUserDefinedType):
+        udt_dict = value.as_dict()
+        return {
+            udt_k: preprocess_table_payload_value(
+                path + [udt_k],
+                udt_v,
+                options=options,
+                map2tuple_checker=map2tuple_checker,
+            )
+            for udt_k, udt_v in udt_dict.items()
+        }
 
     # Now it is either a generator-like or a "safe" scalar
     # value can be something that must be unrolled:

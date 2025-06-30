@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 UDT_TYPE = TypeVar("UDT_TYPE")
 THE_DC_TYPE = TypeVar("THE_DC_TYPE")
-SelfType = TypeVar("SelfType", bound="DataAPIUserDefinedType[Any]")
+DA_UDT_WRAPPER = TypeVar("DA_UDT_WRAPPER", bound="DataAPIUserDefinedType[Any]")
 
 
 class DataAPIUserDefinedType(Generic[UDT_TYPE], ABC):
@@ -63,11 +63,11 @@ class DataAPIUserDefinedType(Generic[UDT_TYPE], ABC):
     @classmethod
     @abstractmethod
     def from_dict(
-        cls: type[SelfType],
+        cls: type[DA_UDT_WRAPPER],
         raw_dict: dict[str, Any],
         *,
         definition: CreateTypeDefinition,
-    ) -> SelfType:
+    ) -> DA_UDT_WRAPPER:
         """
         Convert a plain Python dictionary into the appropriate object that represents
         the user-defined type (UDT).
@@ -111,7 +111,7 @@ class DataAPIUserDefinedType(Generic[UDT_TYPE], ABC):
         return f"{self.__class__.__name__}({self._value.__repr__()})"
 
 
-class DictDataAPIUDT(DataAPIUserDefinedType[dict[str, Any]]):
+class DictDataAPIUserDefinedType(DataAPIUserDefinedType[dict[str, Any]]):
     """
     A wrapper of plain Python dictionaries for columns of type
     'user-defined type' (UDT) in Tables.
@@ -125,21 +125,21 @@ class DictDataAPIUDT(DataAPIUserDefinedType[dict[str, Any]]):
         TODO: verify this once the whole machinery is in place
         table.insert_one({
             "id": "x",
-            "udt_column": DictDataAPIUDT({"name": "John", "age": 40}),
+            "udt_column": DictDataAPIUserDefinedType({"name": "John", "age": 40}),
         })
 
         document = table.find_one({})
-        assert isinstance(document["udt_column"], DictDataAPIUDT)
+        assert isinstance(document["udt_column"], DictDataAPIUserDefinedType)
     """
 
     @classmethod
     def from_dict(
-        cls: type[DictDataAPIUDT],
+        cls: type[DictDataAPIUserDefinedType],
         raw_dict: dict[str, Any],
         *,
         definition: CreateTypeDefinition,
-    ) -> DictDataAPIUDT:
-        return DictDataAPIUDT(raw_dict)
+    ) -> DictDataAPIUserDefinedType:
+        return DictDataAPIUserDefinedType(raw_dict)
 
     def as_dict(self) -> dict[str, Any]:
         return self.value

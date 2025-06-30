@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import datetime
 from dataclasses import dataclass
-from typing import Iterable, Sequence
+from typing import Any, Iterable, Sequence
 
 from astrapy.authentication import (
     EmbeddingAPIKeyHeaderProvider,
@@ -30,6 +30,7 @@ from astrapy.authentication import (
     coerce_possible_token_provider,
 )
 from astrapy.constants import CallerType, Environment, MapEncodingMode
+from astrapy.data_types import DataAPIUserDefinedType, DictDataAPIUserDefinedType
 from astrapy.settings.defaults import (
     API_PATH_ENV_MAP,
     API_VERSION_ENV_MAP,
@@ -364,6 +365,8 @@ class SerdesOptions:
             database. This setting (defaulting to `datetime.timezone.utc`) determines
             the timezone used in the returned datetime objects. Setting this value
             to None results in naive datetimes being returned (not recommended).
+        udt_class_map: TODO
+        udt_default_class: TODO
     """
 
     binary_encode_vectors: bool | UnsetType
@@ -373,6 +376,8 @@ class SerdesOptions:
     encode_maps_as_lists_in_tables: MapEncodingMode | UnsetType
     accept_naive_datetimes: bool | UnsetType
     datetime_tzinfo: datetime.timezone | None | UnsetType
+    udt_class_map: dict[str, type[DataAPIUserDefinedType[Any]]] | UnsetType
+    udt_default_class: type[DataAPIUserDefinedType[Any]] | UnsetType
 
     def __init__(
         self,
@@ -384,6 +389,9 @@ class SerdesOptions:
         encode_maps_as_lists_in_tables: str | MapEncodingMode | UnsetType = _UNSET,
         accept_naive_datetimes: bool | UnsetType = _UNSET,
         datetime_tzinfo: datetime.timezone | None | UnsetType = _UNSET,
+        udt_class_map: dict[str, type[DataAPIUserDefinedType[Any]]]
+        | UnsetType = _UNSET,
+        udt_default_class: type[DataAPIUserDefinedType[Any]] | UnsetType = _UNSET,
     ) -> None:
         self.binary_encode_vectors = binary_encode_vectors
         self.custom_datatypes_in_reading = custom_datatypes_in_reading
@@ -397,6 +405,8 @@ class SerdesOptions:
             self.encode_maps_as_lists_in_tables = encode_maps_as_lists_in_tables
         self.accept_naive_datetimes = accept_naive_datetimes
         self.datetime_tzinfo = datetime_tzinfo
+        self.udt_class_map = udt_class_map
+        self.udt_default_class = udt_default_class
 
 
 @dataclass
@@ -507,6 +517,8 @@ class FullSerdesOptions(SerdesOptions):
             database. This setting (defaulting to `datetime.timezone.utc`) determines
             the timezone used in the returned datetime objects. Setting this value
             to None results in naive datetimes being returned (not recommended).
+        udt_class_map: TODO
+        udt_default_class: TODO
     """
 
     binary_encode_vectors: bool
@@ -516,6 +528,8 @@ class FullSerdesOptions(SerdesOptions):
     encode_maps_as_lists_in_tables: MapEncodingMode
     accept_naive_datetimes: bool
     datetime_tzinfo: datetime.timezone | None
+    udt_class_map: dict[str, type[DataAPIUserDefinedType[Any]]]
+    udt_default_class: type[DataAPIUserDefinedType[Any]]
 
     def __init__(
         self,
@@ -527,6 +541,8 @@ class FullSerdesOptions(SerdesOptions):
         encode_maps_as_lists_in_tables: str | MapEncodingMode,
         accept_naive_datetimes: bool,
         datetime_tzinfo: datetime.timezone | None,
+        udt_class_map: dict[str, type[DataAPIUserDefinedType[Any]]],
+        udt_default_class: type[DataAPIUserDefinedType[Any]],
     ) -> None:
         SerdesOptions.__init__(
             self,
@@ -537,6 +553,8 @@ class FullSerdesOptions(SerdesOptions):
             encode_maps_as_lists_in_tables=encode_maps_as_lists_in_tables,
             accept_naive_datetimes=accept_naive_datetimes,
             datetime_tzinfo=datetime_tzinfo,
+            udt_class_map=udt_class_map,
+            udt_default_class=udt_default_class,
         )
 
     def with_override(self, other: SerdesOptions) -> FullSerdesOptions:
@@ -548,6 +566,15 @@ class FullSerdesOptions(SerdesOptions):
             other: a not-necessarily-fully-specified options object. All its defined
                 settings take precedence.
         """
+
+        _udt_class_map: dict[str, type[DataAPIUserDefinedType[Any]]]
+        if isinstance(other.udt_class_map, UnsetType):
+            _udt_class_map = self.udt_class_map
+        else:
+            _udt_class_map = {
+                **self.udt_class_map,
+                **other.udt_class_map,
+            }
 
         return FullSerdesOptions(
             binary_encode_vectors=(
@@ -584,6 +611,12 @@ class FullSerdesOptions(SerdesOptions):
                 other.datetime_tzinfo
                 if not isinstance(other.datetime_tzinfo, UnsetType)
                 else self.datetime_tzinfo
+            ),
+            udt_class_map=_udt_class_map,
+            udt_default_class=(
+                other.udt_default_class
+                if not isinstance(other.udt_default_class, UnsetType)
+                else self.udt_default_class
             ),
         )
 
@@ -1301,6 +1334,8 @@ defaultSerdesOptions = FullSerdesOptions(
     encode_maps_as_lists_in_tables=DEFAULT_ENCODE_MAPS_AS_LISTS_IN_TABLES,
     accept_naive_datetimes=DEFAULT_ACCEPT_NAIVE_DATETIMES,
     datetime_tzinfo=DEFAULT_DATETIME_TZINFO,
+    udt_class_map={},
+    udt_default_class=DictDataAPIUserDefinedType,
 )
 
 

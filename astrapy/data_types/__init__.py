@@ -20,6 +20,11 @@ from astrapy.data_types.data_api_map import DataAPIMap
 from astrapy.data_types.data_api_set import DataAPISet
 from astrapy.data_types.data_api_time import DataAPITime
 from astrapy.data_types.data_api_timestamp import DataAPITimestamp
+from astrapy.data_types.data_api_userdefinedtype import (
+    DataAPIUserDefinedType,
+    DictDataAPIUserDefinedType,
+    create_dataclass_userdefinedtype,
+)
 from astrapy.data_types.data_api_vector import DataAPIVector
 
 __all__ = [
@@ -30,4 +35,7 @@ __all__ = [
     "DataAPIMap",
     "DataAPISet",
     "DataAPITime",
+    "DataAPIUserDefinedType",
+    "DictDataAPIUserDefinedType",
+    "create_dataclass_userdefinedtype",
 ]

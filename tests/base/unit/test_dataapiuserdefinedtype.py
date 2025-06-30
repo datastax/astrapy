@@ -19,9 +19,9 @@ from typing import Any
 
 import pytest
 
-from astrapy.data_types.data_api_userdefinedtype import (
+from astrapy.data_types import (
     DataAPIUserDefinedType,
-    DictDataAPIUDT,
+    DictDataAPIUserDefinedType,
     create_dataclass_userdefinedtype,
 )
 from astrapy.info import CreateTypeDefinition
@@ -76,13 +76,13 @@ class TestDataAPIUserDefinedType:
     def test_dict_dataapiudt(self) -> None:
         test_dict = {"name": "John", "age": 40}
 
-        wrapped = DictDataAPIUDT(test_dict)
+        wrapped = DictDataAPIUserDefinedType(test_dict)
 
         assert wrapped.value == test_dict
         assert wrapped.as_dict() == test_dict
 
         # TODO: definition?
-        wrapped2 = DictDataAPIUDT.from_dict(
+        wrapped2 = DictDataAPIUserDefinedType.from_dict(
             test_dict, definition=CreateTypeDefinition(fields={})
         )
         assert wrapped == wrapped2
