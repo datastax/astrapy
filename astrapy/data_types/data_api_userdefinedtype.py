@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import is_dataclass
 from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 if TYPE_CHECKING:
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
 
 
 UDT_TYPE = TypeVar("UDT_TYPE")
+THE_DC_TYPE = TypeVar("THE_DC_TYPE")
 SelfType = TypeVar("SelfType", bound="DataAPIUserDefinedType[Any]")
 
 
@@ -43,10 +45,10 @@ class DataAPIUserDefinedType(Generic[UDT_TYPE], ABC):
         TODO
     """
 
-    value: UDT_TYPE
+    _value: UDT_TYPE
 
     def __init__(self, value: UDT_TYPE) -> None:
-        self.value = value
+        self._value = value
 
     @classmethod
     @abstractmethod
@@ -60,15 +62,23 @@ class DataAPIUserDefinedType(Generic[UDT_TYPE], ABC):
     @abstractmethod
     def as_dict(self) -> dict[str, Any]: ...
 
+    @property
+    def value(self) -> UDT_TYPE:
+        return self._value
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, DataAPIUserDefinedType):
+            return self._value == other._value  # type: ignore[no-any-return]
+        else:
+            return False
+
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}"
+        return f"{self.__class__.__name__}({self._value.__repr__()})"
 
 
-# implementation for plain dict - WIP
 class DictDataAPIUDT(DataAPIUserDefinedType[dict[str, Any]]):
     """
-    from astrapy.data_types.data_api_userdefinedtype import DictDataAPIUDT
-    q = DictDataAPIUDT({"a": 1, "b": "z"})
+    TODO: docstring
     """
 
     def as_dict(self) -> dict[str, Any]:
@@ -82,3 +92,27 @@ class DictDataAPIUDT(DataAPIUserDefinedType[dict[str, Any]]):
         definition: CreateTypeDefinition,
     ) -> DictDataAPIUDT:
         return DictDataAPIUDT(raw_dict)
+
+
+def create_dataclass_userdefinedtype(
+    _dataclass: type[THE_DC_TYPE],
+) -> type[DataAPIUserDefinedType[THE_DC_TYPE]]:
+    # TODO: docstring
+
+    if not (is_dataclass(_dataclass) and isinstance(_dataclass, type)):
+        raise TypeError(f"{_dataclass} is not a dataclass.")
+
+    class DataclassDataAPIUDT(DataAPIUserDefinedType[THE_DC_TYPE]):
+        def as_dict(self) -> dict[str, Any]:
+            return self.value.__dict__
+
+        @classmethod
+        def from_dict(
+            cls: type[DataclassDataAPIUDT],
+            raw_dict: dict[str, Any],
+            *,
+            definition: CreateTypeDefinition,
+        ) -> DataclassDataAPIUDT:
+            return DataclassDataAPIUDT(_dataclass(**raw_dict))
+
+    return DataclassDataAPIUDT
