@@ -506,7 +506,6 @@ def _create_column_tpostprocessor(
             for k_fieldname, k_fieldtype in col_def.definition.fields.items()
         }
 
-        #
         def _tpostprocessor_udt(raw_items: dict[Any, Any] | None) -> Any:
             if raw_items is None:
                 return None

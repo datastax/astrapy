@@ -35,6 +35,14 @@ from ..conftest import (
     clean_nulls_from_dict,
     sync_fail_if_not_removed,
 )
+from ..table_udt_assets import (
+    ExtendedPlayer,
+    ExtendedPlayerUDTWrapper,
+    NullablePlayer,
+    NullablePlayerUDTWrapper,
+    Player,
+    PlayerUDTWrapper,
+)
 
 __all__ = [
     "DataAPICredentials",
@@ -56,4 +64,10 @@ __all__ = [
     "DefaultAsyncCollection",
     "DefaultAsyncTable",
     "DefaultTable",
+    "ExtendedPlayer",
+    "ExtendedPlayerUDTWrapper",
+    "NullablePlayer",
+    "NullablePlayerUDTWrapper",
+    "Player",
+    "PlayerUDTWrapper",
 ]

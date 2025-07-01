@@ -23,13 +23,72 @@ from astrapy.data_types import (
     DataAPIUserDefinedType,
     create_dataclass_userdefinedtype,
 )
-from astrapy.info import CreateTypeDefinition
+from astrapy.info import CreateTableDefinition, CreateTypeDefinition
 
+PLAYER_TYPE_NAME = "udt_player"
 PLAYER_TYPE_DEFINITION = CreateTypeDefinition(
     fields={
         "name": "text",
         "age": "int",
     },
+)
+PLAYER_TABLE_NAME = "test_table_udt_player"
+PLAYER_TABLE_DEFINITION = CreateTableDefinition.coerce(
+    {
+        "columns": {
+            "id": "text",
+            "scalar_udt": {"type": "userDefined", "udtName": PLAYER_TYPE_NAME},
+            "list_udt": {
+                "type": "list",
+                "valueType": {
+                    "type": "userDefined",
+                    "udtName": PLAYER_TYPE_NAME,
+                },
+            },
+            "set_udt": {
+                "type": "set",
+                "valueType": {
+                    "type": "userDefined",
+                    "udtName": PLAYER_TYPE_NAME,
+                },
+            },
+            "map_udt": {
+                "type": "map",
+                "keyType": "text",
+                "valueType": {
+                    "type": "userDefined",
+                    "udtName": PLAYER_TYPE_NAME,
+                },
+            },
+        },
+        "primaryKey": {
+            "partitionBy": ["id"],
+            "partitionSort": {},
+        },
+    }
+)
+
+EXTENDED_PLAYER_TYPE_NAME = "udt_extended_player"
+EXTENDED_PLAYER_TYPE_DEFINITION = CreateTypeDefinition(
+    fields={
+        "name": "text",
+        "age": "int",
+        "blb": "blob",
+        "ts": "timestamp",
+    },
+)
+EXTENDED_PLAYER_TABLE_NAME = "test_table_udt_player"
+EXTENDED_PLAYER_TABLE_DEFINITION = CreateTableDefinition.coerce(
+    {
+        "columns": {
+            "id": "text",
+            "scalar_udt": {"type": "userDefined", "udtName": EXTENDED_PLAYER_TYPE_NAME},
+        },
+        "primaryKey": {
+            "partitionBy": ["id"],
+            "partitionSort": {},
+        },
+    }
 )
 
 

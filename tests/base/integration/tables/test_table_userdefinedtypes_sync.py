@@ -15,14 +15,31 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from astrapy import Database
+from astrapy.api_options import APIOptions, SerdesOptions
+from astrapy.data_types import (
+    DataAPIMap,
+    DataAPISet,
+    DataAPIUserDefinedType,
+    DictDataAPIUserDefinedType,
+)
 from astrapy.exceptions import DataAPIResponseException
 
-from ..conftest import CQL_AVAILABLE, DataAPICredentials
+from ..conftest import (
+    CQL_AVAILABLE,
+    DataAPICredentials,
+    DefaultTable,
+    # ExtendedPlayer,
+    # ExtendedPlayerUDTWrapper,
+    # NullablePlayer,
+    # NullablePlayerUDTWrapper,
+    Player,
+    PlayerUDTWrapper,
+)
 from .table_cql_assets import _extract_udt_definition
 from .table_row_assets import (
     UDT_ALTER_OP_1,
@@ -89,3 +106,71 @@ class TestTableUserDefinedTypes:
             sync_database.drop_type(UDT_NAME)
         finally:
             sync_database.drop_type(UDT_NAME, if_exists=True)
+
+    @pytest.mark.parametrize(
+        ("use_dataclass",),
+        [(False,), (True,)],
+        ids=["dict-based", "dataclass-based"],
+    )
+    @pytest.mark.parametrize(
+        ("use_maptuples",),
+        [(False,), (True,)],
+        ids=["no-map-tuples", "do-map-tuples"],
+    )
+    @pytest.mark.describe("Test of full-UDT DML, sync")
+    def test_table_full_udt_dml_sync(
+        self,
+        player_udt: str,
+        sync_empty_table_udt_player: DefaultTable,
+        use_dataclass: bool,
+        use_maptuples: bool,
+    ) -> None:
+        if use_maptuples:
+            if "ASTRAPY_TEST_LATEST_MAIN" not in os.environ:
+                pytest.skip("maps-as-tuples require 'latest main' testing for now.")
+
+        wrapped_object: Any
+        wrapper_class: type[DataAPIUserDefinedType[Any]]
+        udt_class_map: dict[str, type[DataAPIUserDefinedType[Any]]]
+        if use_dataclass:
+            wrapped_object = Player(name="Jim", age=75)
+            wrapper_class = PlayerUDTWrapper
+            udt_class_map = {player_udt: PlayerUDTWrapper}
+        else:
+            wrapped_object = {"name": "Charles", "age": 36}
+            wrapper_class = DictDataAPIUserDefinedType
+            udt_class_map = {}
+
+        # the serdes options have a nontrivial udt-class-map only if not dict-based:
+        table = sync_empty_table_udt_player.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    udt_class_map=udt_class_map,
+                    encode_maps_as_lists_in_tables="ALWAYS"
+                    if use_maptuples
+                    else "NEVER",
+                ),
+            ),
+        )
+
+        wrapped = wrapper_class(wrapped_object)
+        write_row = {
+            "id": "a",
+            "scalar_udt": wrapped,
+            "list_udt": [wrapped],
+            "set_udt": DataAPISet([wrapped]),
+            "map_udt": DataAPIMap([("schlussel", wrapped)]),
+        }
+        ins_result = table.insert_one(write_row)
+        assert ins_result.inserted_id == {"id": "a"}
+
+        read_row = table.find_one(ins_result.inserted_id)
+        assert read_row == write_row
+
+        # projections
+        for fld in write_row.keys():
+            prj_read_row = table.find_one(
+                ins_result.inserted_id,
+                projection={fld: True},
+            )
+            assert prj_read_row == {fld: write_row[fld]}
