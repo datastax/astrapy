@@ -14,61 +14,18 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
-
 import pytest
 
-from astrapy.data_types import (
-    DataAPIUserDefinedType,
-    DictDataAPIUserDefinedType,
-    create_dataclass_userdefinedtype,
+from astrapy.data_types import DictDataAPIUserDefinedType
+
+from ..table_udt_assets import (
+    PLAYER_TYPE_DEFINITION,
+    NullablePlayer,
+    NullablePlayerUDTWrapper,
+    Player,
+    PlayerExplicitDataAPIUDT,
+    PlayerUDTWrapper,
 )
-from astrapy.info import CreateTypeDefinition
-
-
-@dataclass
-class Player:
-    """
-    An example dataclass which may be used to represent a user-defined type (UDT)
-    such as one would define, and create on the database, with this code:
-
-    .. code-block:: python
-
-        from astrapy.info import CreateTypeDefinition, ColumnType
-
-        player_udt_def = CreateTypeDefinition(fields={
-            "name": ColumnType.TEXT,
-            "age": ColumnType.INT,
-        })
-
-        database.create_type("player_udt", definition=player_udt_def)
-    """
-
-    name: str
-    age: int
-
-
-class PlayerDataAPIUDT(DataAPIUserDefinedType[Player]):
-    """
-    A concrete Data API type wrapper for the `Player` dataclass
-    (defined in this module), exemplifying the usage for writes and reads through
-    the Data API.
-
-    See the test functions in this module for actual usage examples.
-    """
-
-    def as_dict(self) -> dict[str, Any]:
-        return self.value.__dict__
-
-    @classmethod
-    def from_dict(
-        cls: type[PlayerDataAPIUDT],
-        raw_dict: dict[str, Any],
-        *,
-        definition: CreateTypeDefinition,
-    ) -> PlayerDataAPIUDT:
-        return PlayerDataAPIUDT(Player(**raw_dict))
 
 
 class TestDataAPIUserDefinedType:
@@ -81,9 +38,8 @@ class TestDataAPIUserDefinedType:
         assert wrapped.value == test_dict
         assert wrapped.as_dict() == test_dict
 
-        # TODO: definition?
         wrapped2 = DictDataAPIUserDefinedType.from_dict(
-            test_dict, definition=CreateTypeDefinition(fields={})
+            test_dict, definition=PLAYER_TYPE_DEFINITION
         )
         assert wrapped == wrapped2
 
@@ -92,14 +48,13 @@ class TestDataAPIUserDefinedType:
         test_dict = {"name": "John", "age": 40}
         test_player = Player(name="John", age=40)
 
-        wrapped = PlayerDataAPIUDT(test_player)
+        wrapped = PlayerExplicitDataAPIUDT(test_player)
 
         assert wrapped.value == test_player
         assert wrapped.as_dict() == test_dict
 
-        # TODO: definition?
-        wrapped2 = PlayerDataAPIUDT.from_dict(
-            test_dict, definition=CreateTypeDefinition(fields={})
+        wrapped2 = PlayerExplicitDataAPIUDT.from_dict(
+            test_dict, definition=PLAYER_TYPE_DEFINITION
         )
         assert wrapped == wrapped2
 
@@ -108,15 +63,27 @@ class TestDataAPIUserDefinedType:
         test_dict = {"name": "John", "age": 40}
         test_player = Player(name="John", age=40)
 
-        PlayerWrapper = create_dataclass_userdefinedtype(Player)
-
-        wrapped = PlayerWrapper(test_player)
+        wrapped = PlayerUDTWrapper(test_player)
 
         assert wrapped.value == test_player
         assert wrapped.as_dict() == test_dict
 
-        # TODO: definition?
-        wrapped2 = PlayerWrapper.from_dict(
-            test_dict, definition=CreateTypeDefinition(fields={})
+        wrapped2 = PlayerUDTWrapper.from_dict(
+            test_dict, definition=PLAYER_TYPE_DEFINITION
+        )
+        assert wrapped == wrapped2
+
+    @pytest.mark.describe("test of nullable dataclass-backed data api UDT factory")
+    def test_nullabledataclassfactory_dataapiudt(self) -> None:
+        test_dict = {"name": "John"}
+        test_player = NullablePlayer(name="John")
+
+        wrapped = NullablePlayerUDTWrapper(test_player)
+
+        assert wrapped.value == test_player
+        assert wrapped.as_dict() == test_dict
+
+        wrapped2 = NullablePlayerUDTWrapper.from_dict(
+            test_dict, definition=PLAYER_TYPE_DEFINITION
         )
         assert wrapped == wrapped2

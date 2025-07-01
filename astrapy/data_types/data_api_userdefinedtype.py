@@ -193,7 +193,7 @@ def create_dataclass_userdefinedtype(
 
     class DataclassDataAPIUDT(DataAPIUserDefinedType[THE_DC_TYPE]):
         def as_dict(self) -> dict[str, Any]:
-            return self.value.__dict__
+            return {k: v for k, v in self.value.__dict__.items() if v is not None}
 
         @classmethod
         def from_dict(

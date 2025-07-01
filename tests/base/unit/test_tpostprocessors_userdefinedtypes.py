@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import datetime
-from dataclasses import dataclass
 
 import pytest
 
@@ -26,41 +25,17 @@ from astrapy.data_types import (
     DataAPISet,
     DataAPITimestamp,
     DictDataAPIUserDefinedType,
-    create_dataclass_userdefinedtype,
 )
 from astrapy.info import ListTableDescriptor
 from astrapy.utils.api_options import SerdesOptions, defaultSerdesOptions
 
 from ..conftest import _repaint_NaNs
-
-
-@dataclass
-class ExtendedPlayer:
-    """
-    An example dataclass which may be used to represent a user-defined type (UDT)
-    such as one would define, and create on the database, with this code:
-
-    .. code-block:: python
-
-        from astrapy.info import CreateTypeDefinition, ColumnType
-
-        xplayer_udt_def = CreateTypeDefinition(fields={
-            "name": ColumnType.TEXT,
-            "age": ColumnType.INT,
-            "blb": ColumnType.BLOB,
-            "ts": ColumnType.TIMESTAMP,
-        })
-
-        database.create_type("xplayer_udt", definition=xplayer_udt_def)
-    """
-
-    name: str
-    age: int
-    blb: bytes
-    ts: DataAPITimestamp | datetime.datetime
-
-
-ExtendedPlayerWrapper = create_dataclass_userdefinedtype(ExtendedPlayer)
+from ..table_udt_assets import (
+    ExtendedPlayer,
+    ExtendedPlayerUDTWrapper,
+    NullablePlayer,
+    NullablePlayerUDTWrapper,
+)
 
 THE_BYTES = b"\xa6"
 THE_TIMESTAMP = DataAPITimestamp.from_string("2025-10-29T01:25:37.123Z")
@@ -73,7 +48,7 @@ TABLE_DESCRIPTION = {
             "p_text": {"type": "text"},
             "udt_column": {
                 "type": "userDefined",
-                "udtName": "player_udt",
+                "udtName": "x_player_udt",
                 "definition": {
                     "fields": {
                         "name": {"type": "text"},
@@ -87,7 +62,7 @@ TABLE_DESCRIPTION = {
             "udt_list": {
                 "type": "list",
                 "valueType": {
-                    "udtName": "player_udt",
+                    "udtName": "x_player_udt",
                     "definition": {
                         "fields": {
                             "name": {"type": "text"},
@@ -102,7 +77,7 @@ TABLE_DESCRIPTION = {
             "udt_set": {
                 "type": "set",
                 "valueType": {
-                    "udtName": "player_udt",
+                    "udtName": "x_player_udt",
                     "definition": {
                         "fields": {
                             "name": {"type": "text"},
@@ -118,7 +93,7 @@ TABLE_DESCRIPTION = {
                 "type": "map",
                 "keyType": "text",
                 "valueType": {
-                    "udtName": "player_udt",
+                    "udtName": "x_player_udt",
                     "definition": {
                         "fields": {
                             "name": {"type": "text"},
@@ -134,7 +109,7 @@ TABLE_DESCRIPTION = {
                 "type": "map",
                 "keyType": "text",
                 "valueType": {
-                    "udtName": "player_udt",
+                    "udtName": "x_player_udt",
                     "definition": {
                         "fields": {
                             "name": {"type": "text"},
@@ -200,7 +175,7 @@ EXPECTED_POSTPROCESSED_ROW_DICT_NC = {
     "udt_map_aslist": {"k": DICT_WRAPPED_NC},
 }
 
-DATACLASS_WRAPPED_C = ExtendedPlayerWrapper(
+DATACLASS_WRAPPED_C = ExtendedPlayerUDTWrapper(
     ExtendedPlayer(
         name="John",
         age=40,
@@ -217,7 +192,7 @@ EXPECTED_POSTPROCESSED_ROW_DATACLASS_C = {
     "udt_map_aslist": DataAPIMap([("k", DATACLASS_WRAPPED_C)]),
 }
 
-DATACLASS_WRAPPED_NC = ExtendedPlayerWrapper(
+DATACLASS_WRAPPED_NC = ExtendedPlayerUDTWrapper(
     ExtendedPlayer(
         name="John",
         age=40,
@@ -234,7 +209,7 @@ EXPECTED_POSTPROCESSED_ROW_DATACLASS_NC = {
     "udt_map_aslist": {"k": DATACLASS_WRAPPED_NC},
 }
 
-ExtendedPlayerWrapper
+ExtendedPlayerUDTWrapper
 
 
 class TestTPostProcessorsUserDefinedTypes:
@@ -317,7 +292,7 @@ class TestTPostProcessorsUserDefinedTypes:
             options=defaultSerdesOptions.with_override(
                 SerdesOptions(
                     custom_datatypes_in_reading=True,
-                    udt_class_map={"player_udt": ExtendedPlayerWrapper},
+                    udt_class_map={"x_player_udt": ExtendedPlayerUDTWrapper},
                 ),
             ),
             similarity_pseudocolumn=None,
@@ -352,7 +327,7 @@ class TestTPostProcessorsUserDefinedTypes:
                 SerdesOptions(
                     custom_datatypes_in_reading=False,
                     datetime_tzinfo=THE_TIMEZONE,
-                    udt_class_map={"player_udt": ExtendedPlayerWrapper},
+                    udt_class_map={"x_player_udt": ExtendedPlayerUDTWrapper},
                 ),
             ),
             similarity_pseudocolumn=None,
@@ -377,3 +352,50 @@ class TestTPostProcessorsUserDefinedTypes:
         )
         with pytest.raises(ValueError):
             tpostprocessor_nc({"bippy": 123})
+
+    @pytest.mark.describe("test of row postprocessors with partial UDT dataclass")
+    def test_row_postprocessors_partial_udtdataclass(self) -> None:
+        col_desc = ListTableDescriptor.coerce(
+            {
+                "name": "table_simple",
+                "definition": {
+                    "columns": {
+                        "p_text": {"type": "text"},
+                        "udt_column": {
+                            "type": "userDefined",
+                            "udtName": "player_udt",
+                            "definition": {
+                                "fields": {
+                                    "name": {"type": "text"},
+                                    "age": {"type": "int"},
+                                },
+                            },
+                            "apiSupport": {},
+                        },
+                    },
+                    "primaryKey": {"partitionBy": [], "partitionSort": {}},
+                },
+            },
+        )
+
+        tpostprocessor_nc = create_row_tpostprocessor(
+            columns=col_desc.definition.columns,
+            options=defaultSerdesOptions.with_override(
+                SerdesOptions(
+                    udt_class_map={"player_udt": NullablePlayerUDTWrapper},
+                ),
+            ),
+            similarity_pseudocolumn=None,
+        )
+        converted_column_nc = tpostprocessor_nc(
+            {
+                "p_text": "italy",
+                "udt_column": {
+                    "name": "JustJohn",
+                },
+            }
+        )
+        converted_column_nc == {
+            "p_text": "italy",
+            "udt_column": NullablePlayer(name="JustJohn"),
+        }

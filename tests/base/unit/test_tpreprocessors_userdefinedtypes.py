@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
 import pytest
@@ -28,38 +27,18 @@ from astrapy.data_types import (
     DataAPITimestamp,
     DataAPIUserDefinedType,
     DictDataAPIUserDefinedType,
-    create_dataclass_userdefinedtype,
 )
 from astrapy.utils.api_options import SerdesOptions, defaultSerdesOptions
 
+from ..table_udt_assets import (
+    ExtendedPlayer,
+    ExtendedPlayerUDTWrapper,
+    NullablePlayer,
+    NullablePlayerUDTWrapper,
+)
+
 THE_BYTES = b"\xa6"
 THE_TIMESTAMP = DataAPITimestamp.from_string("2025-10-29T01:25:37.123Z")
-
-
-@dataclass
-class ExtendedPlayer:
-    """
-    An example dataclass which may be used to represent a user-defined type (UDT)
-    such as one would define, and create on the database, with this code:
-
-    .. code-block:: python
-
-        from astrapy.info import CreateTypeDefinition, ColumnType
-
-        xplayer_udt_def = CreateTypeDefinition(fields={
-            "name": ColumnType.TEXT,
-            "age": ColumnType.INT,
-            "blb": ColumnType.BLOB,
-            "ts": ColumnType.TIMESTAMP,
-        })
-
-        database.create_type("xplayer_udt", definition=xplayer_udt_def)
-    """
-
-    name: str
-    age: int
-    blb: bytes
-    ts: DataAPITimestamp
 
 
 class TestTPreprocessorsUserDefinedTypes:
@@ -77,7 +56,7 @@ class TestTPreprocessorsUserDefinedTypes:
                 ),
             ),
             (
-                create_dataclass_userdefinedtype(ExtendedPlayer)(
+                ExtendedPlayerUDTWrapper(
                     ExtendedPlayer(
                         name="John",
                         age=40,
@@ -89,8 +68,8 @@ class TestTPreprocessorsUserDefinedTypes:
         ],
         ids=["DictDataAPIUserDefinedType", "dataclass-factory-wrapper"],
     )
-    @pytest.mark.describe("test of udt conversion in preprocessing, from dict wrapper")
-    def test_udt_dict_preprocessing(
+    @pytest.mark.describe("test of udt conversion in preprocessing, from a wrapper")
+    def test_udt_wrapper_preprocessing(
         self, wrapped_object: DataAPIUserDefinedType[Any]
     ) -> None:
         test_serialized_dict = {
@@ -195,3 +174,19 @@ class TestTPreprocessorsUserDefinedTypes:
             map2tuple_checker=map2tuple_checker_insert_one,
         )
         assert expected_m_always == converted_m_always
+
+    @pytest.mark.describe(
+        "test of udt conversion in preprocessing, from a partial dict"
+    )
+    def test_udt_partialdict_preprocessing(self) -> None:
+        wrapped_object = NullablePlayerUDTWrapper(NullablePlayer(name="JustJohn"))
+        test_serialized_dict = {"name": "JustJohn"}
+
+        payload_s = {"scalar_udt_column": wrapped_object}
+        expected_s = {"scalar_udt_column": test_serialized_dict}
+        converted_s = preprocess_table_payload(
+            payload_s,
+            defaultSerdesOptions,
+            map2tuple_checker=None,
+        )
+        assert expected_s == converted_s
