@@ -122,14 +122,15 @@ class DictDataAPIUserDefinedType(DataAPIUserDefinedType[dict[str, Any]]):
     See the `DataAPIUserDefinedType` class for the general mechanism.
 
     Example:
-        TODO: verify this once the whole machinery is in place
         table.insert_one({
             "id": "x",
-            "udt_column": DictDataAPIUserDefinedType({"name": "John", "age": 40}),
+            "player": DictDataAPIUserDefinedType({"name": "John", "age": 40}),
         })
 
-        document = table.find_one({})
-        assert isinstance(document["udt_column"], DictDataAPIUserDefinedType)
+        doc = table.find_one({"id": "x"})
+        assert isinstance(doc["player"], DictDataAPIUserDefinedType)
+        pl_dict = doc["player"].value
+        print(f"{pl_dict['name']} ({pl_dict['age']})")
     """
 
     @classmethod
@@ -158,21 +159,33 @@ def create_dataclass_userdefinedtype(
     wrapper (in the SerdesOptions for the Table performing the read).
 
     Example:
-        TODO: verify this once the whole machinery is in place
+        from dataclasses import dataclass
+        from astrapy.api_options import APIOptions, SerdesOptions
+
         @dataclass
         class Player:
             name: str
             age: int
 
         PlayerWrapper = create_dataclass_userdefinedtype(Player)
+        my_player = Player(name="John", age=40)
 
-        table.insert_one({
+        # associate the UDT named 'player_udt' to a specific UDT wrapper:
+        table_dataclass = table.with_options(api_options=APIOptions(
+            serdes_options=SerdesOptions(
+                udt_class_map={"player_udt": PlayerWrapper},
+            ),
+        ))
+
+        table_dataclass.insert_one({
             "id": "x",
-            "udt_column": PlayerWrapper(Player(name="John", age=40)),
+            "player": PlayerWrapper(my_player),
         })
 
-        document = table.find_one({})
-        assert isinstance(document["udt_column"], PlayerWrapper)
+        doc = table_dataclass.find_one({"id": "x"})
+        assert isinstance(doc["player"], PlayerWrapper)
+        pl_object = doc["player"].value
+        print(f"{pl_object.name} ({pl_object.age})")
     """
 
     if not (is_dataclass(_dataclass) and isinstance(_dataclass, type)):
