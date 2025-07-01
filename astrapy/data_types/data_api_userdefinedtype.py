@@ -96,7 +96,7 @@ class DataAPIUserDefinedType(Generic[UDT_TYPE], ABC):
     @property
     def value(self) -> UDT_TYPE:
         """
-        Access the wrapped pbject in this class, the one representing a user-defined type (UDT).
+        Access the wrapped object in this class, the one representing a user-defined type (UDT).
         """
 
         return self._value
