@@ -365,8 +365,18 @@ class SerdesOptions:
             database. This setting (defaulting to `datetime.timezone.utc`) determines
             the timezone used in the returned datetime objects. Setting this value
             to None results in naive datetimes being returned (not recommended).
-        udt_class_map: TODO
-        udt_default_class: TODO
+        udt_class_map: Read-Path. A dictionary associating, to user-defined type (UDT)
+            names, a specific wrapper UDT type to use when deserializing UDT data
+            during reads from a table. Each time a table read involves UDT values,
+            the plain dictionary received with the payload is marshaled into
+            the specific `DataAPIUserDefinedType` subclass to use with that UDT,
+            if one is provided. If the entry for that UDT is missing, or is None,
+            the `udt_default_class` (see) is used instead.
+        udt_default_class: Read-Path. This is the default class wrapping
+            user-defined type (UDT) data encountered while reading from a table; it is
+            used by the client to deserialize those UDTs for which the `udt_class_map`
+            setting (see) does not presrcibes a specific class to use.
+            if provided, it is a concrete implementation of `DataAPIUserDefinedType`.
     """
 
     binary_encode_vectors: bool | UnsetType
@@ -517,8 +527,19 @@ class FullSerdesOptions(SerdesOptions):
             database. This setting (defaulting to `datetime.timezone.utc`) determines
             the timezone used in the returned datetime objects. Setting this value
             to None results in naive datetimes being returned (not recommended).
-        udt_class_map: TODO
-        udt_default_class: TODO
+        udt_class_map: Read-Path. A dictionary associating, to user-defined type (UDT)
+            names, a specific wrapper UDT type to use when deserializing UDT data
+            during reads from a table. Each time a table read involves UDT values,
+            the plain dictionary received with the payload is marshaled into
+            the specific `DataAPIUserDefinedType` subclass to use with that UDT,
+            if one is provided. If the entry for that UDT is missing, or is None,
+            the `udt_default_class` (see) is used instead.
+        udt_default_class: Read-Path. This is the default class wrapping
+            user-defined type (UDT) data encountered while reading from a table; it is
+            used by the client to deserialize those UDTs for which the `udt_class_map`
+            setting (see) does not presrcibes a specific class to use.
+            This is a concrete implementation of `DataAPIUserDefinedType`, defaulting
+            to the plain dictionary wrapper `DictDataAPIUserDefinedType` class.
     """
 
     binary_encode_vectors: bool
