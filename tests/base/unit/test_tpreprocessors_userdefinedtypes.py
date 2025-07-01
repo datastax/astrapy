@@ -19,6 +19,7 @@ from typing import Any
 
 import pytest
 
+from astrapy.data.table import map2tuple_checker_insert_one
 from astrapy.data.utils.extended_json_converters import convert_to_ejson_bytes
 from astrapy.data.utils.table_converters import preprocess_table_payload
 from astrapy.data_types import (
@@ -29,7 +30,7 @@ from astrapy.data_types import (
     DictDataAPIUserDefinedType,
     create_dataclass_userdefinedtype,
 )
-from astrapy.utils.api_options import defaultSerdesOptions
+from astrapy.utils.api_options import SerdesOptions, defaultSerdesOptions
 
 THE_BYTES = b"\xa6"
 THE_TIMESTAMP = DataAPITimestamp.from_string("2025-10-29T01:25:37.123Z")
@@ -128,3 +129,69 @@ class TestTPreprocessorsUserDefinedTypes:
             map2tuple_checker=None,
         )
         assert expected_c == converted_c
+
+        # maps udt-valued maps, as list-of-pairs and as-dictionaries
+        payload_m = {
+            "insertOne": {
+                "document": {
+                    "map_udt_column": {"k": wrapped_object},
+                    "da_map_udt_column": DataAPIMap([("k", wrapped_object)]),
+                },
+            },
+        }
+        expected_m_never = {
+            "insertOne": {
+                "document": {
+                    "map_udt_column": {"k": test_serialized_dict},
+                    "da_map_udt_column": {"k": test_serialized_dict},
+                },
+            },
+        }
+        expected_m_dataapimaps = {
+            "insertOne": {
+                "document": {
+                    "map_udt_column": {"k": test_serialized_dict},
+                    "da_map_udt_column": [["k", test_serialized_dict]],
+                },
+            },
+        }
+        expected_m_always = {
+            "insertOne": {
+                "document": {
+                    "map_udt_column": [["k", test_serialized_dict]],
+                    "da_map_udt_column": [["k", test_serialized_dict]],
+                },
+            },
+        }
+        converted_m_never = preprocess_table_payload(
+            payload_m,
+            defaultSerdesOptions.with_override(
+                SerdesOptions(
+                    encode_maps_as_lists_in_tables="NEVER",
+                )
+            ),
+            map2tuple_checker=map2tuple_checker_insert_one,
+        )
+        assert expected_m_never == converted_m_never
+
+        converted_m_dataapimaps = preprocess_table_payload(
+            payload_m,
+            defaultSerdesOptions.with_override(
+                SerdesOptions(
+                    encode_maps_as_lists_in_tables="DATAAPIMAPS",
+                )
+            ),
+            map2tuple_checker=map2tuple_checker_insert_one,
+        )
+        assert expected_m_dataapimaps == converted_m_dataapimaps
+
+        converted_m_always = preprocess_table_payload(
+            payload_m,
+            defaultSerdesOptions.with_override(
+                SerdesOptions(
+                    encode_maps_as_lists_in_tables="ALWAYS",
+                )
+            ),
+            map2tuple_checker=map2tuple_checker_insert_one,
+        )
+        assert expected_m_always == converted_m_always
