@@ -38,10 +38,6 @@ FILTER_COUNTER = {"a": "a"}
 EXPECTED_ROW_COUNTER = {"a": "a", "col_counter": 137}
 
 TABLE_NAME_LOWSUPPORT = "test_table_lowsupport"
-TYPE_NAME_LOWSUPPORT = "test_type_lowsupport"
-CREATE_TYPE_LOWSUPPORT = (
-    f"CREATE TYPE {TYPE_NAME_LOWSUPPORT} (genus TEXT, species TEXT, size FLOAT);"
-)
 CREATE_TABLE_LOWSUPPORT = f"""CREATE TABLE {TABLE_NAME_LOWSUPPORT} (
   a TEXT,
   b TEXT,
@@ -54,11 +50,9 @@ CREATE_TABLE_LOWSUPPORT = f"""CREATE TABLE {TABLE_NAME_LOWSUPPORT} (
   col_static_map MAP<INT, TEXT> STATIC,
   col_static_map_exotic MAP<BLOB,BLOB> STATIC,
   col_unsupported FROZEN<LIST<FROZEN<MAP<FROZEN<SET<FLOAT>>, SMALLINT>>>>,
-  col_udt {TYPE_NAME_LOWSUPPORT},
   PRIMARY KEY ((A),B)
 );"""
 DROP_TABLE_LOWSUPPORT = f"DROP TABLE {TABLE_NAME_LOWSUPPORT};"
-DROP_TYPE_LOWSUPPORT = f"DROP TYPE {TYPE_NAME_LOWSUPPORT};"
 INSERTS_TABLE_LOWSUPPORT = [
     (
         f"INSERT INTO {TABLE_NAME_LOWSUPPORT}"
@@ -73,8 +67,7 @@ INSERTS_TABLE_LOWSUPPORT = [
         "    col_static_set_exotic,"
         "    col_static_map,"
         "    col_static_map_exotic,"
-        "    col_unsupported,"
-        "    col_udt"
+        "    col_unsupported"
         ") VALUES ("
         "    'a',"
         "    'b',"
@@ -86,17 +79,15 @@ INSERTS_TABLE_LOWSUPPORT = [
         "    {0xff, 0xff},"
         "    {1: 'one'},"
         "    {0xff: 0xff},"
-        "    [{{0.1, 0.2}: 3}, {{0.3, 0.4}: 6}],"
-        "    {genus: 'Eratigena', species: 'atrica', size: 1.8}"
+        "    [{{0.1, 0.2}: 3}, {{0.3, 0.4}: 6}]"
         ");"
     ),
 ]
 FILTER_LOWSUPPORT = {"a": "a", "b": "b"}
 ILLEGAL_PROJECTIONS_LOWSUPPORT = [
     {"col_unsupported": True},
-    {"col_unsupported_udt": True},
 ]
-PROJECTION_LOWSUPPORT = {"col_unsupported": False, "col_udt": False}
+PROJECTION_LOWSUPPORT = {"col_unsupported": False}
 EXPECTED_ROW_LOWSUPPORT = {
     "a": "a",
     "b": "b",

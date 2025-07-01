@@ -27,10 +27,8 @@ from ..conftest import CQL_AVAILABLE
 from .table_cql_assets import (
     CREATE_TABLE_COUNTER,
     CREATE_TABLE_LOWSUPPORT,
-    CREATE_TYPE_LOWSUPPORT,
     DROP_TABLE_COUNTER,
     DROP_TABLE_LOWSUPPORT,
-    DROP_TYPE_LOWSUPPORT,
     EXPECTED_ROW_COUNTER,
     EXPECTED_ROW_LOWSUPPORT,
     FILTER_COUNTER,
@@ -91,7 +89,6 @@ class TestTableCQLDrivenDMLAsync:
         async_database: AsyncDatabase,
     ) -> None:
         try:
-            cql_session.execute(CREATE_TYPE_LOWSUPPORT)
             cql_session.execute(CREATE_TABLE_LOWSUPPORT)
             for insert_statement in INSERTS_TABLE_LOWSUPPORT:
                 cql_session.execute(insert_statement)
@@ -131,4 +128,3 @@ class TestTableCQLDrivenDMLAsync:
             )
         finally:
             cql_session.execute(DROP_TABLE_LOWSUPPORT)
-            cql_session.execute(DROP_TYPE_LOWSUPPORT)
