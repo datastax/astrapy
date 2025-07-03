@@ -49,6 +49,16 @@ from .table_row_assets import (
     UDT_DEF0,
     UDT_DEF1,
     UDT_NAME,
+    WEIRD_BASE_DOCUMENT,
+    WEIRD_BASE_DOCUMENT_PK,
+    WEIRD_NESTED_EXPECTED_DOCUMENT,
+    WEIRD_UDT_BASE_CLOSE_STATEMENTS,
+    WEIRD_UDT_BASE_INITIALIZE_STATEMENTS,
+    WEIRD_UDT_BASE_TABLE_NAME,
+    WEIRD_UDT_NESTED_CLOSE_STATEMENTS,
+    WEIRD_UDT_NESTED_DOCUMENT_PK,
+    WEIRD_UDT_NESTED_INITIALIZE_STATEMENTS,
+    WEIRD_UDT_NESTED_TABLE_NAME,
 )
 
 if TYPE_CHECKING:
@@ -59,8 +69,8 @@ if TYPE_CHECKING:
     "ASTRAPY_TEST_UDT" not in os.environ,
     reason="UDT testing not enabled",
 )
-@pytest.mark.skipif(not CQL_AVAILABLE, reason="No CQL session available")
 class TestTableUserDefinedTypes:
+    @pytest.mark.skipif(not CQL_AVAILABLE, reason="No CQL session available")
     @pytest.mark.describe("Test of UDT lifecycle, sync")
     def test_table_udt_lifecycle_sync(
         self,
@@ -270,3 +280,43 @@ class TestTableUserDefinedTypes:
                 projection={fld: True},
             )
             assert prj_read_row == {fld: expected_row[fld]}
+
+    @pytest.mark.skipif(not CQL_AVAILABLE, reason="No CQL session available")
+    @pytest.mark.describe("Test of weird UDT columns, sync")
+    def test_table_udt_weirdcolumns_sync(
+        self,
+        cql_session: Session,
+        sync_database: Database,
+    ) -> None:
+        try:
+            for cql_statement in WEIRD_UDT_BASE_INITIALIZE_STATEMENTS:
+                cql_session.execute(cql_statement)
+
+            # test a read and a write for 'base weird'
+            table_weird_base = sync_database.get_table(WEIRD_UDT_BASE_TABLE_NAME)
+            ins_result = table_weird_base.insert_one(WEIRD_BASE_DOCUMENT)
+            assert ins_result.inserted_id == WEIRD_BASE_DOCUMENT_PK
+            doc_weird_base = table_weird_base.find_one(WEIRD_BASE_DOCUMENT_PK)
+            assert doc_weird_base == WEIRD_BASE_DOCUMENT
+        finally:
+            for cql_statement in WEIRD_UDT_BASE_CLOSE_STATEMENTS:
+                cql_session.execute(cql_statement)
+
+    @pytest.mark.skipif(not CQL_AVAILABLE, reason="No CQL session available")
+    @pytest.mark.describe("Test of weird UDT columns, sync")
+    def test_table_udt_weirdnested_sync(
+        self,
+        cql_session: Session,
+        sync_database: Database,
+    ) -> None:
+        try:
+            for cql_statement in WEIRD_UDT_NESTED_INITIALIZE_STATEMENTS:
+                cql_session.execute(cql_statement)
+
+            # test a read for 'nested weird'
+            table_weird_nst = sync_database.get_table(WEIRD_UDT_NESTED_TABLE_NAME)
+            doc_weird_nst = table_weird_nst.find_one(WEIRD_UDT_NESTED_DOCUMENT_PK)
+            assert doc_weird_nst == WEIRD_NESTED_EXPECTED_DOCUMENT
+        finally:
+            for cql_statement in WEIRD_UDT_NESTED_CLOSE_STATEMENTS:
+                cql_session.execute(cql_statement)
