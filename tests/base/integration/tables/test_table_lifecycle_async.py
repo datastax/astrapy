@@ -687,6 +687,9 @@ class TestTableLifecycle:
         "ASTRAPY_TEST_UDT" not in os.environ,
         reason="UDT testing not enabled",
     )
+    @pytest.mark.skip(
+        reason="Suspended until udt-cache issues fixed - TODO RESTRICT_UDT_TEST"
+    )
     @pytest.mark.describe("test of create/verify/delete table with a simple UDT, async")
     async def test_table_simpleudt_crd_async(
         self,
