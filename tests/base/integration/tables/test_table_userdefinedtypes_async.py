@@ -30,6 +30,16 @@ from .table_row_assets import (
     UDT_DEF0,
     UDT_DEF1,
     UDT_NAME,
+    WEIRD_BASE_DOCUMENT,
+    WEIRD_BASE_DOCUMENT_PK,
+    WEIRD_NESTED_EXPECTED_DOCUMENT,
+    WEIRD_UDT_BASE_CLOSE_STATEMENTS,
+    WEIRD_UDT_BASE_INITIALIZE_STATEMENTS,
+    WEIRD_UDT_BASE_TABLE_NAME,
+    WEIRD_UDT_NESTED_CLOSE_STATEMENTS,
+    WEIRD_UDT_NESTED_DOCUMENT_PK,
+    WEIRD_UDT_NESTED_INITIALIZE_STATEMENTS,
+    WEIRD_UDT_NESTED_TABLE_NAME,
 )
 
 if TYPE_CHECKING:
@@ -93,3 +103,45 @@ class TestTableUserDefinedTypes:
             await async_database.drop_type(UDT_NAME)
         finally:
             await async_database.drop_type(UDT_NAME, if_exists=True)
+
+    @pytest.mark.skipif(not CQL_AVAILABLE, reason="No CQL session available")
+    @pytest.mark.describe("Test of weird UDT columns, async")
+    async def test_table_udt_weirdcolumns_async(
+        self,
+        cql_session: Session,
+        async_database: AsyncDatabase,
+    ) -> None:
+        try:
+            for cql_statement in WEIRD_UDT_BASE_INITIALIZE_STATEMENTS:
+                cql_session.execute(cql_statement)
+
+            # test a read and a write for 'base weird'
+            atable_weird_base = async_database.get_table(WEIRD_UDT_BASE_TABLE_NAME)
+            ins_result = await atable_weird_base.insert_one(WEIRD_BASE_DOCUMENT)
+            assert ins_result.inserted_id == WEIRD_BASE_DOCUMENT_PK
+            doc_weird_base = await atable_weird_base.find_one(WEIRD_BASE_DOCUMENT_PK)
+            assert doc_weird_base == WEIRD_BASE_DOCUMENT
+        finally:
+            for cql_statement in WEIRD_UDT_BASE_CLOSE_STATEMENTS:
+                cql_session.execute(cql_statement)
+
+    @pytest.mark.skipif(not CQL_AVAILABLE, reason="No CQL session available")
+    @pytest.mark.describe("Test of weird UDT columns, async")
+    async def test_table_udt_weirdnested_async(
+        self,
+        cql_session: Session,
+        async_database: AsyncDatabase,
+    ) -> None:
+        try:
+            for cql_statement in WEIRD_UDT_NESTED_INITIALIZE_STATEMENTS:
+                cql_session.execute(cql_statement)
+
+            # test a read for 'nested weird'
+            atable_weird_nst = async_database.get_table(WEIRD_UDT_NESTED_TABLE_NAME)
+            doc_weird_nst = await atable_weird_nst.find_one(
+                WEIRD_UDT_NESTED_DOCUMENT_PK
+            )
+            assert doc_weird_nst == WEIRD_NESTED_EXPECTED_DOCUMENT
+        finally:
+            for cql_statement in WEIRD_UDT_NESTED_CLOSE_STATEMENTS:
+                cql_session.execute(cql_statement)
