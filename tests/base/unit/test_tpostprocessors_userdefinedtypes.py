@@ -31,10 +31,10 @@ from astrapy.utils.api_options import SerdesOptions, defaultSerdesOptions
 
 from ..conftest import _repaint_NaNs
 from ..table_udt_assets import (
-    ExtendedPlayer,
-    ExtendedPlayerUDTWrapper,
     NullablePlayer,
     NullablePlayerUDTWrapper,
+    UnitExtendedPlayer,
+    UnitExtendedPlayerUDTWrapper,
 )
 
 THE_BYTES = b"\xa6"
@@ -175,8 +175,8 @@ EXPECTED_POSTPROCESSED_ROW_DICT_NC = {
     "udt_map_aslist": {"k": DICT_WRAPPED_NC},
 }
 
-DATACLASS_WRAPPED_C = ExtendedPlayerUDTWrapper(
-    ExtendedPlayer(
+DATACLASS_WRAPPED_C = UnitExtendedPlayerUDTWrapper(
+    UnitExtendedPlayer(
         name="John",
         age=40,
         blb=THE_BYTES,
@@ -192,8 +192,8 @@ EXPECTED_POSTPROCESSED_ROW_DATACLASS_C = {
     "udt_map_aslist": DataAPIMap([("k", DATACLASS_WRAPPED_C)]),
 }
 
-DATACLASS_WRAPPED_NC = ExtendedPlayerUDTWrapper(
-    ExtendedPlayer(
+DATACLASS_WRAPPED_NC = UnitExtendedPlayerUDTWrapper(
+    UnitExtendedPlayer(
         name="John",
         age=40,
         blb=THE_BYTES,
@@ -208,8 +208,6 @@ EXPECTED_POSTPROCESSED_ROW_DATACLASS_NC = {
     "udt_map": {"k": DATACLASS_WRAPPED_NC},
     "udt_map_aslist": {"k": DATACLASS_WRAPPED_NC},
 }
-
-ExtendedPlayerUDTWrapper
 
 
 class TestTPostProcessorsUserDefinedTypes:
@@ -292,7 +290,7 @@ class TestTPostProcessorsUserDefinedTypes:
             options=defaultSerdesOptions.with_override(
                 SerdesOptions(
                     custom_datatypes_in_reading=True,
-                    udt_class_map={"x_player_udt": ExtendedPlayerUDTWrapper},
+                    udt_class_map={"x_player_udt": UnitExtendedPlayerUDTWrapper},
                 ),
             ),
             similarity_pseudocolumn=None,
@@ -327,7 +325,7 @@ class TestTPostProcessorsUserDefinedTypes:
                 SerdesOptions(
                     custom_datatypes_in_reading=False,
                     datetime_tzinfo=THE_TIMEZONE,
-                    udt_class_map={"x_player_udt": ExtendedPlayerUDTWrapper},
+                    udt_class_map={"x_player_udt": UnitExtendedPlayerUDTWrapper},
                 ),
             ),
             similarity_pseudocolumn=None,

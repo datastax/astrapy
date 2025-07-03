@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import datetime
 import os
 from typing import TYPE_CHECKING, Any
 
@@ -24,6 +25,7 @@ from astrapy.api_options import APIOptions, SerdesOptions
 from astrapy.data_types import (
     DataAPIMap,
     DataAPISet,
+    DataAPITimestamp,
     DataAPIUserDefinedType,
     DictDataAPIUserDefinedType,
 )
@@ -33,10 +35,10 @@ from ..conftest import (
     CQL_AVAILABLE,
     DataAPICredentials,
     DefaultTable,
-    # ExtendedPlayer,
-    # ExtendedPlayerUDTWrapper,
-    # NullablePlayer,
-    # NullablePlayerUDTWrapper,
+    ExtendedPlayer,
+    ExtendedPlayerUDTWrapper,
+    NullablePlayer,
+    NullablePlayerUDTWrapper,
     Player,
     PlayerUDTWrapper,
 )
@@ -110,21 +112,41 @@ class TestTableUserDefinedTypes:
     @pytest.mark.parametrize(
         ("use_dataclass",),
         [(False,), (True,)],
-        ids=["dict-based", "dataclass-based"],
+        ids=["dictBased", "dataclassBased"],
     )
     @pytest.mark.parametrize(
         ("use_maptuples",),
         [(False,), (True,)],
-        ids=["no-map-tuples", "do-map-tuples"],
+        ids=["noMapTuples", "doMapTuples"],
+    )
+    @pytest.mark.parametrize(
+        ("use_customdatatypes",),
+        [(False,), (True,)],
+        ids=["stdlibDatatypes", "customDatatypes"],
+    )
+    @pytest.mark.parametrize(
+        ("udt_mode",),
+        [("simple",), ("partial",), ("empty",), ("extended",)],
+        ids=["nonNullable", "partialNullable", "emptyNullable", "extendedClass"],
     )
     @pytest.mark.describe("Test of full-UDT DML, sync")
     def test_table_full_udt_dml_sync(
         self,
         player_udt: str,
+        extended_player_udt: str,
+        # TODO RESTRICT_UDT_TEST re-enable both once udt-cache issues solved in data api
         sync_empty_table_udt_player: DefaultTable,
+        # sync_empty_table_udt_extended_player: DefaultTable,
         use_dataclass: bool,
         use_maptuples: bool,
+        use_customdatatypes: bool,
+        udt_mode: str,
     ) -> None:
+        # Manual restriction of tests - TODO RESTRICT_UDT_TEST remove restriction
+        _tdesc_tuple = (use_dataclass, use_maptuples, use_customdatatypes, udt_mode)
+        if _tdesc_tuple[3] == "extended":
+            pytest.skip("Manually scoped out for now.")
+
         if use_maptuples:
             if "ASTRAPY_TEST_LATEST_MAIN" not in os.environ:
                 pytest.skip("maps-as-tuples require 'latest main' testing for now.")
@@ -132,45 +154,119 @@ class TestTableUserDefinedTypes:
         wrapped_object: Any
         wrapper_class: type[DataAPIUserDefinedType[Any]]
         udt_class_map: dict[str, type[DataAPIUserDefinedType[Any]]]
-        if use_dataclass:
-            wrapped_object = Player(name="Jim", age=75)
-            wrapper_class = PlayerUDTWrapper
-            udt_class_map = {player_udt: PlayerUDTWrapper}
+
+        date_value: DataAPITimestamp | datetime.datetime
+        _da_ts = DataAPITimestamp.from_string("2033-05-18T03:33:20.321Z")
+        if use_customdatatypes:
+            date_value = _da_ts
         else:
-            wrapped_object = {"name": "Charles", "age": 36}
+            date_value = _da_ts.from_string("2033-05-18T03:33:20.321Z").to_datetime(
+                tz=datetime.timezone.utc
+            )
+
+        if use_dataclass:
+            if udt_mode == "simple":
+                wrapped_object = Player(name="Jim", age=75)
+                wrapper_class = PlayerUDTWrapper
+                udt_class_map = {player_udt: PlayerUDTWrapper}
+            elif udt_mode == "partial":
+                wrapped_object = NullablePlayer(name="Jim")
+                wrapper_class = NullablePlayerUDTWrapper
+                udt_class_map = {player_udt: NullablePlayerUDTWrapper}
+            elif udt_mode == "empty":
+                wrapped_object = NullablePlayer()
+                wrapper_class = NullablePlayerUDTWrapper
+                udt_class_map = {player_udt: NullablePlayerUDTWrapper}
+            elif udt_mode == "extended":
+                wrapped_object = ExtendedPlayer(
+                    name="Betta",
+                    age=65,
+                    # TODO NOBLOBINUDT blb=b"\x12\x0a",
+                    ts=date_value,
+                )
+                wrapper_class = ExtendedPlayerUDTWrapper
+                udt_class_map = {extended_player_udt: ExtendedPlayerUDTWrapper}
+            else:
+                raise ValueError("Unknown udt_mode in test.")
+        else:
             wrapper_class = DictDataAPIUserDefinedType
             udt_class_map = {}
+            if udt_mode == "simple":
+                wrapped_object = {"name": "Charles", "age": 36}
+            elif udt_mode == "partial":
+                wrapped_object = {"name": "Charles"}
+            elif udt_mode == "empty":
+                wrapped_object = {}
+            elif udt_mode == "extended":
+                wrapped_object = {
+                    "name": "Betta",
+                    "age": 65,
+                    # TODO NOBLOBINUDT "blb": b"\x12\x0a",
+                    "ts": date_value,
+                }
+            else:
+                raise ValueError("Unknown udt_mode in test.")
 
         # the serdes options have a nontrivial udt-class-map only if not dict-based:
-        table = sync_empty_table_udt_player.with_options(
+        src_table: DefaultTable
+        # TODO RESTRICT_UDT_TEST reinstate this in full once extended coexists w/ rest
+        if udt_mode == "extended":
+            raise ValueError("No.")
+            # src_table = sync_empty_table_udt_extended_player
+        else:
+            src_table = sync_empty_table_udt_player
+        table = src_table.with_options(
             api_options=APIOptions(
                 serdes_options=SerdesOptions(
                     udt_class_map=udt_class_map,
                     encode_maps_as_lists_in_tables="ALWAYS"
                     if use_maptuples
                     else "NEVER",
+                    custom_datatypes_in_reading=use_customdatatypes,
                 ),
             ),
         )
 
         wrapped = wrapper_class(wrapped_object)
-        write_row = {
-            "id": "a",
-            "scalar_udt": wrapped,
-            "list_udt": [wrapped],
-            "set_udt": DataAPISet([wrapped]),
-            "map_udt": DataAPIMap([("schlussel", wrapped)]),
-        }
+        write_row: dict[str, Any]
+        if use_customdatatypes:
+            write_row = {
+                "id": "a",
+                "scalar_udt": wrapped,
+                "list_udt": [wrapped],
+                "set_udt": DataAPISet([wrapped]),
+                "map_udt": DataAPIMap([("schlussel", wrapped)]),
+            }
+        else:
+            write_row = {
+                "id": "a",
+                "scalar_udt": wrapped,
+                "list_udt": [wrapped],
+                "map_udt": {"schlussel": wrapped},
+            }
+
+        expected_row: dict[str, Any]
+        if udt_mode == "empty":
+            expected_row = {
+                **write_row,
+                **{"scalar_udt": None},
+            }
+        else:
+            expected_row = write_row
+
         ins_result = table.insert_one(write_row)
         assert ins_result.inserted_id == {"id": "a"}
 
-        read_row = table.find_one(ins_result.inserted_id)
-        assert read_row == write_row
+        read_row = table.find_one(
+            ins_result.inserted_id,
+            projection={fld: True for fld in write_row.keys()},
+        )
+        assert read_row == expected_row
 
         # projections
-        for fld in write_row.keys():
+        for fld in expected_row.keys():
             prj_read_row = table.find_one(
                 ins_result.inserted_id,
                 projection={fld: True},
             )
-            assert prj_read_row == {fld: write_row[fld]}
+            assert prj_read_row == {fld: expected_row[fld]}

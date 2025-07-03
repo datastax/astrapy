@@ -73,16 +73,38 @@ EXTENDED_PLAYER_TYPE_DEFINITION = CreateTypeDefinition(
     fields={
         "name": "text",
         "age": "int",
-        "blb": "blob",
         "ts": "timestamp",
     },
 )
-EXTENDED_PLAYER_TABLE_NAME = "test_table_udt_player"
+#        TODO NOBLOBINUDT "blb": "blob",
+EXTENDED_PLAYER_TABLE_NAME = "test_table_udt_extended_player"
 EXTENDED_PLAYER_TABLE_DEFINITION = CreateTableDefinition.coerce(
     {
         "columns": {
             "id": "text",
             "scalar_udt": {"type": "userDefined", "udtName": EXTENDED_PLAYER_TYPE_NAME},
+            "list_udt": {
+                "type": "list",
+                "valueType": {
+                    "type": "userDefined",
+                    "udtName": EXTENDED_PLAYER_TYPE_NAME,
+                },
+            },
+            "set_udt": {
+                "type": "set",
+                "valueType": {
+                    "type": "userDefined",
+                    "udtName": EXTENDED_PLAYER_TYPE_NAME,
+                },
+            },
+            "map_udt": {
+                "type": "map",
+                "keyType": "text",
+                "valueType": {
+                    "type": "userDefined",
+                    "udtName": EXTENDED_PLAYER_TYPE_NAME,
+                },
+            },
         },
         "primaryKey": {
             "partitionBy": ["id"],
@@ -172,6 +194,35 @@ class ExtendedPlayer:
 
     name: str
     age: int
+    # TODO NOBLOBINUDT blb: bytes
+    ts: DataAPITimestamp | datetime.datetime
+
+
+# TODO NOBLOBINUDT reabsorb this (+usage in Unit Tests) once reinstating blb above
+@dataclass
+class UnitExtendedPlayer:
+    """
+    An example dataclass which may be used to represent a user-defined type (UDT)
+    such as one would define, and create on the database, with this code:
+
+    .. code-block:: python
+
+        from astrapy.info import CreateTypeDefinition, ColumnType
+
+        xplayer_udt_def = CreateTypeDefinition(fields={
+            "name": ColumnType.TEXT,
+            "age": ColumnType.INT,
+            "blb": ColumnType.BLOB,
+            "ts": ColumnType.TIMESTAMP,
+        })
+
+        database.create_type("xplayer_udt", definition=xplayer_udt_def)
+
+    See the test functions using this resource for actual usage examples.
+    """
+
+    name: str
+    age: int
     blb: bytes
     ts: DataAPITimestamp | datetime.datetime
 
@@ -190,3 +241,4 @@ class NullablePlayer:
 PlayerUDTWrapper = create_dataclass_userdefinedtype(Player)
 ExtendedPlayerUDTWrapper = create_dataclass_userdefinedtype(ExtendedPlayer)
 NullablePlayerUDTWrapper = create_dataclass_userdefinedtype(NullablePlayer)
+UnitExtendedPlayerUDTWrapper = create_dataclass_userdefinedtype(UnitExtendedPlayer)

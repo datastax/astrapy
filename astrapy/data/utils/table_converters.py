@@ -506,12 +506,15 @@ def _create_column_tpostprocessor(
             for k_fieldname, k_fieldtype in col_def.definition.fields.items()
         }
 
-        def _tpostprocessor_udt(raw_items: dict[Any, Any] | None) -> Any:
+        def _tpostprocessor_udt(
+            raw_items: dict[Any, Any] | None,
+            _vpm: dict[str, Callable[[Any], Any]] = values_tpostprocessor_map,
+        ) -> Any:
             if raw_items is None:
                 return None
             return udt_class.from_dict(
                 {
-                    k_fieldname: values_tpostprocessor_map[k_fieldname](v_fieldraw)
+                    k_fieldname: _vpm[k_fieldname](v_fieldraw)
                     for k_fieldname, v_fieldraw in raw_items.items()
                 },
                 definition=col_def.definition,  # type: ignore[arg-type]

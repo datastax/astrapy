@@ -31,10 +31,10 @@ from astrapy.data_types import (
 from astrapy.utils.api_options import SerdesOptions, defaultSerdesOptions
 
 from ..table_udt_assets import (
-    ExtendedPlayer,
-    ExtendedPlayerUDTWrapper,
     NullablePlayer,
     NullablePlayerUDTWrapper,
+    UnitExtendedPlayer,
+    UnitExtendedPlayerUDTWrapper,
 )
 
 THE_BYTES = b"\xa6"
@@ -56,8 +56,8 @@ class TestTPreprocessorsUserDefinedTypes:
                 ),
             ),
             (
-                ExtendedPlayerUDTWrapper(
-                    ExtendedPlayer(
+                UnitExtendedPlayerUDTWrapper(
+                    UnitExtendedPlayer(
                         name="John",
                         age=40,
                         blb=THE_BYTES,
