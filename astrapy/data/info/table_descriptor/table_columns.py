@@ -193,6 +193,8 @@ class TableScalarColumnTypeDescriptor(TableColumnTypeDescriptor):
     Represents and describes a column in a Table, of scalar type, i.e. which contains
     a single simple value.
 
+    See the docstring for class `CreateTableDefinition` for in-context usage examples.
+
     Attributes:
         column_type: a `ColumnType` value. When creating the object,
             simple strings such as "TEXT" or "UUID" are also accepted.
@@ -247,6 +249,8 @@ class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
     """
     Represents and describes a column in a Table, of vector type, i.e. which contains
     a list of `dimension` floats that is treated specially as a "vector".
+
+    See the docstring for class `CreateTableDefinition` for in-context usage examples.
 
     Attributes:
         column_type: a `TableVectorColumnType` value. This can be omitted when
@@ -331,6 +335,8 @@ class TableValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
     """
     Represents and describes a column in a Table, of a 'valued' type that stores
     multiple values. This means either a list or a set of homogeneous items.
+
+    See the docstring for class `CreateTableDefinition` for in-context usage examples.
 
     Attributes:
         column_type: an instance of `TableValuedColumnType`. When creating the
@@ -477,6 +483,8 @@ class TableUserDefinedColumnTypeDescriptor(TableColumnTypeDescriptor):
     """
     Represents and describes a column in a Table, of a user-defined type (UDT) type,
     i.e. a previously-defined set of named fields, each with its type.
+
+    See the docstring for class `CreateTableDefinition` for in-context usage examples.
 
     Attributes:
         column_type: a `TableUserDefinedColumnType` value. This can be omitted when
@@ -694,6 +702,8 @@ class TablePassthroughColumnTypeDescriptor(TableColumnTypeDescriptor):
 class TablePrimaryKeyDescriptor:
     """
     Represents the part of a table definition that describes the primary key.
+
+    See the docstring for class `CreateTableDefinition` for in-context usage examples.
 
     Attributes:
         partition_by: a list of column names forming the partition key, i.e.

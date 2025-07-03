@@ -54,7 +54,7 @@ class CreateTableDefinition:
         columns: a map from column names to their type definition object.
         primary_key: a specification of the primary key for the table.
 
-    Example:
+    Examples:
         >>> from astrapy.constants import SortMode
         >>> from astrapy.info import (
         ...     CreateTableDefinition,
@@ -137,6 +137,83 @@ class CreateTableDefinition:
         >>> table_definition_2 == table_definition_1
         True
         >>> table_definition_2 == table_definition
+        True
+
+        >>> # Assume there is a user-defined type (UDT) called "my_udt" (see
+        >>> # `CreateTypeDefinition` and database `create_type` method for details).
+        >>> # The expressions below result in the exact same table definition:
+        >>> from astrapy.info import (
+        ...     ColumnType,
+        ...     CreateTableDefinition,
+        ...     TablePrimaryKeyDescriptor,
+        ...     TableScalarColumnTypeDescriptor,
+        ...     TableUserDefinedColumnTypeDescriptor,
+        ...     TableValuedColumnType,
+        ...     TableValuedColumnTypeDescriptor,
+        ... )
+        >>>
+        >>> udt_tabledefinition = (
+        ...     CreateTableDefinition.builder()
+        ...     .add_scalar_column("id", "text")
+        ...     .add_userdefinedtype_column("udt_col", udt_name="my_udt")
+        ...     .add_set_column(
+        ...         "set_udt_col",
+        ...         value_type={"type": "userDefined", "udtName": "my_udt"},
+        ...     )
+        ...     .add_partition_by(["id"])
+        ...     .build()
+        ... )
+        >>>
+        >>> udt_tabledefinition_1 = CreateTableDefinition(
+        ...     columns={
+        ...         "id": TableScalarColumnTypeDescriptor(ColumnType.TEXT),
+        ...         "udt_col": TableUserDefinedColumnTypeDescriptor(
+        ...             udt_name="my_udt",
+        ...         ),
+        ...         "set_udt_col": TableValuedColumnTypeDescriptor(
+        ...             column_type=TableValuedColumnType.SET,
+        ...             value_type=TableUserDefinedColumnTypeDescriptor(
+        ...                 udt_name="my_udt",
+        ...             ),
+        ...         ),
+        ...     },
+        ...     primary_key=TablePrimaryKeyDescriptor(
+        ...         partition_by=["id"],
+        ...         partition_sort={},
+        ...     )
+        ... )
+        >>>
+        >>> udt_tabledefinition_2 = CreateTableDefinition.coerce(
+        ...     {
+        ...         "columns": {
+        ...             "id": {
+        ...                 "type": "text",
+        ...             },
+        ...             "udt_col": {
+        ...                 "type": "userDefined",
+        ...                 "udtName": "my_udt",
+        ...             },
+        ...             "set_udt_col": {
+        ...                 "type": "set",
+        ...                 "valueType": {
+        ...                     "type": "userDefined",
+        ...                     "udtName": "my_udt",
+        ...                 },
+        ...             },
+        ...         },
+        ...         "primaryKey": {
+        ...             "partitionBy": [
+        ...                 "id",
+        ...             ],
+        ...             "partitionSort": {},
+        ...         },
+        ...     },
+        ... )
+        >>>
+        >>> # The three created objects are exactly identical:
+        >>> udt_tabledefinition_2 == udt_tabledefinition_1
+        True
+        >>> udt_tabledefinition_2 == udt_tabledefinition
         True
     """
 
