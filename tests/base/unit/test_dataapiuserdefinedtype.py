@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import pytest
 
-from astrapy.data_types import DictDataAPIUserDefinedType
+from astrapy.data_types import DataAPIUDT
 
 from ..table_udt_assets import (
     PLAYER_TYPE_DEFINITION,
@@ -33,14 +33,12 @@ class TestDataAPIUserDefinedType:
     def test_dict_dataapiudt(self) -> None:
         test_dict = {"name": "John", "age": 40}
 
-        wrapped = DictDataAPIUserDefinedType(test_dict)
+        wrapped = DataAPIUDT(test_dict)
 
         assert wrapped.value == test_dict
         assert wrapped.as_dict() == test_dict
 
-        wrapped2 = DictDataAPIUserDefinedType.from_dict(
-            test_dict, definition=PLAYER_TYPE_DEFINITION
-        )
+        wrapped2 = DataAPIUDT.from_dict(test_dict, definition=PLAYER_TYPE_DEFINITION)
         assert wrapped == wrapped2
 
     @pytest.mark.describe("test of dataclass-backed data api UDT")

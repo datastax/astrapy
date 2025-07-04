@@ -72,7 +72,7 @@ class TableVectorColumnType(StrEnum):
     VECTOR = "vector"
 
 
-class TableUserDefinedColumnType(StrEnum):
+class TableUDTColumnType(StrEnum):
     """
     An enum to describe the types of 'user-defined-type' (UDT) column.
     """

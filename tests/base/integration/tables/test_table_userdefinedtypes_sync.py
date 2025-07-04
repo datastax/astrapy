@@ -26,8 +26,8 @@ from astrapy.data_types import (
     DataAPIMap,
     DataAPISet,
     DataAPITimestamp,
+    DataAPIUDT,
     DataAPIUserDefinedType,
-    DictDataAPIUserDefinedType,
 )
 from astrapy.exceptions import DataAPIResponseException
 
@@ -199,7 +199,7 @@ class TestTableUserDefinedTypes:
             else:
                 raise ValueError("Unknown udt_mode in test.")
         else:
-            wrapper_class = DictDataAPIUserDefinedType
+            wrapper_class = DataAPIUDT
             udt_class_map = {}
             if udt_mode == "simple":
                 wrapped_object = {"name": "Charles", "age": 36}

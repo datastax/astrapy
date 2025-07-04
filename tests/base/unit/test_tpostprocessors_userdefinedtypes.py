@@ -24,7 +24,7 @@ from astrapy.data_types import (
     DataAPIMap,
     DataAPISet,
     DataAPITimestamp,
-    DictDataAPIUserDefinedType,
+    DataAPIUDT,
 )
 from astrapy.info import ListTableDescriptor
 from astrapy.utils.api_options import SerdesOptions, defaultSerdesOptions
@@ -141,7 +141,7 @@ OUTPUT_ROW_TO_POSTPROCESS = {
     "udt_map_aslist": [["k", RAW_RESPONSE_UDT_DICT]],
 }
 
-DICT_WRAPPED_C = DictDataAPIUserDefinedType(
+DICT_WRAPPED_C = DataAPIUDT(
     {
         "name": "John",
         "age": 40,
@@ -158,7 +158,7 @@ EXPECTED_POSTPROCESSED_ROW_DICT_C = {
     "udt_map_aslist": DataAPIMap([("k", DICT_WRAPPED_C)]),
 }
 
-DICT_WRAPPED_NC = DictDataAPIUserDefinedType(
+DICT_WRAPPED_NC = DataAPIUDT(
     {
         "name": "John",
         "age": 40,

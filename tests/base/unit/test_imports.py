@@ -112,9 +112,9 @@ def test_imports() -> None:
         DataAPISet,
         DataAPITime,
         DataAPITimestamp,
+        DataAPIUDT,
         DataAPIUserDefinedType,
         DataAPIVector,
-        DictDataAPIUserDefinedType,
         create_dataclass_userdefinedtype,
     )
     from astrapy.exceptions import (
@@ -198,9 +198,9 @@ def test_imports() -> None:
         TableScalarColumnTypeDescriptor,
         TableTextIndexDefinition,
         TableTextIndexOptions,
+        TableUDTColumnDescriptor,
         TableUnsupportedColumnTypeDescriptor,
         TableUnsupportedIndexDefinition,
-        TableUserDefinedColumnTypeDescriptor,
         TableValuedColumnType,
         TableValuedColumnTypeDescriptor,
         TableVectorColumnTypeDescriptor,

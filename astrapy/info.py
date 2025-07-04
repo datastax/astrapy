@@ -50,8 +50,8 @@ from astrapy.data.info.table_descriptor.table_columns import (
     TablePassthroughColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
+    TableUDTColumnDescriptor,
     TableUnsupportedColumnTypeDescriptor,
-    TableUserDefinedColumnTypeDescriptor,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
 )
@@ -152,7 +152,7 @@ __all__ = [
     "TableTextIndexDefinition",
     "TableTextIndexOptions",
     "TableUnsupportedColumnTypeDescriptor",
-    "TableUserDefinedColumnTypeDescriptor",
+    "TableUDTColumnDescriptor",
     "TableUnsupportedIndexDefinition",
     "TableValuedColumnType",
     "TableValuedColumnTypeDescriptor",

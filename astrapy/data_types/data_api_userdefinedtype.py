@@ -111,7 +111,7 @@ class DataAPIUserDefinedType(Generic[UDT_TYPE], ABC):
         return f"{self.__class__.__name__}({self._value.__repr__()})"
 
 
-class DictDataAPIUserDefinedType(DataAPIUserDefinedType[dict[str, Any]]):
+class DataAPIUDT(DataAPIUserDefinedType[dict[str, Any]]):
     """
     A wrapper of plain Python dictionaries for columns of type
     'user-defined type' (UDT) in Tables.
@@ -124,23 +124,23 @@ class DictDataAPIUserDefinedType(DataAPIUserDefinedType[dict[str, Any]]):
     Example:
         table.insert_one({
             "id": "x",
-            "player": DictDataAPIUserDefinedType({"name": "John", "age": 40}),
+            "player": DataAPIUDT({"name": "John", "age": 40}),
         })
 
         doc = table.find_one({"id": "x"})
-        assert isinstance(doc["player"], DictDataAPIUserDefinedType)
+        assert isinstance(doc["player"], DataAPIUDT)
         pl_dict = doc["player"].value
         print(f"{pl_dict['name']} ({pl_dict['age']})")
     """
 
     @classmethod
     def from_dict(
-        cls: type[DictDataAPIUserDefinedType],
+        cls: type[DataAPIUDT],
         raw_dict: dict[str, Any],
         *,
         definition: CreateTypeDefinition,
-    ) -> DictDataAPIUserDefinedType:
-        return DictDataAPIUserDefinedType(raw_dict)
+    ) -> DataAPIUDT:
+        return DataAPIUDT(raw_dict)
 
     def as_dict(self) -> dict[str, Any]:
         return self.value

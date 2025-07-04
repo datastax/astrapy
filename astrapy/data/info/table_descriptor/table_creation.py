@@ -22,7 +22,7 @@ from astrapy.data.info.table_descriptor.table_columns import (
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
-    TableUserDefinedColumnTypeDescriptor,
+    TableUDTColumnDescriptor,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
 )
@@ -30,7 +30,7 @@ from astrapy.data.info.vectorize import VectorServiceOptions
 from astrapy.data.utils.table_types import (
     ColumnType,
     TableKeyValuedColumnType,
-    TableUserDefinedColumnType,
+    TableUDTColumnType,
     TableValuedColumnType,
     TableVectorColumnType,
 )
@@ -147,7 +147,7 @@ class CreateTableDefinition:
         ...     CreateTableDefinition,
         ...     TablePrimaryKeyDescriptor,
         ...     TableScalarColumnTypeDescriptor,
-        ...     TableUserDefinedColumnTypeDescriptor,
+        ...     TableUDTColumnDescriptor,
         ...     TableValuedColumnType,
         ...     TableValuedColumnTypeDescriptor,
         ... )
@@ -167,12 +167,12 @@ class CreateTableDefinition:
         >>> udt_tabledefinition_1 = CreateTableDefinition(
         ...     columns={
         ...         "id": TableScalarColumnTypeDescriptor(ColumnType.TEXT),
-        ...         "udt_col": TableUserDefinedColumnTypeDescriptor(
+        ...         "udt_col": TableUDTColumnDescriptor(
         ...             udt_name="my_udt",
         ...         ),
         ...         "set_udt_col": TableValuedColumnTypeDescriptor(
         ...             column_type=TableValuedColumnType.SET,
-        ...             value_type=TableUserDefinedColumnTypeDescriptor(
+        ...             value_type=TableUDTColumnDescriptor(
         ...                 udt_name="my_udt",
         ...             ),
         ...         ),
@@ -544,8 +544,8 @@ class CreateTableDefinition:
             columns={
                 **self.columns,
                 **{
-                    column_name: TableUserDefinedColumnTypeDescriptor(
-                        column_type=TableUserDefinedColumnType.USERDEFINED,
+                    column_name: TableUDTColumnDescriptor(
+                        column_type=TableUDTColumnType.USERDEFINED,
                         udt_name=udt_name,
                     )
                 },

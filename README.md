@@ -687,7 +687,7 @@ from astrapy.data_types import (
     DataAPISet,
     DataAPITime,
     DataAPIUserDefinedType,
-    DictDataAPIUserDefinedType,
+    DataAPIUDT,
 )
 ```
 
@@ -744,7 +744,7 @@ from astrapy.info import (
     TableTextIndexOptions,
     TableUnsupportedColumnTypeDescriptor,
     TableUnsupportedIndexDefinition,
-    TableUserDefinedColumnTypeDescriptor,
+    TableUDTColumnDescriptor,
     TableValuedColumnType,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,

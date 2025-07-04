@@ -26,8 +26,8 @@ from astrapy.data_types import (
     DataAPISet,
     DataAPITime,
     DataAPITimestamp,
+    DataAPIUDT,
     DataAPIVector,
-    DictDataAPIUserDefinedType,
 )
 from astrapy.ids import UUID
 from astrapy.info import (
@@ -460,8 +460,8 @@ WEIRD_UDT_BASE_CLOSE_STATEMENTS = [
 ]
 WEIRD_BASE_DOCUMENT_PK = {"id": "the_doc"}
 WEIRD_BASE_DOCUMENT = {
-    "f_udt": DictDataAPIUserDefinedType({"a": "A_of_f_udt", "b": 10}),
-    "f_l_udt": [DictDataAPIUserDefinedType({"a": "A_of_f_l_udt", "b": 12})],
+    "f_udt": DataAPIUDT({"a": "A_of_f_udt", "b": 10}),
+    "f_l_udt": [DataAPIUDT({"a": "A_of_f_l_udt", "b": 12})],
     **WEIRD_BASE_DOCUMENT_PK,
 }
 
@@ -486,10 +486,10 @@ WEIRD_UDT_NESTED_CLOSE_STATEMENTS = [
 ]
 WEIRD_UDT_NESTED_DOCUMENT_PK = {"id": "the_doc"}
 WEIRD_NESTED_EXPECTED_DOCUMENT = {
-    "n_u": DictDataAPIUserDefinedType(
+    "n_u": DataAPIUDT(
         {
             "a": "outerA",
-            "m": DictDataAPIUserDefinedType(
+            "m": DataAPIUDT(
                 {
                     "a": "innerA",
                     "b": 6,

@@ -23,8 +23,8 @@ from astrapy.data.utils.table_types import (
     ColumnType,
     TableKeyValuedColumnType,
     TablePassthroughColumnType,
+    TableUDTColumnType,
     TableUnsupportedColumnType,
-    TableUserDefinedColumnType,
     TableValuedColumnType,
     TableVectorColumnType,
 )
@@ -132,7 +132,7 @@ class TableColumnTypeDescriptor(ABC):
         | TableKeyValuedColumnType
         | TableVectorColumnType
         | TableUnsupportedColumnType
-        | TableUserDefinedColumnType
+        | TableUDTColumnType
         | TablePassthroughColumnType
     )
     api_support: TableAPISupportDescriptor | None
@@ -151,7 +151,7 @@ class TableColumnTypeDescriptor(ABC):
 
         if "udtName" in raw_dict:
             # TODO: temporarily, 'type' may still be missing so this comes first
-            return TableUserDefinedColumnTypeDescriptor._from_dict(raw_dict)
+            return TableUDTColumnDescriptor._from_dict(raw_dict)
         elif "keyType" in raw_dict and raw_dict["type"] in TableKeyValuedColumnType:
             return TableKeyValuedColumnTypeDescriptor._from_dict(raw_dict)
         elif "valueType" in raw_dict and raw_dict["type"] in TableValuedColumnType:
@@ -479,7 +479,7 @@ class TableKeyValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
 
 
 @dataclass
-class TableUserDefinedColumnTypeDescriptor(TableColumnTypeDescriptor):
+class TableUDTColumnDescriptor(TableColumnTypeDescriptor):
     """
     Represents and describes a column in a Table, of a user-defined type (UDT) type,
     i.e. a previously-defined set of named fields, each with its type.
@@ -487,7 +487,7 @@ class TableUserDefinedColumnTypeDescriptor(TableColumnTypeDescriptor):
     See the docstring for class `CreateTableDefinition` for in-context usage examples.
 
     Attributes:
-        column_type: a `TableUserDefinedColumnType` value. This can be omitted when
+        column_type: a `TableUDTColumnType` value. This can be omitted when
             creating the object. It only ever assumes the "USERDEFINED" value.
         udt_name: the name of the user-defined type for this column.
         definition: a full type definition in the form of an object of type
@@ -498,7 +498,7 @@ class TableUserDefinedColumnTypeDescriptor(TableColumnTypeDescriptor):
         api_support: a `TableAPISupportDescriptor` object giving more details.
     """
 
-    column_type: TableUserDefinedColumnType
+    column_type: TableUDTColumnType
     definition: CreateTypeDefinition | None
     udt_name: str
 
@@ -506,8 +506,7 @@ class TableUserDefinedColumnTypeDescriptor(TableColumnTypeDescriptor):
         self,
         *,
         udt_name: str,
-        column_type: str
-        | TableUserDefinedColumnType = TableUserDefinedColumnType.USERDEFINED,
+        column_type: str | TableUDTColumnType = TableUDTColumnType.USERDEFINED,
         api_support: TableAPISupportDescriptor | None = None,
         definition: CreateTypeDefinition | None = None,
     ) -> None:
@@ -521,7 +520,7 @@ class TableUserDefinedColumnTypeDescriptor(TableColumnTypeDescriptor):
             None if definition is None else CreateTypeDefinition.coerce(definition)
         )
         super().__init__(
-            column_type=TableUserDefinedColumnType.coerce(column_type),
+            column_type=TableUDTColumnType.coerce(column_type),
             api_support=api_support,
         )
 
@@ -543,11 +542,9 @@ class TableUserDefinedColumnTypeDescriptor(TableColumnTypeDescriptor):
         }
 
     @classmethod
-    def _from_dict(
-        cls, raw_dict: dict[str, Any]
-    ) -> TableUserDefinedColumnTypeDescriptor:
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableUDTColumnDescriptor:
         """
-        Create an instance of TableUserDefinedColumnTypeDescriptor from a dictionary
+        Create an instance of TableUDTColumnDescriptor from a dictionary
         such as one from the Data API.
         """
 
@@ -561,9 +558,9 @@ class TableUserDefinedColumnTypeDescriptor(TableColumnTypeDescriptor):
             raw_dict,
             {"type", "udtName", "apiSupport", "definition"},
         )
-        return TableUserDefinedColumnTypeDescriptor(
+        return TableUDTColumnDescriptor(
             # TODO: handling a missing 'type' here:
-            column_type=raw_dict.get("type", TableUserDefinedColumnType.USERDEFINED),
+            column_type=raw_dict.get("type", TableUDTColumnType.USERDEFINED),
             udt_name=raw_dict["udtName"],
             definition=CreateTypeDefinition._from_dict(raw_dict["definition"])
             if raw_dict.get("definition")

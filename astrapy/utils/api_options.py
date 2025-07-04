@@ -30,7 +30,7 @@ from astrapy.authentication import (
     coerce_possible_token_provider,
 )
 from astrapy.constants import CallerType, Environment, MapEncodingMode
-from astrapy.data_types import DataAPIUserDefinedType, DictDataAPIUserDefinedType
+from astrapy.data_types import DataAPIUDT, DataAPIUserDefinedType
 from astrapy.settings.defaults import (
     API_PATH_ENV_MAP,
     API_VERSION_ENV_MAP,
@@ -539,7 +539,7 @@ class FullSerdesOptions(SerdesOptions):
             used by the client to deserialize those UDTs for which the `udt_class_map`
             setting (see) does not presrcibes a specific class to use.
             This is a concrete implementation of `DataAPIUserDefinedType`, defaulting
-            to the plain dictionary wrapper `DictDataAPIUserDefinedType` class.
+            to the plain dictionary wrapper `DataAPIUDT` class.
     """
 
     binary_encode_vectors: bool
@@ -1356,7 +1356,7 @@ defaultSerdesOptions = FullSerdesOptions(
     accept_naive_datetimes=DEFAULT_ACCEPT_NAIVE_DATETIMES,
     datetime_tzinfo=DEFAULT_DATETIME_TZINFO,
     udt_class_map={},
-    udt_default_class=DictDataAPIUserDefinedType,
+    udt_default_class=DataAPIUDT,
 )
 
 

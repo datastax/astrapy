@@ -35,7 +35,7 @@ from astrapy.info import (
     TableScalarColumnTypeDescriptor,
     TableTextIndexDefinition,
     TableTextIndexOptions,
-    TableUserDefinedColumnTypeDescriptor,
+    TableUDTColumnDescriptor,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
     TableVectorIndexDefinition,
@@ -689,7 +689,7 @@ class TestTableLifecycle:
         sync_database: Database,
         simple_udt: str,
     ) -> None:
-        udt_col_desc = TableUserDefinedColumnTypeDescriptor(udt_name=simple_udt)
+        udt_col_desc = TableUDTColumnDescriptor(udt_name=simple_udt)
         table_simple_udt_def = CreateTableDefinition(
             columns={
                 "id": TableScalarColumnTypeDescriptor("text"),

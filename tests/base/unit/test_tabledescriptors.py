@@ -39,8 +39,8 @@ from astrapy.info import (
     TableScalarColumnTypeDescriptor,
     TableTextIndexDefinition,
     TableTextIndexOptions,
+    TableUDTColumnDescriptor,
     TableUnsupportedIndexDefinition,
-    TableUserDefinedColumnTypeDescriptor,
     TableVectorIndexDefinition,
     TableVectorIndexOptions,
     VectorServiceOptions,
@@ -453,7 +453,7 @@ class TestListTableDescriptors:
             )
             .add_list_column(
                 "p_list_udt",
-                TableUserDefinedColumnTypeDescriptor(udt_name="the_udt_l"),
+                TableUDTColumnDescriptor(udt_name="the_udt_l"),
             )
             .add_map_column(
                 "p_map_udt",

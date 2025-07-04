@@ -25,8 +25,8 @@ from astrapy.data_types import (
     DataAPIMap,
     DataAPISet,
     DataAPITimestamp,
+    DataAPIUDT,
     DataAPIUserDefinedType,
-    DictDataAPIUserDefinedType,
 )
 from astrapy.utils.api_options import SerdesOptions, defaultSerdesOptions
 
@@ -46,7 +46,7 @@ class TestTPreprocessorsUserDefinedTypes:
         ("wrapped_object",),
         [
             (
-                DictDataAPIUserDefinedType(
+                DataAPIUDT(
                     {
                         "name": "John",
                         "age": 40,
@@ -66,7 +66,7 @@ class TestTPreprocessorsUserDefinedTypes:
                 ),
             ),
         ],
-        ids=["DictDataAPIUserDefinedType", "dataclass-factory-wrapper"],
+        ids=["DataAPIUDT", "dataclass-factory-wrapper"],
     )
     @pytest.mark.describe("test of udt conversion in preprocessing, from a wrapper")
     def test_udt_wrapper_preprocessing(

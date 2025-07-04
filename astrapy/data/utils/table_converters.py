@@ -30,8 +30,8 @@ from astrapy.data.info.table_descriptor.table_columns import (
     TableKeyValuedColumnTypeDescriptor,
     TablePassthroughColumnTypeDescriptor,
     TableScalarColumnTypeDescriptor,
+    TableUDTColumnDescriptor,
     TableUnsupportedColumnTypeDescriptor,
-    TableUserDefinedColumnTypeDescriptor,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
 )
@@ -329,7 +329,7 @@ def _column_filler_value(
             raise ValueError(
                 f"Unrecognized table key-valued-column descriptor for reads: {col_def.as_dict()}"
             )
-    elif isinstance(col_def, TableUserDefinedColumnTypeDescriptor):
+    elif isinstance(col_def, TableUDTColumnDescriptor):
         # TODO: verify about fillers/null UDTs
         return None
     elif isinstance(col_def, TableUnsupportedColumnTypeDescriptor):
@@ -491,7 +491,7 @@ def _create_column_tpostprocessor(
             raise ValueError(
                 f"Unrecognized table key-valued-column descriptor for reads: {col_def.as_dict()}"
             )
-    elif isinstance(col_def, TableUserDefinedColumnTypeDescriptor):
+    elif isinstance(col_def, TableUDTColumnDescriptor):
         udt_class = (
             options.udt_class_map.get(col_def.udt_name) or options.udt_default_class
         )
