@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 
 
 class DataAPIDictUDT(dict[Any, Any]):
@@ -38,7 +38,7 @@ class DataAPIDictUDT(dict[Any, Any]):
 
     def __init__(
         self,
-        initial: Mapping[str, Any] | None = None,
+        initial: Mapping[str, Any] | Iterable[tuple[Any, Any]] | None = None,
         **kwargs: Any,
     ) -> None:
         if initial is None:

@@ -107,15 +107,13 @@ def test_imports() -> None:
     )
     from astrapy.data_types import (
         DataAPIDate,
+        DataAPIDictUDT,
         DataAPIDuration,
         DataAPIMap,
         DataAPISet,
         DataAPITime,
         DataAPITimestamp,
-        DataAPIUDT,
-        DataAPIUserDefinedType,
         DataAPIVector,
-        create_dataclass_userdefinedtype,
     )
     from astrapy.exceptions import (
         CollectionDeleteManyException,

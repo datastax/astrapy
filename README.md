@@ -679,15 +679,14 @@ Data types:
 
 ```python
 from astrapy.data_types import (
-    DataAPITimestamp,
-    DataAPIVector,
     DataAPIDate,
     DataAPIDuration,
     DataAPIMap,
     DataAPISet,
     DataAPITime,
-    DataAPIUserDefinedType,
-    DataAPIUDT,
+    DataAPITimestamp,
+    DataAPIDictUDT,
+    DataAPIVector,
 )
 ```
 
@@ -782,9 +781,6 @@ from astrapy.utils.document_paths import (
 
 # API Options defaults:
 from astrapy.utils.api_options import defaultAPIOptions
-
-# UDT wrapper factory from dataclasses:
-from astrapy.data_types import create_dataclass_userdefinedtype
 ```
 
 ### Appendix B: compatibility with pre-1.0.0 library
