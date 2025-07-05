@@ -1,5 +1,7 @@
 main
 ====
+Switch default encode_maps_as_lists_in_tables to "DATAAPIMAPS" (no observable changes w.r.t. previous releases)
+
 User-defined types in tables:
     - type management: `CreateTypeDefinition`, `AlterTypeOperation`, `AlterTypeAddFields` and `AlterTypeRenameFields` classes
     - type management: Database's `create_type`, `alter_type` and `drop_type` methods
