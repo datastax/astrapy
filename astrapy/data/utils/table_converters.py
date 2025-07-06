@@ -802,7 +802,6 @@ def preprocess_table_payload_value(
     for k_cls, k_serializer in options.serializer_by_class.items():
         if isinstance(_uvalue, k_cls) and k_serializer is not None:
             udt_dict_form = k_serializer(_uvalue)
-            print("udt_dict_form", udt_dict_form)
             return {
                 udt_k: preprocess_table_payload_value(
                     path + [udt_k],

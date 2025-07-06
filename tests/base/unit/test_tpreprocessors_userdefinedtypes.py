@@ -78,7 +78,7 @@ FULL_DICTWRAPPER_ROW = {
     "m_wr": {"k2": FULL_WRAPPED_DICT},
 }
 FULL_CUSTOMCLASS_ROW = {
-    "d": FULL_EXTENDEDPLAYER,
+    "d": FULL_WRAPPABLE_DICT,
     "wr": FULL_EXTENDEDPLAYER,
     "dam": DataAPIMap([("k", "v")]),
     "dami": DataAPIMap([(1, "v1")]),
@@ -146,6 +146,10 @@ class TestTPreprocessorsUserDefinedTypes:
         assert preprocessed_nev == FULL_SERIALIZED_ROW_NEV
         assert preprocessed_alw == FULL_SERIALIZED_ROW_ALW
 
+        _ = json.dumps(preprocessed_dam)
+        _ = json.dumps(preprocessed_nev)
+        _ = json.dumps(preprocessed_alw)
+
     @pytest.mark.describe(
         "test of udt conversion in preprocessing for unregistered class",
     )
@@ -202,6 +206,10 @@ class TestTPreprocessorsUserDefinedTypes:
             map2tuple_checker_insert_one,
         )["insertOne"]["document"]  # type: ignore[index]
 
-        json.dumps(preprocessed_dam)
-        json.dumps(preprocessed_nev)
-        json.dumps(preprocessed_alw)
+        assert preprocessed_dam == FULL_SERIALIZED_ROW_DAM
+        assert preprocessed_nev == FULL_SERIALIZED_ROW_NEV
+        assert preprocessed_alw == FULL_SERIALIZED_ROW_ALW
+
+        _ = json.dumps(preprocessed_dam)
+        _ = json.dumps(preprocessed_nev)
+        _ = json.dumps(preprocessed_alw)
