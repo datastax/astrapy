@@ -18,6 +18,7 @@ import datetime
 from dataclasses import dataclass
 from typing import Any
 
+from astrapy.data.utils.extended_json_converters import convert_to_ejson_bytes
 from astrapy.data_types import DataAPITimestamp
 from astrapy.info import CreateTableDefinition, CreateTypeDefinition
 
@@ -108,6 +109,23 @@ EXTENDED_PLAYER_TABLE_DEFINITION = CreateTableDefinition.coerce(
         },
     }
 )
+
+UNIT_EXTENDED_PLAYER_TYPE_NAME = "unit_udt_extended_player"
+UNIT_EXTENDED_PLAYER_TYPE_DEFINITION = CreateTypeDefinition(
+    fields={
+        "name": "text",
+        "age": "int",
+        "blb": "blob",
+        "ts": "timestamp",
+    },
+)
+
+THE_BYTES = b"\xa6"
+THE_SERIALIZED_BYTES = convert_to_ejson_bytes(THE_BYTES)
+THE_TIMESTAMP = DataAPITimestamp.from_string("2025-10-29T01:25:37.123Z")
+THE_SERIALIZED_TIMESTAMP = THE_TIMESTAMP.to_string()
+THE_TIMEZONE = datetime.timezone(datetime.timedelta(hours=2, minutes=45))
+THE_DATETIME = THE_TIMESTAMP.to_datetime(tz=THE_TIMEZONE)
 
 
 @dataclass
@@ -202,6 +220,13 @@ class NullablePlayer:
 
 def _unit_extended_player_serializer(uexp: UnitExtendedPlayer) -> dict[str, Any]:
     return {k: v for k, v in uexp.__dict__.items() if v is not None}
+
+
+def _unit_extended_player_from_dict(
+    udict: dict[str, Any],
+    definition: CreateTypeDefinition | None,
+) -> UnitExtendedPlayer:
+    return UnitExtendedPlayer(**udict)
 
 
 def _nullable_player_serializer(np: NullablePlayer) -> dict[str, Any]:

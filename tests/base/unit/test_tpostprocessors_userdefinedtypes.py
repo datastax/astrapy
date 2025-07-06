@@ -14,386 +14,276 @@
 
 from __future__ import annotations
 
-import datetime
-
 import pytest
 
-from astrapy.data.utils.extended_json_converters import convert_to_ejson_bytes
 from astrapy.data.utils.table_converters import create_row_tpostprocessor
 from astrapy.data_types import (
+    DataAPIDictUDT,
     DataAPIMap,
     DataAPISet,
-    DataAPITimestamp,
-    DataAPIUDT,
 )
 from astrapy.info import ListTableDescriptor
 from astrapy.utils.api_options import SerdesOptions, defaultSerdesOptions
 
-from ..conftest import _repaint_NaNs
 from ..table_udt_assets import (
-    NullablePlayer,
-    NullablePlayerUDTWrapper,
+    PLAYER_TYPE_DEFINITION,
+    PLAYER_TYPE_NAME,
+    THE_BYTES,
+    THE_DATETIME,
+    THE_SERIALIZED_BYTES,
+    THE_SERIALIZED_TIMESTAMP,
+    THE_TIMESTAMP,
+    THE_TIMEZONE,
+    UNIT_EXTENDED_PLAYER_TYPE_DEFINITION,
+    UNIT_EXTENDED_PLAYER_TYPE_NAME,
     UnitExtendedPlayer,
-    UnitExtendedPlayerUDTWrapper,
+    _unit_extended_player_from_dict,
 )
 
-THE_BYTES = b"\xa6"
-THE_TIMESTAMP = DataAPITimestamp.from_string("2025-10-29T01:25:37.123Z")
-THE_TIMEZONE = datetime.timezone(datetime.timedelta(hours=2, minutes=45))
-
 TABLE_DESCRIPTION = {
-    "name": "table_simple",
+    "name": "table_unit_udt_deserialize_test",
     "definition": {
         "columns": {
             "p_text": {"type": "text"},
-            "udt_column": {
+            "scalar_udt": {
                 "type": "userDefined",
-                "udtName": "x_player_udt",
-                "definition": {
-                    "fields": {
-                        "name": {"type": "text"},
-                        "age": {"type": "int"},
-                        "blb": {"type": "blob"},
-                        "ts": {"type": "timestamp"},
-                    },
-                },
-                "apiSupport": {},
+                "udtName": UNIT_EXTENDED_PLAYER_TYPE_NAME,
+                "definition": UNIT_EXTENDED_PLAYER_TYPE_DEFINITION.as_dict(),
             },
-            "udt_list": {
+            "list_udt": {
                 "type": "list",
                 "valueType": {
-                    "udtName": "x_player_udt",
-                    "definition": {
-                        "fields": {
-                            "name": {"type": "text"},
-                            "age": {"type": "int"},
-                            "blb": {"type": "blob"},
-                            "ts": {"type": "timestamp"},
-                        },
-                    },
+                    "udtName": UNIT_EXTENDED_PLAYER_TYPE_NAME,
+                    "definition": UNIT_EXTENDED_PLAYER_TYPE_DEFINITION.as_dict(),
                 },
-                "apiSupport": {},
             },
-            "udt_set": {
+            "set_udt": {
                 "type": "set",
                 "valueType": {
-                    "udtName": "x_player_udt",
-                    "definition": {
-                        "fields": {
-                            "name": {"type": "text"},
-                            "age": {"type": "int"},
-                            "blb": {"type": "blob"},
-                            "ts": {"type": "timestamp"},
-                        },
-                    },
+                    "udtName": UNIT_EXTENDED_PLAYER_TYPE_NAME,
+                    "definition": UNIT_EXTENDED_PLAYER_TYPE_DEFINITION.as_dict(),
                 },
-                "apiSupport": {},
             },
-            "udt_map": {
+            "map_str_udt": {
                 "type": "map",
                 "keyType": "text",
                 "valueType": {
-                    "udtName": "x_player_udt",
-                    "definition": {
-                        "fields": {
-                            "name": {"type": "text"},
-                            "age": {"type": "int"},
-                            "blb": {"type": "blob"},
-                            "ts": {"type": "timestamp"},
-                        },
-                    },
+                    "udtName": UNIT_EXTENDED_PLAYER_TYPE_NAME,
+                    "definition": UNIT_EXTENDED_PLAYER_TYPE_DEFINITION.as_dict(),
                 },
-                "apiSupport": {},
             },
-            "udt_map_aslist": {
+            "map_int_udt_aslist": {
                 "type": "map",
-                "keyType": "text",
+                "keyType": "int",
                 "valueType": {
-                    "udtName": "x_player_udt",
-                    "definition": {
-                        "fields": {
-                            "name": {"type": "text"},
-                            "age": {"type": "int"},
-                            "blb": {"type": "blob"},
-                            "ts": {"type": "timestamp"},
-                        },
-                    },
+                    "udtName": UNIT_EXTENDED_PLAYER_TYPE_NAME,
+                    "definition": UNIT_EXTENDED_PLAYER_TYPE_DEFINITION.as_dict(),
                 },
-                "apiSupport": {},
             },
         },
         "primaryKey": {"partitionBy": [], "partitionSort": {}},
     },
 }
+COLUMNS = ListTableDescriptor.coerce(TABLE_DESCRIPTION).definition.columns
+
+MINI_TABLE_DESCRIPTION = {
+    "name": "table_unit_udt_deserialize_test",
+    "definition": {
+        "columns": {
+            "p_text": {"type": "text"},
+            "scalar_udt": {
+                "type": "userDefined",
+                "udtName": PLAYER_TYPE_NAME,
+                "definition": PLAYER_TYPE_DEFINITION.as_dict(),
+            },
+        },
+        "primaryKey": {"partitionBy": [], "partitionSort": {}},
+    },
+}
+MINI_COLUMNS = ListTableDescriptor.coerce(MINI_TABLE_DESCRIPTION).definition.columns
+MINI_RESPONSE_PARTIAL_UDT_DICT = {"age": 101}
+MINI_PARTIAL_OUTPUT_ROW_TO_POSTPROCESS = {
+    "p_text": "base",
+    "scalar_udt": MINI_RESPONSE_PARTIAL_UDT_DICT,
+}
+# TODO - adjust expectations if different behaviour is discussed
+MINI_EXPECTED_PARTIAL_ROW_DICTUDT = {
+    "p_text": "base",
+    "scalar_udt": DataAPIDictUDT(
+        {
+            # TODO: no `"name": None` here expected so far.
+            "age": 101,
+        }
+    ),
+}
 
 RAW_RESPONSE_UDT_DICT = {
     "name": "John",
     "age": 40,
-    "blb": convert_to_ejson_bytes(THE_BYTES),
-    "ts": THE_TIMESTAMP.to_string(),
+    "blb": THE_SERIALIZED_BYTES,
+    "ts": THE_SERIALIZED_TIMESTAMP,
 }
-OUTPUT_ROW_TO_POSTPROCESS = {
-    "p_text": "italy",
-    "udt_column": RAW_RESPONSE_UDT_DICT,
-    "udt_list": [RAW_RESPONSE_UDT_DICT],
-    "udt_set": [RAW_RESPONSE_UDT_DICT],
-    "udt_map": {"k": RAW_RESPONSE_UDT_DICT},
-    "udt_map_aslist": [["k", RAW_RESPONSE_UDT_DICT]],
+EXPECTED_STDLIB_DICT = {
+    "name": "John",
+    "age": 40,
+    "blb": THE_BYTES,
+    "ts": THE_DATETIME,
 }
-
-DICT_WRAPPED_C = DataAPIUDT(
+EXPECTED_DICTUDT = DataAPIDictUDT(
     {
         "name": "John",
         "age": 40,
         "blb": THE_BYTES,
         "ts": THE_TIMESTAMP,
-    },
+    }
 )
-EXPECTED_POSTPROCESSED_ROW_DICT_C = {
-    "p_text": "italy",
-    "udt_column": DICT_WRAPPED_C,
-    "udt_list": [DICT_WRAPPED_C],
-    "udt_set": DataAPISet([DICT_WRAPPED_C]),
-    "udt_map": DataAPIMap([("k", DICT_WRAPPED_C)]),
-    "udt_map_aslist": DataAPIMap([("k", DICT_WRAPPED_C)]),
+EXPECTED_STDLIB_CUSTOMUDT = UnitExtendedPlayer(
+    name="John",
+    age=40,
+    blb=THE_BYTES,
+    ts=THE_DATETIME,
+)
+EXPECTED_CUSTOMUDT = UnitExtendedPlayer(
+    name="John",
+    age=40,
+    blb=THE_BYTES,
+    ts=THE_TIMESTAMP,
+)
+
+OUTPUT_ROW_TO_POSTPROCESS = {
+    "p_text": "base",
+    "scalar_udt": RAW_RESPONSE_UDT_DICT,
+    "list_udt": [RAW_RESPONSE_UDT_DICT],
+    "set_udt": [RAW_RESPONSE_UDT_DICT],
+    "map_str_udt": {"k": RAW_RESPONSE_UDT_DICT},
+    "map_int_udt_aslist": [[101, RAW_RESPONSE_UDT_DICT]],
 }
 
-DICT_WRAPPED_NC = DataAPIUDT(
-    {
-        "name": "John",
-        "age": 40,
-        "blb": THE_BYTES,
-        "ts": THE_TIMESTAMP.to_datetime(tz=THE_TIMEZONE),
-    },
-)
-EXPECTED_POSTPROCESSED_ROW_DICT_NC = {
-    "p_text": "italy",
-    "udt_column": DICT_WRAPPED_NC,
-    "udt_list": [DICT_WRAPPED_NC],
-    "udt_set": "ignored in this case",
-    "udt_map": {"k": DICT_WRAPPED_NC},
-    "udt_map_aslist": {"k": DICT_WRAPPED_NC},
+EXPECTED_ROW_STDLIB_DICT = {
+    "p_text": "base",
+    "scalar_udt": EXPECTED_STDLIB_DICT,
+    "list_udt": [EXPECTED_STDLIB_DICT],
+    "set_udt": "ignored-for-this-test",
+    "map_str_udt": {"k": EXPECTED_STDLIB_DICT},
+    "map_int_udt_aslist": {101: EXPECTED_STDLIB_DICT},
+}
+EXPECTED_ROW_DICTUDT = {
+    "p_text": "base",
+    "scalar_udt": EXPECTED_DICTUDT,
+    "list_udt": [EXPECTED_DICTUDT],
+    "set_udt": DataAPISet([EXPECTED_DICTUDT]),
+    "map_str_udt": DataAPIMap([("k", EXPECTED_DICTUDT)]),
+    "map_int_udt_aslist": DataAPIMap([(101, EXPECTED_DICTUDT)]),
+}
+EXPECTED_ROW_STDLIB_CUSTOMUDT = {
+    "p_text": "base",
+    "scalar_udt": EXPECTED_STDLIB_CUSTOMUDT,
+    "list_udt": [EXPECTED_STDLIB_CUSTOMUDT],
+    "set_udt": "ignored-for-this-test",
+    "map_str_udt": {"k": EXPECTED_STDLIB_CUSTOMUDT},
+    "map_int_udt_aslist": {101: EXPECTED_STDLIB_CUSTOMUDT},
+}
+EXPECTED_ROW_CUSTOMUDT = {
+    "p_text": "base",
+    "scalar_udt": EXPECTED_CUSTOMUDT,
+    "list_udt": [EXPECTED_CUSTOMUDT],
+    "set_udt": DataAPISet([EXPECTED_CUSTOMUDT]),
+    "map_str_udt": DataAPIMap([("k", EXPECTED_CUSTOMUDT)]),
+    "map_int_udt_aslist": DataAPIMap([(101, EXPECTED_CUSTOMUDT)]),
 }
 
-DATACLASS_WRAPPED_C = UnitExtendedPlayerUDTWrapper(
-    UnitExtendedPlayer(
-        name="John",
-        age=40,
-        blb=THE_BYTES,
-        ts=THE_TIMESTAMP,
-    )
+BASE_OPTIONS = defaultSerdesOptions.with_override(
+    SerdesOptions(datetime_tzinfo=THE_TIMEZONE),
 )
-EXPECTED_POSTPROCESSED_ROW_DATACLASS_C = {
-    "p_text": "italy",
-    "udt_column": DATACLASS_WRAPPED_C,
-    "udt_list": [DATACLASS_WRAPPED_C],
-    "udt_set": DataAPISet([DATACLASS_WRAPPED_C]),
-    "udt_map": DataAPIMap([("k", DATACLASS_WRAPPED_C)]),
-    "udt_map_aslist": DataAPIMap([("k", DATACLASS_WRAPPED_C)]),
-}
-
-DATACLASS_WRAPPED_NC = UnitExtendedPlayerUDTWrapper(
-    UnitExtendedPlayer(
-        name="John",
-        age=40,
-        blb=THE_BYTES,
-        ts=THE_TIMESTAMP.to_datetime(tz=THE_TIMEZONE),
-    )
+OPTIONS_STDLIB = BASE_OPTIONS.with_override(
+    SerdesOptions(custom_datatypes_in_reading=False),
 )
-EXPECTED_POSTPROCESSED_ROW_DATACLASS_NC = {
-    "p_text": "italy",
-    "udt_column": DATACLASS_WRAPPED_NC,
-    "udt_list": [DATACLASS_WRAPPED_NC],
-    "udt_set": "ignored in this case",
-    "udt_map": {"k": DATACLASS_WRAPPED_NC},
-    "udt_map_aslist": {"k": DATACLASS_WRAPPED_NC},
-}
+OPTIONS_CUSTOM = BASE_OPTIONS.with_override(
+    SerdesOptions(custom_datatypes_in_reading=True),
+)
+OPTIONS_STDLIB_CCLASS = OPTIONS_STDLIB.with_override(
+    SerdesOptions(
+        deserializer_by_udt={
+            UNIT_EXTENDED_PLAYER_TYPE_NAME: _unit_extended_player_from_dict,
+        }
+    ),
+)
+OPTIONS_CUSTOM_CCLASS = OPTIONS_CUSTOM.with_override(
+    SerdesOptions(
+        deserializer_by_udt={
+            UNIT_EXTENDED_PLAYER_TYPE_NAME: _unit_extended_player_from_dict,
+        }
+    ),
+)
 
 
 class TestTPostProcessorsUserDefinedTypes:
     @pytest.mark.describe(
-        "test of row postprocessors with UDTs to dict from schema, custom datatypes"
+        "test of UDTs in row postprocessors: custom datatypes, custom class"
     )
-    def test_row_postprocessors_udts_dict_from_schema_customdt(self) -> None:
-        col_desc = ListTableDescriptor.coerce(TABLE_DESCRIPTION)
-
-        tpostprocessor_c = create_row_tpostprocessor(
-            columns=col_desc.definition.columns,
-            options=defaultSerdesOptions.with_override(
-                SerdesOptions(
-                    custom_datatypes_in_reading=True,
-                ),
-            ),
+    def test_row_postprocessors_udts_customdt_customclass(self) -> None:
+        tpostprocessor = create_row_tpostprocessor(
+            columns=COLUMNS,
+            options=OPTIONS_CUSTOM_CCLASS,
             similarity_pseudocolumn=None,
         )
-        converted_column_c = tpostprocessor_c(OUTPUT_ROW_TO_POSTPROCESS)
-        assert _repaint_NaNs(converted_column_c) == _repaint_NaNs(
-            EXPECTED_POSTPROCESSED_ROW_DICT_C
-        )
-        # this verifies one gets e.g. a regular dict and not a DataAPIMap
-        assert all(
-            [
-                col_v.__class__ == EXPECTED_POSTPROCESSED_ROW_DICT_C[col_k].__class__
-                for col_k, col_v in converted_column_c.items()
-            ]
-        )
-        with pytest.raises(ValueError):
-            tpostprocessor_c({"bippy": 123})
+        deserialized_row = tpostprocessor(OUTPUT_ROW_TO_POSTPROCESS)
+        assert deserialized_row == EXPECTED_ROW_CUSTOMUDT
 
     @pytest.mark.describe(
-        "test of row postprocessors with UDTs to dict from schema, stdlib datatypes"
+        "test of UDTs in row postprocessors: stdlib datatypes, custom class"
     )
-    def test_row_postprocessors_udts_dict_from_schema_noncustomdt(self) -> None:
-        col_desc = ListTableDescriptor.coerce(TABLE_DESCRIPTION)
-
-        # removing 'set' due to hashability limitations
-        tpostprocessor_nc = create_row_tpostprocessor(
-            columns={
-                k: v for k, v in col_desc.definition.columns.items() if "set" not in k
-            },
-            options=defaultSerdesOptions.with_override(
-                SerdesOptions(
-                    custom_datatypes_in_reading=False,
-                    datetime_tzinfo=THE_TIMEZONE,
-                ),
-            ),
+    def test_row_postprocessors_udts_stdlibdt_customclass(self) -> None:
+        tpostprocessor = create_row_tpostprocessor(
+            columns=COLUMNS,
+            options=OPTIONS_STDLIB_CCLASS,
             similarity_pseudocolumn=None,
         )
-        converted_column_nc = tpostprocessor_nc(
+        # remove set column due to non-hashability
+        deserialized_row = tpostprocessor(
             {k: v for k, v in OUTPUT_ROW_TO_POSTPROCESS.items() if "set" not in k}
         )
-        assert _repaint_NaNs(converted_column_nc) == _repaint_NaNs(
-            {
-                k: v
-                for k, v in EXPECTED_POSTPROCESSED_ROW_DICT_NC.items()
-                if "set" not in k
-            }
-        )
-        # this verifies one gets e.g. a regular dict and not a DataAPIMap
-        assert all(
-            [
-                col_v.__class__ == EXPECTED_POSTPROCESSED_ROW_DICT_NC[col_k].__class__
-                for col_k, col_v in converted_column_nc.items()
-            ]
-        )
-        with pytest.raises(ValueError):
-            tpostprocessor_nc({"bippy": 123})
-
-    @pytest.mark.describe(
-        "test of row postprocessors with UDTs to dataclass from schema, custom datatypes"
-    )
-    def test_row_postprocessors_udts_dataclass_from_schema_customdt(self) -> None:
-        col_desc = ListTableDescriptor.coerce(TABLE_DESCRIPTION)
-
-        tpostprocessor_c = create_row_tpostprocessor(
-            columns=col_desc.definition.columns,
-            options=defaultSerdesOptions.with_override(
-                SerdesOptions(
-                    custom_datatypes_in_reading=True,
-                    udt_class_map={"x_player_udt": UnitExtendedPlayerUDTWrapper},
-                ),
-            ),
-            similarity_pseudocolumn=None,
-        )
-        converted_column_c = tpostprocessor_c(OUTPUT_ROW_TO_POSTPROCESS)
-        assert _repaint_NaNs(converted_column_c) == _repaint_NaNs(
-            EXPECTED_POSTPROCESSED_ROW_DATACLASS_C
-        )
-        # this verifies one gets e.g. a regular dict and not a DataAPIMap
-        assert all(
-            [
-                col_v.__class__
-                == EXPECTED_POSTPROCESSED_ROW_DATACLASS_C[col_k].__class__
-                for col_k, col_v in converted_column_c.items()
-            ]
-        )
-        with pytest.raises(ValueError):
-            tpostprocessor_c({"bippy": 123})
-
-    @pytest.mark.describe(
-        "test of row postprocessors with UDTs to dataclass from schema, stdlib datatypes"
-    )
-    def test_row_postprocessors_udts_dataclass_from_schema_noncustomdt(self) -> None:
-        col_desc = ListTableDescriptor.coerce(TABLE_DESCRIPTION)
-
-        # removing 'set' due to hashability limitations
-        tpostprocessor_nc = create_row_tpostprocessor(
-            columns={
-                k: v for k, v in col_desc.definition.columns.items() if "set" not in k
-            },
-            options=defaultSerdesOptions.with_override(
-                SerdesOptions(
-                    custom_datatypes_in_reading=False,
-                    datetime_tzinfo=THE_TIMEZONE,
-                    udt_class_map={"x_player_udt": UnitExtendedPlayerUDTWrapper},
-                ),
-            ),
-            similarity_pseudocolumn=None,
-        )
-        converted_column_nc = tpostprocessor_nc(
-            {k: v for k, v in OUTPUT_ROW_TO_POSTPROCESS.items() if "set" not in k}
-        )
-        assert _repaint_NaNs(converted_column_nc) == _repaint_NaNs(
-            {
-                k: v
-                for k, v in EXPECTED_POSTPROCESSED_ROW_DATACLASS_NC.items()
-                if "set" not in k
-            }
-        )
-        # this verifies one gets e.g. a regular dict and not a DataAPIMap
-        assert all(
-            [
-                col_v.__class__
-                == EXPECTED_POSTPROCESSED_ROW_DATACLASS_NC[col_k].__class__
-                for col_k, col_v in converted_column_nc.items()
-            ]
-        )
-        with pytest.raises(ValueError):
-            tpostprocessor_nc({"bippy": 123})
-
-    @pytest.mark.describe("test of row postprocessors with partial UDT dataclass")
-    def test_row_postprocessors_partial_udtdataclass(self) -> None:
-        col_desc = ListTableDescriptor.coerce(
-            {
-                "name": "table_simple",
-                "definition": {
-                    "columns": {
-                        "p_text": {"type": "text"},
-                        "udt_column": {
-                            "type": "userDefined",
-                            "udtName": "player_udt",
-                            "definition": {
-                                "fields": {
-                                    "name": {"type": "text"},
-                                    "age": {"type": "int"},
-                                },
-                            },
-                            "apiSupport": {},
-                        },
-                    },
-                    "primaryKey": {"partitionBy": [], "partitionSort": {}},
-                },
-            },
-        )
-
-        tpostprocessor_nc = create_row_tpostprocessor(
-            columns=col_desc.definition.columns,
-            options=defaultSerdesOptions.with_override(
-                SerdesOptions(
-                    udt_class_map={"player_udt": NullablePlayerUDTWrapper},
-                ),
-            ),
-            similarity_pseudocolumn=None,
-        )
-        converted_column_nc = tpostprocessor_nc(
-            {
-                "p_text": "italy",
-                "udt_column": {
-                    "name": "JustJohn",
-                },
-            }
-        )
-        converted_column_nc == {
-            "p_text": "italy",
-            "udt_column": NullablePlayer(name="JustJohn"),
+        assert deserialized_row == {
+            **EXPECTED_ROW_STDLIB_CUSTOMUDT,
+            **{"set_udt": set()},
         }
+
+    @pytest.mark.describe(
+        "test of UDTs in row postprocessors: custom datatypes, dict-wrapper class"
+    )
+    def test_row_postprocessors_udts_customdt_dictwrapperclass(self) -> None:
+        tpostprocessor = create_row_tpostprocessor(
+            columns=COLUMNS,
+            options=OPTIONS_CUSTOM,
+            similarity_pseudocolumn=None,
+        )
+        deserialized_row = tpostprocessor(OUTPUT_ROW_TO_POSTPROCESS)
+        assert deserialized_row == EXPECTED_ROW_DICTUDT
+
+    @pytest.mark.describe(
+        "test of UDTs in row postprocessors: stdlib datatypes, dict-wrapper class"
+    )
+    def test_row_postprocessors_udts_stdlibdt_dictwrapperclass(self) -> None:
+        tpostprocessor = create_row_tpostprocessor(
+            columns=COLUMNS,
+            options=OPTIONS_STDLIB,
+            similarity_pseudocolumn=None,
+        )
+        # remove set column due to non-hashability
+        deserialized_row = tpostprocessor(
+            {k: v for k, v in OUTPUT_ROW_TO_POSTPROCESS.items() if "set" not in k}
+        )
+        assert deserialized_row == {
+            **EXPECTED_ROW_STDLIB_DICT,
+            **{"set_udt": set()},
+        }
+
+    @pytest.mark.describe("test of row postprocessors with partial UDT provided")
+    def test_row_postprocessors_partial_udt(self) -> None:
+        tpostprocessor = create_row_tpostprocessor(
+            columns=MINI_COLUMNS,
+            options=OPTIONS_CUSTOM,
+            similarity_pseudocolumn=None,
+        )
+        deserialized_row = tpostprocessor(MINI_PARTIAL_OUTPUT_ROW_TO_POSTPROCESS)
+        assert deserialized_row == MINI_EXPECTED_PARTIAL_ROW_DICTUDT

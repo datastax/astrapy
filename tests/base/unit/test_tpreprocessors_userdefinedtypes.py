@@ -24,7 +24,6 @@ from astrapy.data_types import (
     DataAPIDictUDT,
     DataAPIMap,
     DataAPISet,
-    DataAPITimestamp,
 )
 from astrapy.utils.api_options import (
     FullSerdesOptions,
@@ -33,6 +32,10 @@ from astrapy.utils.api_options import (
 )
 
 from ..table_udt_assets import (
+    THE_BYTES,
+    THE_SERIALIZED_BYTES,
+    THE_SERIALIZED_TIMESTAMP,
+    THE_TIMESTAMP,
     UnitExtendedPlayer,
     _unit_extended_player_serializer,
 )
@@ -46,11 +49,6 @@ OPTIONS_NEV = defaultSerdesOptions.with_override(
 OPTIONS_ALW = defaultSerdesOptions.with_override(
     SerdesOptions(encode_maps_as_lists_in_tables="ALWAYS"),
 )
-
-THE_BYTES = b"\xa6"
-THE_SERIALIZED_BYTES = {"$binary": "pg=="}
-THE_TIMESTAMP = DataAPITimestamp.from_string("2025-10-29T01:25:37.123Z")
-THE_SERIALIZED_TIMESTAMP = THE_TIMESTAMP.to_string()
 
 FULL_WRAPPABLE_DICT = {
     "name": "Jamie",
