@@ -38,6 +38,7 @@ from ..table_udt_assets import (
     UNIT_EXTENDED_PLAYER_TYPE_NAME,
     UnitExtendedPlayer,
     _unit_extended_player_from_dict,
+    dict_equal_same_class,
 )
 
 TABLE_DESCRIPTION = {
@@ -228,7 +229,7 @@ class TestTPostProcessorsUserDefinedTypes:
             similarity_pseudocolumn=None,
         )
         deserialized_row = tpostprocessor(OUTPUT_ROW_TO_POSTPROCESS)
-        assert deserialized_row == EXPECTED_ROW_CUSTOMUDT
+        dict_equal_same_class(deserialized_row, EXPECTED_ROW_CUSTOMUDT)
 
     @pytest.mark.describe(
         "test of UDTs in row postprocessors: stdlib datatypes, custom class"
@@ -243,10 +244,11 @@ class TestTPostProcessorsUserDefinedTypes:
         deserialized_row = tpostprocessor(
             {k: v for k, v in OUTPUT_ROW_TO_POSTPROCESS.items() if "set" not in k}
         )
-        assert deserialized_row == {
+        expected_row = {
             **EXPECTED_ROW_STDLIB_CUSTOMUDT,
             **{"set_udt": set()},
         }
+        dict_equal_same_class(deserialized_row, expected_row)
 
     @pytest.mark.describe(
         "test of UDTs in row postprocessors: custom datatypes, dict-wrapper class"
@@ -258,7 +260,7 @@ class TestTPostProcessorsUserDefinedTypes:
             similarity_pseudocolumn=None,
         )
         deserialized_row = tpostprocessor(OUTPUT_ROW_TO_POSTPROCESS)
-        assert deserialized_row == EXPECTED_ROW_DICTUDT
+        dict_equal_same_class(deserialized_row, EXPECTED_ROW_DICTUDT)
 
     @pytest.mark.describe(
         "test of UDTs in row postprocessors: stdlib datatypes, dict-wrapper class"
@@ -273,10 +275,11 @@ class TestTPostProcessorsUserDefinedTypes:
         deserialized_row = tpostprocessor(
             {k: v for k, v in OUTPUT_ROW_TO_POSTPROCESS.items() if "set" not in k}
         )
-        assert deserialized_row == {
+        expected_row = {
             **EXPECTED_ROW_STDLIB_DICT,
             **{"set_udt": set()},
         }
+        dict_equal_same_class(deserialized_row, expected_row)
 
     @pytest.mark.describe("test of row postprocessors with partial UDT provided")
     def test_row_postprocessors_partial_udt(self) -> None:
@@ -286,4 +289,7 @@ class TestTPostProcessorsUserDefinedTypes:
             similarity_pseudocolumn=None,
         )
         deserialized_row = tpostprocessor(MINI_PARTIAL_OUTPUT_ROW_TO_POSTPROCESS)
-        assert deserialized_row == MINI_EXPECTED_PARTIAL_ROW_DICTUDT
+        dict_equal_same_class(
+            deserialized_row,
+            MINI_EXPECTED_PARTIAL_ROW_DICTUDT,
+        )

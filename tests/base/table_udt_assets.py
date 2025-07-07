@@ -218,8 +218,41 @@ class NullablePlayer:
     age: int | None = None
 
 
+def _extended_player_serializer(uexp: ExtendedPlayer) -> dict[str, Any]:
+    return {k: v for k, v in uexp.__dict__.items() if v is not None}
+
+
+def _nullable_player_serializer(np: NullablePlayer) -> dict[str, Any]:
+    return {k: v for k, v in np.__dict__.items() if v is not None}
+
+
+def _player_serializer(np: Player) -> dict[str, Any]:
+    return {k: v for k, v in np.__dict__.items() if v is not None}
+
+
 def _unit_extended_player_serializer(uexp: UnitExtendedPlayer) -> dict[str, Any]:
     return {k: v for k, v in uexp.__dict__.items() if v is not None}
+
+
+def _extended_player_from_dict(
+    udict: dict[str, Any],
+    definition: CreateTypeDefinition | None,
+) -> ExtendedPlayer:
+    return ExtendedPlayer(**udict)
+
+
+def _nullable_player_from_dict(
+    udict: dict[str, Any],
+    definition: CreateTypeDefinition | None,
+) -> NullablePlayer:
+    return NullablePlayer(**udict)
+
+
+def _player_from_dict(
+    udict: dict[str, Any],
+    definition: CreateTypeDefinition | None,
+) -> Player:
+    return Player(**udict)
 
 
 def _unit_extended_player_from_dict(
@@ -229,5 +262,21 @@ def _unit_extended_player_from_dict(
     return UnitExtendedPlayer(**udict)
 
 
-def _nullable_player_serializer(np: NullablePlayer) -> dict[str, Any]:
-    return {k: v for k, v in np.__dict__.items() if v is not None}
+def dict_equal_same_class(
+    dct1: dict[Any, Any] | None, dct2: dict[Any, Any] | None
+) -> None:
+    """A strong equality that checks the class in each value is exactly the same."""
+    if dct1 is None:
+        assert dct2 is None
+    elif dct2 is None:
+        assert dct1 is None
+    else:
+        assert all(
+            [
+                dct1 == dct2,
+                all(
+                    dct1[k].__class__ == dct2[k].__class__
+                    for k in dct1.keys() | dct2.keys()
+                ),
+            ]
+        )

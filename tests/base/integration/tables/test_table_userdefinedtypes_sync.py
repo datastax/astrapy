@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import datetime
 import os
 from typing import TYPE_CHECKING, Any
 
@@ -22,25 +21,34 @@ import pytest
 
 from astrapy import Database
 from astrapy.api_options import APIOptions, SerdesOptions
+from astrapy.constants import SerializerFunctionType, UDTDeserializerFunctionType
 from astrapy.data_types import (
+    DataAPIDictUDT,
     DataAPIMap,
     DataAPISet,
-    DataAPITimestamp,
-    DataAPIUDT,
-    DataAPIUserDefinedType,
 )
 from astrapy.exceptions import DataAPIResponseException
 
 from ..conftest import (
     CQL_AVAILABLE,
+    EXTENDED_PLAYER_TYPE_NAME,
+    PLAYER_TYPE_NAME,
+    # THE_BYTES,
+    THE_DATETIME,
+    THE_TIMESTAMP,
+    THE_TIMEZONE,
     DataAPICredentials,
     DefaultTable,
     ExtendedPlayer,
-    ExtendedPlayerUDTWrapper,
     NullablePlayer,
-    NullablePlayerUDTWrapper,
     Player,
-    PlayerUDTWrapper,
+    _extended_player_from_dict,
+    _extended_player_serializer,
+    _nullable_player_from_dict,
+    _nullable_player_serializer,
+    _player_from_dict,
+    _player_serializer,
+    dict_equal_same_class,
 )
 from .table_cql_assets import _extract_udt_definition
 from .table_row_assets import (
@@ -51,18 +59,19 @@ from .table_row_assets import (
     UDT_NAME,
     WEIRD_BASE_DOCUMENT,
     WEIRD_BASE_DOCUMENT_PK,
-    WEIRD_NESTED_EXPECTED_DOCUMENT,
     WEIRD_UDT_BASE_CLOSE_STATEMENTS,
     WEIRD_UDT_BASE_INITIALIZE_STATEMENTS,
     WEIRD_UDT_BASE_TABLE_NAME,
-    WEIRD_UDT_NESTED_CLOSE_STATEMENTS,
-    WEIRD_UDT_NESTED_DOCUMENT_PK,
-    WEIRD_UDT_NESTED_INITIALIZE_STATEMENTS,
-    WEIRD_UDT_NESTED_TABLE_NAME,
 )
 
 if TYPE_CHECKING:
     from cassandra.cluster import Session
+
+SERIALIZER_BY_CLASS: dict[type, SerializerFunctionType] = {
+    ExtendedPlayer: _extended_player_serializer,
+    NullablePlayer: _nullable_player_serializer,
+    Player: _player_serializer,
+}
 
 
 @pytest.mark.skipif(
@@ -120,104 +129,71 @@ class TestTableUserDefinedTypes:
             sync_database.drop_type(UDT_NAME, if_exists=True)
 
     @pytest.mark.parametrize(
-        ("use_dataclass",),
-        [(False,), (True,)],
-        ids=["dictBased", "dataclassBased"],
+        ("encode_maps_as_lists_in_tables",),
+        [
+            ("NEVER",),
+            ("DATAAPIMAPS",),
+            ("ALWAYS",),
+        ],
+        ids=[
+            "tuplesNEVER",
+            "tuplesDATAAPIMAPS",
+            "tuplesALWAYS",
+        ],
     )
     @pytest.mark.parametrize(
-        ("use_maptuples",),
-        [(False,), (True,)],
-        ids=["noMapTuples", "doMapTuples"],
-    )
-    @pytest.mark.parametrize(
-        ("use_customdatatypes",),
-        [(False,), (True,)],
-        ids=["stdlibDatatypes", "customDatatypes"],
+        ("udt_format",),
+        [
+            ("dict",),
+            ("dictwrapper",),
+            ("dataclass",),
+        ],
+        ids=[
+            "dict",
+            "dictWrapper",
+            "dataclass",
+        ],
     )
     @pytest.mark.parametrize(
         ("udt_mode",),
-        [("simple",), ("partial",), ("empty",), ("extended",)],
-        ids=["nonNullable", "partialNullable", "emptyNullable", "extendedClass"],
+        [
+            ("simple",),
+            ("partial",),
+            ("empty",),
+            ("extended",),
+        ],
+        ids=[
+            "nonNullable",
+            "partialNullable",
+            "emptyNullable",
+            "extendedClass",
+        ],
     )
-    @pytest.mark.describe("Test of full-UDT DML, sync")
-    def test_table_full_udt_dml_sync(
+    @pytest.mark.describe("Test of UDT DML, sync")
+    def test_table_udt_dml_sync(
         self,
         player_udt: str,
         extended_player_udt: str,
         # TODO RESTRICT_UDT_TEST re-enable both once udt-cache issues solved in data api
         sync_empty_table_udt_player: DefaultTable,
         # sync_empty_table_udt_extended_player: DefaultTable,
-        use_dataclass: bool,
-        use_maptuples: bool,
-        use_customdatatypes: bool,
+        encode_maps_as_lists_in_tables: str,
+        udt_format: str,
         udt_mode: str,
     ) -> None:
+        # combinations of write settings that are not supposed to work are skipped:
+        if udt_format == "dict" and encode_maps_as_lists_in_tables == "ALWAYS":
+            pytest.skip("The Data API is not supposed to accept such a write format.")
+
         # Manual restriction of tests - TODO RESTRICT_UDT_TEST remove restriction
-        _tdesc_tuple = (use_dataclass, use_maptuples, use_customdatatypes, udt_mode)
-        if _tdesc_tuple[3] == "extended":
+        if udt_mode == "extended":
             pytest.skip("Manually scoped out for now.")
 
-        if use_maptuples:
+        if encode_maps_as_lists_in_tables != "NEVER":
             if "ASTRAPY_TEST_LATEST_MAIN" not in os.environ:
                 pytest.skip("maps-as-tuples require 'latest main' testing for now.")
 
-        wrapped_object: Any
-        wrapper_class: type[DataAPIUserDefinedType[Any]]
-        udt_class_map: dict[str, type[DataAPIUserDefinedType[Any]]]
-
-        date_value: DataAPITimestamp | datetime.datetime
-        _da_ts = DataAPITimestamp.from_string("2033-05-18T03:33:20.321Z")
-        if use_customdatatypes:
-            date_value = _da_ts
-        else:
-            date_value = _da_ts.from_string("2033-05-18T03:33:20.321Z").to_datetime(
-                tz=datetime.timezone.utc
-            )
-
-        if use_dataclass:
-            if udt_mode == "simple":
-                wrapped_object = Player(name="Jim", age=75)
-                wrapper_class = PlayerUDTWrapper
-                udt_class_map = {player_udt: PlayerUDTWrapper}
-            elif udt_mode == "partial":
-                wrapped_object = NullablePlayer(name="Jim")
-                wrapper_class = NullablePlayerUDTWrapper
-                udt_class_map = {player_udt: NullablePlayerUDTWrapper}
-            elif udt_mode == "empty":
-                wrapped_object = NullablePlayer()
-                wrapper_class = NullablePlayerUDTWrapper
-                udt_class_map = {player_udt: NullablePlayerUDTWrapper}
-            elif udt_mode == "extended":
-                wrapped_object = ExtendedPlayer(
-                    name="Betta",
-                    age=65,
-                    # TODO NOBLOBINUDT blb=b"\x12\x0a",
-                    ts=date_value,
-                )
-                wrapper_class = ExtendedPlayerUDTWrapper
-                udt_class_map = {extended_player_udt: ExtendedPlayerUDTWrapper}
-            else:
-                raise ValueError("Unknown udt_mode in test.")
-        else:
-            wrapper_class = DataAPIUDT
-            udt_class_map = {}
-            if udt_mode == "simple":
-                wrapped_object = {"name": "Charles", "age": 36}
-            elif udt_mode == "partial":
-                wrapped_object = {"name": "Charles"}
-            elif udt_mode == "empty":
-                wrapped_object = {}
-            elif udt_mode == "extended":
-                wrapped_object = {
-                    "name": "Betta",
-                    "age": 65,
-                    # TODO NOBLOBINUDT "blb": b"\x12\x0a",
-                    "ts": date_value,
-                }
-            else:
-                raise ValueError("Unknown udt_mode in test.")
-
-        # the serdes options have a nontrivial udt-class-map only if not dict-based:
+        # choice of serdes options for writes
         src_table: DefaultTable
         # TODO RESTRICT_UDT_TEST reinstate this in full once extended coexists w/ rest
         if udt_mode == "extended":
@@ -228,58 +204,270 @@ class TestTableUserDefinedTypes:
         table = src_table.with_options(
             api_options=APIOptions(
                 serdes_options=SerdesOptions(
-                    udt_class_map=udt_class_map,
-                    encode_maps_as_lists_in_tables="ALWAYS"
-                    if use_maptuples
-                    else "NEVER",
-                    custom_datatypes_in_reading=use_customdatatypes,
+                    serializer_by_class=dict(SERIALIZER_BY_CLASS),
+                    encode_maps_as_lists_in_tables=encode_maps_as_lists_in_tables,
                 ),
             ),
         )
 
-        wrapped = wrapper_class(wrapped_object)
-        write_row: dict[str, Any]
-        if use_customdatatypes:
-            write_row = {
-                "id": "a",
-                "scalar_udt": wrapped,
-                "list_udt": [wrapped],
-                "set_udt": DataAPISet([wrapped]),
-                "map_udt": DataAPIMap([("schlussel", wrapped)]),
-            }
+        # asset preparation
+        udt_unit: Any
+        if udt_mode == "simple":
+            if udt_format == "dict":
+                udt_unit = {
+                    "name": "John",
+                    "age": 90,
+                }
+            elif udt_format == "dictwrapper":
+                udt_unit = DataAPIDictUDT(
+                    {
+                        "name": "John",
+                        "age": 90,
+                    }
+                )
+            elif udt_format == "dataclass":
+                udt_unit = Player(
+                    name="John",
+                    age=90,
+                )
+            else:
+                raise ValueError(f"Unknown udt format '{udt_format}'.")
+        elif udt_mode == "partial":
+            if udt_format == "dict":
+                udt_unit = {
+                    "age": 90,
+                }
+            elif udt_format == "dictwrapper":
+                udt_unit = DataAPIDictUDT(
+                    {
+                        "age": 90,
+                    }
+                )
+            elif udt_format == "dataclass":
+                udt_unit = NullablePlayer(
+                    age=90,
+                )
+            else:
+                raise ValueError(f"Unknown udt format '{udt_format}'.")
+        elif udt_mode == "empty":
+            if udt_format == "dict":
+                udt_unit = {}
+            elif udt_format == "dictwrapper":
+                udt_unit = DataAPIDictUDT({})
+            elif udt_format == "dataclass":
+                udt_unit = NullablePlayer()
+            else:
+                raise ValueError(f"Unknown udt format '{udt_format}'.")
+        elif udt_mode == "extended":
+            if udt_format == "dict":
+                udt_unit = {
+                    "name": "John",
+                    "age": 90,
+                    # TODO NOBLOBINUDT
+                    # "blb": THE_BYTES,
+                    "ts": THE_TIMESTAMP,
+                }
+            elif udt_format == "dictwrapper":
+                udt_unit = DataAPIDictUDT(
+                    {
+                        "name": "John",
+                        "age": 90,
+                        # TODO NOBLOBINUDT
+                        # "blb": THE_BYTES,
+                        "ts": THE_TIMESTAMP,
+                    }
+                )
+            elif udt_format == "dataclass":
+                udt_unit = ExtendedPlayer(
+                    name="John",
+                    age=90,
+                    # TODO NOBLOBINUDT
+                    # blb=THE_BYTES,
+                    ts=THE_TIMESTAMP,
+                )
+            else:
+                raise ValueError(f"Unknown udt format '{udt_format}'.")
         else:
-            write_row = {
-                "id": "a",
-                "scalar_udt": wrapped,
-                "list_udt": [wrapped],
-                "map_udt": {"schlussel": wrapped},
-            }
+            raise ValueError(f"Unknown udt mode '{udt_mode}'.")
 
-        expected_row: dict[str, Any]
-        if udt_mode == "empty":
-            expected_row = {
-                **write_row,
-                **{"scalar_udt": None},
-            }
-        else:
-            expected_row = write_row
+        row_custom_colls = {
+            "id": "row_custom_colls",
+            "scalar_udt": udt_unit,
+            "list_udt": [udt_unit],
+            "set_udt": DataAPISet([udt_unit]),
+            "map_udt": DataAPIMap([("k", udt_unit)]),
+        }
+        row_stdlib_colls = {
+            "id": "row_stdlib_colls",
+            "scalar_udt": udt_unit,
+            "list_udt": [udt_unit],
+            "set_udt": [udt_unit],
+            "map_udt": {"k": udt_unit},
+        }
+        ins1c_result = table.insert_one(row_custom_colls)
+        ins1s_result = table.insert_one(row_stdlib_colls)
+        insm_result = table.insert_many([row_custom_colls, row_stdlib_colls])
 
-        ins_result = table.insert_one(write_row)
-        assert ins_result.inserted_id == {"id": "a"}
+        ins1_tuples = {ins1c_result.inserted_id_tuple, ins1s_result.inserted_id_tuple}
+        assert ins1_tuples == set(insm_result.inserted_id_tuples)
 
-        read_row = table.find_one(
-            ins_result.inserted_id,
-            projection={fld: True for fld in write_row.keys()},
-        )
-        assert read_row == expected_row
+        # read and verify, {custom, stdlib} x {deserializer in map, default behaviour}:
 
-        # projections
-        for fld in expected_row.keys():
-            prj_read_row = table.find_one(
-                ins_result.inserted_id,
-                projection={fld: True},
-            )
-            assert prj_read_row == {fld: expected_row[fld]}
+        # Custom datatypes, no deserializer specified:
+        for custom_datatypes_in_reading in [True, False]:
+            for deserializer_in_map in [False, True]:
+                # prepare assets for read verification
+                exp_row: dict[str, Any]
+                expected_udt_unit: Any
+                projection: dict[str, bool]
+
+                deserializer_by_udt: dict[str, UDTDeserializerFunctionType]
+                if deserializer_in_map:
+                    if udt_mode == "simple":
+                        deserializer_by_udt = {PLAYER_TYPE_NAME: _player_from_dict}
+                    elif udt_mode in {"partial", "empty"}:
+                        deserializer_by_udt = {
+                            PLAYER_TYPE_NAME: _nullable_player_from_dict
+                        }
+                    elif udt_mode == "extended":
+                        deserializer_by_udt = {
+                            EXTENDED_PLAYER_TYPE_NAME: _extended_player_from_dict,
+                        }
+                    else:
+                        raise ValueError(f"Unknown udt mode '{udt_mode}'.")
+                else:
+                    deserializer_by_udt = {}
+
+                if custom_datatypes_in_reading:
+                    projection = {"id": False}
+                    if deserializer_in_map:
+                        if udt_mode == "simple":
+                            expected_udt_unit = Player(name="John", age=90)
+                        elif udt_mode == "partial":
+                            expected_udt_unit = NullablePlayer(age=90)
+                        elif udt_mode == "empty":
+                            expected_udt_unit = NullablePlayer()
+                        elif udt_mode == "extended":
+                            expected_udt_unit = ExtendedPlayer(
+                                name="John",
+                                age=90,
+                                # TODO NOBLOBINUDT
+                                # blb=THE_BYTES,
+                                ts=THE_TIMESTAMP,
+                            )
+                        else:
+                            raise ValueError(f"Unknown udt mode '{udt_mode}'.")
+                    else:
+                        if udt_mode == "simple":
+                            expected_udt_unit = DataAPIDictUDT(
+                                {
+                                    "name": "John",
+                                    "age": 90,
+                                }
+                            )
+                        elif udt_mode == "partial":
+                            expected_udt_unit = DataAPIDictUDT({"age": 90})
+                        elif udt_mode == "empty":
+                            expected_udt_unit = DataAPIDictUDT({})
+                        elif udt_mode == "extended":
+                            expected_udt_unit = DataAPIDictUDT(
+                                {
+                                    "name": "John",
+                                    "age": 90,
+                                    # TODO NOBLOBINUDT
+                                    # "blb": THE_BYTES,
+                                    "ts": THE_TIMESTAMP,
+                                }
+                            )
+                        else:
+                            raise ValueError(f"Unknown udt mode '{udt_mode}'.")
+                    exp_row = {
+                        # TODO: reflects the behaviour for 'whole-null' udt:
+                        "scalar_udt": expected_udt_unit
+                        if udt_mode != "empty"
+                        else None,
+                        "list_udt": [expected_udt_unit],
+                        "set_udt": DataAPISet([expected_udt_unit]),
+                        "map_udt": DataAPIMap([("k", expected_udt_unit)]),
+                    }
+                else:
+                    projection = {"id": False, "set_udt": False}
+                    if deserializer_in_map:
+                        if udt_mode == "simple":
+                            expected_udt_unit = Player(name="John", age=90)
+                        elif udt_mode == "partial":
+                            expected_udt_unit = NullablePlayer(age=90)
+                        elif udt_mode == "empty":
+                            expected_udt_unit = NullablePlayer()
+                        elif udt_mode == "extended":
+                            expected_udt_unit = ExtendedPlayer(
+                                name="John",
+                                age=90,
+                                # TODO NOBLOBINUDT
+                                # blb=THE_BYTES,
+                                ts=THE_DATETIME,
+                            )
+                        else:
+                            raise ValueError(f"Unknown udt mode '{udt_mode}'.")
+                    else:
+                        if udt_mode == "simple":
+                            expected_udt_unit = {
+                                "name": "John",
+                                "age": 90,
+                            }
+                        elif udt_mode == "partial":
+                            expected_udt_unit = {"age": 90}
+                        elif udt_mode == "empty":
+                            expected_udt_unit = {}
+                        elif udt_mode == "extended":
+                            expected_udt_unit = {
+                                "name": "John",
+                                "age": 90,
+                                # TODO NOBLOBINUDT
+                                # "blb": THE_BYTES,
+                                "ts": THE_DATETIME,
+                            }
+                        else:
+                            raise ValueError(f"Unknown udt mode '{udt_mode}'.")
+                    exp_row = {
+                        # TODO: reflects the behaviour for 'whole-null' udt:
+                        "scalar_udt": expected_udt_unit
+                        if udt_mode != "empty"
+                        else None,
+                        "list_udt": [expected_udt_unit],
+                        "map_udt": {"k": expected_udt_unit},
+                    }
+
+                # table for reading
+                reader_table = table.with_options(
+                    api_options=APIOptions(
+                        serdes_options=SerdesOptions(
+                            custom_datatypes_in_reading=custom_datatypes_in_reading,
+                            deserializer_by_udt=dict(deserializer_by_udt),
+                            datetime_tzinfo=THE_TIMEZONE,
+                        ),
+                    ),
+                )
+
+                # read and check results
+                row1 = reader_table.find_one(
+                    {"id": "row_custom_colls"},
+                    projection=projection,
+                )
+                row2 = reader_table.find_one(
+                    {"id": "row_stdlib_colls"},
+                    projection=projection,
+                )
+                dict_equal_same_class(row1, row2)
+                dict_equal_same_class(row1, exp_row)
+
+                # projection-based reads
+                for fld in exp_row.keys() - projection.keys():
+                    prj_read_row = reader_table.find_one(
+                        {"id": "row_custom_colls"},
+                        projection={fld: True},
+                    )
+                    dict_equal_same_class(prj_read_row, {fld: exp_row[fld]})
 
     @pytest.mark.skipif(not CQL_AVAILABLE, reason="No CQL session available")
     @pytest.mark.describe("Test of weird UDT columns, sync")
@@ -300,23 +488,4 @@ class TestTableUserDefinedTypes:
             assert doc_weird_base == WEIRD_BASE_DOCUMENT
         finally:
             for cql_statement in WEIRD_UDT_BASE_CLOSE_STATEMENTS:
-                cql_session.execute(cql_statement)
-
-    @pytest.mark.skipif(not CQL_AVAILABLE, reason="No CQL session available")
-    @pytest.mark.describe("Test of weird UDT columns, sync")
-    def test_table_udt_weirdnested_sync(
-        self,
-        cql_session: Session,
-        sync_database: Database,
-    ) -> None:
-        try:
-            for cql_statement in WEIRD_UDT_NESTED_INITIALIZE_STATEMENTS:
-                cql_session.execute(cql_statement)
-
-            # test a read for 'nested weird'
-            table_weird_nst = sync_database.get_table(WEIRD_UDT_NESTED_TABLE_NAME)
-            doc_weird_nst = table_weird_nst.find_one(WEIRD_UDT_NESTED_DOCUMENT_PK)
-            assert doc_weird_nst == WEIRD_NESTED_EXPECTED_DOCUMENT
-        finally:
-            for cql_statement in WEIRD_UDT_NESTED_CLOSE_STATEMENTS:
                 cql_session.execute(cql_statement)

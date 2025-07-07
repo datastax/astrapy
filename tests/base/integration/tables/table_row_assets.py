@@ -21,12 +21,12 @@ from typing import Any
 
 from astrapy.data_types import (
     DataAPIDate,
+    DataAPIDictUDT,
     DataAPIDuration,
     DataAPIMap,
     DataAPISet,
     DataAPITime,
     DataAPITimestamp,
-    DataAPIUDT,
     DataAPIVector,
 )
 from astrapy.ids import UUID
@@ -460,42 +460,7 @@ WEIRD_UDT_BASE_CLOSE_STATEMENTS = [
 ]
 WEIRD_BASE_DOCUMENT_PK = {"id": "the_doc"}
 WEIRD_BASE_DOCUMENT = {
-    "f_udt": DataAPIUDT({"a": "A_of_f_udt", "b": 10}),
-    "f_l_udt": [DataAPIUDT({"a": "A_of_f_l_udt", "b": 12})],
+    "f_udt": DataAPIDictUDT({"a": "A_of_f_udt", "b": 10}),
+    "f_l_udt": [DataAPIDictUDT({"a": "A_of_f_l_udt", "b": 12})],
     **WEIRD_BASE_DOCUMENT_PK,
-}
-
-WEIRD_UDT_NESTED_TABLE_NAME = "udt_weird_nst"
-WEIRD_UDT_NESTED_TYPE_NAME = "wrd_type_nst"
-WEIRD_UDT_NESTED_INITIALIZE_STATEMENTS = [
-    f"create type IF NOT EXISTS {WEIRD_UDT_BASE_TYPE_NAME} (a text, b int)",
-    f"create type IF NOT EXISTS {WEIRD_UDT_NESTED_TYPE_NAME}(a text, m {WEIRD_UDT_BASE_TYPE_NAME});",
-    (
-        f"create table IF NOT EXISTS {WEIRD_UDT_NESTED_TABLE_NAME} (id text primary key, "
-        f"n_u frozen<{WEIRD_UDT_NESTED_TYPE_NAME}>);"
-    ),
-    (
-        f"insert into {WEIRD_UDT_NESTED_TABLE_NAME} (id, n_u) values ('the_doc', "
-        "{a: 'outerA', m: {a: 'innerA', b: 6}});"
-    ),
-]
-WEIRD_UDT_NESTED_CLOSE_STATEMENTS = [
-    f"drop table {WEIRD_UDT_NESTED_TABLE_NAME};",
-    f"drop type {WEIRD_UDT_NESTED_TYPE_NAME};",
-    f"drop type {WEIRD_UDT_BASE_TYPE_NAME};",
-]
-WEIRD_UDT_NESTED_DOCUMENT_PK = {"id": "the_doc"}
-WEIRD_NESTED_EXPECTED_DOCUMENT = {
-    "n_u": DataAPIUDT(
-        {
-            "a": "outerA",
-            "m": DataAPIUDT(
-                {
-                    "a": "innerA",
-                    "b": 6,
-                },
-            ),
-        },
-    ),
-    **WEIRD_UDT_NESTED_DOCUMENT_PK,
 }

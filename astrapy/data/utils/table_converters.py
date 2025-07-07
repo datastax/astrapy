@@ -507,11 +507,6 @@ def _create_column_tpostprocessor(
                 f"Schema information lacks 'definition' field for {col_def.udt_name}."
             )
 
-        deserializer_for_udt = (
-            options.deserializer_by_udt.get(col_def.udt_name)
-            or _default_dict_udt_wrapper
-        )
-
         # first the incoming dictionary must be deserialized in its types,
         # then the ("udt-level") deserializer -- custom or default -- is invoked
         values_tpostprocessor_map = {
@@ -519,18 +514,54 @@ def _create_column_tpostprocessor(
             for k_fieldname, k_fieldtype in col_def.definition.fields.items()
         }
 
-        def _tpostprocessor_udt(raw_items: dict[Any, Any] | None) -> Any:
-            if raw_items is None:
-                # TODO what to do about 'whole-null' return type?
-                return None
-            # TODO what to do about partially-returned UDT dicts?
-            udt_deserialized_dict = {
-                k_fieldname: values_tpostprocessor_map[k_fieldname](v_fieldraw)
-                for k_fieldname, v_fieldraw in raw_items.items()
-            }
-            return deserializer_for_udt(udt_deserialized_dict, col_def.definition)
+        # if there is a registered deserializer, no matter whether 'use custom dtypes':
+        deserializer_for_udt = options.deserializer_by_udt.get(col_def.udt_name)
 
-        return _tpostprocessor_udt
+        # TODO: for all three cases. What to do about
+        #   (1) whole-null return types, (2) partial returned UDT dicts.
+
+        if deserializer_for_udt:
+
+            def _tpostprocessor_udt_w_deser(raw_items: dict[Any, Any] | None) -> Any:
+                # reconstruct the UDT as the requested custom class
+                if raw_items is None:
+                    return None
+                udt_deserialized_dict = {
+                    k_fieldname: values_tpostprocessor_map[k_fieldname](v_fieldraw)
+                    for k_fieldname, v_fieldraw in raw_items.items()
+                }
+                return deserializer_for_udt(udt_deserialized_dict, col_def.definition)
+
+            return _tpostprocessor_udt_w_deser
+        elif options.custom_datatypes_in_reading:
+
+            def _tpostprocessor_udt_defdeser(raw_items: dict[Any, Any] | None) -> Any:
+                # reconstruct the UDT as a dict wrapped as per default dict wrapper
+                if raw_items is None:
+                    return None
+                udt_deserialized_dict = {
+                    k_fieldname: values_tpostprocessor_map[k_fieldname](v_fieldraw)
+                    for k_fieldname, v_fieldraw in raw_items.items()
+                }
+                return _default_dict_udt_wrapper(
+                    udt_deserialized_dict, col_def.definition
+                )
+
+            return _tpostprocessor_udt_defdeser
+        else:
+
+            def _tpostprocessor_udt_baredict(raw_items: dict[Any, Any] | None) -> Any:
+                # reconstruct the UDT as just a plain dict
+                if raw_items is None:
+                    return None
+                udt_deserialized_dict = {
+                    k_fieldname: values_tpostprocessor_map[k_fieldname](v_fieldraw)
+                    for k_fieldname, v_fieldraw in raw_items.items()
+                }
+                return udt_deserialized_dict
+
+            return _tpostprocessor_udt_baredict
+
     elif isinstance(col_def, TableUnsupportedColumnTypeDescriptor):
         # 'Unsupported' columns (marked as such by the API) should never be
         # returned in reading. However, this is no sufficient reason not to comply.
