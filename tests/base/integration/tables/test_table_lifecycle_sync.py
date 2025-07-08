@@ -225,9 +225,12 @@ class TestTableLifecycle:
         )
 
         # definition and info
+        # Compare classes, not dicts, due to representational ambiguity:
         assert (
-            _remove_apisupport(table_fluent.definition().as_dict())
-            == table_whole_obj_definition.as_dict()
+            CreateTableDefinition._from_dict(
+                _remove_apisupport(table_fluent.definition().as_dict())
+            )
+            == table_whole_obj_definition
         )
         if IS_ASTRA_DB:
             fl_info = table_fluent.info()
@@ -424,9 +427,12 @@ class TestTableLifecycle:
                 operation=AlterTableDropVectorize.coerce({"columns": ["p_vector"]})
             )
             # back to the original table:
+            # Compare classes, not dicts, due to representational ambiguity:
             assert (
-                _remove_apisupport(table.definition().as_dict())
-                == orig_table_def.as_dict()
+                CreateTableDefinition._from_dict(
+                    _remove_apisupport(table.definition().as_dict())
+                )
+                == orig_table_def
             )
         finally:
             table.drop()
@@ -714,9 +720,12 @@ class TestTableLifecycle:
                 "table_simple_udt",
                 definition=table_simple_udt_def,
             )
+            # Compare classes, not dicts, due to representational ambiguity:
             assert (
-                _remove_definition(_remove_apisupport(table.definition().as_dict()))
-                == table_simple_udt_def.as_dict()
+                CreateTableDefinition._from_dict(
+                    _remove_definition(_remove_apisupport(table.definition().as_dict()))
+                )
+                == table_simple_udt_def
             )
 
             add_udt_columns = AlterTableAddColumns(
@@ -763,9 +772,12 @@ class TestTableLifecycle:
                     partition_sort={},
                 ),
             )
+            # Compare classes, not dicts, due to representational ambiguity:
             assert (
-                _remove_definition(_remove_apisupport(table.definition().as_dict()))
-                == altered_table_simple_udt_def.as_dict()
+                CreateTableDefinition._from_dict(
+                    _remove_definition(_remove_apisupport(table.definition().as_dict()))
+                )
+                == altered_table_simple_udt_def
             )
         finally:
             table.drop()

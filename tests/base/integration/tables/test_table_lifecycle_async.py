@@ -226,9 +226,10 @@ class TestTableLifecycle:
 
         # definition and info
         atf_def = await atable_fluent.definition()
+        # Compare classes, not dicts, due to representational ambiguity:
         assert (
-            _remove_apisupport(atf_def.as_dict())
-            == table_whole_obj_definition.as_dict()
+            CreateTableDefinition._from_dict(_remove_apisupport(atf_def.as_dict()))
+            == table_whole_obj_definition
         )
         if IS_ASTRA_DB:
             fl_info = await atable_fluent.info()
@@ -425,8 +426,12 @@ class TestTableLifecycle:
                 operation=AlterTableDropVectorize.coerce({"columns": ["p_vector"]})
             )
             # back to the original table:
+            # Compare classes, not dicts, due to representational ambiguity:
             adef = await atable.definition()
-            assert _remove_apisupport(adef.as_dict()) == orig_table_def.as_dict()
+            assert (
+                CreateTableDefinition._from_dict(_remove_apisupport(adef.as_dict()))
+                == orig_table_def
+            )
         finally:
             await atable.drop()
 
@@ -721,11 +726,14 @@ class TestTableLifecycle:
                 "table_simple_udt",
                 definition=table_simple_udt_def,
             )
+            # Compare classes, not dicts, due to representational ambiguity:
             assert (
-                _remove_definition(
-                    _remove_apisupport((await atable.definition()).as_dict())
+                CreateTableDefinition._from_dict(
+                    _remove_definition(
+                        _remove_apisupport((await atable.definition()).as_dict())
+                    )
                 )
-                == table_simple_udt_def.as_dict()
+                == table_simple_udt_def
             )
 
             add_udt_columns = AlterTableAddColumns(
@@ -772,11 +780,14 @@ class TestTableLifecycle:
                     partition_sort={},
                 ),
             )
+            # Compare classes, not dicts, due to representational ambiguity:
             assert (
-                _remove_definition(
-                    _remove_apisupport((await atable.definition()).as_dict())
+                CreateTableDefinition._from_dict(
+                    _remove_definition(
+                        _remove_apisupport((await atable.definition()).as_dict())
+                    )
                 )
-                == altered_table_simple_udt_def.as_dict()
+                == altered_table_simple_udt_def
             )
         finally:
             await atable.drop()
