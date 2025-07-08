@@ -149,24 +149,23 @@ class TableColumnTypeDescriptor(ABC):
         This method switches to the proper subclass depending on the input.
         """
 
-        if "udtName" in raw_dict:
-            # TODO: temporarily, 'type' may still be missing so this comes first
-            return TableUDTColumnDescriptor._from_dict(raw_dict)
-        elif "keyType" in raw_dict and raw_dict["type"] in TableKeyValuedColumnType:
-            return TableKeyValuedColumnTypeDescriptor._from_dict(raw_dict)
-        elif "valueType" in raw_dict and raw_dict["type"] in TableValuedColumnType:
-            return TableValuedColumnTypeDescriptor._from_dict(raw_dict)
-        elif raw_dict["type"] in TableVectorColumnType:
-            return TableVectorColumnTypeDescriptor._from_dict(raw_dict)
-        elif raw_dict["type"] in ColumnType:
-            return TableScalarColumnTypeDescriptor._from_dict(raw_dict)
-        elif raw_dict["type"] in TableUnsupportedColumnType:
-            return TableUnsupportedColumnTypeDescriptor._from_dict(raw_dict)
-        else:
-            # This case must not error, rather return a 'passthrough' column type
-            # (future-proof for yet-unknown column types to come and incomplete info
-            # such as e.g. 'map' without key/value type info because static).
-            return TablePassthroughColumnTypeDescriptor._from_dict(raw_dict)
+        if "type" in raw_dict:
+            if "keyType" in raw_dict and raw_dict["type"] in TableKeyValuedColumnType:
+                return TableKeyValuedColumnTypeDescriptor._from_dict(raw_dict)
+            elif "valueType" in raw_dict and raw_dict["type"] in TableValuedColumnType:
+                return TableValuedColumnTypeDescriptor._from_dict(raw_dict)
+            elif raw_dict["type"] in TableVectorColumnType:
+                return TableVectorColumnTypeDescriptor._from_dict(raw_dict)
+            elif raw_dict["type"] in ColumnType:
+                return TableScalarColumnTypeDescriptor._from_dict(raw_dict)
+            elif "udtName" in raw_dict and raw_dict["type"] in TableUDTColumnType:
+                return TableUDTColumnDescriptor._from_dict(raw_dict)
+            elif raw_dict["type"] in TableUnsupportedColumnType:
+                return TableUnsupportedColumnTypeDescriptor._from_dict(raw_dict)
+        # This catch-all case must not error, rather return a 'passthrough' column type
+        # (future-proof for yet-unknown column types to come and incomplete info
+        # such as e.g. 'map' without key/value type info because static).
+        return TablePassthroughColumnTypeDescriptor._from_dict(raw_dict)
 
     @classmethod
     def coerce(
@@ -492,9 +491,9 @@ class TableUDTColumnDescriptor(TableColumnTypeDescriptor):
         udt_name: the name of the user-defined type for this column.
         definition: a full type definition in the form of an object of type
             `astrapy.info.CreateTypeDefinition` object. This attribute is optional,
-            and as a matter of fact is only used to retain the full information
-            when the Data API returns a table schema and provides the whole structure
-            of a UDT field as part of the table definition.
+            and as a matter of fact is only present in the context of data reads,
+            to provide a complete schema for the data returned from the Data API
+            within the 'projectionSchema' out-of-band information coming with the read.
         api_support: a `TableAPISupportDescriptor` object giving more details.
     """
 
@@ -559,8 +558,7 @@ class TableUDTColumnDescriptor(TableColumnTypeDescriptor):
             {"type", "udtName", "apiSupport", "definition"},
         )
         return TableUDTColumnDescriptor(
-            # TODO: handling a missing 'type' here:
-            column_type=raw_dict.get("type", TableUDTColumnType.USERDEFINED),
+            column_type=raw_dict["type"],
             udt_name=raw_dict["udtName"],
             definition=CreateTypeDefinition._from_dict(raw_dict["definition"])
             if raw_dict.get("definition")

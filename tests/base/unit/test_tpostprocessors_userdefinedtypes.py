@@ -54,6 +54,7 @@ TABLE_DESCRIPTION = {
             "list_udt": {
                 "type": "list",
                 "valueType": {
+                    "type": "userDefined",
                     "udtName": UNIT_EXTENDED_PLAYER_TYPE_NAME,
                     "definition": UNIT_EXTENDED_PLAYER_TYPE_DEFINITION.as_dict(),
                 },
@@ -61,6 +62,7 @@ TABLE_DESCRIPTION = {
             "set_udt": {
                 "type": "set",
                 "valueType": {
+                    "type": "userDefined",
                     "udtName": UNIT_EXTENDED_PLAYER_TYPE_NAME,
                     "definition": UNIT_EXTENDED_PLAYER_TYPE_DEFINITION.as_dict(),
                 },
@@ -69,6 +71,7 @@ TABLE_DESCRIPTION = {
                 "type": "map",
                 "keyType": "text",
                 "valueType": {
+                    "type": "userDefined",
                     "udtName": UNIT_EXTENDED_PLAYER_TYPE_NAME,
                     "definition": UNIT_EXTENDED_PLAYER_TYPE_DEFINITION.as_dict(),
                 },
@@ -77,6 +80,7 @@ TABLE_DESCRIPTION = {
                 "type": "map",
                 "keyType": "int",
                 "valueType": {
+                    "type": "userDefined",
                     "udtName": UNIT_EXTENDED_PLAYER_TYPE_NAME,
                     "definition": UNIT_EXTENDED_PLAYER_TYPE_DEFINITION.as_dict(),
                 },
