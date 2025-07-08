@@ -14,8 +14,6 @@
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from astrapy import Database
@@ -63,23 +61,20 @@ class TestVectorizeOpsSync:
         cleaned_raw_info = clean_nulls_from_dict(
             ep_result.raw_info["embeddingProviders"]  # type: ignore[index]
         )
-        # TODO remove this cleanup once Astra prod and HCD get the support status flags
-        raw_info_has_ams = any(
-            "apiModelSupport" in model_dict
-            for prov_v in cleaned_raw_info.values()
-            for model_dict in prov_v["models"]
-        )
-        if not raw_info_has_ams:
-            for emb_prov in cleaned_dict_mapping.values():
-                for model in emb_prov["models"]:
-                    if "apiModelSupport" in model:
-                        del model["apiModelSupport"]
-        assert cleaned_dict_mapping == cleaned_raw_info
+        if IS_ASTRA_DB:
+            # TODO remove this (Astra-only) cleanup once apiModelSupport deployed
+            raw_info_has_ams = any(
+                "apiModelSupport" in model_dict
+                for prov_v in cleaned_raw_info.values()
+                for model_dict in prov_v["models"]
+            )
+            if not raw_info_has_ams:
+                for emb_prov in cleaned_dict_mapping.values():
+                    for model in emb_prov["models"]:
+                        if "apiModelSupport" in model:
+                            del model["apiModelSupport"]
+            assert cleaned_dict_mapping == cleaned_raw_info
 
-    @pytest.mark.skipif(
-        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
-        reason="'latest main' tests not requested.",
-    )
     @pytest.mark.skipif(IS_ASTRA_DB, reason="Filtering models not yet on Astra DB")
     @pytest.mark.describe("test of find_embedding_providers filtering, sync")
     def test_filtered_findembeddingproviders_sync(
