@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from astrapy import Database
+from astrapy import AsyncDatabase
 from astrapy.exceptions import DataAPIResponseException
 from astrapy.ids import UUID
 
@@ -55,14 +55,14 @@ except ImportError:
 
 
 @pytest.mark.skipif(not CQL_AVAILABLE, reason="No CQL session available")
-class TestTableCQLDrivenDMLSync:
+class TestTableCQLDrivenDMLAsync:
     @pytest.mark.describe(
-        "test of reading from a CQL-driven table with a Counter, sync"
+        "test of reading from a CQL-driven table with a Counter, async"
     )
-    def test_table_cqldriven_counter_sync(
+    async def test_table_cqldriven_counter_async(
         self,
         cql_session: Session,
-        sync_database: Database,
+        async_database: AsyncDatabase,
     ) -> None:
         try:
             cql_session.execute(CREATE_TABLE_COUNTER)
@@ -70,23 +70,23 @@ class TestTableCQLDrivenDMLSync:
                 cql_session.execute(insert_statement)
             time.sleep(1.5)  # delay for schema propagation
 
-            table = sync_database.get_table(TABLE_NAME_COUNTER)
-            table.definition()
-            row = table.find_one(filter=FILTER_COUNTER)
+            atable = async_database.get_table(TABLE_NAME_COUNTER)
+            await atable.definition()
+            row = await atable.find_one(filter=FILTER_COUNTER)
             assert row == EXPECTED_ROW_COUNTER
-            table.delete_one(filter=FILTER_COUNTER)
-            row = table.find_one(filter=FILTER_COUNTER)
+            await atable.delete_one(filter=FILTER_COUNTER)
+            row = await atable.find_one(filter=FILTER_COUNTER)
             assert row is None
         finally:
             cql_session.execute(DROP_TABLE_COUNTER)
 
     @pytest.mark.describe(
-        "test of reading from a CQL-driven table with limited-support columns, sync"
+        "test of reading from a CQL-driven table with limited-support columns, async"
     )
-    def test_table_cqldriven_lowsupport_sync(
+    async def test_table_cqldriven_lowsupport_async(
         self,
         cql_session: Session,
-        sync_database: Database,
+        async_database: AsyncDatabase,
     ) -> None:
         try:
             cql_session.execute(CREATE_TABLE_LOWSUPPORT)
@@ -94,30 +94,30 @@ class TestTableCQLDrivenDMLSync:
                 cql_session.execute(insert_statement)
             time.sleep(1.5)  # delay for schema propagation
 
-            table = sync_database.get_table(TABLE_NAME_LOWSUPPORT)
-            table.definition()
+            atable = async_database.get_table(TABLE_NAME_LOWSUPPORT)
+            await atable.definition()
             for ill_proj in ILLEGAL_PROJECTIONS_LOWSUPPORT:
                 with pytest.raises(DataAPIResponseException):
-                    table.find_one(filter=FILTER_LOWSUPPORT)
-            row = table.find_one(
+                    await atable.find_one(filter=FILTER_LOWSUPPORT)
+            row = await atable.find_one(
                 filter=FILTER_LOWSUPPORT, projection=PROJECTION_LOWSUPPORT
             )
             assert row == EXPECTED_ROW_LOWSUPPORT
-            table.delete_one(filter=FILTER_LOWSUPPORT)
-            row = table.find_one(
+            await atable.delete_one(filter=FILTER_LOWSUPPORT)
+            row = await atable.find_one(
                 filter=FILTER_LOWSUPPORT, projection=PROJECTION_LOWSUPPORT
             )
             assert row is None
 
             # writing timeuuid, passing strings and an UUID object to insert_one
-            table.insert_one(LOWSUPPORT_TIMEUUID_DOC0)
-            r_timeuuid_doc0 = table.find_one(
+            await atable.insert_one(LOWSUPPORT_TIMEUUID_DOC0)
+            r_timeuuid_doc0 = await atable.find_one(
                 filter=LOWSUPPORT_TIMEUUID_PK0,
                 projection={col: True for col in LOWSUPPORT_TIMEUUID_DOC0},
             )
             assert r_timeuuid_doc0 == LOWSUPPORT_TIMEUUID_DOC0
-            table.insert_one(LOWSUPPORT_TIMEUUID_DOC1)
-            r_timeuuid_doc1 = table.find_one(
+            await atable.insert_one(LOWSUPPORT_TIMEUUID_DOC1)
+            r_timeuuid_doc1 = await atable.find_one(
                 filter=LOWSUPPORT_TIMEUUID_PK1,
                 projection={col: True for col in LOWSUPPORT_TIMEUUID_DOC1},
             )

@@ -14,8 +14,6 @@
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from astrapy.api_options import APIOptions, SerdesOptions
@@ -35,10 +33,6 @@ STDLIB_OPTIONS = APIOptions(
 )
 
 
-@pytest.mark.skipif(
-    "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
-    reason="maps-as-tuples require 'latest main' testing for now.",
-)
 class TestTableMapsAsTuplesSync:
     @pytest.mark.describe("test of table maps-as-tuples, insert one and find one, sync")
     def test_table_mapsastuples_insert_one_find_one_sync(

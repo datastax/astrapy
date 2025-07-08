@@ -29,7 +29,13 @@ from astrapy.authentication import (
     coerce_possible_reranking_headers_provider,
     coerce_possible_token_provider,
 )
-from astrapy.constants import CallerType, Environment, MapEncodingMode
+from astrapy.constants import (
+    CallerType,
+    Environment,
+    MapEncodingMode,
+    SerializerFunctionType,
+    UDTDeserializerFunctionType,
+)
 from astrapy.settings.defaults import (
     API_PATH_ENV_MAP,
     API_VERSION_ENV_MAP,
@@ -345,7 +351,7 @@ class SerdesOptions:
             When (and where) enabled, the automatic conversions have the following form:
             * `{10: "ten"} ==> [[10, "ten"]]`
             * `DataAPIMap([('a', 1), ('b', 2)]) ==> [["a", 1], ["b", 2]]`.
-            Defaults to "NEVER".
+            Defaults to "DATAAPIMAPS".
         accept_naive_datetimes: Write-Path. Python datetimes can be either "naive" or
             "aware" of a timezone/offset information. Only the latter type can be
             translated unambiguously and without implied assumptions into a well-defined
@@ -364,6 +370,29 @@ class SerdesOptions:
             database. This setting (defaulting to `datetime.timezone.utc`) determines
             the timezone used in the returned datetime objects. Setting this value
             to None results in naive datetimes being returned (not recommended).
+        serializer_by_class: Write-Path. A dictionary associating, to specific classes
+            (not: instances), a function to use for serialization into a plain Python
+            dictionary with string keys. This is used by Tables, in the context of
+            user-defined types (UDTs), to seamlessly integrate third-party model
+            classes representing UDTs with astrapy.
+            When serializing the payload for a write, instances of classes found
+            in this mapping are processed through their serializer function, and the
+            resulting dictionary then undergoes the general payload serialization
+            logic.
+            A serializer function for class K is a `Callable[[K], dict[str, Any]]`.
+        deserializer_by_udt: Read-Path. A dictionary associating, to specific
+            user-defined type (UDT) names, a function to use for deserialization
+            into the desired class instance. This is used in Tables, when reads return
+            the values for UDTs in the form of plain JSON dictionaries: if the UDT name
+            is found in this mapping, the corresponding deserializer function is
+            invoked, which generally returns an instance of the third-party model class
+            of choice. If the UDT is not associated to a deserializer, by default
+            a `DataAPIDictUDT` (see) is returned for the UDT.
+            Deserializer functions accept two parameters: the dictionary received
+            for the UDT value, and the UDT definition as supplied by the Data API
+            alongside the read: so, they are a:
+            `Callable[[dict[str, Any], CreateTypeDefinition | None], K]`,
+            where `K` is the class of the returned object (i.e. the model class).
     """
 
     binary_encode_vectors: bool | UnsetType
@@ -373,6 +402,8 @@ class SerdesOptions:
     encode_maps_as_lists_in_tables: MapEncodingMode | UnsetType
     accept_naive_datetimes: bool | UnsetType
     datetime_tzinfo: datetime.timezone | None | UnsetType
+    serializer_by_class: dict[type, SerializerFunctionType | None] | UnsetType
+    deserializer_by_udt: dict[str, UDTDeserializerFunctionType | None] | UnsetType
 
     def __init__(
         self,
@@ -384,6 +415,10 @@ class SerdesOptions:
         encode_maps_as_lists_in_tables: str | MapEncodingMode | UnsetType = _UNSET,
         accept_naive_datetimes: bool | UnsetType = _UNSET,
         datetime_tzinfo: datetime.timezone | None | UnsetType = _UNSET,
+        serializer_by_class: dict[type, SerializerFunctionType | None]
+        | UnsetType = _UNSET,
+        deserializer_by_udt: dict[str, UDTDeserializerFunctionType | None]
+        | UnsetType = _UNSET,
     ) -> None:
         self.binary_encode_vectors = binary_encode_vectors
         self.custom_datatypes_in_reading = custom_datatypes_in_reading
@@ -397,6 +432,8 @@ class SerdesOptions:
             self.encode_maps_as_lists_in_tables = encode_maps_as_lists_in_tables
         self.accept_naive_datetimes = accept_naive_datetimes
         self.datetime_tzinfo = datetime_tzinfo
+        self.serializer_by_class = serializer_by_class
+        self.deserializer_by_udt = deserializer_by_udt
 
 
 @dataclass
@@ -507,6 +544,29 @@ class FullSerdesOptions(SerdesOptions):
             database. This setting (defaulting to `datetime.timezone.utc`) determines
             the timezone used in the returned datetime objects. Setting this value
             to None results in naive datetimes being returned (not recommended).
+        serializer_by_class: Write-Path. A dictionary associating, to specific classes
+            (not: instances), a function to use for serialization into a plain Python
+            dictionary with string keys. This is used by Tables, in the context of
+            user-defined types (UDTs), to seamlessly integrate third-party model
+            classes representing UDTs with astrapy.
+            When serializing the payload for a write, instances of classes found
+            in this mapping are processed through their serializer function, and the
+            resulting dictionary then undergoes the general payload serialization
+            logic.
+            A serializer function for class K is a `Callable[[K], dict[str, Any]]`.
+        deserializer_by_udt: Read-Path. A dictionary associating, to specific
+            user-defined type (UDT) names, a function to use for deserialization
+            into the desired class instance. This is used in Tables, when reads return
+            the values for UDTs in the form of plain JSON dictionaries: if the UDT name
+            is found in this mapping, the corresponding deserializer function is
+            invoked, which generally returns an instance of the third-party model class
+            of choice. If the UDT is not associated to a deserializer, by default
+            a `DataAPIDictUDT` (see) is returned for the UDT.
+            Deserializer functions accept two parameters: the dictionary received
+            for the UDT value, and the UDT definition as supplied by the Data API
+            alongside the read: so, they are a:
+            `Callable[[dict[str, Any], CreateTypeDefinition | None], K]`,
+            where `K` is the class of the returned object (i.e. the model class).
     """
 
     binary_encode_vectors: bool
@@ -516,6 +576,8 @@ class FullSerdesOptions(SerdesOptions):
     encode_maps_as_lists_in_tables: MapEncodingMode
     accept_naive_datetimes: bool
     datetime_tzinfo: datetime.timezone | None
+    serializer_by_class: dict[type, SerializerFunctionType | None]
+    deserializer_by_udt: dict[str, UDTDeserializerFunctionType | None]
 
     def __init__(
         self,
@@ -527,6 +589,8 @@ class FullSerdesOptions(SerdesOptions):
         encode_maps_as_lists_in_tables: str | MapEncodingMode,
         accept_naive_datetimes: bool,
         datetime_tzinfo: datetime.timezone | None,
+        serializer_by_class: dict[type, SerializerFunctionType | None],
+        deserializer_by_udt: dict[str, UDTDeserializerFunctionType | None],
     ) -> None:
         SerdesOptions.__init__(
             self,
@@ -537,6 +601,8 @@ class FullSerdesOptions(SerdesOptions):
             encode_maps_as_lists_in_tables=encode_maps_as_lists_in_tables,
             accept_naive_datetimes=accept_naive_datetimes,
             datetime_tzinfo=datetime_tzinfo,
+            serializer_by_class=serializer_by_class,
+            deserializer_by_udt=deserializer_by_udt,
         )
 
     def with_override(self, other: SerdesOptions) -> FullSerdesOptions:
@@ -548,6 +614,23 @@ class FullSerdesOptions(SerdesOptions):
             other: a not-necessarily-fully-specified options object. All its defined
                 settings take precedence.
         """
+
+        _serializer_by_class: dict[type, SerializerFunctionType | None]
+        if isinstance(other.serializer_by_class, UnsetType):
+            _serializer_by_class = self.serializer_by_class
+        else:
+            _serializer_by_class = {
+                **self.serializer_by_class,
+                **other.serializer_by_class,
+            }
+        _deserializer_by_udt: dict[str, UDTDeserializerFunctionType | None]
+        if isinstance(other.deserializer_by_udt, UnsetType):
+            _deserializer_by_udt = self.deserializer_by_udt
+        else:
+            _deserializer_by_udt = {
+                **self.deserializer_by_udt,
+                **other.deserializer_by_udt,
+            }
 
         return FullSerdesOptions(
             binary_encode_vectors=(
@@ -585,6 +668,8 @@ class FullSerdesOptions(SerdesOptions):
                 if not isinstance(other.datetime_tzinfo, UnsetType)
                 else self.datetime_tzinfo
             ),
+            serializer_by_class=_serializer_by_class,
+            deserializer_by_udt=_deserializer_by_udt,
         )
 
 
@@ -1301,6 +1386,8 @@ defaultSerdesOptions = FullSerdesOptions(
     encode_maps_as_lists_in_tables=DEFAULT_ENCODE_MAPS_AS_LISTS_IN_TABLES,
     accept_naive_datetimes=DEFAULT_ACCEPT_NAIVE_DATETIMES,
     datetime_tzinfo=DEFAULT_DATETIME_TZINFO,
+    serializer_by_class={},
+    deserializer_by_udt={},
 )
 
 

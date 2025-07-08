@@ -122,7 +122,7 @@ for more on this topic.
 
 ### Hybrid search
 
-AstraPy supports the supports the "find and rerank" Data API command,
+AstraPy supports the "findAndRerank" Data API command,
 which performs a hybrid search by combining results from a lexical search
 and a vector-based search in a single operation.
 
@@ -137,8 +137,8 @@ for r_result in r_results:
     print(r_result.document, r_results.scores)
 ```
 
-The Data API must support the primitive (and one must not have
-disabled the feature at collection-creation time).
+This command will execute if the collection was created with the required settings
+(they are enabled by default).
 
 See the Data API reference, and the docstring for the `find_and_rerank` method,
 for more on this topic.
@@ -592,8 +592,10 @@ certain environment variables, otherwise the associated tests are excluded from 
 
 Prepend tests with a `ASTRAPY_TEST_LATEST_MAIN=y` for features found on `main` that are not released anywhere.
 
-(This subsumes various heterogeneous cutting-edge tests: text indexes to maps-as-tuples, and so on according
-to the release/deploy status)
+#### testing UDT support
+
+Prepend tests with a `ASTRAPY_TEST_UDT=y` to enable testing of Data API support for user-defined types (UDTs).
+These integration tests are off by default, pending release on all test target environments.
 
 ## Appendices
 
@@ -679,13 +681,14 @@ Data types:
 
 ```python
 from astrapy.data_types import (
-    DataAPITimestamp,
-    DataAPIVector,
     DataAPIDate,
     DataAPIDuration,
     DataAPIMap,
     DataAPISet,
     DataAPITime,
+    DataAPITimestamp,
+    DataAPIDictUDT,
+    DataAPIVector,
 )
 ```
 
@@ -697,6 +700,9 @@ from astrapy.info import (
     AlterTableAddVectorize,
     AlterTableDropColumns,
     AlterTableDropVectorize,
+    AlterTypeAddFields,
+    AlterTypeOperation,
+    AlterTypeRenameFields,
     AstraDBAdminDatabaseInfo,
     AstraDBDatabaseInfo,
     CollectionDefaultIDOptions,
@@ -708,6 +714,7 @@ from astrapy.info import (
     CollectionVectorOptions,
     ColumnType,
     CreateTableDefinition,
+    CreateTypeDefinition,
     EmbeddingProvider,
     EmbeddingProviderAuthentication,
     EmbeddingProviderModel,
@@ -734,8 +741,11 @@ from astrapy.info import (
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
+    TableTextIndexDefinition,
+    TableTextIndexOptions,
     TableUnsupportedColumnTypeDescriptor,
     TableUnsupportedIndexDefinition,
+    TableUDTColumnDescriptor,
     TableValuedColumnType,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
@@ -754,6 +764,25 @@ from astrapy.authentication import (
     EmbeddingAPIKeyHeaderProvider,
     AWSEmbeddingHeadersProvider,
 )
+```
+
+Miscellaneous utilities:
+
+```python
+# Parsing API Endpoints for Astra DB:
+from astrapy.admin import (
+    ParsedAPIEndpoint,
+    parse_api_endpoint,
+)
+
+# Escaping/unescaping document paths:
+from astrapy.utils.document_paths import (
+    escape_field_names,
+    unescape_field_path,
+)
+
+# API Options defaults:
+from astrapy.utils.api_options import defaultAPIOptions
 ```
 
 ### Appendix B: compatibility with pre-1.0.0 library

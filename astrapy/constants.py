@@ -14,7 +14,21 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, Optional, Tuple, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
+
+if TYPE_CHECKING:
+    from astrapy.info import CreateTypeDefinition
 
 from astrapy.data_types import DataAPIVector
 from astrapy.settings.defaults import (
@@ -39,6 +53,10 @@ HybridSortType = Dict[
 ]
 FilterType = Dict[str, Any]
 CallerType = Tuple[Optional[str], Optional[str]]
+SerializerFunctionType = Callable[[Any], Dict[str, Any]]
+UDTDeserializerFunctionType = Callable[
+    [Dict[str, Any], Optional["CreateTypeDefinition"]], Any
+]
 
 
 ROW = TypeVar("ROW")

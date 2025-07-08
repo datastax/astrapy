@@ -76,10 +76,22 @@ from .table_structure_assets import (
     TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN,
     TEST_SIMPLE_TABLE_VECTOR_INDEX_NAME,
     TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS,
+    TEST_SIMPLE_UDT_DEFINITION,
+    TEST_SIMPLE_UDT_NAME,
     TEST_VECTORIZE_TABLE_DEFINITION,
     TEST_VECTORIZE_TABLE_NAME,
     TEST_VECTORIZE_TABLE_VECTOR_INDEX_NAME,
     VECTORIZE_TEXTS,
+)
+from .table_udt_assets import (
+    EXTENDED_PLAYER_TABLE_DEFINITION,
+    EXTENDED_PLAYER_TABLE_NAME,
+    EXTENDED_PLAYER_TYPE_DEFINITION,
+    EXTENDED_PLAYER_TYPE_NAME,
+    PLAYER_TABLE_DEFINITION,
+    PLAYER_TABLE_NAME,
+    PLAYER_TYPE_DEFINITION,
+    PLAYER_TYPE_NAME,
 )
 
 DefaultCollection = Collection[Dict[str, Any]]
@@ -381,6 +393,48 @@ def async_empty_farr_vector_collection(
 
 
 @pytest.fixture(scope="session")
+def simple_udt(
+    sync_database: Database,
+) -> Iterable[str]:
+    """Creation (and then cleanup) of a UDT. Returns the type name."""
+    sync_database.create_type(
+        TEST_SIMPLE_UDT_NAME,
+        definition=TEST_SIMPLE_UDT_DEFINITION,
+    )
+    yield TEST_SIMPLE_UDT_NAME
+
+    sync_database.drop_type(TEST_SIMPLE_UDT_NAME)
+
+
+@pytest.fixture(scope="session")
+def player_udt(
+    sync_database: Database,
+) -> Iterable[str]:
+    """Creation (and then cleanup) of a UDT. Returns the type name."""
+    sync_database.create_type(
+        PLAYER_TYPE_NAME,
+        definition=PLAYER_TYPE_DEFINITION,
+    )
+    yield PLAYER_TYPE_NAME
+
+    sync_database.drop_type(PLAYER_TYPE_NAME)
+
+
+@pytest.fixture(scope="session")
+def extended_player_udt(
+    sync_database: Database,
+) -> Iterable[str]:
+    """Creation (and then cleanup) of a UDT. Returns the type name."""
+    sync_database.create_type(
+        EXTENDED_PLAYER_TYPE_NAME,
+        definition=EXTENDED_PLAYER_TYPE_DEFINITION,
+    )
+    yield EXTENDED_PLAYER_TYPE_NAME
+
+    sync_database.drop_type(EXTENDED_PLAYER_TYPE_NAME)
+
+
+@pytest.fixture(scope="session")
 def sync_table_instance(
     data_api_credentials_kwargs: DataAPICredentials,
     sync_database: Database,
@@ -660,6 +714,70 @@ def async_empty_table_allmaps(
 ) -> Iterable[DefaultAsyncTable]:
     """Emptied for each test function"""
     yield sync_empty_table_allmaps.to_async()
+
+
+@pytest.fixture(scope="session")
+def sync_table_udt_player(
+    sync_database: Database,
+    player_udt: str,
+) -> Iterable[DefaultTable]:
+    """An actual table on DB, in the main keyspace"""
+    table = sync_database.create_table(
+        PLAYER_TABLE_NAME,
+        definition=PLAYER_TABLE_DEFINITION,
+    )
+    yield table
+
+    sync_database.drop_table(PLAYER_TABLE_NAME)
+
+
+@pytest.fixture(scope="session")
+def sync_table_udt_extended_player(
+    sync_database: Database,
+    extended_player_udt: str,
+) -> Iterable[DefaultTable]:
+    """An actual table on DB, in the main keyspace"""
+    table = sync_database.create_table(
+        EXTENDED_PLAYER_TABLE_NAME,
+        definition=EXTENDED_PLAYER_TABLE_DEFINITION,
+    )
+    yield table
+
+    sync_database.drop_table(EXTENDED_PLAYER_TABLE_NAME)
+
+
+@pytest.fixture(scope="function")
+def sync_empty_table_udt_player(
+    sync_table_udt_player: DefaultTable,
+) -> Iterable[DefaultTable]:
+    """Emptied for each test function"""
+    sync_table_udt_player.delete_many({})
+    yield sync_table_udt_player
+
+
+@pytest.fixture(scope="function")
+def sync_empty_table_udt_extended_player(
+    sync_table_udt_extended_player: DefaultTable,
+) -> Iterable[DefaultTable]:
+    """Emptied for each test function"""
+    sync_table_udt_extended_player.delete_many({})
+    yield sync_table_udt_extended_player
+
+
+@pytest.fixture(scope="function")
+def async_empty_table_udt_player(
+    sync_empty_table_udt_player: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """Emptied for each test function"""
+    yield sync_empty_table_udt_player.to_async()
+
+
+@pytest.fixture(scope="function")
+def async_empty_table_udt_extended_player(
+    sync_empty_table_udt_extended_player: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """Emptied for each test function"""
+    yield sync_empty_table_udt_extended_player.to_async()
 
 
 __all__ = [

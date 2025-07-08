@@ -23,6 +23,7 @@ from astrapy.exceptions import DataAPIResponseException
 from astrapy.info import (
     AlterTableAddColumns,
     AlterTableAddVectorize,
+    AlterTableDropColumns,
     AlterTableDropVectorize,
     CreateTableDefinition,
     TableIndexDefinition,
@@ -34,6 +35,7 @@ from astrapy.info import (
     TableScalarColumnTypeDescriptor,
     TableTextIndexDefinition,
     TableTextIndexOptions,
+    TableUDTColumnDescriptor,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
     TableVectorIndexDefinition,
@@ -55,6 +57,26 @@ def _remove_apisupport(def_dict: dict[str, Any]) -> dict[str, Any]:
 
     def _clean_col(col_dict: dict[str, Any]) -> dict[str, Any]:
         return {k: v for k, v in col_dict.items() if k != "apiSupport"}
+
+    return {
+        k: v if k != "columns" else {colk: _clean_col(colv) for colk, colv in v.items()}
+        for k, v in def_dict.items()
+    }
+
+
+def _remove_definition(def_dict: dict[str, Any]) -> dict[str, Any]:
+    """
+    Strip definition keys from columns since its presence
+    is != between sending and receiving. Useful for UDT columns
+    """
+
+    def _clean_col(col_dict: dict[str, Any]) -> dict[str, Any]:
+        # 'definition' may appear nested, e.g. for a map with UDT values
+        return {
+            k: _clean_col(v) if isinstance(v, dict) else v
+            for k, v in col_dict.items()
+            if k != "definition"
+        }
 
     return {
         k: v if k != "columns" else {colk: _clean_col(colv) for colk, colv in v.items()}
@@ -204,9 +226,10 @@ class TestTableLifecycle:
 
         # definition and info
         atf_def = await atable_fluent.definition()
+        # Compare classes, not dicts, due to representational ambiguity:
         assert (
-            _remove_apisupport(atf_def.as_dict())
-            == table_whole_obj_definition.as_dict()
+            CreateTableDefinition._from_dict(_remove_apisupport(atf_def.as_dict()))
+            == table_whole_obj_definition
         )
         if IS_ASTRA_DB:
             fl_info = await atable_fluent.info()
@@ -403,8 +426,12 @@ class TestTableLifecycle:
                 operation=AlterTableDropVectorize.coerce({"columns": ["p_vector"]})
             )
             # back to the original table:
+            # Compare classes, not dicts, due to representational ambiguity:
             adef = await atable.definition()
-            assert _remove_apisupport(adef.as_dict()) == orig_table_def.as_dict()
+            assert (
+                CreateTableDefinition._from_dict(_remove_apisupport(adef.as_dict()))
+                == orig_table_def
+            )
         finally:
             await atable.drop()
 
@@ -575,9 +602,10 @@ class TestTableLifecycle:
         finally:
             await atable.drop()
 
+    # TODO: open to Astra DB once available
     @pytest.mark.skipif(
-        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
-        reason="Text indexes testable only on latest main for now",
+        IS_ASTRA_DB,
+        reason="Text indexes not on Astra DB yet",
     )
     @pytest.mark.describe("test of text indexes, async")
     async def test_table_textindexes_async(
@@ -658,5 +686,109 @@ class TestTableLifecycle:
             await atable.database.drop_table_index("idx_txt_d")
             await atable.database.drop_table_index("idx_txt_s")
             await atable.database.drop_table_index("idx_txt_l")
+        finally:
+            await atable.drop()
+
+    @pytest.mark.skipif(
+        "ASTRAPY_TEST_UDT" not in os.environ,
+        reason="UDT testing not enabled",
+    )
+    @pytest.mark.describe("test of create/verify/delete table with a simple UDT, async")
+    async def test_table_simpleudt_crd_async(
+        self,
+        async_database: AsyncDatabase,
+        simple_udt: str,
+    ) -> None:
+        udt_col_desc = TableUDTColumnDescriptor(udt_name=simple_udt)
+        table_simple_udt_def = CreateTableDefinition(
+            columns={
+                "id": TableScalarColumnTypeDescriptor("text"),
+                "udt_map": TableKeyValuedColumnTypeDescriptor(
+                    key_type=TableScalarColumnTypeDescriptor("ascii"),
+                    value_type=udt_col_desc,
+                ),
+                "udt_set": TableValuedColumnTypeDescriptor(
+                    column_type="set",
+                    value_type=udt_col_desc,
+                ),
+                "udt_list": TableValuedColumnTypeDescriptor(
+                    column_type="list",
+                    value_type=udt_col_desc,
+                ),
+                "udt_scalar": udt_col_desc,
+            },
+            primary_key=TablePrimaryKeyDescriptor(
+                partition_by=["id"],
+                partition_sort={},
+            ),
+        )
+        try:
+            atable = await async_database.create_table(
+                "table_simple_udt",
+                definition=table_simple_udt_def,
+            )
+            # Compare classes, not dicts, due to representational ambiguity:
+            assert (
+                CreateTableDefinition._from_dict(
+                    _remove_definition(
+                        _remove_apisupport((await atable.definition()).as_dict())
+                    )
+                )
+                == table_simple_udt_def
+            )
+
+            add_udt_columns = AlterTableAddColumns(
+                columns={
+                    "altered_udt_map": TableKeyValuedColumnTypeDescriptor(
+                        key_type=TableScalarColumnTypeDescriptor("ascii"),
+                        value_type=udt_col_desc,
+                    ),
+                    "altered_udt_set": TableValuedColumnTypeDescriptor(
+                        column_type="set",
+                        value_type=udt_col_desc,
+                    ),
+                    "altered_udt_list": TableValuedColumnTypeDescriptor(
+                        column_type="list",
+                        value_type=udt_col_desc,
+                    ),
+                    "altered_udt_scalar": udt_col_desc,
+                },
+            )
+            await atable.alter(add_udt_columns)
+            drop_udt_columns = AlterTableDropColumns(
+                columns=["udt_map", "udt_set", "udt_list", "udt_scalar"]
+            )
+            await atable.alter(drop_udt_columns)
+            altered_table_simple_udt_def = CreateTableDefinition(
+                columns={
+                    "id": TableScalarColumnTypeDescriptor("text"),
+                    "altered_udt_map": TableKeyValuedColumnTypeDescriptor(
+                        key_type=TableScalarColumnTypeDescriptor("ascii"),
+                        value_type=udt_col_desc,
+                    ),
+                    "altered_udt_set": TableValuedColumnTypeDescriptor(
+                        column_type="set",
+                        value_type=udt_col_desc,
+                    ),
+                    "altered_udt_list": TableValuedColumnTypeDescriptor(
+                        column_type="list",
+                        value_type=udt_col_desc,
+                    ),
+                    "altered_udt_scalar": udt_col_desc,
+                },
+                primary_key=TablePrimaryKeyDescriptor(
+                    partition_by=["id"],
+                    partition_sort={},
+                ),
+            )
+            # Compare classes, not dicts, due to representational ambiguity:
+            assert (
+                CreateTableDefinition._from_dict(
+                    _remove_definition(
+                        _remove_apisupport((await atable.definition()).as_dict())
+                    )
+                )
+                == altered_table_simple_udt_def
+            )
         finally:
             await atable.drop()

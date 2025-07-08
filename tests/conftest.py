@@ -72,7 +72,7 @@ except ImportError:
 
 @pytest.fixture(autouse=True)
 def blockbuster() -> Iterator[BlockBuster]:
-    with blockbuster_ctx() as bb:
+    with blockbuster_ctx("astrapy") as bb:
         # TODO: follow discussion in https://github.com/encode/httpx/discussions/3456
         bb.functions["os.stat"].can_block_in("httpx/_client.py", "_init_transport")
         yield bb

@@ -21,7 +21,11 @@ import pytest
 from astrapy.constants import DefaultRowType
 from astrapy.data.utils.table_converters import _TableConverterAgent
 from astrapy.utils.api_commander import APICommander
-from astrapy.utils.api_options import FullSerdesOptions, defaultAPIOptions
+from astrapy.utils.api_options import (
+    SerdesOptions,
+    defaultAPIOptions,
+    defaultSerdesOptions,
+)
 
 from ..conftest import _repaint_NaNs
 from ..table_decimal_support_assets import (
@@ -91,14 +95,16 @@ class TestTableDecimalSupportUnit:
         colltype_columns: dict[str, Any],
     ) -> None:
         t_agent: _TableConverterAgent[DefaultRowType] = _TableConverterAgent(
-            options=FullSerdesOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=colltype_custom,
-                unroll_iterables_to_lists=True,
-                use_decimals_in_collections=True,
-                encode_maps_as_lists_in_tables="never",
-                accept_naive_datetimes=False,
-                datetime_tzinfo=None,
+            options=defaultSerdesOptions.with_override(
+                SerdesOptions(
+                    binary_encode_vectors=True,
+                    custom_datatypes_in_reading=colltype_custom,
+                    unroll_iterables_to_lists=True,
+                    use_decimals_in_collections=True,
+                    encode_maps_as_lists_in_tables="never",
+                    accept_naive_datetimes=False,
+                    datetime_tzinfo=None,
+                ),
             ),
         )
 

@@ -21,6 +21,7 @@ from typing import Any
 
 from astrapy.data_types import (
     DataAPIDate,
+    DataAPIDictUDT,
     DataAPIDuration,
     DataAPIMap,
     DataAPISet,
@@ -29,6 +30,11 @@ from astrapy.data_types import (
     DataAPIVector,
 )
 from astrapy.ids import UUID
+from astrapy.info import (
+    AlterTypeAddFields,
+    AlterTypeRenameFields,
+    CreateTypeDefinition,
+)
 
 AR_ROW_PK_0 = {
     "p_ascii": "abc",
@@ -416,4 +422,45 @@ ALLMAPS_CUSTOMTYPES_ROW = {
             (b"Hello World", b"Hello World"),
         ]
     ),
+}
+
+
+UDT_NAME = "test_udt"
+UDT_DEF0 = CreateTypeDefinition(
+    fields={
+        "f_float0": "float",
+        "f_float1": "float",
+        "f_float2": "float",
+    }
+)
+UDT_ALTER_OP_1 = AlterTypeAddFields(fields={"f_text0": "text"})
+UDT_ALTER_OP_2 = AlterTypeRenameFields(fields={"f_float0": "z_float0"})
+UDT_DEF1 = CreateTypeDefinition(
+    fields={
+        "z_float0": "float",
+        "f_float1": "float",
+        "f_float2": "float",
+        "f_text0": "text",
+    }
+)
+
+WEIRD_UDT_BASE_TABLE_NAME = "udt_weird_base"
+WEIRD_UDT_BASE_TYPE_NAME = "wrd_type_base"
+WEIRD_UDT_BASE_INITIALIZE_STATEMENTS = [
+    f"create type IF NOT EXISTS {WEIRD_UDT_BASE_TYPE_NAME} (a text, b int)",
+    (
+        f"create table IF NOT EXISTS {WEIRD_UDT_BASE_TABLE_NAME} (id text primary key, f_udt "
+        f"frozen<{WEIRD_UDT_BASE_TYPE_NAME}>, "
+        f"f_l_udt frozen<list<{WEIRD_UDT_BASE_TYPE_NAME}>>);"
+    ),
+]
+WEIRD_UDT_BASE_CLOSE_STATEMENTS = [
+    f"drop table {WEIRD_UDT_BASE_TABLE_NAME};",
+    f"drop type {WEIRD_UDT_BASE_TYPE_NAME};",
+]
+WEIRD_BASE_DOCUMENT_PK = {"id": "the_doc"}
+WEIRD_BASE_DOCUMENT = {
+    "f_udt": DataAPIDictUDT({"a": "A_of_f_udt", "b": 10}),
+    "f_l_udt": [DataAPIDictUDT({"a": "A_of_f_l_udt", "b": 12})],
+    **WEIRD_BASE_DOCUMENT_PK,
 }

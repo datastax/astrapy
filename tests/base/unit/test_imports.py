@@ -107,6 +107,7 @@ def test_imports() -> None:
     )
     from astrapy.data_types import (
         DataAPIDate,
+        DataAPIDictUDT,
         DataAPIDuration,
         DataAPIMap,
         DataAPISet,
@@ -152,6 +153,9 @@ def test_imports() -> None:
         AlterTableAddVectorize,
         AlterTableDropColumns,
         AlterTableDropVectorize,
+        AlterTypeAddFields,
+        AlterTypeOperation,
+        AlterTypeRenameFields,
         AstraDBAdminDatabaseInfo,
         AstraDBDatabaseInfo,
         CollectionDefaultIDOptions,
@@ -163,6 +167,7 @@ def test_imports() -> None:
         CollectionVectorOptions,
         ColumnType,
         CreateTableDefinition,
+        CreateTypeDefinition,
         EmbeddingProvider,
         EmbeddingProviderAuthentication,
         EmbeddingProviderModel,
@@ -191,6 +196,7 @@ def test_imports() -> None:
         TableScalarColumnTypeDescriptor,
         TableTextIndexDefinition,
         TableTextIndexOptions,
+        TableUDTColumnDescriptor,
         TableUnsupportedColumnTypeDescriptor,
         TableUnsupportedIndexDefinition,
         TableValuedColumnType,
@@ -208,4 +214,9 @@ def test_imports() -> None:
         OperationResult,
         TableInsertManyResult,
         TableInsertOneResult,
+    )
+    from astrapy.utils.api_options import defaultAPIOptions
+    from astrapy.utils.document_paths import (
+        escape_field_names,
+        unescape_field_path,
     )

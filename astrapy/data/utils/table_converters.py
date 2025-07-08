@@ -22,7 +22,10 @@ import ipaddress
 import json
 import logging
 import math
-from typing import Any, Callable, Dict, Generic, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, Generic, cast
+
+if TYPE_CHECKING:
+    from astrapy.info import CreateTypeDefinition
 
 from astrapy.constants import ROW, MapEncodingMode
 from astrapy.data.info.table_descriptor.table_columns import (
@@ -30,6 +33,7 @@ from astrapy.data.info.table_descriptor.table_columns import (
     TableKeyValuedColumnTypeDescriptor,
     TablePassthroughColumnTypeDescriptor,
     TableScalarColumnTypeDescriptor,
+    TableUDTColumnDescriptor,
     TableUnsupportedColumnTypeDescriptor,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
@@ -47,6 +51,7 @@ from astrapy.data.utils.table_types import (
 from astrapy.data.utils.vector_coercion import ensure_unrolled_if_iterable
 from astrapy.data_types import (
     DataAPIDate,
+    DataAPIDictUDT,
     DataAPIDuration,
     DataAPIMap,
     DataAPISet,
@@ -67,6 +72,13 @@ DATETIME_DATE_FORMAT = "%Y-%m-%d"
 DATETIME_DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
 
 logger = logging.getLogger(__name__)
+
+
+def _default_dict_udt_wrapper(
+    in_dict: dict[str, Any],
+    type_definition: CreateTypeDefinition | None,
+) -> DataAPIDictUDT:
+    return DataAPIDictUDT(in_dict)
 
 
 def _create_scalar_tpostprocessor(
@@ -327,6 +339,9 @@ def _column_filler_value(
             raise ValueError(
                 f"Unrecognized table key-valued-column descriptor for reads: {col_def.as_dict()}"
             )
+    elif isinstance(col_def, TableUDTColumnDescriptor):
+        # TODO: verify about fillers/null UDTs
+        return None
     elif isinstance(col_def, TableUnsupportedColumnTypeDescriptor):
         # For lack of better information, the filler is a None:
         return None
@@ -392,7 +407,7 @@ def _create_column_tpostprocessor(
             )
     elif isinstance(col_def, TableValuedColumnTypeDescriptor):
         if col_def.column_type == TableValuedColumnType.LIST:
-            value_tpostprocessor = _create_scalar_tpostprocessor(
+            value_tpostprocessor = _create_column_tpostprocessor(
                 col_def.value_type, options=options
             )
 
@@ -404,7 +419,7 @@ def _create_column_tpostprocessor(
             return _tpostprocessor_list
 
         elif TableValuedColumnType.SET:
-            value_tpostprocessor = _create_scalar_tpostprocessor(
+            value_tpostprocessor = _create_column_tpostprocessor(
                 col_def.value_type, options=options
             )
 
@@ -436,10 +451,10 @@ def _create_column_tpostprocessor(
             )
     elif isinstance(col_def, TableKeyValuedColumnTypeDescriptor):
         if col_def.column_type == TableKeyValuedColumnType.MAP:
-            key_tpostprocessor = _create_scalar_tpostprocessor(
+            key_tpostprocessor = _create_column_tpostprocessor(
                 col_def.key_type, options=options
             )
-            value_tpostprocessor = _create_scalar_tpostprocessor(
+            value_tpostprocessor = _create_column_tpostprocessor(
                 col_def.value_type, options=options
             )
 
@@ -486,12 +501,73 @@ def _create_column_tpostprocessor(
             raise ValueError(
                 f"Unrecognized table key-valued-column descriptor for reads: {col_def.as_dict()}"
             )
+    elif isinstance(col_def, TableUDTColumnDescriptor):
+        if col_def.definition is None:
+            raise ValueError(
+                f"Schema information lacks 'definition' field for {col_def.udt_name}."
+            )
+
+        # first the incoming dictionary must be deserialized in its types,
+        # then the ("udt-level") deserializer -- custom or default -- is invoked
+        values_tpostprocessor_map = {
+            k_fieldname: _create_column_tpostprocessor(k_fieldtype, options=options)
+            for k_fieldname, k_fieldtype in col_def.definition.fields.items()
+        }
+
+        # if there is a registered deserializer, no matter whether 'use custom dtypes':
+        deserializer_for_udt = options.deserializer_by_udt.get(col_def.udt_name)
+
+        # TODO: for all three cases. What to do about
+        #   (1) whole-null return types, (2) partial returned UDT dicts.
+
+        if deserializer_for_udt:
+
+            def _tpostprocessor_udt_w_deser(raw_items: dict[Any, Any] | None) -> Any:
+                # reconstruct the UDT as the requested custom class
+                if raw_items is None:
+                    return None
+                udt_deserialized_dict = {
+                    k_fieldname: values_tpostprocessor_map[k_fieldname](v_fieldraw)
+                    for k_fieldname, v_fieldraw in raw_items.items()
+                }
+                return deserializer_for_udt(udt_deserialized_dict, col_def.definition)
+
+            return _tpostprocessor_udt_w_deser
+        elif options.custom_datatypes_in_reading:
+
+            def _tpostprocessor_udt_defdeser(raw_items: dict[Any, Any] | None) -> Any:
+                # reconstruct the UDT as a dict wrapped as per default dict wrapper
+                if raw_items is None:
+                    return None
+                udt_deserialized_dict = {
+                    k_fieldname: values_tpostprocessor_map[k_fieldname](v_fieldraw)
+                    for k_fieldname, v_fieldraw in raw_items.items()
+                }
+                return _default_dict_udt_wrapper(
+                    udt_deserialized_dict, col_def.definition
+                )
+
+            return _tpostprocessor_udt_defdeser
+        else:
+
+            def _tpostprocessor_udt_baredict(raw_items: dict[Any, Any] | None) -> Any:
+                # reconstruct the UDT as just a plain dict
+                if raw_items is None:
+                    return None
+                udt_deserialized_dict = {
+                    k_fieldname: values_tpostprocessor_map[k_fieldname](v_fieldraw)
+                    for k_fieldname, v_fieldraw in raw_items.items()
+                }
+                return udt_deserialized_dict
+
+            return _tpostprocessor_udt_baredict
+
     elif isinstance(col_def, TableUnsupportedColumnTypeDescriptor):
         # 'Unsupported' columns (marked as such by the API) should never be
         # returned in reading. However, this is no sufficient reason not to comply.
         return _create_unsupported_tpostprocessor(col_def, options=options)
     elif isinstance(col_def, TablePassthroughColumnTypeDescriptor):
-        # 'passthrough' columns (i.e. those that confuse the client parsing logic)
+        # 'passthrough' columns (i.e. those whose schema the client cannot parse)
         return _create_passthrough_tpostprocessor(col_def, options=options)
     else:
         raise ValueError(
@@ -588,8 +664,21 @@ def preprocess_table_payload_value(
     to make it into a ready-to-jsondumps object.
     """
 
-    # is this a nesting structure?
-    if isinstance(value, (dict, DataAPIMap)):
+    # The check for UDT dict-wrapper must come before the "plain dict" check
+    if isinstance(value, DataAPIDictUDT):
+        # field-wise serialize and return as (JSON-ready) map:
+        udt_dict = dict(value)
+        return {
+            udt_k: preprocess_table_payload_value(
+                path + [udt_k],
+                udt_v,
+                options=options,
+                map2tuple_checker=map2tuple_checker,
+            )
+            for udt_k, udt_v in udt_dict.items()
+        }
+    elif isinstance(value, (dict, DataAPIMap)):
+        # This is a nesting structure (but not the dict-wrapper for UDTs)
         maps_can_become_tuples: bool
         if options.encode_maps_as_lists_in_tables == MapEncodingMode.NEVER:
             maps_can_become_tuples = False
@@ -721,22 +810,41 @@ def preprocess_table_payload_value(
             "using UUID-based identifiers instead."
         )
 
-    # Now it is either a generator-like or a "safe" scalar
-    # value can be something that must be unrolled:
+    # try to unroll if applicable and then preprocess known types:
+    _uvalue: Any
     if options.unroll_iterables_to_lists:
-        _value = ensure_unrolled_if_iterable(value)
-        # process it as
-        if isinstance(_value, list):
-            return [
-                preprocess_table_payload_value(
-                    path + [""], v, options=options, map2tuple_checker=map2tuple_checker
-                )
-                for v in _value
-            ]
-        return _value
+        _uvalue = ensure_unrolled_if_iterable(value)
+    else:
+        _uvalue = value
+    # process it as
+    if isinstance(_uvalue, list):
+        return [
+            preprocess_table_payload_value(
+                path + [""], v, options=options, map2tuple_checker=map2tuple_checker
+            )
+            for v in _uvalue
+        ]
 
-    # all options are exhausted save for str, int, bool, None:
-    return value
+    # is it a well-known, natively-JSON-serializable type:
+    if isinstance(_uvalue, (str, int, float, bool, type(None))):
+        return _uvalue
+
+    # check whether instance of a class with a registered serializer:
+    for k_cls, k_serializer in options.serializer_by_class.items():
+        if isinstance(_uvalue, k_cls) and k_serializer is not None:
+            udt_dict_form = k_serializer(_uvalue)
+            return {
+                udt_k: preprocess_table_payload_value(
+                    path + [udt_k],
+                    udt_v,
+                    options=options,
+                    map2tuple_checker=map2tuple_checker,
+                )
+                for udt_k, udt_v in udt_dict_form.items()
+            }
+
+    # this is a last-ditch attempt. Likely results in a "not JSON serializable" error"
+    return _uvalue
 
 
 def preprocess_table_payload(

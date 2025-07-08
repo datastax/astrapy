@@ -50,6 +50,7 @@ from astrapy.data.info.table_descriptor.table_columns import (
     TablePassthroughColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
+    TableUDTColumnDescriptor,
     TableUnsupportedColumnTypeDescriptor,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
@@ -75,6 +76,12 @@ from astrapy.data.info.table_descriptor.table_listing import (
     ListTableDescriptor,
     TableInfo,
 )
+from astrapy.data.info.table_descriptor.type_altering import (
+    AlterTypeAddFields,
+    AlterTypeOperation,
+    AlterTypeRenameFields,
+)
+from astrapy.data.info.table_descriptor.type_creation import CreateTypeDefinition
 from astrapy.data.info.vectorize import (
     EmbeddingAPIModelSupport,
     EmbeddingProvider,
@@ -96,6 +103,9 @@ __all__ = [
     "AlterTableAddVectorize",
     "AlterTableDropColumns",
     "AlterTableDropVectorize",
+    "AlterTypeAddFields",
+    "AlterTypeOperation",
+    "AlterTypeRenameFields",
     "AstraDBAdminDatabaseInfo",
     "AstraDBAvailableRegionInfo",
     "AstraDBDatabaseInfo",
@@ -108,6 +118,7 @@ __all__ = [
     "CollectionVectorOptions",
     "ColumnType",
     "CreateTableDefinition",
+    "CreateTypeDefinition",
     "EmbeddingAPIModelSupport",
     "EmbeddingProvider",
     "EmbeddingProviderAuthentication",
@@ -138,9 +149,10 @@ __all__ = [
     "TablePassthroughColumnTypeDescriptor",
     "TablePrimaryKeyDescriptor",
     "TableScalarColumnTypeDescriptor",
-    "TableUnsupportedColumnTypeDescriptor",
     "TableTextIndexDefinition",
     "TableTextIndexOptions",
+    "TableUnsupportedColumnTypeDescriptor",
+    "TableUDTColumnDescriptor",
     "TableUnsupportedIndexDefinition",
     "TableValuedColumnType",
     "TableValuedColumnTypeDescriptor",

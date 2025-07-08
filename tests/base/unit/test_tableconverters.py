@@ -42,7 +42,7 @@ from astrapy.data_types import (
 from astrapy.data_types.data_api_vector import bytes_to_floats
 from astrapy.ids import UUID, ObjectId
 from astrapy.info import ListTableDescriptor, TableScalarColumnTypeDescriptor
-from astrapy.utils.api_options import FullSerdesOptions
+from astrapy.utils.api_options import SerdesOptions, defaultSerdesOptions
 
 from ..conftest import _repaint_NaNs
 
@@ -491,14 +491,16 @@ class TestTableConverters:
         col_desc = ListTableDescriptor.coerce(TABLE_DESCRIPTION)
         tpostprocessor = create_row_tpostprocessor(
             columns=col_desc.definition.columns,
-            options=FullSerdesOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                unroll_iterables_to_lists=False,
-                use_decimals_in_collections=False,
-                encode_maps_as_lists_in_tables="never",
-                accept_naive_datetimes=False,
-                datetime_tzinfo=None,
+            options=defaultSerdesOptions.with_override(
+                SerdesOptions(
+                    binary_encode_vectors=True,
+                    custom_datatypes_in_reading=True,
+                    unroll_iterables_to_lists=False,
+                    use_decimals_in_collections=False,
+                    encode_maps_as_lists_in_tables="never",
+                    accept_naive_datetimes=False,
+                    datetime_tzinfo=None,
+                ),
             ),
             similarity_pseudocolumn=None,
         )
@@ -520,14 +522,16 @@ class TestTableConverters:
                 for c_n, c_d in col_desc.definition.columns.items()
                 if c_n in EXPECTED_NONCUSTOMTYPES_POSTPROCESSED_ROW
             },
-            options=FullSerdesOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=False,
-                unroll_iterables_to_lists=False,
-                use_decimals_in_collections=False,
-                encode_maps_as_lists_in_tables="never",
-                accept_naive_datetimes=False,
-                datetime_tzinfo=datetime.timezone.utc,
+            options=defaultSerdesOptions.with_override(
+                SerdesOptions(
+                    binary_encode_vectors=True,
+                    custom_datatypes_in_reading=False,
+                    unroll_iterables_to_lists=False,
+                    use_decimals_in_collections=False,
+                    encode_maps_as_lists_in_tables="never",
+                    accept_naive_datetimes=False,
+                    datetime_tzinfo=datetime.timezone.utc,
+                ),
             ),
             similarity_pseudocolumn=None,
         )
@@ -563,14 +567,16 @@ class TestTableConverters:
 
         ktpostprocessor = create_key_ktpostprocessor(
             primary_key_schema=primary_key_schema,
-            options=FullSerdesOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                unroll_iterables_to_lists=False,
-                use_decimals_in_collections=False,
-                encode_maps_as_lists_in_tables="never",
-                accept_naive_datetimes=False,
-                datetime_tzinfo=None,
+            options=defaultSerdesOptions.with_override(
+                SerdesOptions(
+                    binary_encode_vectors=True,
+                    custom_datatypes_in_reading=True,
+                    unroll_iterables_to_lists=False,
+                    use_decimals_in_collections=False,
+                    encode_maps_as_lists_in_tables="never",
+                    accept_naive_datetimes=False,
+                    datetime_tzinfo=None,
+                ),
             ),
         )
 
@@ -605,14 +611,16 @@ class TestTableConverters:
 
         ktpostprocessor = create_key_ktpostprocessor(
             primary_key_schema=primary_key_schema,
-            options=FullSerdesOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=False,
-                unroll_iterables_to_lists=False,
-                use_decimals_in_collections=False,
-                encode_maps_as_lists_in_tables="never",
-                accept_naive_datetimes=False,
-                datetime_tzinfo=datetime.timezone.utc,
+            options=defaultSerdesOptions.with_override(
+                SerdesOptions(
+                    binary_encode_vectors=True,
+                    custom_datatypes_in_reading=False,
+                    unroll_iterables_to_lists=False,
+                    use_decimals_in_collections=False,
+                    encode_maps_as_lists_in_tables="never",
+                    accept_naive_datetimes=False,
+                    datetime_tzinfo=datetime.timezone.utc,
+                ),
             ),
         )
 
@@ -622,14 +630,16 @@ class TestTableConverters:
 
     @pytest.mark.describe("test of type-based row preprocessor")
     def test_row_preprocessors_from_types(self) -> None:
-        ptp_opts = FullSerdesOptions(
-            binary_encode_vectors=True,
-            custom_datatypes_in_reading=True,
-            unroll_iterables_to_lists=True,
-            use_decimals_in_collections=False,
-            encode_maps_as_lists_in_tables="never",
-            accept_naive_datetimes=False,
-            datetime_tzinfo=None,
+        ptp_opts = defaultSerdesOptions.with_override(
+            SerdesOptions(
+                binary_encode_vectors=True,
+                custom_datatypes_in_reading=True,
+                unroll_iterables_to_lists=True,
+                use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="never",
+                accept_naive_datetimes=False,
+                datetime_tzinfo=None,
+            ),
         )
         preprocessed_row = preprocess_table_payload(
             INPUT_ROW_TO_PREPROCESS,
@@ -649,14 +659,16 @@ class TestTableConverters:
         gen_row_1 = {"gen_col": (i for i in range(5))}
         preprocessed_gen_1 = preprocess_table_payload(
             gen_row_1,
-            options=FullSerdesOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                unroll_iterables_to_lists=False,
-                use_decimals_in_collections=False,
-                encode_maps_as_lists_in_tables="never",
-                accept_naive_datetimes=False,
-                datetime_tzinfo=None,
+            options=defaultSerdesOptions.with_override(
+                SerdesOptions(
+                    binary_encode_vectors=True,
+                    custom_datatypes_in_reading=True,
+                    unroll_iterables_to_lists=False,
+                    use_decimals_in_collections=False,
+                    encode_maps_as_lists_in_tables="never",
+                    accept_naive_datetimes=False,
+                    datetime_tzinfo=None,
+                ),
             ),
             map2tuple_checker=None,
         )
@@ -673,14 +685,16 @@ class TestTableConverters:
         assert preprocessed_dvec_0 == {"dvec": {"$binary": "PczMzb5MzM0+mZma"}}
         preprocessed_dvec_1 = preprocess_table_payload(
             dvec_row,
-            options=FullSerdesOptions(
-                binary_encode_vectors=False,
-                custom_datatypes_in_reading=True,
-                unroll_iterables_to_lists=True,
-                use_decimals_in_collections=False,
-                encode_maps_as_lists_in_tables="never",
-                accept_naive_datetimes=False,
-                datetime_tzinfo=None,
+            options=defaultSerdesOptions.with_override(
+                SerdesOptions(
+                    binary_encode_vectors=False,
+                    custom_datatypes_in_reading=True,
+                    unroll_iterables_to_lists=True,
+                    use_decimals_in_collections=False,
+                    encode_maps_as_lists_in_tables="never",
+                    accept_naive_datetimes=False,
+                    datetime_tzinfo=None,
+                ),
             ),
             map2tuple_checker=None,
         )
@@ -698,14 +712,16 @@ class TestTableConverters:
         col_desc = ListTableDescriptor.coerce(TABLE_DESCRIPTION)
         tpostprocessor = create_row_tpostprocessor(
             columns=col_desc.definition.columns,
-            options=FullSerdesOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                unroll_iterables_to_lists=False,
-                use_decimals_in_collections=False,
-                encode_maps_as_lists_in_tables="never",
-                accept_naive_datetimes=False,
-                datetime_tzinfo=None,
+            options=defaultSerdesOptions.with_override(
+                SerdesOptions(
+                    binary_encode_vectors=True,
+                    custom_datatypes_in_reading=True,
+                    unroll_iterables_to_lists=False,
+                    use_decimals_in_collections=False,
+                    encode_maps_as_lists_in_tables="never",
+                    accept_naive_datetimes=False,
+                    datetime_tzinfo=None,
+                ),
             ),
             similarity_pseudocolumn=None,
         )
@@ -722,14 +738,16 @@ class TestTableConverters:
         col_desc = ListTableDescriptor.coerce(TABLE_DESCRIPTION)
         tpostprocessor = create_row_tpostprocessor(
             columns=col_desc.definition.columns,
-            options=FullSerdesOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=False,
-                unroll_iterables_to_lists=False,
-                use_decimals_in_collections=False,
-                encode_maps_as_lists_in_tables="never",
-                accept_naive_datetimes=False,
-                datetime_tzinfo=None,
+            options=defaultSerdesOptions.with_override(
+                SerdesOptions(
+                    binary_encode_vectors=True,
+                    custom_datatypes_in_reading=False,
+                    unroll_iterables_to_lists=False,
+                    use_decimals_in_collections=False,
+                    encode_maps_as_lists_in_tables="never",
+                    accept_naive_datetimes=False,
+                    datetime_tzinfo=None,
+                ),
             ),
             similarity_pseudocolumn=None,
         )
@@ -745,14 +763,16 @@ class TestTableConverters:
         col_desc = ListTableDescriptor.coerce(ROGUE_TABLE_DESCRIPTION)
         tpostprocessor = create_row_tpostprocessor(
             columns=col_desc.definition.columns,
-            options=FullSerdesOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                unroll_iterables_to_lists=False,
-                use_decimals_in_collections=False,
-                encode_maps_as_lists_in_tables="never",
-                accept_naive_datetimes=False,
-                datetime_tzinfo=None,
+            options=defaultSerdesOptions.with_override(
+                SerdesOptions(
+                    binary_encode_vectors=True,
+                    custom_datatypes_in_reading=True,
+                    unroll_iterables_to_lists=False,
+                    use_decimals_in_collections=False,
+                    encode_maps_as_lists_in_tables="never",
+                    accept_naive_datetimes=False,
+                    datetime_tzinfo=None,
+                ),
             ),
             similarity_pseudocolumn=None,
         )

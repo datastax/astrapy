@@ -24,18 +24,18 @@ from astrapy.info import AlterTableAddColumns, AlterTableDropColumns
 from ..conftest import DefaultAsyncTable, DefaultTable
 
 
-class TestDoc(TypedDict):
+class MyTestDoc(TypedDict):
     p_bigint: int
     p_ascii: str
 
 
-class AlteredTestDoc(TypedDict):
+class AlteredMyTestDoc(TypedDict):
     p_bigint: int
     p_ascii: str
     added: int
 
 
-class TestMiniDoc(TypedDict):
+class MyTestMiniDoc(TypedDict):
     p_bigint: int
 
 
@@ -53,7 +53,7 @@ TYPING_TABLE_DEFINITION = {
     },
 }
 ROW = {"p_ascii": "abc", "p_bigint": 10000, "p_float": 0.123}
-TYPED_ROW: TestDoc = {"p_ascii": "abc", "p_bigint": 10000}
+TYPED_ROW: MyTestDoc = {"p_ascii": "abc", "p_bigint": 10000}
 FIND_FILTER = {"p_ascii": "abc", "p_bigint": 10000}
 
 ALTER_ADD_COLUMN = AlterTableAddColumns.coerce({"columns": {"added": "int"}})
@@ -134,11 +134,11 @@ class TestTableTyping:
         altered_c_tb_untyped.alter(ALTER_DROP_COLUMN)
 
         # Typed
-        c_tb_typed: Table[TestDoc] = sync_database.create_table(
+        c_tb_typed: Table[MyTestDoc] = sync_database.create_table(
             TYPING_TABLE_NAME,
             definition=TYPING_TABLE_DEFINITION,
             if_not_exists=True,
-            row_type=TestDoc,
+            row_type=MyTestDoc,
         )
         c_tb_typed.insert_one(TYPED_ROW)
         ct_doc = c_tb_typed.find_one(FIND_FILTER)
@@ -157,7 +157,7 @@ class TestTableTyping:
 
         # typed, cursors type inference on find
         c_tb_typed_cursor = c_tb_typed.find(
-            {}, projection=FIND_PROJECTION, row_type=TestMiniDoc
+            {}, projection=FIND_PROJECTION, row_type=MyTestMiniDoc
         )
         ctcur_doc = c_tb_typed_cursor.__next__()
         assert ctcur_doc is not None
@@ -172,7 +172,9 @@ class TestTableTyping:
             ctcur_y = ctcur_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
 
         # typed, check using alter table's return value
-        altered_c_tb_typed = c_tb_typed.alter(ALTER_ADD_COLUMN, row_type=AlteredTestDoc)
+        altered_c_tb_typed = c_tb_typed.alter(
+            ALTER_ADD_COLUMN, row_type=AlteredMyTestDoc
+        )
         altered_ct_doc = altered_c_tb_typed.find_one(FIND_FILTER)
         assert altered_ct_doc is not None
         alt_ct_a: str
@@ -207,8 +209,8 @@ class TestTableTyping:
             gu_y = gu_doc["c"]  # noqa: F841
 
         # Typed
-        g_tb_typed: Table[TestDoc] = sync_database.get_table(
-            TYPING_TABLE_NAME, row_type=TestDoc
+        g_tb_typed: Table[MyTestDoc] = sync_database.get_table(
+            TYPING_TABLE_NAME, row_type=MyTestDoc
         )
         g_tb_typed.insert_one(TYPED_ROW)
         gt_doc = g_tb_typed.find_one(FIND_FILTER)
@@ -279,11 +281,11 @@ class TestTableTyping:
         await altered_ac_tb_untyped.alter(ALTER_DROP_COLUMN)
 
         # Typed
-        ac_tb_typed: AsyncTable[TestDoc] = await async_database.create_table(
+        ac_tb_typed: AsyncTable[MyTestDoc] = await async_database.create_table(
             TYPING_TABLE_NAME,
             definition=TYPING_TABLE_DEFINITION,
             if_not_exists=True,
-            row_type=TestDoc,
+            row_type=MyTestDoc,
         )
         await ac_tb_typed.insert_one(TYPED_ROW)
         ct_doc = await ac_tb_typed.find_one(FIND_FILTER)
@@ -302,7 +304,7 @@ class TestTableTyping:
 
         # typed, cursors type inference on find
         c_tb_typed_acursor = ac_tb_typed.find(
-            {}, projection=FIND_PROJECTION, row_type=TestMiniDoc
+            {}, projection=FIND_PROJECTION, row_type=MyTestMiniDoc
         )
         ctcur_doc = await c_tb_typed_acursor.__anext__()
         assert ctcur_doc is not None
@@ -318,7 +320,7 @@ class TestTableTyping:
 
         # typed, check using alter table's return value
         altered_ac_tb_typed = await ac_tb_typed.alter(
-            ALTER_ADD_COLUMN, row_type=AlteredTestDoc
+            ALTER_ADD_COLUMN, row_type=AlteredMyTestDoc
         )
         altered_ct_doc = await altered_ac_tb_typed.find_one(FIND_FILTER)
         assert altered_ct_doc is not None
@@ -354,8 +356,8 @@ class TestTableTyping:
             gu_y = gu_doc["c"]  # noqa: F841
 
         # Typed
-        ag_tb_typed: AsyncTable[TestDoc] = async_database.get_table(
-            TYPING_TABLE_NAME, row_type=TestDoc
+        ag_tb_typed: AsyncTable[MyTestDoc] = async_database.get_table(
+            TYPING_TABLE_NAME, row_type=MyTestDoc
         )
         await ag_tb_typed.insert_one(TYPED_ROW)
         gt_doc = await ag_tb_typed.find_one(FIND_FILTER)

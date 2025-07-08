@@ -20,7 +20,7 @@ services:
       retries: 20
 
   data-api:
-    image: stargateio/data-api:v1.0.25
+    image: stargateio/data-api:v1.0.27
     depends_on:
       hcd:
         condition: service_healthy
