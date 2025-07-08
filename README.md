@@ -592,8 +592,10 @@ certain environment variables, otherwise the associated tests are excluded from 
 
 Prepend tests with a `ASTRAPY_TEST_LATEST_MAIN=y` for features found on `main` that are not released anywhere.
 
-(This subsumes various heterogeneous cutting-edge tests: text indexes to maps-as-tuples, and so on according
-to the release/deploy status)
+#### testing UDT support
+
+Prepend tests with a `ASTRAPY_TEST_UDT=y` to enable testing of Data API support for user-defined types (UDTs).
+These integration tests are off by default, pending release on all test target environments.
 
 ## Appendices
 
