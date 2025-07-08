@@ -180,6 +180,24 @@ class TestTableUserDefinedTypes:
         udt_format: str,
         udt_mode: str,
     ) -> None:
+        """
+        This is a test of reading/writing UDTs on tables, within various column types.
+        The test is heavily parametrized. Each parameter is a different 'write mode',
+        but each individual test runs the read with all relevant read modes.
+        'Write modes' = serdes options, the type used to express the UDT, the content.
+
+        Note all "udt_mode" use one table except the "extended" (different UDT schema).
+        The scenario of UDT as plain dicts + always maps as lists of pairs is forbidden,
+        hence skipped.
+
+        So the count of tested param combinations is as follows:
+            simple UDT (2 fields)               extended UDT (4 fields) | serdesMaps:
+            ------------------------------------------------------------+------------
+             dict: 6  | nondict: 12              dict: 2  | nondict:  4 | nonALWAYS
+            [dict: 3] | nondict: 6              [dict: 1] | nondict:  2 |    ALWAYS
+            ------------------------------------------------------------+------------
+        """
+
         # combinations of write settings that are not supposed to work are skipped:
         if udt_format == "dict" and encode_maps_as_lists_in_tables == "ALWAYS":
             pytest.skip("The Data API is not supposed to accept such a write format.")
