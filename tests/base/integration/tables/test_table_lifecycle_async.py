@@ -602,6 +602,7 @@ class TestTableLifecycle:
         finally:
             await atable.drop()
 
+    # TODO: open to Astra DB once available
     @pytest.mark.skipif(
         IS_ASTRA_DB,
         reason="Text indexes not on Astra DB yet",

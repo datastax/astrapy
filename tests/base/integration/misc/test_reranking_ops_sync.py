@@ -56,6 +56,7 @@ class TestRerankingOpsSync:
             == rp_result.reranking_providers
         )
 
+    # TODO: open to Astra DB once available
     @pytest.mark.skipif(IS_ASTRA_DB, reason="Filtering models not yet on Astra DB")
     @pytest.mark.describe("test of find_reranking_providers filtering, sync")
     def test_filtered_findrerankingproviders_sync(

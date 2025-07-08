@@ -75,6 +75,7 @@ class TestVectorizeOpsAsync:
                             del model["apiModelSupport"]
         assert cleaned_dict_mapping == cleaned_raw_info
 
+    # TODO: open to Astra DB once available
     @pytest.mark.skipif(IS_ASTRA_DB, reason="Filtering models not yet on Astra DB")
     @pytest.mark.describe("test of find_embedding_providers filtering, async")
     async def test_filtered_findembeddingproviders_async(
