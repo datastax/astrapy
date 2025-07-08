@@ -603,8 +603,8 @@ class TestTableLifecycle:
             await atable.drop()
 
     @pytest.mark.skipif(
-        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
-        reason="Text indexes testable only on latest main for now",
+        IS_ASTRA_DB,
+        reason="Text indexes not on Astra DB yet",
     )
     @pytest.mark.describe("test of text indexes, async")
     async def test_table_textindexes_async(

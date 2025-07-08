@@ -191,10 +191,6 @@ class TestTableUserDefinedTypes:
         if udt_mode == "extended":
             pytest.skip("Manually scoped out for now.")
 
-        if encode_maps_as_lists_in_tables != "NEVER":
-            if "ASTRAPY_TEST_LATEST_MAIN" not in os.environ:
-                pytest.skip("maps-as-tuples require 'latest main' testing for now.")
-
         # choice of serdes options for writes
         src_atable: DefaultAsyncTable
         if udt_mode == "extended":

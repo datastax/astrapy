@@ -184,10 +184,6 @@ class TestTableUserDefinedTypes:
         if udt_format == "dict" and encode_maps_as_lists_in_tables == "ALWAYS":
             pytest.skip("The Data API is not supposed to accept such a write format.")
 
-        if encode_maps_as_lists_in_tables != "NEVER":
-            if "ASTRAPY_TEST_LATEST_MAIN" not in os.environ:
-                pytest.skip("maps-as-tuples require 'latest main' testing for now.")
-
         # choice of serdes options for writes
         src_table: DefaultTable
         if udt_mode == "extended":
