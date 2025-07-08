@@ -18,6 +18,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from typing_extensions import override
+
 from astrapy.data.info.vectorize import VectorServiceOptions
 from astrapy.data.utils.table_types import (
     ColumnType,
@@ -140,6 +142,15 @@ class TableColumnTypeDescriptor(ABC):
     @abstractmethod
     def as_dict(self) -> dict[str, Any]: ...
 
+    def as_spec(self) -> dict[str, Any] | str:
+        """
+        Return a representation of this column type for use within schema
+        description, preferring the short form ("INT") over the long form
+        ({"type": "INT"}) when applicable.
+        """
+
+        return self.as_dict()
+
     @classmethod
     def _from_dict(cls, raw_dict: dict[str, Any]) -> TableColumnTypeDescriptor:
         """
@@ -226,6 +237,13 @@ class TableScalarColumnTypeDescriptor(TableColumnTypeDescriptor):
             }.items()
             if v is not None
         }
+
+    @override
+    def as_spec(self) -> dict[str, Any] | str:
+        if self.api_support is None:
+            return self.column_type.value
+        else:
+            return self.as_dict()
 
     @classmethod
     def _from_dict(cls, raw_dict: dict[str, Any]) -> TableScalarColumnTypeDescriptor:
@@ -379,6 +397,18 @@ class TableValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
             if v is not None
         }
 
+    @override
+    def as_spec(self) -> dict[str, Any] | str:
+        return {
+            k: v
+            for k, v in {
+                "type": self.column_type.value,
+                "valueType": self.value_type.as_spec(),
+                "apiSupport": self.api_support.as_dict() if self.api_support else None,
+            }.items()
+            if v is not None
+        }
+
     @classmethod
     def _from_dict(cls, raw_dict: dict[str, Any]) -> TableValuedColumnTypeDescriptor:
         """
@@ -452,6 +482,19 @@ class TableKeyValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
                 "type": self.column_type.value,
                 "keyType": self.key_type.as_dict(),
                 "valueType": self.value_type.as_dict(),
+                "apiSupport": self.api_support.as_dict() if self.api_support else None,
+            }.items()
+            if v is not None
+        }
+
+    @override
+    def as_spec(self) -> dict[str, Any]:
+        return {
+            k: v
+            for k, v in {
+                "type": self.column_type.value,
+                "keyType": self.key_type.as_spec(),
+                "valueType": self.value_type.as_spec(),
                 "apiSupport": self.api_support.as_dict() if self.api_support else None,
             }.items()
             if v is not None

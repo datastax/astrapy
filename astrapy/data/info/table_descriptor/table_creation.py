@@ -238,7 +238,7 @@ class CreateTableDefinition:
             k: v
             for k, v in {
                 "columns": {
-                    col_n: col_v.as_dict() for col_n, col_v in self.columns.items()
+                    col_n: col_v.as_spec() for col_n, col_v in self.columns.items()
                 },
                 "primaryKey": self.primary_key.as_dict(),
             }.items()
