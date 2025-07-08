@@ -27,18 +27,18 @@ from astrapy.utils.unset import _UNSET, UnsetType
 from ..conftest import DefaultAsyncCollection, DefaultCollection
 
 
-class TestDoc(TypedDict):
+class MyTestDoc(TypedDict):
     p_bigint: int
     p_ascii: str
 
 
-class TestMiniDoc(TypedDict):
+class MyTestMiniDoc(TypedDict):
     p_bigint: int
 
 
 FIND_PROJECTION = {"_id": False, "p_bigint": True}
 DOCUMENT = {"p_ascii": "abc", "p_bigint": 10000, "p_float": 0.123}
-TYPED_DOCUMENT: TestDoc = {"p_ascii": "abc", "p_bigint": 10000}
+TYPED_DOCUMENT: MyTestDoc = {"p_ascii": "abc", "p_bigint": 10000}
 FIND_FILTER = {"p_ascii": "abc", "p_bigint": 10000}
 # find_and_rerank-related assets:
 VLEX_DOCUMENT = {
@@ -48,7 +48,7 @@ VLEX_DOCUMENT = {
     "$vector": [1, 2],
     "$lexical": "blo",
 }
-TYPED_VLEX_DOCUMENT: TestDoc = {
+TYPED_VLEX_DOCUMENT: MyTestDoc = {
     "p_ascii": "abc",
     "p_bigint": 10000,
     "$vector": [1, 2],
@@ -108,7 +108,7 @@ class TestCollectionTyping:
         c_co_untyped.delete_many({})
 
         # Typed
-        c_co_typed: Collection[TestDoc] = sync_database.create_collection(
+        c_co_typed: Collection[MyTestDoc] = sync_database.create_collection(
             sync_empty_collection.name,
             definition=(
                 CollectionDefinition.builder()
@@ -117,7 +117,7 @@ class TestCollectionTyping:
                 .set_indexing("deny", ["not_indexed"])
                 .build()
             ),
-            document_type=TestDoc,
+            document_type=MyTestDoc,
         )
         c_co_typed.insert_one(TYPED_DOCUMENT)
         ct_doc = c_co_typed.find_one(FIND_FILTER)
@@ -136,7 +136,7 @@ class TestCollectionTyping:
 
         # typed, cursors type inference on find
         c_co_typed_cursor = c_co_typed.find(
-            {}, projection=FIND_PROJECTION, document_type=TestMiniDoc
+            {}, projection=FIND_PROJECTION, document_type=MyTestMiniDoc
         )
         ctcur_doc = c_co_typed_cursor.__next__()
         assert ctcur_doc is not None
@@ -180,9 +180,9 @@ class TestCollectionTyping:
         g_co_untyped.delete_many({})
 
         # Typed
-        g_co_typed: Collection[TestDoc] = sync_database.get_collection(
+        g_co_typed: Collection[MyTestDoc] = sync_database.get_collection(
             sync_empty_collection.name,
-            document_type=TestDoc,
+            document_type=MyTestDoc,
         )
         g_co_typed.insert_one(TYPED_DOCUMENT)
         gt_doc = g_co_typed.find_one(FIND_FILTER)
@@ -210,9 +210,9 @@ class TestCollectionTyping:
         """Test of getting typed collections with generics (and not), sync."""
 
         g_co_untyped = sync_database.get_collection(sync_empty_collection.name)
-        g_co_typed: Collection[TestDoc] = sync_database.get_collection(
+        g_co_typed: Collection[MyTestDoc] = sync_database.get_collection(
             sync_empty_collection.name,
-            document_type=TestDoc,
+            document_type=MyTestDoc,
         )
         g_co_untyped.insert_many([DOCUMENT] * 30)
 
@@ -240,7 +240,7 @@ class TestCollectionTyping:
         def u_mapper(doc: dict[str, Any]) -> str:
             return f"{doc['p_bigint'] % 100}"
 
-        def t_mapper(doc: TestDoc) -> str:
+        def t_mapper(doc: MyTestDoc) -> str:
             return f"{doc['p_bigint'] % 100}"
 
         u_cur_1m = g_co_untyped.find().map(u_mapper)
@@ -362,9 +362,9 @@ class TestCollectionTyping:
         f_co_untyped.delete_many({})
 
         # Typed
-        f_co_typed: Collection[TestDoc] = sync_database.get_collection(
+        f_co_typed: Collection[MyTestDoc] = sync_database.get_collection(
             sync_empty_collection.name,
-            document_type=TestDoc,
+            document_type=MyTestDoc,
             reranking_api_key=reranking_api_key,
         )
         f_co_typed.insert_one(TYPED_VLEX_DOCUMENT)
@@ -391,7 +391,7 @@ class TestCollectionTyping:
             sort={"$hybrid": {"$vector": [2, 1], "$lexical": "bla"}},
             limit=1,
             projection=FIND_PROJECTION,
-            document_type=TestMiniDoc,
+            document_type=MyTestMiniDoc,
             rerank_on="p_ascii",
             rerank_query="bli",
         ).to_list()
@@ -457,7 +457,9 @@ class TestCollectionTyping:
         await ac_co_untyped.delete_many({})
 
         # Typed
-        ac_co_typed: AsyncCollection[TestDoc] = await async_database.create_collection(
+        ac_co_typed: AsyncCollection[
+            MyTestDoc
+        ] = await async_database.create_collection(
             async_empty_collection.name,
             definition=(
                 CollectionDefinition.builder()
@@ -466,7 +468,7 @@ class TestCollectionTyping:
                 .set_indexing("deny", ["not_indexed"])
                 .build()
             ),
-            document_type=TestDoc,
+            document_type=MyTestDoc,
         )
         await ac_co_typed.insert_one(TYPED_DOCUMENT)
         ct_doc = await ac_co_typed.find_one(FIND_FILTER)
@@ -485,7 +487,7 @@ class TestCollectionTyping:
 
         # typed, cursors type inference on find
         c_co_typed_cursor = ac_co_typed.find(
-            {}, projection=FIND_PROJECTION, document_type=TestMiniDoc
+            {}, projection=FIND_PROJECTION, document_type=MyTestMiniDoc
         )
         ctcur_doc = await c_co_typed_cursor.__anext__()
         assert ctcur_doc is not None
@@ -529,9 +531,9 @@ class TestCollectionTyping:
         await ag_co_untyped.delete_many({})
 
         # Typed
-        ag_co_typed: AsyncCollection[TestDoc] = async_database.get_collection(
+        ag_co_typed: AsyncCollection[MyTestDoc] = async_database.get_collection(
             async_empty_collection.name,
-            document_type=TestDoc,
+            document_type=MyTestDoc,
         )
         await ag_co_typed.insert_one(TYPED_DOCUMENT)
         gt_doc = await ag_co_typed.find_one(FIND_FILTER)
@@ -559,9 +561,9 @@ class TestCollectionTyping:
         """Test of getting typed collections with generics (and not), sync."""
 
         ag_co_untyped = async_database.get_collection(async_empty_collection.name)
-        ag_co_typed: AsyncCollection[TestDoc] = async_database.get_collection(
+        ag_co_typed: AsyncCollection[MyTestDoc] = async_database.get_collection(
             async_empty_collection.name,
-            document_type=TestDoc,
+            document_type=MyTestDoc,
         )
         await ag_co_untyped.insert_many([DOCUMENT] * 30)
 
@@ -589,7 +591,7 @@ class TestCollectionTyping:
         def u_mapper(doc: dict[str, Any]) -> str:
             return f"{doc['p_bigint'] % 100}"
 
-        def t_mapper(doc: TestDoc) -> str:
+        def t_mapper(doc: MyTestDoc) -> str:
             return f"{doc['p_bigint'] % 100}"
 
         u_cur_1m = ag_co_untyped.find().map(u_mapper)
@@ -712,9 +714,9 @@ class TestCollectionTyping:
         await f_co_untyped.delete_many({})
 
         # Typed
-        af_co_typed: AsyncCollection[TestDoc] = async_database.get_collection(
+        af_co_typed: AsyncCollection[MyTestDoc] = async_database.get_collection(
             async_empty_collection.name,
-            document_type=TestDoc,
+            document_type=MyTestDoc,
             reranking_api_key=reranking_api_key,
         )
         await af_co_typed.insert_one(TYPED_VLEX_DOCUMENT)
@@ -741,7 +743,7 @@ class TestCollectionTyping:
             sort={"$hybrid": {"$vector": [2, 1], "$lexical": "bla"}},
             limit=1,
             projection=FIND_PROJECTION,
-            document_type=TestMiniDoc,
+            document_type=MyTestMiniDoc,
             rerank_on="p_ascii",
             rerank_query="bli",
         ).to_list()

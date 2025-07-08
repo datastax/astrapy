@@ -174,9 +174,8 @@ class TestTableUserDefinedTypes:
         self,
         player_udt: str,
         extended_player_udt: str,
-        # TODO RESTRICT_UDT_TEST re-enable both once udt-cache issues solved in data api
         sync_empty_table_udt_player: DefaultTable,
-        # sync_empty_table_udt_extended_player: DefaultTable,
+        sync_empty_table_udt_extended_player: DefaultTable,
         encode_maps_as_lists_in_tables: str,
         udt_format: str,
         udt_mode: str,
@@ -185,20 +184,14 @@ class TestTableUserDefinedTypes:
         if udt_format == "dict" and encode_maps_as_lists_in_tables == "ALWAYS":
             pytest.skip("The Data API is not supposed to accept such a write format.")
 
-        # Manual restriction of tests - TODO RESTRICT_UDT_TEST remove restriction
-        if udt_mode == "extended":
-            pytest.skip("Manually scoped out for now.")
-
         if encode_maps_as_lists_in_tables != "NEVER":
             if "ASTRAPY_TEST_LATEST_MAIN" not in os.environ:
                 pytest.skip("maps-as-tuples require 'latest main' testing for now.")
 
         # choice of serdes options for writes
         src_table: DefaultTable
-        # TODO RESTRICT_UDT_TEST reinstate this in full once extended coexists w/ rest
         if udt_mode == "extended":
-            raise ValueError("No.")
-            # src_table = sync_empty_table_udt_extended_player
+            src_table = sync_empty_table_udt_extended_player
         else:
             src_table = sync_empty_table_udt_player
         table = src_table.with_options(
