@@ -14,10 +14,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable, Mapping
+from typing import Any, Dict, Iterable, Mapping
 
 
-class DataAPIDictUDT(dict[Any, Any]):
+class DataAPIDictUDT(Dict[Any, Any]):
     """
     A `dict` subclass acting as a marker for wrapping user-defined type (UDT) data.
 

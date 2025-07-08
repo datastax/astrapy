@@ -53,9 +53,9 @@ HybridSortType = Dict[
 ]
 FilterType = Dict[str, Any]
 CallerType = Tuple[Optional[str], Optional[str]]
-SerializerFunctionType = Callable[[Any], dict[str, Any]]
+SerializerFunctionType = Callable[[Any], Dict[str, Any]]
 UDTDeserializerFunctionType = Callable[
-    [dict[str, Any], Optional["CreateTypeDefinition"]], Any
+    [Dict[str, Any], Optional["CreateTypeDefinition"]], Any
 ]
 
 
