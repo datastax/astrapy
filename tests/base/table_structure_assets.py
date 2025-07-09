@@ -209,6 +209,44 @@ TEST_SIMPLE_UDT_DEFINITION = CreateTypeDefinition(
     }
 )
 
+TEST_COLLINDEXED_TABLE_NAME = "test_table_collindexed"
+TEST_COLLINDEXED_TABLE_DEFINITION = CreateTableDefinition(
+    columns={
+        "id": TableScalarColumnTypeDescriptor(column_type="text"),
+        "set_int": TableValuedColumnTypeDescriptor(
+            column_type="set",
+            value_type="int",
+        ),
+        "list_int": TableValuedColumnTypeDescriptor(
+            column_type="list",
+            value_type="int",
+        ),
+        "map_text_int_e": TableKeyValuedColumnTypeDescriptor(
+            key_type="text",
+            value_type="int",
+        ),
+        "map_text_int_k": TableKeyValuedColumnTypeDescriptor(
+            key_type="text",
+            value_type="int",
+        ),
+        "map_text_int_v": TableKeyValuedColumnTypeDescriptor(
+            key_type="text",
+            value_type="int",
+        ),
+    },
+    primary_key=TablePrimaryKeyDescriptor(
+        partition_by=["id"],
+        partition_sort={},
+    ),
+)
+TEST_COLLINDEXED_TABLE_INDEXES = [
+    ("test_collidxtable_idx_si", "set_int"),
+    ("test_collidxtable_idx_li", "list_int"),
+    ("test_collidxtable_idx_mtie", "map_text_int_e"),
+    ("test_collidxtable_idx_mtik", {"map_text_int_k": "$keys"}),
+    ("test_collidxtable_idx_mtiv", {"map_text_int_v": "$values"}),
+]
+
 
 VECTORIZE_TEXTS = [
     "The world is the totality of facts, not of things.",
