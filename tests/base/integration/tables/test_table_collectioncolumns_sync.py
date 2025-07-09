@@ -64,6 +64,15 @@ class TestTableCollectionColumnsSync:
             table.find({"set_int": {"$in": [11, 99]}}, limit=1).to_list()[0] == res_s1
         )
 
+        res_s0n = table.find_one({"set_int": {"$nin": [111]}})
+        assert res_s0n is not None
+        assert res_s0n["id"] == "bls_low"
+        assert table.find({"set_int": {"$nin": [111]}}, limit=1).to_list()[0] == res_s0n
+
+        res_s1n = table.find_one({"set_int": {"$nin": [10, 110]}})
+        assert res_s1n is None
+        assert table.find({"set_int": {"$nin": [10, 110]}}, limit=1).to_list() == []
+
         res_s2 = table.find_one({"set_int": {"$all": [11, 12]}})
         assert res_s2 is not None
         assert res_s2["id"] == "bls_low"
@@ -86,6 +95,17 @@ class TestTableCollectionColumnsSync:
         assert (
             table.find({"list_int": {"$in": [21, 99]}}, limit=1).to_list()[0] == res_l1
         )
+
+        res_l0n = table.find_one({"list_int": {"$nin": [120]}})
+        assert res_l0n is not None
+        assert res_l0n["id"] == "bls_low"
+        assert (
+            table.find({"list_int": {"$nin": [120]}}, limit=1).to_list()[0] == res_l0n
+        )
+
+        res_l1n = table.find_one({"list_int": {"$nin": [20, 120]}})
+        assert res_l1n is None
+        assert table.find({"list_int": {"$nin": [20, 120]}}, limit=1).to_list() == []
 
         res_l2 = table.find_one({"list_int": {"$all": [21, 22]}})
         assert res_l2 is not None
@@ -117,7 +137,7 @@ class TestTableCollectionColumnsSync:
                 {
                     "id": "bm_high",
                     "map_text_int_e": DataAPIMap({"a": 101, "b": 102, "c": 103}),
-                    "map_text_int_k": DataAPIMap({"A": 101, "B": 102, "C": 103}),
+                    "map_text_int_k": DataAPIMap({"A": 101, "B": 102, "C2": 103}),
                     "map_text_int_v": DataAPIMap({"x": 101, "y": 102, "z": 103}),
                 }
             ]
@@ -139,6 +159,23 @@ class TestTableCollectionColumnsSync:
                 {"map_text_int_e": {"$in": [["a", 1], ["q", 9]]}}, limit=1
             ).to_list()[0]
             == res_me1
+        )
+
+        res_me0n = table.find_one({"map_text_int_e": {"$nin": [["a", 101]]}})
+        assert res_me0n is not None
+        assert res_me0n["id"] == "bm_low"
+        assert (
+            table.find({"map_text_int_e": {"$nin": [["a", 101]]}}, limit=1).to_list()[0]
+            == res_me0n
+        )
+
+        res_me1n = table.find_one({"map_text_int_e": {"$nin": [["a", 101], ["a", 1]]}})
+        assert res_me1n is None
+        assert (
+            table.find(
+                {"map_text_int_e": {"$nin": [["a", 101], ["a", 1]]}}, limit=1
+            ).to_list()
+            == []
         )
 
         res_me2 = table.find_one({"map_text_int_e": {"$all": [["a", 1], ["b", 2]]}})
@@ -180,6 +217,25 @@ class TestTableCollectionColumnsSync:
             == res_mk1
         )
 
+        res_mk0n = table.find_one({"map_text_int_k": {"$keys": {"$nin": ["C2"]}}})
+        assert res_mk0n is not None
+        assert res_mk0n["id"] == "bm_low"
+        assert (
+            table.find(
+                {"map_text_int_k": {"$keys": {"$nin": ["C2"]}}}, limit=1
+            ).to_list()[0]
+            == res_mk0n
+        )
+
+        res_mk1n = table.find_one({"map_text_int_k": {"$keys": {"$nin": ["C", "C2"]}}})
+        assert res_mk1n is None
+        assert (
+            table.find(
+                {"map_text_int_k": {"$keys": {"$nin": ["A", "Q"]}}}, limit=1
+            ).to_list()
+            == []
+        )
+
         res_mk2 = table.find_one({"map_text_int_k": {"$keys": {"$all": ["A", "B"]}}})
         assert res_mk2 is not None
         assert res_mk2["id"] == "bm_low"
@@ -219,6 +275,25 @@ class TestTableCollectionColumnsSync:
             == res_mv1
         )
 
+        res_mv0n = table.find_one({"map_text_int_v": {"$values": {"$nin": [101]}}})
+        assert res_mv0n is not None
+        assert res_mv0n["id"] == "bm_low"
+        assert (
+            table.find(
+                {"map_text_int_v": {"$values": {"$nin": [101]}}}, limit=1
+            ).to_list()[0]
+            == res_mv0n
+        )
+
+        res_mv1n = table.find_one({"map_text_int_v": {"$values": {"$nin": [101, 11]}}})
+        assert res_mv1n is None
+        assert (
+            table.find(
+                {"map_text_int_v": {"$values": {"$nin": [101, 11]}}}, limit=1
+            ).to_list()
+            == []
+        )
+
         res_mv2 = table.find_one({"map_text_int_v": {"$values": {"$all": [11, 12]}}})
         assert res_mv2 is not None
         assert res_mv2["id"] == "bm_low"
@@ -237,7 +312,3 @@ class TestTableCollectionColumnsSync:
             ).to_list()
             == []
         )
-
-        # TODO investigate
-        qres_mv0 = table.find_one({"map_text_int_k": {"$values": {"$in": [11]}}})
-        assert qres_mv0 is not None
