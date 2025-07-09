@@ -233,6 +233,10 @@ TEST_COLLINDEXED_TABLE_DEFINITION = CreateTableDefinition(
             key_type="text",
             value_type="int",
         ),
+        "map_int_text": TableKeyValuedColumnTypeDescriptor(
+            key_type="int",
+            value_type="text",
+        ),
     },
     primary_key=TablePrimaryKeyDescriptor(
         partition_by=["id"],
