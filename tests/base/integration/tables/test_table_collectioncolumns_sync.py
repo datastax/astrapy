@@ -312,3 +312,89 @@ class TestTableCollectionColumnsSync:
             ).to_list()
             == []
         )
+
+    @pytest.mark.describe("test of table list and set columns, dollar-writes, sync")
+    def test_table_listset_columns_dollarwriting_sync(
+        self,
+        sync_empty_table_collindexed: DefaultTable,
+    ) -> None:
+        table = sync_empty_table_collindexed
+        table.insert_one(
+            {
+                "id": "dwr_bls",
+                "set_int": DataAPISet([30, 31, 32]),
+                "list_int": [40, 41, 42],
+            }
+        )
+
+        table.update_one(
+            {"id": "dwr_bls"},
+            {"$pullAll": {"set_int": [32, 30]}},
+        )
+        post_pa_s = table.find_one({"id": "dwr_bls"})
+        assert post_pa_s is not None
+        assert post_pa_s["set_int"] == DataAPISet([31])
+
+        table.update_one(
+            {"id": "dwr_bls"},
+            {"$pullAll": {"list_int": [42, 40]}},
+        )
+        post_pa_l = table.find_one({"id": "dwr_bls"})
+        assert post_pa_l is not None
+        assert post_pa_l["list_int"] == [41]
+
+        table.update_one(
+            {"id": "dwr_bls"},
+            {
+                "$pullAll": {
+                    "set_int": [31],
+                    "list_int": [41],
+                },
+            },
+        )
+        post_pa_ls = table.find_one({"id": "dwr_bls"})
+        assert post_pa_ls is not None
+        assert post_pa_ls["list_int"] == []
+        assert post_pa_ls["set_int"] == DataAPISet()
+
+        table.update_one(
+            {"id": "dwr_bls"},
+            {
+                "$push": {
+                    "set_int": 930,
+                }
+            },
+        )
+        post_pu_s = table.find_one({"id": "dwr_bls"})
+        assert post_pu_s is not None
+        assert post_pu_s["list_int"] == []
+        assert post_pu_s["set_int"] == DataAPISet([930])
+
+        table.update_one(
+            {"id": "dwr_bls"},
+            {
+                "$push": {
+                    "list_int": 940,
+                }
+            },
+        )
+        post_pu_l = table.find_one({"id": "dwr_bls"})
+        assert post_pu_l is not None
+        assert post_pu_l["list_int"] == [940]
+        assert post_pu_l["set_int"] == DataAPISet([930])
+
+        table.update_one(
+            {"id": "dwr_bls"},
+            {
+                "$push": {
+                    "set_int": {
+                        "$each": [931, 932],
+                    },
+                    "list_int": {"$each": [941, 942]},
+                }
+            },
+        )
+        post_pu_ls = table.find_one({"id": "dwr_bls"})
+        assert post_pu_ls is not None
+        assert post_pu_ls["list_int"] == [940, 941, 942]
+        assert post_pu_ls["set_int"] == DataAPISet([930, 931, 932])
