@@ -18,10 +18,11 @@ import pytest
 
 from astrapy.data_types import DataAPIMap, DataAPISet
 
-from ..conftest import DefaultAsyncTable
+from ..conftest import IS_ASTRA_DB, DefaultAsyncTable
 
 
 class TestTableCollectionColumnsSync:
+    @pytest.mark.skipif(IS_ASTRA_DB, reason="Feature not deployed on Astra yet")
     @pytest.mark.describe("test of table list and set columns, filtering, async")
     async def test_table_listset_columns_filtering_async(
         self,
@@ -126,6 +127,7 @@ class TestTableCollectionColumnsSync:
             await atable.find({"list_int": {"$all": [21, 99]}}, limit=1).to_list() == []
         )
 
+    @pytest.mark.skipif(IS_ASTRA_DB, reason="Feature not deployed on Astra yet")
     @pytest.mark.describe("test of table map columns, filtering, async")
     async def test_table_map_columns_filtering_async(
         self,
@@ -341,6 +343,7 @@ class TestTableCollectionColumnsSync:
             == []
         )
 
+    @pytest.mark.skipif(IS_ASTRA_DB, reason="Astra rejects reads-before-writes.")
     @pytest.mark.describe("test of table list and set columns, dollar-writes, async")
     async def test_table_listset_columns_dollarwriting_async(
         self,
