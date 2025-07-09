@@ -239,7 +239,7 @@ TEST_COLLINDEXED_TABLE_DEFINITION = CreateTableDefinition(
         partition_sort={},
     ),
 )
-TEST_COLLINDEXED_TABLE_INDEXES = [
+TEST_COLLINDEXED_TABLE_INDEXES: list[tuple[str, str | dict[str, str]]] = [
     ("test_collidxtable_idx_si", "set_int"),
     ("test_collidxtable_idx_li", "list_int"),
     ("test_collidxtable_idx_mtie", "map_text_int_e"),

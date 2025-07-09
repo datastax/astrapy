@@ -60,9 +60,9 @@ from .table_structure_assets import (
     TEST_ALL_RETURNS_TABLE_NAME,
     TEST_ALLMAPS_TABLE_DEFINITION,
     TEST_ALLMAPS_TABLE_NAME,
-    TEST_COLLINDEXED_TABLE_NAME,
     TEST_COLLINDEXED_TABLE_DEFINITION,
     TEST_COLLINDEXED_TABLE_INDEXES,
+    TEST_COLLINDEXED_TABLE_NAME,
     TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_COLUMN,
     TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_NAME,
     TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_OPTIONS,
@@ -780,7 +780,6 @@ def sync_empty_table_udt_extended_player(
     """Emptied for each test function"""
     sync_table_udt_extended_player.delete_many({})
     yield sync_table_udt_extended_player
-
 
 
 @pytest.fixture(scope="function")
