@@ -623,3 +623,30 @@ class TestCollectionDDLAsync:
             await async_database.drop_collection(
                 TEST_LEXICAL_DETAILEDCONFIG_COLLECTION_NAME,
             )
+
+    @pytest.mark.describe("test of collection lexical omitted settings, async")
+    async def test_collection_lexical_omittedsettings_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        TEST_LEXICAL_OMITTEDSETTINGS_COLLECTION_NAME = "test_lexical_nocfg_coll"
+        try:
+            await async_database.create_collection(
+                TEST_LEXICAL_OMITTEDSETTINGS_COLLECTION_NAME,
+                definition=(
+                    CollectionDefinition.builder().set_lexical(enabled=True).build()
+                ),
+            )
+
+            coll_ldc_definition = CollectionDefinition(
+                lexical=CollectionLexicalOptions(enabled=True),
+            )
+            await async_database.create_collection(
+                TEST_LEXICAL_OMITTEDSETTINGS_COLLECTION_NAME,
+                definition=coll_ldc_definition,
+            )
+
+        finally:
+            await async_database.drop_collection(
+                TEST_LEXICAL_OMITTEDSETTINGS_COLLECTION_NAME,
+            )

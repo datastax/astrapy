@@ -617,3 +617,28 @@ class TestCollectionDDLSync:
 
         finally:
             sync_database.drop_collection(TEST_LEXICAL_DETAILEDCONFIG_COLLECTION_NAME)
+
+    @pytest.mark.describe("test of collection lexical omitted settings, sync")
+    def test_collection_lexical_omittedsettings_sync(
+        self,
+        sync_database: Database,
+    ) -> None:
+        TEST_LEXICAL_OMITTEDSETTINGS_COLLECTION_NAME = "test_lexical_nocfg_coll"
+        try:
+            sync_database.create_collection(
+                TEST_LEXICAL_OMITTEDSETTINGS_COLLECTION_NAME,
+                definition=(
+                    CollectionDefinition.builder().set_lexical(enabled=True).build()
+                ),
+            )
+
+            coll_ldc_definition = CollectionDefinition(
+                lexical=CollectionLexicalOptions(enabled=True),
+            )
+            sync_database.create_collection(
+                TEST_LEXICAL_OMITTEDSETTINGS_COLLECTION_NAME,
+                definition=coll_ldc_definition,
+            )
+
+        finally:
+            sync_database.drop_collection(TEST_LEXICAL_OMITTEDSETTINGS_COLLECTION_NAME)
