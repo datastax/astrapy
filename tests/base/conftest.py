@@ -74,6 +74,9 @@ from .table_structure_assets import (
     TEST_KMS_VECTORIZE_TABLE_DEFINITION,
     TEST_KMS_VECTORIZE_TABLE_NAME,
     TEST_KMS_VECTORIZE_TABLE_VECTOR_INDEX_NAME,
+    TEST_LOGICALFILTERING_TABLE_DEFINITION,
+    TEST_LOGICALFILTERING_TABLE_INDEXES,
+    TEST_LOGICALFILTERING_TABLE_NAME,
     TEST_SIMPLE_TABLE_DEFINITION,
     TEST_SIMPLE_TABLE_NAME,
     TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN,
@@ -861,6 +864,40 @@ def async_empty_table_textindex(
 ) -> Iterable[DefaultAsyncTable]:
     """Emptied for each test function"""
     yield sync_empty_table_textindex.to_async()
+
+
+@pytest.fixture(scope="session")
+def sync_table_logicalfiltering(
+    sync_database: Database,
+) -> Iterable[DefaultTable]:
+    """An actual table on DB, in the main keyspace"""
+    table = sync_database.create_table(
+        TEST_LOGICALFILTERING_TABLE_NAME,
+        definition=TEST_LOGICALFILTERING_TABLE_DEFINITION,
+    )
+    for index_name, index_column in TEST_LOGICALFILTERING_TABLE_INDEXES:
+        table.create_index(index_name, index_column)
+
+    yield table
+
+    sync_database.drop_table(TEST_LOGICALFILTERING_TABLE_NAME)
+
+
+@pytest.fixture(scope="function")
+def sync_empty_table_logicalfiltering(
+    sync_table_logicalfiltering: DefaultTable,
+) -> Iterable[DefaultTable]:
+    """Emptied for each test function"""
+    sync_table_logicalfiltering.delete_many({})
+    yield sync_table_logicalfiltering
+
+
+@pytest.fixture(scope="function")
+def async_empty_table_logicalfiltering(
+    sync_empty_table_logicalfiltering: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """Emptied for each test function"""
+    yield sync_empty_table_logicalfiltering.to_async()
 
 
 __all__ = [

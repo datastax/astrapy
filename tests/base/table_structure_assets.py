@@ -265,6 +265,26 @@ TEST_TEXTINDEX_TABLE_DEFINITION = CreateTableDefinition(
 TEST_TEXTINDEX_INDEX_NAME = "test_table_textindex_idx"
 TEST_TEXTINDEX_INDEX_COLUMN = "body"
 
+TEST_LOGICALFILTERING_TABLE_NAME = "test_table_logicalfiltering"
+TEST_LOGICALFILTERING_TABLE_DEFINITION = CreateTableDefinition(
+    columns={
+        "id": TableScalarColumnTypeDescriptor(column_type="text"),
+        "p_boolean": TableScalarColumnTypeDescriptor(column_type="boolean"),
+        "p_int_1": TableScalarColumnTypeDescriptor(column_type="int"),
+        "p_int_2": TableScalarColumnTypeDescriptor(column_type="int"),
+        "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
+    },
+    primary_key=TablePrimaryKeyDescriptor(
+        partition_by=["id"],
+        partition_sort={},
+    ),
+)
+TEST_LOGICALFILTERING_TABLE_INDEXES: list[tuple[str, str | dict[str, str]]] = [
+    ("test_logflt_idx_p_bool", "p_boolean"),
+    ("test_logflt_idx_p_int_1", "p_int_1"),
+    ("test_logflt_idx_p_int_2", "p_int_2"),
+    ("test_logflt_idx_p_text", "p_text"),
+]
 
 VECTORIZE_TEXTS = [
     "The world is the totality of facts, not of things.",
