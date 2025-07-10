@@ -20,9 +20,18 @@ from typing import Any
 import pytest
 
 from astrapy.constants import DefaultDocumentType, ReturnDocument, SortMode
-from astrapy.cursors import AsyncCollectionFindCursor
-from astrapy.data_types import DataAPITimestamp, DataAPIVector
-from astrapy.exceptions import CollectionInsertManyException, DataAPIResponseException
+from astrapy.cursors import AsyncCollectionFindCursor, CursorState
+from astrapy.data_types import (
+    DataAPIDate,
+    DataAPIMap,
+    DataAPITimestamp,
+    DataAPIVector,
+)
+from astrapy.exceptions import (
+    CollectionInsertManyException,
+    DataAPIResponseException,
+    TooManyDocumentsToCountException,
+)
 from astrapy.ids import UUID, ObjectId
 from astrapy.results import CollectionDeleteResult, CollectionInsertOneResult
 from astrapy.utils.api_options import APIOptions, SerdesOptions
@@ -87,19 +96,13 @@ class TestCollectionDMLAsync:
             await async_empty_collection.count_documents(filter={}, upper_bound=2000)
             == 900
         )
-        with pytest.raises(ValueError):
-            await async_empty_collection.count_documents(
-                filter={}, upper_bound=100
-            ) == 900
+        with pytest.raises(TooManyDocumentsToCountException):
+            await async_empty_collection.count_documents(filter={}, upper_bound=100)
         await async_empty_collection.insert_many([{"b": i} for i in range(200)])
-        with pytest.raises(ValueError):
-            assert await async_empty_collection.count_documents(
-                filter={}, upper_bound=100
-            )
-        with pytest.raises(ValueError):
-            assert await async_empty_collection.count_documents(
-                filter={}, upper_bound=2000
-            )
+        with pytest.raises(TooManyDocumentsToCountException):
+            await async_empty_collection.count_documents(filter={}, upper_bound=100)
+        with pytest.raises(TooManyDocumentsToCountException):
+            await async_empty_collection.count_documents(filter={}, upper_bound=2000)
 
     @pytest.mark.describe("test of collection insert_one, async")
     async def test_collection_insert_one_async(
@@ -137,6 +140,24 @@ class TestCollectionDMLAsync:
         )
         assert retrieved2 is not None
         assert retrieved2["$vector"] == DataAPIVector([-3, -4])
+
+        await async_empty_collection.insert_one({"tag": "v_null", "$vector": None})
+        retrieved3 = await async_empty_collection.find_one(
+            {"tag": "v_null"}, projection={"*": 1}
+        )
+        assert retrieved3 is not None
+        assert retrieved3["$vector"] is None
+
+        unroll_options = APIOptions(
+            serdes_options=SerdesOptions(unroll_iterables_to_lists=True),
+        )
+        unroll_acoll = async_empty_collection.with_options(api_options=unroll_options)
+        await unroll_acoll.insert_one({"tag": "v_null_u", "$vector": None})
+        retrieved4 = await unroll_acoll.find_one(
+            {"tag": "v_null_u"}, projection={"*": 1}
+        )
+        assert retrieved4 is not None
+        assert retrieved4["$vector"] is None
 
     @pytest.mark.describe("test of collection vector insertion options, async")
     async def test_collection_vector_insertion_options_async(
@@ -577,23 +598,23 @@ class TestCollectionDMLAsync:
         assert isinstance(cursor1.cursor_id, int)
         assert cursor1.data_source == async_empty_collection
 
-        # clone, alive
+        # clone
         cursor2 = async_empty_collection.find()
-        assert cursor2.alive is True
+        assert cursor2.state != CursorState.CLOSED
         for _ in range(8):
             await cursor2.__anext__()
-        assert cursor2.alive is True
+        assert cursor2.state != CursorState.CLOSED  # type: ignore[comparison-overlap]
         cursor3 = cursor2.clone()
         assert len(await _alist(cursor2)) == 2
         assert len(await _alist(cursor3)) == 10
-        assert cursor2.alive is False
+        assert cursor2.state == CursorState.CLOSED  # type: ignore[comparison-overlap]
 
         # close
         cursor4 = async_empty_collection.find()
         for _ in range(8):
             await cursor4.__anext__()
         cursor4.close()
-        assert cursor4.alive is False
+        assert cursor4.state == CursorState.CLOSED
         with pytest.raises(StopAsyncIteration):
             await cursor4.__anext__()
 
@@ -644,12 +665,11 @@ class TestCollectionDMLAsync:
         assert "T2/20" in items2_maps
         assert all(isinstance(itm, str) for itm in items2_maps)
 
-        # clone (map-stripping, rewinding)
+        # clone (rewinding)
         cloned_2 = cur2_maps.clone()
         from_cl = await cloned_2.__anext__()
-        assert isinstance(from_cl, dict)
-        assert "seq" in from_cl
-        assert "ternary" in from_cl
+        assert isinstance(from_cl, str)
+        assert "/" in from_cl
 
         # for each
         accum: list[int] = []
@@ -676,6 +696,7 @@ class TestCollectionDMLAsync:
         async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
+        the_datimestamp = DataAPITimestamp.from_string("2000-01-01T12:00:00.000Z")
         documents: list[dict[str, Any]] = [
             {},
             {"f": 1},
@@ -685,7 +706,7 @@ class TestCollectionDMLAsync:
             {"f": [10, 11]},
             {"f": [11, 10]},
             {"f": [10]},
-            {"f": datetime(2000, 1, 1, 12, 0, 0, tzinfo=timezone.utc)},
+            {"f": the_datimestamp},
             {"f": None},
         ]
         await acol.insert_many(documents * 2)
@@ -697,9 +718,6 @@ class TestCollectionDMLAsync:
                 if isinstance(doc["f"], list):
                     for item in doc["f"]:
                         assert item in d_items
-                elif isinstance(doc["f"], datetime):
-                    da_ts = DataAPITimestamp.from_datetime(doc["f"])
-                    assert da_ts in d_items
                 else:
                     assert doc["f"] in d_items
 
@@ -716,10 +734,58 @@ class TestCollectionDMLAsync:
                 if isinstance(doc["f"], list):
                     for item in doc["f"]:
                         assert item in d_items_noncustom
-                elif isinstance(doc["f"], datetime):
-                    assert doc["f"] in d_items_noncustom
+                elif isinstance(doc["f"], DataAPITimestamp):
+                    assert doc["f"].to_datetime(tz=timezone.utc) in d_items_noncustom
                 else:
                     assert doc["f"] in d_items_noncustom
+
+    @pytest.mark.describe("test of distinct with key as list, async")
+    async def test_collection_distinct_key_as_list_async(
+        self,
+        async_empty_collection: DefaultAsyncCollection,
+    ) -> None:
+        acol = async_empty_collection
+        the_datimestamp = DataAPITimestamp.from_string("2000-01-01T12:00:00.000Z")
+        documents: list[dict[str, Any]] = [
+            {},
+            {"f": 1},
+            {"f": "a"},
+            {"f": {"subf": 99}},
+            {"f": {"subf": 99, "another": {"subsubf": [True, False]}}},
+            {"f": [10, 11]},
+            {"f": [11, 10]},
+            {"f": [10]},
+            {"f": the_datimestamp},
+            {"f": None},
+        ]
+        await acol.insert_many(documents * 2)
+
+        assert await acol.distinct("f") == await acol.distinct(["f"])
+
+        await acol.insert_one({"x": [{"y": "Y", "0": "ZERO"}]})
+
+        await acol.delete_many({})
+        await acol.insert_one({"x": [{"y": "Y", "0": "ZERO"}]})
+
+        assert await acol.distinct(["x", "y"]) == ["Y"]
+        # these expose int-vs-str subtleties (listindex/mapkey issues)
+        assert await acol.distinct(["x", "0"]) == ["ZERO"]
+        assert await acol.distinct(["x", 0]) == [{"y": "Y", "0": "ZERO"}]
+        assert await acol.distinct(["x", "0", "y"]) == []
+        assert await acol.distinct(["x", 0, "y"]) == ["Y"]
+        assert await acol.distinct(["x", "0", "0"]) == []
+        assert await acol.distinct(["x", "0", 0]) == []
+        assert await acol.distinct(["x", 0, "0"]) == ["ZERO"]
+        assert await acol.distinct(["x", 0, 0]) == []
+
+        with pytest.raises(ValueError):
+            await async_empty_collection.distinct(["root", "1", "", "subf"])
+        with pytest.raises(ValueError):
+            await async_empty_collection.distinct(["root", "", "1", "subf"])
+        with pytest.raises(ValueError):
+            await async_empty_collection.distinct(["root", "", "subf", "subsubf"])
+        with pytest.raises(ValueError):
+            await async_empty_collection.distinct(["root", "subf", "", "subsubf"])
 
     @pytest.mark.describe("test of usage of projection in distinct, async")
     async def test_collection_projections_distinct_async(
@@ -775,6 +841,17 @@ class TestCollectionDMLAsync:
             )
         ]
         assert [hit["tag"] for hit in hits] == ["A", "B", "C"]
+
+        with pytest.raises(DataAPIResponseException):
+            [
+                itm
+                async for itm in async_empty_collection.find(
+                    {},
+                    projection=["tag"],
+                    sort={"$vector": q_vector, "tag": SortMode.DESCENDING},
+                    limit=3,
+                )
+            ]
 
         top_doc = await async_empty_collection.find_one({}, sort={"$vector": [1, 0]})
         assert top_doc is not None
@@ -1087,8 +1164,10 @@ class TestCollectionDMLAsync:
         except CollectionInsertManyException as e:
             err2 = e
         assert err2 is not None
-        assert len(err2.error_descriptors) == 1
-        assert err2.partial_result.inserted_ids == [2 * N]
+        assert len(err2.exceptions) == 1
+        assert isinstance(err2.exceptions[0], DataAPIResponseException)
+        assert len(err2.exceptions[0].error_descriptors) == 1
+        assert err2.inserted_ids == [2 * N]
 
         # ordered insertion [good, bad, good_skipped]
         err3: CollectionInsertManyException | None = None
@@ -1100,8 +1179,10 @@ class TestCollectionDMLAsync:
         except CollectionInsertManyException as e:
             err3 = e
         assert err3 is not None
-        assert len(err3.error_descriptors) == 1
-        assert err3.partial_result.inserted_ids == [2 * N + 1]
+        assert len(err3.exceptions) == 1
+        assert isinstance(err3.exceptions[0], DataAPIResponseException)
+        assert len(err3.exceptions[0].error_descriptors) == 1
+        assert err3.inserted_ids == [2 * N + 1]
 
     @pytest.mark.describe("test of collection find_one, async")
     async def test_collection_find_one_async(
@@ -1867,3 +1948,59 @@ class TestCollectionDMLAsync:
             assert del_result.deleted_count == 1
             count = await async_empty_collection.count_documents({}, upper_bound=20)
             assert count == len(types_and_ids) - del_index - 1
+
+    @pytest.mark.describe("test of inserting various data types in a collection, async")
+    async def test_collection_datatype_insertability_async(
+        self,
+        async_empty_collection: DefaultAsyncCollection,
+    ) -> None:
+        d_a_ts = DataAPITimestamp.from_string("1999-11-30T00:00:00.000Z")
+        tz = timezone.utc
+        at_document = {
+            "_id": UUID("1f009012-ff61-646d-8c70-5d87cfbdee0b"),
+            "int": 1,
+            "string": "string",
+            "float": 1.234,
+            "dataapidate": DataAPIDate.from_string("1999-11-30"),
+            "date": date(1999, 11, 30),
+            "dataapitimestamp": d_a_ts,
+            "datetime": d_a_ts.to_datetime(tz=tz),
+            "dataapimap": DataAPIMap([("k", "v")]),
+            "map": {"k": "v"},
+        }
+        at_expected = {
+            **at_document,
+            **{
+                "dataapidate": d_a_ts,
+                "date": d_a_ts,
+                "datetime": d_a_ts,
+                "dataapimap": {"k": "v"},
+            },
+        }
+
+        ior = await async_empty_collection.insert_one(at_document)
+        assert ior.inserted_id == at_document["_id"]
+
+        read_document = await async_empty_collection.find_one({})
+        assert read_document is not None
+        date_checkfields = {"date", "dataapidate"}
+        ok_read = {k: v for k, v in read_document.items() if k not in date_checkfields}
+        ok_expected = {
+            k: v for k, v in at_expected.items() if k not in date_checkfields
+        }
+        assert ok_read == ok_expected
+        # irreducible approximate check on 'just-date' fields
+        assert isinstance(read_document["date"], DataAPITimestamp)
+        assert isinstance(read_document["dataapidate"], DataAPITimestamp)
+        one_day_ms = 1000 * 86400
+        assert (
+            abs(read_document["date"].timestamp_ms - at_expected["date"].timestamp_ms)  # type: ignore[attr-defined]
+            < one_day_ms
+        )
+        assert (
+            abs(
+                read_document["dataapidate"].timestamp_ms
+                - at_expected["dataapidate"].timestamp_ms  # type: ignore[attr-defined]
+            )
+            < one_day_ms
+        )

@@ -12,20 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.data.cursor import (
+from __future__ import annotations
+
+from astrapy.data.cursors.cursor import (
+    AbstractCursor,
+    CursorState,
+)
+from astrapy.data.cursors.farr_cursor import (
+    AsyncCollectionFindAndRerankCursor,
+    CollectionFindAndRerankCursor,
+)
+from astrapy.data.cursors.find_cursor import (
     AsyncCollectionFindCursor,
     AsyncTableFindCursor,
     CollectionFindCursor,
-    FindCursor,
-    FindCursorState,
     TableFindCursor,
 )
+from astrapy.data.cursors.pagination import FindAndRerankPage, FindPage
+from astrapy.data.cursors.reranked_result import RerankedResult
 
 __all__ = [
+    "AbstractCursor",
+    "AsyncCollectionFindAndRerankCursor",
     "AsyncCollectionFindCursor",
     "AsyncTableFindCursor",
+    "CollectionFindAndRerankCursor",
     "CollectionFindCursor",
-    "FindCursorState",
-    "FindCursor",
+    "CursorState",
+    "FindAndRerankPage",
+    "FindPage",
+    "RerankedResult",
     "TableFindCursor",
 ]

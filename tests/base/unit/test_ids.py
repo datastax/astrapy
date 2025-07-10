@@ -27,7 +27,7 @@ from astrapy.data.utils.collection_converters import (
     preprocess_collection_payload,
 )
 from astrapy.ids import UUID, ObjectId
-from astrapy.utils.api_options import FullSerdesOptions
+from astrapy.utils.api_options import SerdesOptions, defaultSerdesOptions
 
 
 @pytest.mark.describe("test of serdes for ids")
@@ -54,26 +54,32 @@ def test_ids_serdes() -> None:
 
     normalized = preprocess_collection_payload(
         full_structure,
-        options=FullSerdesOptions(
-            binary_encode_vectors=True,
-            custom_datatypes_in_reading=True,
-            unroll_iterables_to_lists=True,
-            use_decimals_in_collections=False,
-            accept_naive_datetimes=False,
-            datetime_tzinfo=None,
+        options=defaultSerdesOptions.with_override(
+            SerdesOptions(
+                binary_encode_vectors=True,
+                custom_datatypes_in_reading=True,
+                unroll_iterables_to_lists=True,
+                use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="NEVER",
+                accept_naive_datetimes=False,
+                datetime_tzinfo=None,
+            ),
         ),
     )
     json.dumps(normalized)
     assert normalized is not None
     restored = postprocess_collection_response(
         normalized,
-        options=FullSerdesOptions(
-            binary_encode_vectors=True,
-            custom_datatypes_in_reading=True,
-            unroll_iterables_to_lists=True,
-            use_decimals_in_collections=False,
-            accept_naive_datetimes=False,
-            datetime_tzinfo=None,
+        options=defaultSerdesOptions.with_override(
+            SerdesOptions(
+                binary_encode_vectors=True,
+                custom_datatypes_in_reading=True,
+                unroll_iterables_to_lists=True,
+                use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="NEVER",
+                accept_naive_datetimes=False,
+                datetime_tzinfo=None,
+            ),
         ),
     )
     assert restored == full_structure

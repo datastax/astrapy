@@ -20,13 +20,14 @@ import pytest
 
 from astrapy.api_options import APIOptions, SerdesOptions
 from astrapy.constants import SortMode
-from astrapy.cursors import FindCursorState
+from astrapy.cursors import CursorState
 from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import CursorException
 
 from ..conftest import DefaultAsyncTable
 
 NUM_ROWS = 25  # keep this between 20 and 39
+NUM_DOCS_PAGINATION = 90  # keep this above 2 * (2 * 20) and below 2 * (3 * 20)
 
 
 @pytest.fixture
@@ -46,6 +47,24 @@ async def filled_composite_atable(
     return async_empty_table_composite
 
 
+@pytest.fixture
+async def filled_pagination_composite_atable(
+    async_empty_table_composite: DefaultAsyncTable,
+) -> DefaultAsyncTable:
+    await async_empty_table_composite.insert_many(
+        [
+            {
+                "p_text": "pA",
+                "p_int": i,
+                "p_boolean": i % 2 == 0,
+                "p_vector": DataAPIVector([i, 1, 0]),
+            }
+            for i in range(NUM_DOCS_PAGINATION)
+        ]
+    )
+    return async_empty_table_composite
+
+
 class TestTableCursorSync:
     @pytest.mark.describe("test of an IDLE table cursors properties, async")
     async def test_table_cursors_idle_properties_async(
@@ -53,7 +72,7 @@ class TestTableCursorSync:
         filled_composite_atable: DefaultAsyncTable,
     ) -> None:
         cur = filled_composite_atable.find()
-        assert cur.state == FindCursorState.IDLE
+        assert cur.state == CursorState.IDLE
 
         assert cur.data_source == filled_composite_atable
 
@@ -65,7 +84,7 @@ class TestTableCursorSync:
         toclose = cur.clone()
         toclose.close()
         toclose.close()
-        assert toclose.state == FindCursorState.CLOSED
+        assert toclose.state == CursorState.CLOSED
         with pytest.raises(CursorException):
             async for row in toclose:
                 pass
@@ -77,7 +96,7 @@ class TestTableCursorSync:
             await toclose.to_list()
 
         cur.rewind()
-        assert cur.state == FindCursorState.IDLE
+        assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
         assert cur.buffered_count == 0
 
@@ -102,19 +121,19 @@ class TestTableCursorSync:
         cur0 = filled_composite_atable.find()
         cur0.close()
         cur0.rewind()
-        assert cur0.state == FindCursorState.IDLE
+        assert cur0.state == CursorState.IDLE
 
         cur1 = filled_composite_atable.find()
         assert cur1.consumed == 0
         [None async for _ in cur1]
-        assert cur1.state == FindCursorState.CLOSED
+        assert cur1.state == CursorState.CLOSED
         assert cur1.consume_buffer(2) == []
         assert cur1.consumed == NUM_ROWS
         assert cur1.buffered_count == 0
         cloned = cur1.clone()
         assert cloned.consumed == 0
         assert cloned.buffered_count == 0
-        assert cloned.state == FindCursorState.IDLE
+        assert cloned.state == CursorState.IDLE
 
         with pytest.raises(CursorException):
             cur1.filter({"c": True})
@@ -177,28 +196,28 @@ class TestTableCursorSync:
         filled_composite_atable: DefaultAsyncTable,
     ) -> None:
         cur = filled_composite_atable.find()
-        assert cur.state == FindCursorState.IDLE
+        assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
         assert cur.has_next()
-        assert cur.state == FindCursorState.IDLE
+        assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
         [None async for _ in cur]
         assert cur.consumed == NUM_ROWS
-        assert cur.state == FindCursorState.CLOSED  # type: ignore[comparison-overlap]
+        assert cur.state == CursorState.CLOSED  # type: ignore[comparison-overlap]
 
         curmf = filled_composite_atable.find()
         await curmf.__anext__()
         await curmf.__anext__()
         assert curmf.consumed == 2
-        assert curmf.state == FindCursorState.STARTED
+        assert curmf.state == CursorState.STARTED
         assert await curmf.has_next()
         assert curmf.consumed == 2
-        assert curmf.state == FindCursorState.STARTED
+        assert curmf.state == CursorState.STARTED
         for _ in range(18):
             await curmf.__anext__()
         assert await curmf.has_next()
         assert curmf.consumed == 20
-        assert curmf.state == FindCursorState.STARTED
+        assert curmf.state == CursorState.STARTED
         assert curmf.buffered_count == NUM_ROWS - 20
 
         cur0 = filled_composite_atable.find()
@@ -223,7 +242,7 @@ class TestTableCursorSync:
         for _ in range(12):
             await cur.__anext__()
         cur.close()
-        assert cur.state == FindCursorState.CLOSED
+        assert cur.state == CursorState.CLOSED
         assert cur.buffered_count == 0
         assert cur.consumed == 12
         # rewind test
@@ -269,9 +288,9 @@ class TestTableCursorSync:
         rwcur.rewind()
         assert await rwcur.__anext__() == mints[0]
 
-        # clone strips the mapping
+        # clone rewinds
         cl_unmapped = rwcur.clone()
-        assert await cl_unmapped.__anext__() == base_rows[0]
+        assert await cl_unmapped.__anext__() == mint(base_rows[0])
 
     @pytest.mark.describe("test of table cursors, for_each and to_list, async")
     async def test_table_cursors_collective_methods_async(
@@ -283,14 +302,14 @@ class TestTableCursorSync:
         # full to_list
         tl_cur = filled_composite_atable.find()
         assert await tl_cur.to_list() == base_rows
-        assert tl_cur.state == FindCursorState.CLOSED
+        assert tl_cur.state == CursorState.CLOSED
 
         # partially-consumed to_list
         ptl_cur = filled_composite_atable.find()
         for _ in range(15):
             await ptl_cur.__anext__()
         assert await ptl_cur.to_list() == base_rows[15:]
-        assert ptl_cur.state == FindCursorState.CLOSED
+        assert ptl_cur.state == CursorState.CLOSED
 
         # mapped to_list
 
@@ -301,7 +320,7 @@ class TestTableCursorSync:
         for _ in range(13):
             await mtl_cur.__anext__()
         assert await mtl_cur.to_list() == [mint(row) for row in base_rows[13:]]
-        assert mtl_cur.state == FindCursorState.CLOSED
+        assert mtl_cur.state == CursorState.CLOSED
 
         # full for_each
         accum0: list[dict[str, Any]] = []
@@ -312,7 +331,7 @@ class TestTableCursorSync:
         fe_cur = filled_composite_atable.find()
         await fe_cur.for_each(marker0)
         assert accum0 == base_rows
-        assert fe_cur.state == FindCursorState.CLOSED
+        assert fe_cur.state == CursorState.CLOSED
 
         # full for_each, coroutine
         aaccum0: list[dict[str, Any]] = []
@@ -326,7 +345,7 @@ class TestTableCursorSync:
         afe_cur = filled_composite_atable.find()
         await afe_cur.for_each(amarker0)
         assert aaccum0 == base_rows
-        assert afe_cur.state == FindCursorState.CLOSED
+        assert afe_cur.state == CursorState.CLOSED
 
         # partially-consumed for_each
         accum1: list[dict[str, Any]] = []
@@ -339,7 +358,7 @@ class TestTableCursorSync:
             await pfe_cur.__anext__()
         await pfe_cur.for_each(marker1)
         assert accum1 == base_rows[11:]
-        assert pfe_cur.state == FindCursorState.CLOSED
+        assert pfe_cur.state == CursorState.CLOSED
 
         # partially-consumed for_each, coroutine
         aaccum1: list[dict[str, Any]] = []
@@ -355,7 +374,7 @@ class TestTableCursorSync:
             await apfe_cur.__anext__()
         await apfe_cur.for_each(amarker1)
         assert aaccum1 == base_rows[11:]
-        assert apfe_cur.state == FindCursorState.CLOSED
+        assert apfe_cur.state == CursorState.CLOSED
 
         # mapped for_each
         accum2: list[int] = []
@@ -368,7 +387,7 @@ class TestTableCursorSync:
             await mfe_cur.__anext__()
         await mfe_cur.for_each(marker2)
         assert accum2 == [mint(row) for row in base_rows[17:]]
-        assert mfe_cur.state == FindCursorState.CLOSED
+        assert mfe_cur.state == CursorState.CLOSED
 
         # mapped for_each, coroutine
         aaccum2: list[int] = []
@@ -384,7 +403,7 @@ class TestTableCursorSync:
             await amfe_cur.__anext__()
         await amfe_cur.for_each(amarker2)
         assert aaccum2 == [mint(row) for row in base_rows[17:]]
-        assert amfe_cur.state == FindCursorState.CLOSED
+        assert amfe_cur.state == CursorState.CLOSED
 
         # breaking (early) for_each
         accum3: list[dict[str, Any]] = []
@@ -396,7 +415,7 @@ class TestTableCursorSync:
         bfe_cur = filled_composite_atable.find()
         await bfe_cur.for_each(marker3)
         assert accum3 == base_rows[:5]
-        assert bfe_cur.state == FindCursorState.STARTED
+        assert bfe_cur.state == CursorState.STARTED
         bfe_another = await bfe_cur.__anext__()
         assert bfe_another == base_rows[5]
 
@@ -413,7 +432,7 @@ class TestTableCursorSync:
         abfe_cur = filled_composite_atable.find()
         await abfe_cur.for_each(amarker3)
         assert aaccum3 == base_rows[:5]
-        assert abfe_cur.state == FindCursorState.STARTED
+        assert abfe_cur.state == CursorState.STARTED
         abfe_another = await abfe_cur.__anext__()
         assert abfe_another == base_rows[5]
 
@@ -427,7 +446,7 @@ class TestTableCursorSync:
         nbfe_cur = filled_composite_atable.find()
         await nbfe_cur.for_each(marker4)  # type: ignore[arg-type]
         assert accum4 == base_rows
-        assert nbfe_cur.state == FindCursorState.CLOSED
+        assert nbfe_cur.state == CursorState.CLOSED
 
         # nonbool-nonbreaking for_each, coroutine
         aaccum4: list[dict[str, Any]] = []
@@ -442,7 +461,7 @@ class TestTableCursorSync:
         anbfe_cur = filled_composite_atable.find()
         await anbfe_cur.for_each(amarker4)  # type: ignore[arg-type]
         assert aaccum4 == base_rows
-        assert anbfe_cur.state == FindCursorState.CLOSED
+        assert anbfe_cur.state == CursorState.CLOSED
 
     @pytest.mark.describe("test of table cursors, serdes options obeyance, async")
     async def test_table_cursors_serdes_options_async(
@@ -466,3 +485,134 @@ class TestTableCursorSync:
         custom_rows = await custom_compo_table.find({}).to_list()
         assert len(custom_rows) == NUM_ROWS
         assert all(isinstance(crow["p_vector"], DataAPIVector) for crow in custom_rows)
+
+    @pytest.mark.describe("test of table cursors, initial_page_state, async")
+    async def test_table_cursors_initialpagestate_async(
+        self,
+        filled_pagination_composite_atable: DefaultAsyncTable,
+    ) -> None:
+        page_size = 20
+
+        cur0 = filled_pagination_composite_atable.find(filter={"p_boolean": True})
+        ids0: list[int] = []
+        for _ in range(page_size):
+            doc = await cur0.__anext__()
+            ids0.append(doc["p_int"])
+        nps0 = cur0._next_page_state
+        assert isinstance(nps0, str)
+
+        cur1 = filled_pagination_composite_atable.find(
+            filter={"p_boolean": True},
+            initial_page_state=nps0,
+        )
+        ids1: list[int] = []
+        for _ in range(page_size):
+            doc = await cur1.__anext__()
+            ids1.append(doc["p_int"])
+        nps1 = cur1._next_page_state
+        assert isinstance(nps1, str)
+
+        cur2 = filled_pagination_composite_atable.find(
+            filter={"p_boolean": True},
+            initial_page_state=nps1,
+        )
+        ids2 = [doc["p_int"] async for doc in cur2]
+        assert cur2._next_page_state is None
+
+        expected_ids = [i for i in range(NUM_DOCS_PAGINATION) if i % 2 == 0]
+        retrieved_ids = ids0 + ids1 + ids2
+        assert len(retrieved_ids) == len(set(retrieved_ids))
+        assert sorted(retrieved_ids) == expected_ids
+
+        # rewind behaviour
+        cur2.rewind()
+        cur2.rewind(initial_page_state="some string")
+        with pytest.raises(ValueError, match="null"):
+            cur2.rewind(initial_page_state=None)  # type: ignore[arg-type]
+
+    @pytest.mark.describe("test of table cursors, fetch_next_page, async")
+    async def test_table_cursors_fetchnextpage_async(
+        self,
+        filled_pagination_composite_atable: DefaultAsyncTable,
+    ) -> None:
+        cur0 = filled_pagination_composite_atable.find(filter={"p_boolean": True})
+        page0 = await cur0.fetch_next_page()
+        ids0 = [doc["p_int"] for doc in page0.results]
+        nps0 = page0.next_page_state
+        assert isinstance(nps0, str)
+
+        cur1 = filled_pagination_composite_atable.find(
+            filter={"p_boolean": True},
+            initial_page_state=nps0,
+        )
+        page1 = await cur1.fetch_next_page()
+        ids1 = [doc["p_int"] for doc in page1.results]
+        nps1 = page1.next_page_state
+        assert isinstance(nps1, str)
+
+        cur2 = filled_pagination_composite_atable.find(
+            filter={"p_boolean": True},
+            initial_page_state=nps1,
+        )
+        page2 = await cur2.fetch_next_page()
+        ids2 = [doc["p_int"] for doc in page2.results]
+        assert page2.next_page_state is None
+
+        expected_ids = [i for i in range(NUM_DOCS_PAGINATION) if i % 2 == 0]
+        retrieved_ids = ids0 + ids1 + ids2
+        assert len(retrieved_ids) == len(set(retrieved_ids))
+        assert sorted(retrieved_ids) == expected_ids
+
+        # fetching consecutive pages on a given cursor
+        cur0x = filled_pagination_composite_atable.find(filter={"p_boolean": True})
+        await cur0x.fetch_next_page()
+        page1x = await cur0x.fetch_next_page()
+        assert page1x == page1
+
+        # forbidden: mixing pagination and ordinary usage
+        await cur0x.__anext__()
+        with pytest.raises(CursorException):
+            await cur0x.fetch_next_page()
+        await cur0x.to_list()
+        with pytest.raises(CursorException):
+            await cur0x.fetch_next_page()
+
+        # mapping
+        cur0y = filled_pagination_composite_atable.find(filter={"p_boolean": True}).map(
+            lambda doc: doc["p_int"]
+        )
+        page0y = await cur0y.fetch_next_page()
+        assert page0y.results == ids0
+
+        # vector ANN one-page behaviour re: include_sort_vector and its format
+        table_noncustom = filled_pagination_composite_atable.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=False),
+            )
+        )
+        table_custom = filled_pagination_composite_atable.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=True),
+            )
+        )
+
+        vcur0_nc = table_noncustom.find(
+            sort={"p_vector": [1, 1, 1]},
+            include_sort_vector=True,
+            limit=15,
+        )
+        vpage0_nc = await vcur0_nc.fetch_next_page()
+        assert vpage0_nc.next_page_state is None
+        assert len(vpage0_nc.results) == 15
+        assert isinstance(vpage0_nc.sort_vector, list)
+        assert not isinstance(vpage0_nc.sort_vector, DataAPIVector)
+
+        vcur0_c = table_custom.find(
+            sort={"p_vector": [1, 1, 1]},
+            include_sort_vector=True,
+            limit=15,
+        )
+        vpage0_c = await vcur0_c.fetch_next_page()
+        assert vpage0_c.next_page_state is None
+        assert len(vpage0_c.results) == 15
+        assert isinstance(vpage0_c.sort_vector, DataAPIVector)

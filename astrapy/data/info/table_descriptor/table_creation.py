@@ -22,12 +22,17 @@ from astrapy.data.info.table_descriptor.table_columns import (
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
+    TableUDTColumnDescriptor,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
 )
 from astrapy.data.info.vectorize import VectorServiceOptions
 from astrapy.data.utils.table_types import (
     ColumnType,
+    TableKeyValuedColumnType,
+    TableUDTColumnType,
+    TableValuedColumnType,
+    TableVectorColumnType,
 )
 from astrapy.utils.parsing import _warn_residual_keys
 
@@ -49,7 +54,7 @@ class CreateTableDefinition:
         columns: a map from column names to their type definition object.
         primary_key: a specification of the primary key for the table.
 
-    Example:
+    Examples:
         >>> from astrapy.constants import SortMode
         >>> from astrapy.info import (
         ...     CreateTableDefinition,
@@ -133,6 +138,83 @@ class CreateTableDefinition:
         True
         >>> table_definition_2 == table_definition
         True
+
+        >>> # Assume there is a user-defined type (UDT) called "my_udt" (see
+        >>> # `CreateTypeDefinition` and database `create_type` method for details).
+        >>> # The expressions below result in the exact same table definition:
+        >>> from astrapy.info import (
+        ...     ColumnType,
+        ...     CreateTableDefinition,
+        ...     TablePrimaryKeyDescriptor,
+        ...     TableScalarColumnTypeDescriptor,
+        ...     TableUDTColumnDescriptor,
+        ...     TableValuedColumnType,
+        ...     TableValuedColumnTypeDescriptor,
+        ... )
+        >>>
+        >>> udt_tabledefinition = (
+        ...     CreateTableDefinition.builder()
+        ...     .add_scalar_column("id", "text")
+        ...     .add_userdefinedtype_column("udt_col", udt_name="my_udt")
+        ...     .add_set_column(
+        ...         "set_udt_col",
+        ...         value_type={"type": "userDefined", "udtName": "my_udt"},
+        ...     )
+        ...     .add_partition_by(["id"])
+        ...     .build()
+        ... )
+        >>>
+        >>> udt_tabledefinition_1 = CreateTableDefinition(
+        ...     columns={
+        ...         "id": TableScalarColumnTypeDescriptor(ColumnType.TEXT),
+        ...         "udt_col": TableUDTColumnDescriptor(
+        ...             udt_name="my_udt",
+        ...         ),
+        ...         "set_udt_col": TableValuedColumnTypeDescriptor(
+        ...             column_type=TableValuedColumnType.SET,
+        ...             value_type=TableUDTColumnDescriptor(
+        ...                 udt_name="my_udt",
+        ...             ),
+        ...         ),
+        ...     },
+        ...     primary_key=TablePrimaryKeyDescriptor(
+        ...         partition_by=["id"],
+        ...         partition_sort={},
+        ...     )
+        ... )
+        >>>
+        >>> udt_tabledefinition_2 = CreateTableDefinition.coerce(
+        ...     {
+        ...         "columns": {
+        ...             "id": {
+        ...                 "type": "text",
+        ...             },
+        ...             "udt_col": {
+        ...                 "type": "userDefined",
+        ...                 "udtName": "my_udt",
+        ...             },
+        ...             "set_udt_col": {
+        ...                 "type": "set",
+        ...                 "valueType": {
+        ...                     "type": "userDefined",
+        ...                     "udtName": "my_udt",
+        ...                 },
+        ...             },
+        ...         },
+        ...         "primaryKey": {
+        ...             "partitionBy": [
+        ...                 "id",
+        ...             ],
+        ...             "partitionSort": {},
+        ...         },
+        ...     },
+        ... )
+        >>>
+        >>> # The three created objects are exactly identical:
+        >>> udt_tabledefinition_2 == udt_tabledefinition_1
+        True
+        >>> udt_tabledefinition_2 == udt_tabledefinition
+        True
     """
 
     columns: dict[str, TableColumnTypeDescriptor]
@@ -156,7 +238,7 @@ class CreateTableDefinition:
             k: v
             for k, v in {
                 "columns": {
-                    col_n: col_v.as_dict() for col_n, col_v in self.columns.items()
+                    col_n: col_v.as_spec() for col_n, col_v in self.columns.items()
                 },
                 "primaryKey": self.primary_key.as_dict(),
             }.items()
@@ -277,7 +359,9 @@ class CreateTableDefinition:
         return self.add_scalar_column(column_name=column_name, column_type=column_type)
 
     def add_set_column(
-        self, column_name: str, value_type: str | ColumnType
+        self,
+        column_name: str,
+        value_type: str | dict[Any, str] | ColumnType | TableColumnTypeDescriptor,
     ) -> CreateTableDefinition:
         """
         Return a new table definition object with an added column
@@ -288,8 +372,10 @@ class CreateTableDefinition:
 
         Args:
             column_name: the name of the new column to add to the definition.
-            value_type: a string, or a `ColumnType` value, defining
-                the data type for the items in the set.
+            value_type: the type of the individual items stored in the set.
+                This is a `TableColumnTypeDescriptor`, but when creating the object,
+                equivalent dictionaries, as well as strings such as "TEXT" or "UUID"
+                or ColumnType entries, are also accepted.
 
         Returns:
             a CreateTableDefinition obtained by adding (or replacing) the desired
@@ -301,7 +387,7 @@ class CreateTableDefinition:
                 **self.columns,
                 **{
                     column_name: TableValuedColumnTypeDescriptor(
-                        column_type="set", value_type=value_type
+                        column_type=TableValuedColumnType.SET, value_type=value_type
                     )
                 },
             },
@@ -309,7 +395,9 @@ class CreateTableDefinition:
         )
 
     def add_list_column(
-        self, column_name: str, value_type: str | ColumnType
+        self,
+        column_name: str,
+        value_type: str | dict[Any, str] | ColumnType | TableColumnTypeDescriptor,
     ) -> CreateTableDefinition:
         """
         Return a new table definition object with an added column
@@ -320,8 +408,10 @@ class CreateTableDefinition:
 
         Args:
             column_name: the name of the new column to add to the definition.
-            value_type: a string, or a `ColumnType` value, defining
-                the data type for the items in the list.
+            value_type: the type of the individual items stored in the set.
+                This is a `TableColumnTypeDescriptor`, but when creating the object,
+                equivalent dictionaries, as well as strings such as "TEXT" or "UUID"
+                or ColumnType entries, are also accepted.
 
         Returns:
             a CreateTableDefinition obtained by adding (or replacing) the desired
@@ -333,7 +423,7 @@ class CreateTableDefinition:
                 **self.columns,
                 **{
                     column_name: TableValuedColumnTypeDescriptor(
-                        column_type="list", value_type=value_type
+                        column_type=TableValuedColumnType.LIST, value_type=value_type
                     )
                 },
             },
@@ -343,8 +433,8 @@ class CreateTableDefinition:
     def add_map_column(
         self,
         column_name: str,
-        key_type: str | ColumnType,
-        value_type: str | ColumnType,
+        key_type: str | dict[Any, str] | ColumnType | TableColumnTypeDescriptor,
+        value_type: str | dict[Any, str] | ColumnType | TableColumnTypeDescriptor,
     ) -> CreateTableDefinition:
         """
         Return a new table definition object with an added column
@@ -355,10 +445,15 @@ class CreateTableDefinition:
 
         Args:
             column_name: the name of the new column to add to the definition.
-            key_type: a string, or a `ColumnType` value, defining
-                the data type for the keys in the map.
-            value_type: a string, or a `ColumnType` value, defining
-                the data type for the values in the map.
+            key_type: the type of the individual keys in the map column.
+                This is a `TableColumnTypeDescriptor`, but when creating the object,
+                equivalent dictionaries, as well as strings such as "TEXT" or "UUID"
+                or ColumnType entries, are also accepted. Using a column type not
+                eligible to be a key will return a Data API error.
+            value_type: the type of the individual items stored in the column.
+                This is a `TableColumnTypeDescriptor`, but when creating the object,
+                equivalent dictionaries, as well as strings such as "TEXT" or "UUID"
+                or ColumnType entries, are also accepted.
 
         Returns:
             a CreateTableDefinition obtained by adding (or replacing) the desired
@@ -370,7 +465,9 @@ class CreateTableDefinition:
                 **self.columns,
                 **{
                     column_name: TableKeyValuedColumnTypeDescriptor(
-                        column_type="map", key_type=key_type, value_type=value_type
+                        column_type=TableKeyValuedColumnType.MAP,
+                        key_type=key_type,
+                        value_type=value_type,
                     )
                 },
             },
@@ -413,9 +510,43 @@ class CreateTableDefinition:
                 **self.columns,
                 **{
                     column_name: TableVectorColumnTypeDescriptor(
-                        column_type="vector",
+                        column_type=TableVectorColumnType.VECTOR,
                         dimension=dimension,
                         service=VectorServiceOptions.coerce(service),
+                    )
+                },
+            },
+            primary_key=self.primary_key,
+        )
+
+    def add_userdefinedtype_column(
+        self,
+        column_name: str,
+        udt_name: str,
+    ) -> CreateTableDefinition:
+        """
+        Return a new table definition object with an added column
+        of 'user defined' type (UDT). This method is for use within the
+        fluent interface for progressively building a complete table definition.
+
+        See the class docstring for a full example on using the fluent interface.
+
+        Args:
+            column_name: the name of the new column to add to the definition.
+            udt_name: the name of the user-defined type for this column.
+
+        Returns:
+            a CreateTableDefinition obtained by adding (or replacing) the desired
+            column to this table definition.
+        """
+
+        return CreateTableDefinition(
+            columns={
+                **self.columns,
+                **{
+                    column_name: TableUDTColumnDescriptor(
+                        column_type=TableUDTColumnType.USERDEFINED,
+                        udt_name=udt_name,
                     )
                 },
             },

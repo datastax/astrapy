@@ -22,7 +22,7 @@ import toml
 
 def get_version() -> str:
     try:
-        # Poetry will create a __version__ attribute in the package's __init__.py file
+        # Expect a __version__ attribute in the package's __init__.py file
         return importlib.metadata.version(__package__)
 
     # If the package is not installed, we can still get the version from the pyproject.toml file
@@ -31,15 +31,15 @@ def get_version() -> str:
         dir_path = os.path.dirname(os.path.realpath(__file__))
         pyproject_path = os.path.join(dir_path, "..", "pyproject.toml")
 
-        # Read the pyproject.toml file and get the version from the poetry section
+        # Read the pyproject.toml file and get the version from the appropriate section
         try:
             with open(pyproject_path, encoding="utf-8") as pyproject:
                 # Load the pyproject.toml file as a dictionary
                 file_contents = pyproject.read()
                 pyproject_data = toml.loads(file_contents)
 
-                # Return the version from the poetry section
-                return str(pyproject_data["tool"]["poetry"]["version"])
+                # Return the version from the 'project' section
+                return str(pyproject_data["tool"]["project"]["version"])
 
         # If the pyproject.toml file does not exist or the version is not found, return unknown
         except (FileNotFoundError, KeyError):

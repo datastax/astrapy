@@ -26,9 +26,7 @@ from astrapy.exceptions.collection_exceptions import (
     TooManyDocumentsToCountException,
 )
 from astrapy.exceptions.data_api_exceptions import (
-    CumulativeOperationException,
     CursorException,
-    DataAPIDetailedErrorDescriptor,
     DataAPIErrorDescriptor,
     DataAPIException,
     DataAPIHttpException,
@@ -250,7 +248,7 @@ def _first_valid_timeout(
         return 0, None
 
 
-class InvalidEnvironmentException(ValueError):
+class InvalidEnvironmentException(Exception):
     """
     An operation was attempted, that is not available on the specified
     environment. For example, trying to get an AstraDBAdmin from a client
@@ -513,7 +511,6 @@ __all__ = [
     "UnexpectedDevOpsAPIResponseException",
     "DevOpsAPIResponseException",
     "DataAPIErrorDescriptor",
-    "DataAPIDetailedErrorDescriptor",
     "DataAPIException",
     "DataAPIHttpException",
     "DataAPITimeoutException",
@@ -524,13 +521,11 @@ __all__ = [
     "CollectionInsertManyException",
     "CollectionDeleteManyException",
     "CollectionUpdateManyException",
-    "CumulativeOperationException",
     "MultiCallTimeoutManager",
     "TooManyRowsToCountException",
     "TableInsertManyException",
 ]
 
 __pdoc__ = {
-    "to_dataapi_timeout_exception": False,
     "MultiCallTimeoutManager": False,
 }

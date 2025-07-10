@@ -19,14 +19,12 @@ from typing import Any
 import pytest
 
 from astrapy import Database
-from astrapy.api_options import APIOptions, SerdesOptions
 from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import CollectionInsertManyException, DataAPIResponseException
 from astrapy.info import CollectionDefinition
 
 from ..conftest import (
     HEADER_EMBEDDING_API_KEY_OPENAI,
-    IS_ASTRA_DB,
     DefaultCollection,
 )
 
@@ -45,19 +43,11 @@ class TestCollectionVectorizeMethodsSync:
         col = sync_empty_service_collection
         service_vector_dimension = service_collection_parameters["dimension"]
 
-        # TODO we lift storage of binencoded vectors on nonAstra because docker image
-        # 1.0.20-ct1 does not have fix 1738 yet (long nonindexed binenc strings)
-        binencoptions = APIOptions(
-            serdes_options=SerdesOptions(binary_encode_vectors=IS_ASTRA_DB)
-        )
-
         col.insert_one({"t": "tower", "$vectorize": "How high is this tower?"})
         col.insert_one({"t": "vectorless"})
-        col.with_options(api_options=binencoptions).insert_one(
-            {"t": "vectorful", "$vector": [0.01] * service_vector_dimension}
-        )
+        col.insert_one({"t": "vectorful", "$vector": [0.01] * service_vector_dimension})
 
-        col.with_options(api_options=binencoptions).insert_many(
+        col.insert_many(
             [
                 {
                     "t": "guide",
@@ -122,7 +112,8 @@ class TestCollectionVectorizeMethodsSync:
             projection={"$vector": False},
         )
         assert udoc is not None
-        assert udoc["t"] == "guide"
+        # TODO: re-enable after CNDB #14524 is merged/deployed
+        # assert udoc["t"] == "guide"
 
         u1res = col.update_one(
             {},
@@ -137,7 +128,8 @@ class TestCollectionVectorizeMethodsSync:
             projection={"$vector": False},
         )
         assert ddoc is not None
-        assert ddoc["t"] == "seeds"
+        # TODO: re-enable after CNDB #14524 is merged/deployed
+        # assert ddoc["t"] == "seeds"
 
         d1res = col.delete_one(
             {},
@@ -254,7 +246,7 @@ class TestCollectionVectorizeMethodsSync:
         except CollectionInsertManyException as e:
             err = e
         assert err is not None
-        assert err.partial_result.inserted_ids == []
+        assert err.inserted_ids == []
 
     @pytest.mark.describe(
         "test of database create_collection dimension-mismatch failure, sync"

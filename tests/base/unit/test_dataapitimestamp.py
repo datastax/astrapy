@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import datetime
+import pickle
 
 import pytest
 
@@ -322,3 +323,8 @@ class TestDataAPITimestamp:
             dapi_ts = DataAPITimestamp(test_ms)
             dapi_ts2 = DataAPITimestamp.from_string(dapi_ts.to_string())
             assert dapi_ts == dapi_ts2
+
+    @pytest.mark.describe("test pickling of DataAPITimestamp")
+    def test_dataapitimestamp_pickle(self) -> None:
+        the_timestamp = DataAPITimestamp(1234567890)
+        assert pickle.loads(pickle.dumps(the_timestamp)) == the_timestamp

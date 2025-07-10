@@ -15,8 +15,23 @@
 from __future__ import annotations
 
 import warnings
+from functools import wraps
+from typing import Callable, TypeVar
 
 from deprecation import DeprecatedWarning
+from typing_extensions import ParamSpec  # compatible with pre-3.10 Python
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+BETA_WARNING_TEMPLATE = (
+    "Method '{method_name}' is in beta and might undergo signature "
+    "or behaviour changes in the future."
+)
+
+
+class BetaFeatureWarning(UserWarning):
+    pass
 
 
 def check_deprecated_alias(
@@ -54,3 +69,46 @@ def check_deprecated_alias(
                 "(a deprecated alias for the former) cannot be passed at the same time."
             )
             raise ValueError(msg)
+
+
+def deprecated_property(
+    new_name: str, deprecated_in: str, removed_in: str
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    """
+    Decorator for a @property that is a deprecated alias for attribute 'new_name'.
+    """
+
+    def _deprecator(method: Callable[P, R]) -> Callable[P, R]:
+        @wraps(method)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            the_warning = DeprecatedWarning(
+                f"Property '{method.__name__}'",
+                deprecated_in=deprecated_in,
+                removed_in=removed_in,
+                details=f"Please use '{new_name}' instead.",
+            )
+            warnings.warn(
+                the_warning,
+                stacklevel=2,
+            )
+            return method(*args, **kwargs)
+
+        return wrapper
+
+    return _deprecator
+
+
+def beta_method(method: Callable[P, R]) -> Callable[P, R]:
+    @wraps(method)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        beta_warning_message = BETA_WARNING_TEMPLATE.format(
+            method_name=method.__qualname__
+        )
+        warnings.warn(
+            beta_warning_message,
+            BetaFeatureWarning,
+            stacklevel=2,
+        )
+        return method(*args, **kwargs)
+
+    return wrapper

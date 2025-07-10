@@ -26,7 +26,10 @@ from astrapy.info import (
     CollectionDefaultIDOptions,
     CollectionDefinition,
     CollectionDescriptor,
+    CollectionLexicalOptions,
+    CollectionRerankOptions,
     CollectionVectorOptions,
+    RerankServiceOptions,
 )
 
 from ..conftest import (
@@ -90,6 +93,19 @@ class TestCollectionDDLAsync:
         )
         lc_response = await async_database.list_collections()
         #
+        rerank_lexical_portion = {
+            "rerank": {
+                "enabled": True,
+                "service": {
+                    "provider": "nvidia",
+                    "modelName": "nvidia/llama-3.2-nv-rerankqa-1b-v2",
+                },
+            },
+            "lexical": {
+                "enabled": True,
+                "analyzer": "standard",
+            },
+        }
         expected_coll_descriptor = CollectionDescriptor._from_dict(
             {
                 "name": TEST_LOCAL_COLLECTION_NAME,
@@ -100,6 +116,7 @@ class TestCollectionDDLAsync:
                         "sourceModel": "other",
                     },
                     "indexing": {"deny": ["a", "b", "c"]},
+                    **rerank_lexical_portion,
                 },
             },
         )
@@ -108,6 +125,7 @@ class TestCollectionDDLAsync:
                 "name": TEST_LOCAL_COLLECTION_NAME_B,
                 "options": {
                     "indexing": {"allow": ["z"]},
+                    **rerank_lexical_portion,
                 },
             },
         )
@@ -460,3 +478,96 @@ class TestCollectionDDLAsync:
         assert db_m.keyspace == "M"
         db_n = db_admin.get_async_database()
         assert isinstance(db_n.keyspace, str)  # i.e. resolution took place
+
+    @pytest.mark.describe("test of collection find-and-rerank lifecycle, async")
+    async def test_collection_farr_lifecycle_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        try:
+            TEST_FARR_COLLECTION_NAME = "test_farr_coll"
+            col1 = await async_database.create_collection(
+                TEST_FARR_COLLECTION_NAME,
+                definition=CollectionDefinition(
+                    vector=CollectionVectorOptions(
+                        dimension=10,
+                        metric=VectorMetric.EUCLIDEAN,
+                    ),
+                    rerank=CollectionRerankOptions(
+                        service=RerankServiceOptions(
+                            provider="nvidia",
+                            model_name="nvidia/llama-3.2-nv-rerankqa-1b-v2",
+                        ),
+                    ),
+                    lexical=CollectionLexicalOptions(
+                        analyzer="STANDARD",
+                    ),
+                ),
+            )
+            # test other creation methods (no-op since just created)
+            col1_dict = await async_database.create_collection(
+                TEST_FARR_COLLECTION_NAME,
+                definition={
+                    "vector": {
+                        "dimension": 10,
+                        "metric": VectorMetric.EUCLIDEAN,
+                    },
+                    "rerank": {
+                        "enabled": True,
+                        "service": {
+                            "provider": "nvidia",
+                            "modelName": "nvidia/llama-3.2-nv-rerankqa-1b-v2",
+                        },
+                    },
+                    "lexical": {
+                        "enabled": True,
+                        "analyzer": "STANDARD",
+                    },
+                },
+            )
+            assert col1_dict == col1
+            fluent_definition1 = (
+                CollectionDefinition.builder()
+                .set_vector_dimension(10)
+                .set_vector_metric(VectorMetric.EUCLIDEAN)
+                .set_rerank("nvidia", "nvidia/llama-3.2-nv-rerankqa-1b-v2")
+                .set_lexical("STANDARD")
+                .build()
+            )
+            col1_fluent = await async_database.create_collection(
+                TEST_FARR_COLLECTION_NAME,
+                definition=fluent_definition1,
+            )
+            assert col1_fluent == col1
+
+            lc_response = await async_database.list_collections()
+
+            expected_coll_descriptor = CollectionDescriptor._from_dict(
+                {
+                    "name": TEST_FARR_COLLECTION_NAME,
+                    "options": {
+                        "vector": {
+                            "dimension": 10,
+                            "metric": "euclidean",
+                            "sourceModel": "other",
+                        },
+                        "rerank": {
+                            "enabled": True,
+                            "service": {
+                                "provider": "nvidia",
+                                "modelName": "nvidia/llama-3.2-nv-rerankqa-1b-v2",
+                            },
+                        },
+                        "lexical": {
+                            "enabled": True,
+                            "analyzer": "STANDARD",
+                        },
+                    },
+                },
+            )
+            assert expected_coll_descriptor in lc_response
+
+            col2 = async_database.get_collection(TEST_FARR_COLLECTION_NAME)
+            assert col1 == col2
+        finally:
+            await async_database.drop_collection(TEST_FARR_COLLECTION_NAME)

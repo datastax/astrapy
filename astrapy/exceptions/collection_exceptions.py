@@ -15,17 +15,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Sequence
 
-from astrapy.exceptions.data_api_exceptions import (
-    CumulativeOperationException,
-    DataAPIException,
-)
+from astrapy.exceptions.data_api_exceptions import DataAPIException
 
 if TYPE_CHECKING:
     from astrapy.results import (
         CollectionDeleteResult,
-        CollectionInsertManyResult,
         CollectionUpdateResult,
     )
 
@@ -59,103 +55,77 @@ class TooManyDocumentsToCountException(DataAPIException):
 
 
 @dataclass
-class CollectionInsertManyException(CumulativeOperationException):
+class CollectionInsertManyException(DataAPIException):
     """
-    An exception of type DataAPIResponseException (see) occurred
-    during an insert_many (that in general spans several requests).
-    As such, besides information on the error, it may have accumulated
-    a partial result from past successful Data API requests.
+    An exception occurring within an insert_many (an operation that can span
+    several requests). As such, it represents both the root error(s) that happened
+    and information on the portion of the documents that were successfully inserted.
+
+    The behaviour of insert_many (concurrency and the `ordered` setting) make it
+    possible that more than one "root errors" are collected.
 
     Attributes:
-        text: a text message about the exception.
-        error_descriptors: a list of all DataAPIErrorDescriptor objects
-            found across all requests involved in this exception, which are
-            possibly more than one.
-        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
-            objects, one for each of the requests performed during this operation.
-            For single-request methods, such as insert_one, this list always
-            has a single element.
-        partial_result: a CollectionInsertManyResult object, just like the one
-            that would be the return value of the operation, had it succeeded
-            completely.
+        inserted_ids: a list of the document IDs that have been successfully inserted.
+        exceptions: a list of the root exceptions leading to this error. The list,
+            under normal circumstances, is not empty.
     """
 
-    partial_result: CollectionInsertManyResult
+    inserted_ids: list[Any]
+    exceptions: Sequence[Exception]
 
-    def __init__(
-        self,
-        text: str,
-        partial_result: CollectionInsertManyResult,
-        *pargs: Any,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(text, *pargs, **kwargs)
-        self.partial_result = partial_result
+    def __str__(self) -> str:
+        num_ids = len(self.inserted_ids)
+        if self.exceptions:
+            exc_desc: str
+            excs_strs = [exc.__str__() for exc in self.exceptions[:8]]
+            if len(self.exceptions) > 8:
+                exc_desc = ", ".join(excs_strs) + " ... (more exceptions)"
+            else:
+                exc_desc = ", ".join(excs_strs)
+            return (
+                f"{self.__class__.__name__}({exc_desc} [with {num_ids} inserted ids])"
+            )
+        else:
+            return f"{self.__class__.__name__}()"
 
 
 @dataclass
-class CollectionDeleteManyException(CumulativeOperationException):
+class CollectionDeleteManyException(DataAPIException):
     """
-    An exception of type DataAPIResponseException (see) occurred
-    during a delete_many (that in general spans several requests).
-    As such, besides information on the error, it may have accumulated
-    a partial result from past successful Data API requests.
+    An exception occurring during a delete_many (an operation that can span
+    several requests). As such, besides information on the root-cause error,
+    there may be a partial result about the part that succeeded.
 
     Attributes:
-        text: a text message about the exception.
-        error_descriptors: a list of all DataAPIErrorDescriptor objects
-            found across all requests involved in this exception, which are
-            possibly more than one.
-        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
-            objects, one for each of the requests performed during this operation.
-            For single-request methods, such as insert_one, this list always
-            has a single element.
         partial_result: a CollectionDeleteResult object, just like the one that would
             be the return value of the operation, had it succeeded completely.
+        cause: a root exception that happened during the delete_many, causing
+            the method call to stop and raise this error.
     """
 
     partial_result: CollectionDeleteResult
+    cause: Exception
 
-    def __init__(
-        self,
-        text: str,
-        partial_result: CollectionDeleteResult,
-        *pargs: Any,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(text, *pargs, **kwargs)
-        self.partial_result = partial_result
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}({self.cause.__str__()})"
 
 
 @dataclass
-class CollectionUpdateManyException(CumulativeOperationException):
+class CollectionUpdateManyException(DataAPIException):
     """
-    An exception of type DataAPIResponseException (see) occurred
-    during an update_many (that in general spans several requests).
-    As such, besides information on the error, it may have accumulated
-    a partial result from past successful Data API requests.
+    An exception occurring during an update_many (an operation that can span
+    several requests). As such, besides information on the root-cause error,
+    there may be a partial result about the part that succeeded.
 
     Attributes:
-        text: a text message about the exception.
-        error_descriptors: a list of all DataAPIErrorDescriptor objects
-            found across all requests involved in this exception, which are
-            possibly more than one.
-        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
-            objects, one for each of the requests performed during this operation.
-            For single-request methods, such as insert_one, this list always
-            has a single element.
         partial_result: a CollectionUpdateResult object, just like the one that would
             be the return value of the operation, had it succeeded completely.
+        cause: a root exception that happened during the update_many, causing
+            the method call to stop and raise this error.
     """
 
     partial_result: CollectionUpdateResult
+    cause: Exception
 
-    def __init__(
-        self,
-        text: str,
-        partial_result: CollectionUpdateResult,
-        *pargs: Any,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(text, *pargs, **kwargs)
-        self.partial_result = partial_result
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}({self.cause.__str__()})"

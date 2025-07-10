@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import pytest
 
-from astrapy import AsyncCollection, AsyncDatabase, DataAPIClient
+from astrapy import AsyncCollection, AsyncDatabase, AsyncTable, DataAPIClient
 from astrapy.authentication import StaticTokenProvider
 from astrapy.constants import Environment
 from astrapy.exceptions import InvalidEnvironmentException
@@ -29,9 +29,11 @@ from astrapy.utils.api_options import (
 
 from ..conftest import (
     TEST_COLLECTION_INSTANCE_NAME,
+    TEST_TABLE_INSTANCE_NAME,
     DataAPICredentials,
     DataAPICredentialsInfo,
     DefaultAsyncCollection,
+    DefaultAsyncTable,
 )
 
 api_ep5643_prod = (
@@ -176,6 +178,64 @@ class TestDatabasesAsync:
             api_options=async_database.api_options,
         )
         assert collection_ks2.database.keyspace == KEYSPACE_2
+
+        kcollection = async_database.get_collection(
+            TEST_COLLECTION_INSTANCE_NAME,
+            keyspace=KEYSPACE_2,
+            embedding_api_key="eak",
+            reranking_api_key="eak",
+        )
+        assert kcollection == AsyncCollection(
+            database=async_database,
+            name=TEST_COLLECTION_INSTANCE_NAME,
+            keyspace=KEYSPACE_2,
+            api_options=async_database.api_options.with_override(
+                APIOptions(
+                    embedding_api_key="eak",
+                    reranking_api_key="eak",
+                )
+            ),
+        )
+
+    @pytest.mark.describe("test get_table method, async")
+    async def test_database_get_table_async(
+        self,
+        async_database: AsyncDatabase,
+        async_table_instance: DefaultAsyncTable,
+        data_api_credentials_kwargs: DataAPICredentials,
+    ) -> None:
+        table = async_database.get_table(TEST_TABLE_INSTANCE_NAME)
+        assert table == async_table_instance
+
+        KEYSPACE_2 = "other_keyspace"
+        table_ks2 = async_database.get_table(
+            TEST_TABLE_INSTANCE_NAME, keyspace=KEYSPACE_2
+        )
+        assert table_ks2 == AsyncTable(
+            database=async_database,
+            name=TEST_TABLE_INSTANCE_NAME,
+            keyspace=KEYSPACE_2,
+            api_options=async_database.api_options,
+        )
+        assert table_ks2.database.keyspace == KEYSPACE_2
+
+        ktable = async_database.get_table(
+            TEST_TABLE_INSTANCE_NAME,
+            keyspace=KEYSPACE_2,
+            embedding_api_key="eak",
+            reranking_api_key="eak",
+        )
+        assert ktable == AsyncTable(
+            database=async_database,
+            name=TEST_TABLE_INSTANCE_NAME,
+            keyspace=KEYSPACE_2,
+            api_options=async_database.api_options.with_override(
+                APIOptions(
+                    embedding_api_key="eak",
+                    reranking_api_key="eak",
+                )
+            ),
+        )
 
     @pytest.mark.describe("test database id and region, async")
     async def test_database_id_region_async(self) -> None:

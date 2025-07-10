@@ -16,13 +16,15 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, cast
+from typing import Any, Dict, TypeVar, cast
 
 from astrapy.data.info.table_descriptor.table_columns import (
     TableColumnTypeDescriptor,
 )
 from astrapy.data.info.vectorize import VectorServiceOptions
 from astrapy.utils.parsing import _warn_residual_keys
+
+ATO = TypeVar("ATO", bound="AlterTableOperation")
 
 
 @dataclass
@@ -51,7 +53,7 @@ class AlterTableOperation(ABC):
         Note: while the nature of the operation must be the top-level single key of
         the (nested) dictionary parameter to this method (such as "add" or
         "dropVectorize"), the resulting `AlterTableOperation` object encodes the content
-        of the corresponding value. Likewise, the calling the `as_dict()` method of
+        of the corresponding value. Likewise, calling the `as_dict()` method of
         the result from this method does not return the whole original input, rather
         the "one level in" part (see the example provided here).
 
@@ -89,6 +91,10 @@ class AlterTableOperation(ABC):
                 "into an AlterTableOperation"
             )
 
+    @classmethod
+    @abstractmethod
+    def coerce(cls: type[ATO], raw_input: ATO | dict[str, Any]) -> ATO: ...
+
 
 @dataclass
 class AlterTableAddColumns(AlterTableOperation):
@@ -109,7 +115,7 @@ class AlterTableAddColumns(AlterTableOperation):
         self.columns = columns
 
     def __repr__(self) -> str:
-        _col_desc = f"columns=[{','.join(self.columns.keys())}]"
+        _col_desc = f"columns=[{','.join(sorted(self.columns.keys()))}]"
         return f"{self.__class__.__name__}({_col_desc})"
 
     def as_dict(self) -> dict[str, Any]:
@@ -222,7 +228,7 @@ class AlterTableAddVectorize(AlterTableOperation):
     def __repr__(self) -> str:
         _cols_desc = [
             f"{col_n}({col_svc.provider}/{col_svc.model_name})"
-            for col_n, col_svc in self.columns.items()
+            for col_n, col_svc in sorted(self.columns.items())
         ]
         return f"{self.__class__.__name__}(columns={', '.join(_cols_desc)})"
 

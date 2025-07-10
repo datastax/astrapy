@@ -21,6 +21,7 @@ from typing import Any, Awaitable, Callable
 import pytest
 
 from astrapy import AsyncDatabase, DataAPIClient, Database
+from astrapy.api_options import APIOptions, TimeoutOptions
 from astrapy.settings.defaults import API_ENDPOINT_TEMPLATE_ENV_MAP
 
 from ..conftest import (
@@ -35,6 +36,13 @@ DATABASE_POLL_SLEEP_TIME = 10
 DATABASE_TIMEOUT = 480
 PRE_DROP_SAFETY_POLL_INTERVAL = 5
 PRE_DROP_SAFETY_TIMEOUT = 120
+
+TESTING_SAFE_CLIENT_TIMEOUT_MS = 600000 * 3
+TESTING_SAFE_CLIENT_OPTIONS = APIOptions(
+    timeout_options=TimeoutOptions(
+        database_admin_timeout_ms=TESTING_SAFE_CLIENT_TIMEOUT_MS
+    )
+)
 
 
 def admin_test_envs_tokens() -> list[Any]:
@@ -114,9 +122,11 @@ class TestAdmin:
         # create client, get admin
         client: DataAPIClient
         if admin_env == "prod":
-            client = DataAPIClient(token)
+            client = DataAPIClient(token, api_options=TESTING_SAFE_CLIENT_OPTIONS)
         else:
-            client = DataAPIClient(token, environment=admin_env)
+            client = DataAPIClient(
+                token, environment=admin_env, api_options=TESTING_SAFE_CLIENT_OPTIONS
+            )
         admin = client.get_admin()
 
         # create a db (wait)
@@ -156,12 +166,12 @@ class TestAdmin:
         assert keyspaces3 - keyspaces1 == {"waited_ks", "nonwaited_ks"}
 
         # get db and use it
-        db = db_admin.get_database()
+        db = db_admin.get_database(keyspace="custom_keyspace")
         db.create_collection("canary_coll")
         assert "canary_coll" in db.list_collection_names()
 
         # check async db is the same
-        assert db_admin.get_async_database().to_sync() == db
+        assert db_admin.get_async_database(keyspace="custom_keyspace").to_sync() == db
 
         # drop nss, wait, nonwait
         db_admin.drop_keyspace(
@@ -230,9 +240,11 @@ class TestAdmin:
         # create client and get admin
         client: DataAPIClient
         if admin_env == "prod":
-            client = DataAPIClient(token)
+            client = DataAPIClient(token, api_options=TESTING_SAFE_CLIENT_OPTIONS)
         else:
-            client = DataAPIClient(token, environment=admin_env)
+            client = DataAPIClient(
+                token, environment=admin_env, api_options=TESTING_SAFE_CLIENT_OPTIONS
+            )
         admin = client.get_admin()
 
         # create the two dbs
@@ -280,7 +292,7 @@ class TestAdmin:
         assert adb_w_e.to_sync() == db_w_e
 
         # get db admin from the admin and use it
-        db_w_admin = admin.get_database_admin(created_db_id_w)
+        db_w_admin = admin.get_database_admin(created_db_id_w, region=db_region)
         db_w_admin.create_keyspace("additional_keyspace")
         db_w_from_admin = db_w_admin.get_database()
         assert isinstance(db_w_from_admin.list_collection_names(), list)
@@ -290,7 +302,10 @@ class TestAdmin:
         # drop databases: the w one through the admin, the nw using its db-admin
         #   (this covers most cases if combined with the
         #   (w, using db-admin) of test_astra_db_database_admin)
-        assert db_admin_nw == admin.get_database_admin(created_db_id_nw)
+        assert db_admin_nw == admin.get_database_admin(
+            created_db_id_nw,
+            region=db_region,
+        )
         # drop db and check. We wait a little due to "nontransactional cluster md"
         wait_until_true(
             poll_interval=PRE_DROP_SAFETY_POLL_INTERVAL,
@@ -351,9 +366,11 @@ class TestAdmin:
         # create client, get admin
         client: DataAPIClient
         if admin_env == "prod":
-            client = DataAPIClient(token)
+            client = DataAPIClient(token, api_options=TESTING_SAFE_CLIENT_OPTIONS)
         else:
-            client = DataAPIClient(token, environment=admin_env)
+            client = DataAPIClient(
+                token, environment=admin_env, api_options=TESTING_SAFE_CLIENT_OPTIONS
+            )
         admin = client.get_admin()
 
         # create a db (wait)
@@ -397,12 +414,12 @@ class TestAdmin:
         assert keyspaces3 - keyspaces1 == {"waited_ks", "nonwaited_ks"}
 
         # get db and use it
-        adb = db_admin.get_async_database()
+        adb = db_admin.get_async_database(keyspace="custom_keyspace")
         await adb.create_collection("canary_coll")
         assert "canary_coll" in (await adb.list_collection_names())
 
         # check sync db is the same
-        assert db_admin.get_database().to_async() == adb
+        assert db_admin.get_database(keyspace="custom_keyspace").to_async() == adb
 
         # drop nss, wait, nonwait
         await db_admin.async_drop_keyspace(
@@ -480,9 +497,11 @@ class TestAdmin:
         # create client and get admin
         client: DataAPIClient
         if admin_env == "prod":
-            client = DataAPIClient(token)
+            client = DataAPIClient(token, api_options=TESTING_SAFE_CLIENT_OPTIONS)
         else:
-            client = DataAPIClient(token, environment=admin_env)
+            client = DataAPIClient(
+                token, environment=admin_env, api_options=TESTING_SAFE_CLIENT_OPTIONS
+            )
         admin = client.get_admin()
 
         # create the two dbs
@@ -530,7 +549,7 @@ class TestAdmin:
         assert db_w_e.to_async() == adb_w_e
 
         # get db admin from the admin and use it
-        db_w_admin = admin.get_database_admin(created_db_id_w)
+        db_w_admin = admin.get_database_admin(created_db_id_w, region=db_region)
         await db_w_admin.async_create_keyspace("additional_keyspace")
         adb_w_from_admin = db_w_admin.get_async_database()
         assert isinstance(await adb_w_from_admin.list_collection_names(), list)
@@ -540,7 +559,10 @@ class TestAdmin:
         # drop databases: the w one through the admin, the nw using its db-admin
         #   (this covers most cases if combined with the
         #   (w, using db-admin) of test_astra_db_database_admin)
-        assert db_admin_nw == admin.get_database_admin(created_db_id_nw)
+        assert db_admin_nw == admin.get_database_admin(
+            created_db_id_nw,
+            region=db_region,
+        )
         # drop db and check. We wait a little due to "nontransactional cluster md"
 
         async def _awaiter2() -> bool:

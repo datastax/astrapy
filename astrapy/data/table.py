@@ -32,12 +32,13 @@ from astrapy.constants import (
 from astrapy.data.info.table_descriptor.table_altering import AlterTableOperation
 from astrapy.data.utils.distinct_extractors import (
     _create_document_key_extractor,
-    _hash_document,
+    _hash_table_document,
     _reduce_distinct_key_to_shallow_safe,
 )
 from astrapy.data.utils.table_converters import _TableConverterAgent
 from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
+    DataAPIResponseException,
     MultiCallTimeoutManager,
     TableInsertManyException,
     TooManyRowsToCountException,
@@ -52,6 +53,8 @@ from astrapy.info import (
     TableIndexDescriptor,
     TableIndexOptions,
     TableInfo,
+    TableTextIndexDefinition,
+    TableTextIndexOptions,
     TableVectorIndexDefinition,
     TableVectorIndexOptions,
 )
@@ -66,7 +69,10 @@ from astrapy.utils.api_options import APIOptions, FullAPIOptions
 from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
-    from astrapy.authentication import EmbeddingHeadersProvider
+    from astrapy.authentication import (
+        EmbeddingHeadersProvider,
+        RerankingHeadersProvider,
+    )
     from astrapy.cursors import AsyncTableFindCursor, TableFindCursor
     from astrapy.info import ListTableDefinition
 
@@ -74,6 +80,31 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 NEW_ROW = TypeVar("NEW_ROW")
+
+
+# path checkers for map-to-tuple automatic conversion of payloads
+def map2tuple_checker_insert_many(path: list[str]) -> bool:
+    _lp = len(path)
+    if _lp >= 4:
+        return path[:3] == ["insertMany", "documents", ""]
+    else:
+        return False
+
+
+def map2tuple_checker_insert_one(path: list[str]) -> bool:
+    _lp = len(path)
+    if _lp >= 3:
+        return path[:2] == ["insertOne", "document"]
+    else:
+        return False
+
+
+def map2tuple_checker_update_one(path: list[str]) -> bool:
+    _lp = len(path)
+    if _lp >= 4:
+        return path[:3] == ["updateOne", "update", "$set"]
+    else:
+        return False
 
 
 class Table(Generic[ROW]):
@@ -231,6 +262,7 @@ class Table(Generic[ROW]):
         self._commander_headers = {
             **{DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token()},
             **self.api_options.embedding_api_key.get_headers(),
+            **self.api_options.reranking_api_key.get_headers(),
             **self.api_options.database_additional_headers,
         }
         self._api_commander = self._get_api_commander()
@@ -297,10 +329,12 @@ class Table(Generic[ROW]):
         self: Table[ROW],
         *,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         arg_api_options = APIOptions(
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
         )
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
@@ -316,6 +350,7 @@ class Table(Generic[ROW]):
         self: Table[ROW],
         *,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         """
@@ -331,6 +366,15 @@ class Table(Generic[ROW]):
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the table.
+                If a reranker is configured for the table, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the table
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             api_options: any additional options to set for the clone, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -347,6 +391,7 @@ class Table(Generic[ROW]):
 
         return self._copy(
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
             api_options=api_options,
         )
 
@@ -354,6 +399,7 @@ class Table(Generic[ROW]):
         self: Table[ROW],
         *,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         """
@@ -372,6 +418,15 @@ class Table(Generic[ROW]):
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the table.
+                If a reranker is configured for the table, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the table
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             api_options: any additional options to set for the result, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -390,6 +445,7 @@ class Table(Generic[ROW]):
 
         arg_api_options = APIOptions(
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
         )
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
@@ -597,8 +653,8 @@ class Table(Generic[ROW]):
     def create_index(
         self,
         name: str,
+        column: str | dict[str, str],
         *,
-        column: str,
         options: TableIndexOptions | dict[str, Any] | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
@@ -612,10 +668,14 @@ class Table(Generic[ROW]):
         is created and ready to use.
 
         For creation of a vector index, see method `create_vector_index` instead.
+        For creation of a text index (used for lexicographical matching), see
+        method `create_text_index` instead.
 
         Args:
             name: the name of the index. Index names must be unique across the keyspace.
             column: the table column on which the index is to be created.
+                For a map column, besides a simple string, it can be an object
+                in one of the two formats {"column": "$values"}, {"column": "$keys"},
             options: if passed, it must be an instance of `TableIndexOptions`,
                 or an equivalent dictionary, which specifies index settings
                 such as -- for a text column -- case-sensitivity and so on.
@@ -637,13 +697,13 @@ class Table(Generic[ROW]):
             >>> # create an index on a column
             >>> my_table.create_index(
             ...     "score_index",
-            ...     column="score",
+            ...     "score",
             ... )
             >>>
             >>> # create an index on a textual column, specifying indexing options
             >>> my_table.create_index(
             ...     "winner_index",
-            ...     column="winner",
+            ...     "winner",
             ...     options=TableIndexOptions(
             ...         ascii=False,
             ...         normalize=True,
@@ -670,8 +730,8 @@ class Table(Generic[ROW]):
     def create_vector_index(
         self,
         name: str,
-        *,
         column: str,
+        *,
         options: TableVectorIndexOptions | dict[str, Any] | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
@@ -713,7 +773,7 @@ class Table(Generic[ROW]):
             >>> # create a vector index with dot-product similarity
             >>> my_table.create_vector_index(
             ...     "m_vector_index",
-            ...     column="m_vector",
+            ...     "m_vector",
             ...     options=TableVectorIndexOptions(
             ...         metric=VectorMetric.DOT_PRODUCT,
             ...     ),
@@ -722,7 +782,7 @@ class Table(Generic[ROW]):
             >>> # succeeded, this will do nothing because of `if_not_exists`):
             >>> my_table.create_vector_index(
             ...     "m_vector_index",
-            ...     column="m_vector",
+            ...     "m_vector",
             ...     options=TableVectorIndexOptions(
             ...         metric=VectorMetric.DOT_PRODUCT,
             ...         source_model="nv-qa-4",
@@ -734,7 +794,7 @@ class Table(Generic[ROW]):
             >>> # succeeded, this will do nothing because of `if_not_exists`):
             >>> my_table.create_vector_index(
             ...     "m_vector_index",
-            ...     column="m_vector",
+            ...     "m_vector",
             ...     if_not_exists=True,
             ... )
         """
@@ -744,6 +804,97 @@ class Table(Generic[ROW]):
             options=TableVectorIndexOptions.coerce(options),
         ).as_dict()
         ci_command = "createVectorIndex"
+        return self._create_generic_index(
+            i_name=name,
+            ci_definition=ci_definition,
+            ci_command=ci_command,
+            if_not_exists=if_not_exists,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+
+    def create_text_index(
+        self,
+        name: str,
+        column: str,
+        *,
+        options: TableTextIndexOptions | dict[str, Any] | None = None,
+        if_not_exists: bool | None = None,
+        table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> None:
+        """
+        Create a text index on a vector column of the table, enabling lexicographical
+        matching operations on it.
+
+        This is a blocking operation: the method returns once the index
+        is created and ready to use.
+
+        For creation of a full-text index, see method `create_index` instead.
+
+        Args:
+            name: the name of the index. Index names must be unique across the keyspace.
+            column: the column, of type "text"/"ascii", on which to create the index.
+            options: an instance of `TableTextIndexOptions`, or an equivalent
+                dictionary, which specifies settings for the text index,
+                in particular the "analyzer" configuration.
+                If omitted, the Data API defaults will apply for the index.
+                See the `astrapy.info.TableTextIndexOptions` class for more details.
+            if_not_exists: if set to True, the command will succeed even if an index
+                with the specified name already exists (in which case no actual
+                index creation takes place on the database). The API default of False
+                means that an error is raised by the API in case of name collision.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
+
+        Example:
+            >>> from astrapy.info import TableTextIndexOptions
+            >>>
+            >>> # create a text index with the 'whitespace' analyzer
+            >>> my_table.create_text_index(
+            ...     "m_text_index",
+            ...     column="m_text_column",
+            ...     options=TableTextIndexOptions(analyzer="whitespace"),
+            ... )
+            >>> # omit the analyzer setting: the default of "standard" will be used.
+            >>> # (if an index with this name exists, this operation won't do nothing
+            >>> # because of if_not_exists.)
+            >>> my_table.create_text_index(
+            ...     "m_text_index_default",
+            ...     column="m_another_text_column",
+            ...     if_not_exists=True,
+            ... )
+            >>> # provide a full object for the analyzer configuration:
+            >>> # (this one is suitable for English prose.)
+            >>> my_table.create_text_index(
+            ...     "m_text_index_2",
+            ...     column="m_yet_another_text_column",
+            ...     options=TableTextIndexOptions(
+            ...         analyzer={
+            ...             "tokenizer": {"name": "standard", "args": {}},
+            ...             "filters": [
+            ...                 {"name": "lowercase"},
+            ...                 {"name": "stop"},
+            ...                 {"name": "porterstem"},
+            ...                 {"name": "asciifolding"},
+            ...             ],
+            ...             "charFilters": [],
+            ...         },
+            ...     ),
+            ... )
+        """
+
+        ci_definition: dict[str, Any] = TableTextIndexDefinition(
+            column=column,
+            options=TableTextIndexOptions.coerce(options),
+        ).as_dict()
+        ci_command = "createTextIndex"
         return self._create_generic_index(
             i_name=name,
             ci_definition=ci_definition,
@@ -1128,7 +1279,8 @@ class Table(Generic[ROW]):
             timeout_ms=timeout_ms,
         )
         io_payload = self._converter_agent.preprocess_payload(
-            {"insertOne": {"document": row}}
+            {"insertOne": {"document": row}},
+            map2tuple_checker=map2tuple_checker_insert_one,
         )
         logger.info(f"insertOne on '{self.name}'")
         io_response = self._api_commander.request(
@@ -1346,17 +1498,24 @@ class Table(Generic[ROW]):
             row sequence is important.
 
         Note:
-            If some of the rows are unsuitable for insertion, for instance
-            have the wrong data type for a column or lack the primary key,
-            the Data API validation check will fail for those specific requests
-            that contain the faulty rows. Depending on concurrency and the value
-            of the `ordered` parameter, a number of rows in general could have
-            been successfully inserted.
-            It is possible to capture such a scenario, and inspect which rows
-            actually got inserted, by catching an error of type
-            `astrapy.exceptions.TableInsertManyException`: its `partial_result`
-            attribute is precisely a `TableInsertManyResult`, encoding details
-            on the successful writes.
+            A failure mode for this command is related to certain faulty rows
+            found among those to insert: validation may fail, for example, if the
+            vector length does not match the table schema.
+
+            For an ordered insertion, the method will raise an exception at
+            the first such faulty row -- nevertheless, all rows processed
+            until then will end up being written to the database.
+
+            For unordered insertions, if the error stems from faulty rows
+            the insertion proceeds until exhausting the input rows: then,
+            an exception is raised -- and all insertable rows will have been
+            written to the database, including those "after" the troublesome ones.
+
+            Errors occurring during an insert_many operation, for that reason,
+            may result in a `TableInsertManyException` being raised.
+            This exception allows to inspect the list of row IDs that were
+            successfully inserted, while accessing at the same time the underlying
+            "root errors" that made the full method call to fail.
         """
 
         _general_method_timeout_ms, _gmt_label = _first_valid_timeout(
@@ -1387,6 +1546,7 @@ class Table(Generic[ROW]):
         _rows = list(rows)
         logger.info(f"inserting {len(_rows)} rows in '{self.name}'")
         raw_results: list[dict[str, Any]] = []
+        im_payloads: list[dict[str, Any] | None] = []
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_general_method_timeout_ms,
             timeout_label=_gmt_label,
@@ -1403,6 +1563,7 @@ class Table(Generic[ROW]):
                             "options": options,
                         },
                     },
+                    map2tuple_checker=map2tuple_checker_insert_many,
                 )
                 logger.info(f"insertMany on '{self.name}'")
                 chunk_response = self._api_commander.request(
@@ -1421,17 +1582,17 @@ class Table(Generic[ROW]):
                 inserted_ids += chunk_inserted_ids
                 inserted_id_tuples += chunk_inserted_ids_tuples
                 raw_results += [chunk_response]
+                im_payloads += [im_payload]
                 # if errors, quit early
                 if chunk_response.get("errors", []):
-                    partial_result = TableInsertManyResult(
-                        raw_results=raw_results,
+                    response_exception = DataAPIResponseException.from_response(
+                        command=im_payload,
+                        raw_response=chunk_response,
+                    )
+                    raise TableInsertManyException(
                         inserted_ids=inserted_ids,
                         inserted_id_tuples=inserted_id_tuples,
-                    )
-                    raise TableInsertManyException.from_response(
-                        command=None,
-                        raw_response=chunk_response,
-                        partial_result=partial_result,
+                        exceptions=[response_exception],
                     )
 
             # return
@@ -1451,7 +1612,7 @@ class Table(Generic[ROW]):
 
                     def _chunk_insertor(
                         row_chunk: list[dict[str, Any]],
-                    ) -> dict[str, Any]:
+                    ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
                         im_payload = self._converter_agent.preprocess_payload(
                             {
                                 "insertMany": {
@@ -1459,6 +1620,7 @@ class Table(Generic[ROW]):
                                     "options": options,
                                 },
                             },
+                            map2tuple_checker=map2tuple_checker_insert_many,
                         )
                         logger.info(f"insertMany(chunk) on '{self.name}'")
                         im_response = self._api_commander.request(
@@ -1470,9 +1632,9 @@ class Table(Generic[ROW]):
                             ),
                         )
                         logger.info(f"finished insertMany(chunk) on '{self.name}'")
-                        return im_response
+                        return im_payload, im_response
 
-                    raw_results = list(
+                    raw_pl_results_pairs = list(
                         executor.map(
                             _chunk_insertor,
                             (
@@ -1481,6 +1643,11 @@ class Table(Generic[ROW]):
                             ),
                         )
                     )
+                    if raw_pl_results_pairs:
+                        im_payloads, raw_results = list(zip(*raw_pl_results_pairs))
+                    else:
+                        im_payloads, raw_results = [], []
+
             else:
                 for i in range(0, len(_rows), _chunk_size):
                     im_payload = self._converter_agent.preprocess_payload(
@@ -1490,6 +1657,7 @@ class Table(Generic[ROW]):
                                 "options": options,
                             },
                         },
+                        map2tuple_checker=map2tuple_checker_insert_many,
                     )
                     logger.info(f"insertMany(chunk) on '{self.name}'")
                     im_response = self._api_commander.request(
@@ -1502,6 +1670,7 @@ class Table(Generic[ROW]):
                     )
                     logger.info(f"finished insertMany(chunk) on '{self.name}'")
                     raw_results.append(im_response)
+                    im_payloads.append(im_payload)
             # recast raw_results. Each response has its schema: unfold appropriately
             ids_and_tuples_per_chunk = [
                 self._prepare_keys_from_status(chunk_response.get("status"))
@@ -1518,18 +1687,19 @@ class Table(Generic[ROW]):
                 for inserted_id_tuple in chunk_id_tuples
             ]
             # check-raise
-            if any(
-                [chunk_response.get("errors", []) for chunk_response in raw_results]
-            ):
-                partial_result = TableInsertManyResult(
-                    raw_results=raw_results,
+            response_exceptions = [
+                DataAPIResponseException.from_response(
+                    command=chunk_payload,
+                    raw_response=chunk_response,
+                )
+                for chunk_payload, chunk_response in zip(im_payloads, raw_results)
+                if chunk_response.get("errors", [])
+            ]
+            if response_exceptions:
+                raise TableInsertManyException(
                     inserted_ids=inserted_ids,
                     inserted_id_tuples=inserted_id_tuples,
-                )
-                raise TableInsertManyException.from_responses(
-                    commands=[None for _ in raw_results],
-                    raw_responses=raw_results,
-                    partial_result=partial_result,
+                    exceptions=response_exceptions,
                 )
 
             # return
@@ -1550,6 +1720,7 @@ class Table(Generic[ROW]):
         row_type: None = None,
         skip: int | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -1566,6 +1737,7 @@ class Table(Generic[ROW]):
         row_type: type[ROW2],
         skip: int | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -1581,6 +1753,7 @@ class Table(Generic[ROW]):
         row_type: type[ROW2] | None = None,
         skip: int | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -1627,9 +1800,20 @@ class Table(Generic[ROW]):
                 projection is given.
             skip: if provided, it is a number of rows that would be obtained first
                 in the response and are instead skipped.
+                Please note that for applications that need to retrieve entries on
+                a page-by-page basis, the suggested approach is to consume a find cursor
+                through their pagination API (see the cursors' `fetch_next_page` method
+                and examples reported there).
             limit: a maximum amount of rows to get from the table. The returned cursor
                 will stop yielding rows when either this number is reached or there
                 really are no more matches in the table.
+            initial_page_state: if a value is provided, it must be the `next_page_state`
+                from the response of `fetch_next_page()` called on a previous cursor.
+                This value is used as the first page state when the first request
+                to consume the cursor is issued.
+                This pattern is what enables the caller to control consuming the
+                results page by page in a caller-driven fashion. See Examples for more.
+                If supplied, this parameter must be string: passing None is forbidden.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each returned
                 row. It can be used meaningfully only in a vector search (see `sort`).
@@ -1662,7 +1846,7 @@ class Table(Generic[ROW]):
 
         Returns:
             a TableFindCursor object, that can be iterated over (and manipulated
-            in several ways), that if needed handles pagination under the hood
+            in several ways). The cursor, if needed, handles pagination under the hood
             as the rows are consumed.
 
         Note:
@@ -1844,6 +2028,7 @@ class Table(Generic[ROW]):
             .skip(skip)
             .limit(limit)
             .sort(sort)
+            .initial_page_state(initial_page_state)
             .include_similarity(include_similarity)
             .include_sort_vector(include_sort_vector)
         )
@@ -2042,7 +2227,8 @@ class Table(Generic[ROW]):
                     }.items()
                     if v is not None
                 }
-            }
+            },
+            map2tuple_checker=None,
         )
         fo_response = self._api_commander.request(
             payload=fo_payload,
@@ -2071,7 +2257,7 @@ class Table(Generic[ROW]):
 
     def distinct(
         self,
-        key: str,
+        key: str | Iterable[str | int],
         *,
         filter: FilterType | None = None,
         general_method_timeout_ms: int | None = None,
@@ -2084,15 +2270,16 @@ class Table(Generic[ROW]):
 
         Args:
             key: the name of the field whose value is inspected across rows.
-                Keys are typically just column names, although they can use
-                the dot notation to select particular entries in map columns.
+                Keys can be just column names (as is typically the case), but
+                the dot-notation is also accepted to mean subkeys or indices
+                within lists (for example, "map_column.subkey" or "list_column.2").
+                If a column has literal dots or ampersands in its name, this
+                parameter must be escaped to be treated properly.
+                The key can also be a list of strings and numbers, in which case
+                no escape is necessary: each item in the list is a field name/index,
+                for example ["map_column", "subkey"] or ["list_column", 2].
                 For set and list columns, individual entries are "unrolled"
-                automatically; in particular, for lists, numeric indices
-                can be used in the key dot-notation syntax.
-                Example of acceptable `key` values:
-                    "a_column"
-                    "map_column.map_key"
-                    "list_column.2"
+                automatically.
             filter: a dictionary expressing which condition the inspected rows
                 must satisfy. The filter can use operators, such as "$eq" for equality,
                 and require columns to compare with literal values. Simple examples
@@ -2170,11 +2357,6 @@ class Table(Generic[ROW]):
         # preparing cursor:
         _extractor = _create_document_key_extractor(key)
         _key = _reduce_distinct_key_to_shallow_safe(key)
-        if _key == "":
-            raise ValueError(
-                "The 'key' parameter for distinct cannot be empty "
-                "or start with a list index."
-            )
         # relaxing the type hint (limited to within this method body)
         f_cursor: TableFindCursor[dict[str, Any], dict[str, Any]] = (
             TableFindCursor(
@@ -2193,7 +2375,7 @@ class Table(Generic[ROW]):
         logger.info(f"running distinct() on '{self.name}'")
         for document in f_cursor:
             for item in _extractor(document):
-                _item_hash = _hash_document(
+                _item_hash = _hash_table_document(
                     item, options=self.api_options.serdes_options
                 )
                 if _item_hash not in _item_hashes:
@@ -2443,16 +2625,19 @@ class Table(Generic[ROW]):
             request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
         )
-        uo_payload = {
-            "updateOne": {
-                k: v
-                for k, v in {
-                    "filter": filter,
-                    "update": self._converter_agent.preprocess_payload(update),
-                }.items()
-                if v is not None
-            }
-        }
+        uo_payload = self._converter_agent.preprocess_payload(
+            {
+                "updateOne": {
+                    k: v
+                    for k, v in {
+                        "filter": filter,
+                        "update": update,
+                    }.items()
+                    if v is not None
+                }
+            },
+            map2tuple_checker=map2tuple_checker_update_one,
+        )
         logger.info(f"updateOne on '{self.name}'")
         uo_response = self._api_commander.request(
             payload=uo_payload,
@@ -2529,7 +2714,8 @@ class Table(Generic[ROW]):
                     }.items()
                     if v is not None
                 }
-            }
+            },
+            map2tuple_checker=None,
         )
         logger.info(f"deleteOne on '{self.name}'")
         do_response = self._api_commander.request(
@@ -2623,7 +2809,8 @@ class Table(Generic[ROW]):
                     }.items()
                     if v is not None
                 }
-            }
+            },
+            map2tuple_checker=None,
         )
         logger.info(f"deleteMany on '{self.name}'")
         dm_response = self._api_commander.request(
@@ -2924,6 +3111,7 @@ class AsyncTable(Generic[ROW]):
         self._commander_headers = {
             **{DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token()},
             **self.api_options.embedding_api_key.get_headers(),
+            **self.api_options.reranking_api_key.get_headers(),
             **self.api_options.database_additional_headers,
         }
         self._api_commander = self._get_api_commander()
@@ -3006,10 +3194,12 @@ class AsyncTable(Generic[ROW]):
         self: AsyncTable[ROW],
         *,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         arg_api_options = APIOptions(
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
         )
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
@@ -3025,6 +3215,7 @@ class AsyncTable(Generic[ROW]):
         self: AsyncTable[ROW],
         *,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         """
@@ -3040,6 +3231,15 @@ class AsyncTable(Generic[ROW]):
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the table.
+                If a reranker is configured for the table, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the table
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             api_options: any additional options to set for the clone, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -3056,6 +3256,7 @@ class AsyncTable(Generic[ROW]):
 
         return self._copy(
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
             api_options=api_options,
         )
 
@@ -3063,6 +3264,7 @@ class AsyncTable(Generic[ROW]):
         self: AsyncTable[ROW],
         *,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         """
@@ -3081,6 +3283,15 @@ class AsyncTable(Generic[ROW]):
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
+            reranking_api_key: optional API key(s) for interacting with the table.
+                If a reranker is configured for the table, and this parameter
+                is not None, Data API calls will include the appropriate
+                reranker-related headers according to this parameter. Reranker services
+                may not necessarily require this setting (e.g. if the service needs no
+                authentication, or one is configured as part of the table
+                definition relying on a "shared secret").
+                If a string is passed, it is translated into an instance of
+                `astrapy.authentication.RerankingAPIKeyHeaderProvider`.
             api_options: any additional options to set for the result, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -3099,6 +3310,7 @@ class AsyncTable(Generic[ROW]):
 
         arg_api_options = APIOptions(
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
         )
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
@@ -3311,8 +3523,8 @@ class AsyncTable(Generic[ROW]):
     async def create_index(
         self,
         name: str,
+        column: str | dict[str, str],
         *,
-        column: str,
         options: TableIndexOptions | dict[str, Any] | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
@@ -3326,10 +3538,14 @@ class AsyncTable(Generic[ROW]):
         is created and ready to use.
 
         For creation of a vector index, see method `create_vector_index` instead.
+        For creation of a text index (used for lexicographical matching), see
+        method `create_text_index` instead.
 
         Args:
             name: the name of the index. Index names must be unique across the keyspace.
             column: the table column on which the index is to be created.
+                For a map column, besides a simple string, it can be an object
+                in one of the two formats {"column": "$values"}, {"column": "$keys"},
             options: if passed, it must be an instance of `TableIndexOptions`,
                 or an equivalent dictionary, which specifies index settings
                 such as -- for a text column -- case-sensitivity and so on.
@@ -3353,13 +3569,13 @@ class AsyncTable(Generic[ROW]):
             >>> # create an index on a column
             >>> await my_async_table.create_index(
             ...     "score_index",
-            ...     column="score",
+            ...     "score",
             ... )
             >>>
             >>> # create an index on a textual column, specifying indexing options
             >>> await my_async_table.create_index(
             ...     "winner_index",
-            ...     column="winner",
+            ...     "winner",
             ...     options=TableIndexOptions(
             ...         ascii=False,
             ...         normalize=True,
@@ -3386,8 +3602,8 @@ class AsyncTable(Generic[ROW]):
     async def create_vector_index(
         self,
         name: str,
-        *,
         column: str,
+        *,
         options: TableVectorIndexOptions | dict[str, Any] | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
@@ -3431,7 +3647,7 @@ class AsyncTable(Generic[ROW]):
             >>> # create a vector index with dot-product similarity
             >>> await my_async_table.create_vector_index(
             ...     "m_vector_index",
-            ...     column="m_vector",
+            ...     "m_vector",
             ...     options=TableVectorIndexOptions(
             ...         metric=VectorMetric.DOT_PRODUCT,
             ...     ),
@@ -3440,7 +3656,7 @@ class AsyncTable(Generic[ROW]):
             >>> # succeeded, this will do nothing because of `if_not_exists`):
             >>> await my_async_table.create_vector_index(
             ...     "m_vector_index",
-            ...     column="m_vector",
+            ...     "m_vector",
             ...     options=TableVectorIndexOptions(
             ...         metric=VectorMetric.DOT_PRODUCT,
             ...         source_model="nv-qa-4",
@@ -3452,7 +3668,7 @@ class AsyncTable(Generic[ROW]):
             >>> # succeeded, this will do nothing because of `if_not_exists`):
             >>> await my_async_table.create_vector_index(
             ...     "m_vector_index",
-            ...     column="m_vector",
+            ...     "m_vector",
             ...     if_not_exists=True,
             ... )
         """
@@ -3462,6 +3678,99 @@ class AsyncTable(Generic[ROW]):
             options=TableVectorIndexOptions.coerce(options),
         ).as_dict()
         ci_command = "createVectorIndex"
+        return await self._create_generic_index(
+            i_name=name,
+            ci_definition=ci_definition,
+            ci_command=ci_command,
+            if_not_exists=if_not_exists,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+
+    async def create_text_index(
+        self,
+        name: str,
+        column: str,
+        *,
+        options: TableTextIndexOptions | dict[str, Any] | None = None,
+        if_not_exists: bool | None = None,
+        table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> None:
+        """
+        Create a text index on a vector column of the table, enabling lexicographical
+        matching operations on it.
+
+        This is a blocking operation: the method returns once the index
+        is created and ready to use.
+
+        For creation of a full-text index, see method `create_index` instead.
+
+        Args:
+            name: the name of the index. Index names must be unique across the keyspace.
+            column: the column, of type "text"/"ascii", on which to create the index.
+            options: an instance of `TableTextIndexOptions`, or an equivalent
+                dictionary, which specifies settings for the text index,
+                in particular the "analyzer" configuration.
+                If omitted, the Data API defaults will apply for the index.
+                See the `astrapy.info.TableTextIndexOptions` class for more details.
+            if_not_exists: if set to True, the command will succeed even if an index
+                with the specified name already exists (in which case no actual
+                index creation takes place on the database). The API default of False
+                means that an error is raised by the API in case of name collision.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
+
+        Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
+            >>> from astrapy.info import TableTextIndexOptions
+            >>>
+            >>> # create a text index with the 'whitespace' analyzer
+            >>> await my_table.create_text_index(
+            ...     "m_text_index",
+            ...     column="m_text_column",
+            ...     options=TableTextIndexOptions(analyzer="whitespace"),
+            ... )
+            >>> # omit the analyzer setting: the default of "standard" will be used.
+            >>> # (if an index with this name exists, this operation won't do nothing
+            >>> # because of if_not_exists.)
+            >>> await my_table.create_text_index(
+            ...     "m_text_index_default",
+            ...     column="m_another_text_column",
+            ...     if_not_exists=True,
+            ... )
+            >>> # provide a full object for the analyzer configuration:
+            >>> # (this one is suitable for English prose.)
+            >>> await my_table.create_text_index(
+            ...     "m_text_index_2",
+            ...     column="m_yet_another_text_column",
+            ...     options=TableTextIndexOptions(
+            ...         analyzer={
+            ...             "tokenizer": {"name": "standard", "args": {}},
+            ...             "filters": [
+            ...                 {"name": "lowercase"},
+            ...                 {"name": "stop"},
+            ...                 {"name": "porterstem"},
+            ...                 {"name": "asciifolding"},
+            ...             ],
+            ...             "charFilters": [],
+            ...         },
+            ...     ),
+            ... )
+        """
+
+        ci_definition: dict[str, Any] = TableTextIndexDefinition(
+            column=column,
+            options=TableTextIndexOptions.coerce(options),
+        ).as_dict()
+        ci_command = "createTextIndex"
         return await self._create_generic_index(
             i_name=name,
             ci_definition=ci_definition,
@@ -3856,7 +4165,8 @@ class AsyncTable(Generic[ROW]):
             timeout_ms=timeout_ms,
         )
         io_payload = self._converter_agent.preprocess_payload(
-            {"insertOne": {"document": row}}
+            {"insertOne": {"document": row}},
+            map2tuple_checker=map2tuple_checker_insert_one,
         )
         logger.info(f"insertOne on '{self.name}'")
         io_response = await self._api_commander.async_request(
@@ -4073,17 +4383,24 @@ class AsyncTable(Generic[ROW]):
             row sequence is important.
 
         Note:
-            If some of the rows are unsuitable for insertion, for instance
-            have the wrong data type for a column or lack the primary key,
-            the Data API validation check will fail for those specific requests
-            that contain the faulty rows. Depending on concurrency and the value
-            of the `ordered` parameter, a number of rows in general could have
-            been successfully inserted.
-            It is possible to capture such a scenario, and inspect which rows
-            actually got inserted, by catching an error of type
-            `astrapy.exceptions.TableInsertManyException`: its `partial_result`
-            attribute is precisely a `TableInsertManyResult`, encoding details
-            on the successful writes.
+            A failure mode for this command is related to certain faulty rows
+            found among those to insert: validation may fail, for example, if the
+            vector length does not match the table schema.
+
+            For an ordered insertion, the method will raise an exception at
+            the first such faulty row -- nevertheless, all rows processed
+            until then will end up being written to the database.
+
+            For unordered insertions, if the error stems from faulty rows
+            the insertion proceeds until exhausting the input rows: then,
+            an exception is raised -- and all insertable rows will have been
+            written to the database, including those "after" the troublesome ones.
+
+            Errors occurring during an insert_many operation, for that reason,
+            may result in a `TableInsertManyException` being raised.
+            This exception allows to inspect the list of row IDs that were
+            successfully inserted, while accessing at the same time the underlying
+            "root errors" that made the full method call to fail.
         """
 
         _general_method_timeout_ms, _gmt_label = _first_valid_timeout(
@@ -4114,6 +4431,7 @@ class AsyncTable(Generic[ROW]):
         _rows = list(rows)
         logger.info(f"inserting {len(_rows)} rows in '{self.name}'")
         raw_results: list[dict[str, Any]] = []
+        im_payloads: list[dict[str, Any] | None] = []
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_general_method_timeout_ms,
             timeout_label=_gmt_label,
@@ -4130,6 +4448,7 @@ class AsyncTable(Generic[ROW]):
                             "options": options,
                         },
                     },
+                    map2tuple_checker=map2tuple_checker_insert_many,
                 )
                 logger.info(f"insertMany(chunk) on '{self.name}'")
                 chunk_response = await self._api_commander.async_request(
@@ -4150,15 +4469,14 @@ class AsyncTable(Generic[ROW]):
                 raw_results += [chunk_response]
                 # if errors, quit early
                 if chunk_response.get("errors", []):
-                    partial_result = TableInsertManyResult(
-                        raw_results=raw_results,
+                    response_exception = DataAPIResponseException.from_response(
+                        command=im_payload,
+                        raw_response=chunk_response,
+                    )
+                    raise TableInsertManyException(
                         inserted_ids=inserted_ids,
                         inserted_id_tuples=inserted_id_tuples,
-                    )
-                    raise TableInsertManyException.from_response(
-                        command=None,
-                        raw_response=chunk_response,
-                        partial_result=partial_result,
+                        exceptions=[response_exception],
                     )
 
             # return
@@ -4178,7 +4496,7 @@ class AsyncTable(Generic[ROW]):
 
             async def concurrent_insert_chunk(
                 row_chunk: list[ROW],
-            ) -> dict[str, Any]:
+            ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
                 async with sem:
                     im_payload = self._converter_agent.preprocess_payload(
                         {
@@ -4187,6 +4505,7 @@ class AsyncTable(Generic[ROW]):
                                 "options": options,
                             },
                         },
+                        map2tuple_checker=map2tuple_checker_insert_many,
                     )
                     logger.info(f"insertMany(chunk) on '{self.name}'")
                     im_response = await self._api_commander.async_request(
@@ -4198,8 +4517,9 @@ class AsyncTable(Generic[ROW]):
                         ),
                     )
                     logger.info(f"finished insertMany(chunk) on '{self.name}'")
-                    return im_response
+                    return im_payload, im_response
 
+            raw_pl_results_pairs: list[tuple[dict[str, Any] | None, dict[str, Any]]]
             if _concurrency > 1:
                 tasks = [
                     asyncio.create_task(
@@ -4207,12 +4527,17 @@ class AsyncTable(Generic[ROW]):
                     )
                     for i in range(0, len(_rows), _chunk_size)
                 ]
-                raw_results = await asyncio.gather(*tasks)
+                raw_pl_results_pairs = await asyncio.gather(*tasks)
             else:
-                raw_results = [
+                raw_pl_results_pairs = [
                     await concurrent_insert_chunk(_rows[i : i + _chunk_size])
                     for i in range(0, len(_rows), _chunk_size)
                 ]
+
+            if raw_pl_results_pairs:
+                im_payloads, raw_results = list(zip(*raw_pl_results_pairs))
+            else:
+                im_payloads, raw_results = [], []
 
             # recast raw_results. Each response has its schema: unfold appropriately
             ids_and_tuples_per_chunk = [
@@ -4229,19 +4554,21 @@ class AsyncTable(Generic[ROW]):
                 for _, chunk_id_tuples in ids_and_tuples_per_chunk
                 for inserted_id_tuple in chunk_id_tuples
             ]
+
             # check-raise
-            if any(
-                [chunk_response.get("errors", []) for chunk_response in raw_results]
-            ):
-                partial_result = TableInsertManyResult(
-                    raw_results=raw_results,
+            response_exceptions = [
+                DataAPIResponseException.from_response(
+                    command=chunk_payload,
+                    raw_response=chunk_response,
+                )
+                for chunk_payload, chunk_response in zip(im_payloads, raw_results)
+                if chunk_response.get("errors", [])
+            ]
+            if response_exceptions:
+                raise TableInsertManyException(
                     inserted_ids=inserted_ids,
                     inserted_id_tuples=inserted_id_tuples,
-                )
-                raise TableInsertManyException.from_responses(
-                    commands=[None for _ in raw_results],
-                    raw_responses=raw_results,
-                    partial_result=partial_result,
+                    exceptions=response_exceptions,
                 )
 
             # return
@@ -4262,6 +4589,7 @@ class AsyncTable(Generic[ROW]):
         row_type: None = None,
         skip: int | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -4278,6 +4606,7 @@ class AsyncTable(Generic[ROW]):
         row_type: type[ROW2],
         skip: int | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -4293,6 +4622,7 @@ class AsyncTable(Generic[ROW]):
         row_type: type[ROW2] | None = None,
         skip: int | None = None,
         limit: int | None = None,
+        initial_page_state: str | UnsetType = _UNSET,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -4303,7 +4633,7 @@ class AsyncTable(Generic[ROW]):
         Find rows on the table matching the provided filters
         and according to sorting criteria including vector similarity.
 
-        The returned TableFindCursor object, representing the stream of results,
+        The returned AsyncTableFindCursor object, representing the stream of results,
         can be iterated over, or consumed and manipulated in several other ways
         (see the examples below and the `TableFindCursor` documentation for details).
         Since the amount of returned items can be large, TableFindCursor is a lazy
@@ -4339,9 +4669,20 @@ class AsyncTable(Generic[ROW]):
                 projection is given.
             skip: if provided, it is a number of rows that would be obtained first
                 in the response and are instead skipped.
+                Please note that for applications that need to retrieve entries on
+                a page-by-page basis, the suggested approach is to consume a find cursor
+                through their pagination API (see the cursors' `fetch_next_page` method
+                and examples reported there).
             limit: a maximum amount of rows to get from the table. The returned cursor
                 will stop yielding rows when either this number is reached or there
                 really are no more matches in the table.
+            initial_page_state: if a value is provided, it must be the `next_page_state`
+                from the response of `fetch_next_page()` called on a previous cursor.
+                This value is used as the first page state when the first request
+                to consume the cursor is issued.
+                This pattern is what enables the caller to control consuming the
+                results page by page in a caller-driven fashion. See Examples for more.
+                If supplied, this parameter must be string: passing None is forbidden.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each returned
                 row. It can be used meaningfully only in a vector search (see `sort`).
@@ -4373,8 +4714,8 @@ class AsyncTable(Generic[ROW]):
             timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            a TableFindCursor object, that can be iterated over (and manipulated
-            in several ways), that if needed handles pagination under the hood
+            a AsyncTableFindCursor object, that can be iterated over (and manipulated
+            in several ways). The cursor, if needed, handles pagination under the hood
             as the rows are consumed.
 
         Note:
@@ -4579,6 +4920,7 @@ class AsyncTable(Generic[ROW]):
             .skip(skip)
             .limit(limit)
             .sort(sort)
+            .initial_page_state(initial_page_state)
             .include_similarity(include_similarity)
             .include_sort_vector(include_sort_vector)
         )
@@ -4783,7 +5125,8 @@ class AsyncTable(Generic[ROW]):
                     }.items()
                     if v is not None
                 }
-            }
+            },
+            map2tuple_checker=None,
         )
         fo_response = await self._api_commander.async_request(
             payload=fo_payload,
@@ -4812,7 +5155,7 @@ class AsyncTable(Generic[ROW]):
 
     async def distinct(
         self,
-        key: str,
+        key: str | Iterable[str | int],
         *,
         filter: FilterType | None = None,
         request_timeout_ms: int | None = None,
@@ -4825,15 +5168,16 @@ class AsyncTable(Generic[ROW]):
 
         Args:
             key: the name of the field whose value is inspected across rows.
-                Keys are typically just column names, although they can use
-                the dot notation to select particular entries in map columns.
+                Keys can be just column names (as is typically the case), but
+                the dot-notation is also accepted to mean subkeys or indices
+                within lists (for example, "map_column.subkey" or "list_column.2").
+                If a column has literal dots or ampersands in its name, this
+                parameter must be escaped to be treated properly.
+                The key can also be a list of strings and numbers, in which case
+                no escape is necessary: each item in the list is a field name/index,
+                for example ["map_column", "subkey"] or ["list_column", 2].
                 For set and list columns, individual entries are "unrolled"
-                automatically; in particular, for lists, numeric indices
-                can be used in the key dot-notation syntax.
-                Example of acceptable `key` values:
-                    "a_column"
-                    "map_column.map_key"
-                    "list_column.2"
+                automatically.
             filter: a dictionary expressing which condition the inspected rows
                 must satisfy. The filter can use operators, such as "$eq" for equality,
                 and require columns to compare with literal values. Simple examples
@@ -4916,11 +5260,6 @@ class AsyncTable(Generic[ROW]):
         # preparing cursor:
         _extractor = _create_document_key_extractor(key)
         _key = _reduce_distinct_key_to_shallow_safe(key)
-        if _key == "":
-            raise ValueError(
-                "The 'key' parameter for distinct cannot be empty "
-                "or start with a list index."
-            )
         # relaxing the type hint (limited to within this method body)
         f_cursor: AsyncTableFindCursor[dict[str, Any], dict[str, Any]] = (
             AsyncTableFindCursor(
@@ -4939,7 +5278,7 @@ class AsyncTable(Generic[ROW]):
         logger.info(f"running distinct() on '{self.name}'")
         async for document in f_cursor:
             for item in _extractor(document):
-                _item_hash = _hash_document(
+                _item_hash = _hash_table_document(
                     item, options=self.api_options.serdes_options
                 )
                 if _item_hash not in _item_hashes:
@@ -5195,16 +5534,19 @@ class AsyncTable(Generic[ROW]):
             request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
         )
-        uo_payload = {
-            "updateOne": {
-                k: v
-                for k, v in {
-                    "filter": filter,
-                    "update": self._converter_agent.preprocess_payload(update),
-                }.items()
-                if v is not None
-            }
-        }
+        uo_payload = self._converter_agent.preprocess_payload(
+            {
+                "updateOne": {
+                    k: v
+                    for k, v in {
+                        "filter": filter,
+                        "update": update,
+                    }.items()
+                    if v is not None
+                }
+            },
+            map2tuple_checker=map2tuple_checker_update_one,
+        )
         logger.info(f"updateOne on '{self.name}'")
         uo_response = await self._api_commander.async_request(
             payload=uo_payload,
@@ -5287,7 +5629,8 @@ class AsyncTable(Generic[ROW]):
                     }.items()
                     if v is not None
                 }
-            }
+            },
+            map2tuple_checker=None,
         )
         logger.info(f"deleteOne on '{self.name}'")
         do_response = await self._api_commander.async_request(
@@ -5383,7 +5726,8 @@ class AsyncTable(Generic[ROW]):
                     }.items()
                     if v is not None
                 }
-            }
+            },
+            map2tuple_checker=None,
         )
         logger.info(f"deleteMany on '{self.name}'")
         dm_response = await self._api_commander.async_request(
@@ -5408,7 +5752,7 @@ class AsyncTable(Generic[ROW]):
         table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         Drop the table, i.e. delete it from the database along with
         all the rows stored therein.
@@ -5462,7 +5806,7 @@ class AsyncTable(Generic[ROW]):
         """
 
         logger.info(f"dropping table '{self.name}' (self)")
-        drop_result = await self.database.drop_table(
+        await self.database.drop_table(
             self.name,
             if_exists=if_exists,
             table_admin_timeout_ms=table_admin_timeout_ms,
@@ -5470,7 +5814,6 @@ class AsyncTable(Generic[ROW]):
             timeout_ms=timeout_ms,
         )
         logger.info(f"finished dropping table '{self.name}' (self)")
-        return drop_result
 
     async def command(
         self,

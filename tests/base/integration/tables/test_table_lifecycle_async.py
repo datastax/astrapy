@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -22,14 +23,19 @@ from astrapy.exceptions import DataAPIResponseException
 from astrapy.info import (
     AlterTableAddColumns,
     AlterTableAddVectorize,
+    AlterTableDropColumns,
     AlterTableDropVectorize,
     CreateTableDefinition,
     TableIndexDefinition,
     TableIndexDescriptor,
     TableIndexOptions,
+    TableIndexType,
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
+    TableTextIndexDefinition,
+    TableTextIndexOptions,
+    TableUDTColumnDescriptor,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
     TableVectorIndexDefinition,
@@ -51,6 +57,26 @@ def _remove_apisupport(def_dict: dict[str, Any]) -> dict[str, Any]:
 
     def _clean_col(col_dict: dict[str, Any]) -> dict[str, Any]:
         return {k: v for k, v in col_dict.items() if k != "apiSupport"}
+
+    return {
+        k: v if k != "columns" else {colk: _clean_col(colv) for colk, colv in v.items()}
+        for k, v in def_dict.items()
+    }
+
+
+def _remove_definition(def_dict: dict[str, Any]) -> dict[str, Any]:
+    """
+    Strip definition keys from columns since its presence
+    is != between sending and receiving. Useful for UDT columns
+    """
+
+    def _clean_col(col_dict: dict[str, Any]) -> dict[str, Any]:
+        # 'definition' may appear nested, e.g. for a map with UDT values
+        return {
+            k: _clean_col(v) if isinstance(v, dict) else v
+            for k, v in col_dict.items()
+            if k != "definition"
+        }
 
     return {
         k: v if k != "columns" else {colk: _clean_col(colv) for colk, colv in v.items()}
@@ -200,9 +226,10 @@ class TestTableLifecycle:
 
         # definition and info
         atf_def = await atable_fluent.definition()
+        # Compare classes, not dicts, due to representational ambiguity:
         assert (
-            _remove_apisupport(atf_def.as_dict())
-            == table_whole_obj_definition.as_dict()
+            CreateTableDefinition._from_dict(_remove_apisupport(atf_def.as_dict()))
+            == table_whole_obj_definition
         )
         if IS_ASTRA_DB:
             fl_info = await atable_fluent.info()
@@ -266,7 +293,7 @@ class TestTableLifecycle:
 
         await table.create_index(
             "tfi_idx_p_text",
-            column="p_text",
+            "p_text",
             options=TableIndexOptions(
                 ascii=False,
                 normalize=True,
@@ -275,18 +302,18 @@ class TestTableLifecycle:
         )
         await table.create_index(
             "tfi_idx_p_int",
-            column="p_int",
+            "p_int",
         )
         await table.create_vector_index(
             "tfi_idx_p_vector_sm",
-            column="p_vector_sm",
+            "p_vector_sm",
             options=TableVectorIndexOptions(
                 metric="cosine",
             ),
         )
         await table.create_vector_index(
             "tfi_idx_p_vector",
-            column="p_vector",
+            "p_vector",
             options=TableVectorIndexOptions(
                 source_model="openai-v3-large",
             ),
@@ -353,7 +380,7 @@ class TestTableLifecycle:
         await async_database.drop_table(table.name)
 
     @pytest.mark.describe("test of alter table, async")
-    async def test_alter_tableindex_async(
+    async def test_alter_table_async(
         self,
         async_database: AsyncDatabase,
     ) -> None:
@@ -399,7 +426,369 @@ class TestTableLifecycle:
                 operation=AlterTableDropVectorize.coerce({"columns": ["p_vector"]})
             )
             # back to the original table:
+            # Compare classes, not dicts, due to representational ambiguity:
             adef = await atable.definition()
-            assert _remove_apisupport(adef.as_dict()) == orig_table_def.as_dict()
+            assert (
+                CreateTableDefinition._from_dict(_remove_apisupport(adef.as_dict()))
+                == orig_table_def
+            )
+        finally:
+            await atable.drop()
+
+    @pytest.mark.describe("test of collection indexes, async")
+    async def test_table_collectionindexes_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        table_colidx_def = CreateTableDefinition(
+            columns={
+                "id": TableScalarColumnTypeDescriptor(column_type="text"),
+                "t": TableScalarColumnTypeDescriptor(column_type="text"),
+                "set_int": TableValuedColumnTypeDescriptor(
+                    column_type="set",
+                    value_type="int",
+                ),
+                "set_int2": TableValuedColumnTypeDescriptor(
+                    column_type="set",
+                    value_type="int",
+                ),
+                "list_int": TableValuedColumnTypeDescriptor(
+                    column_type="list",
+                    value_type="int",
+                ),
+                "list_int2": TableValuedColumnTypeDescriptor(
+                    column_type="list",
+                    value_type="int",
+                ),
+                "map_text_int_e": TableKeyValuedColumnTypeDescriptor(
+                    key_type="text",
+                    value_type="int",
+                ),
+                "map_text_int_k": TableKeyValuedColumnTypeDescriptor(
+                    key_type="text",
+                    value_type="int",
+                ),
+                "map_text_int_v": TableKeyValuedColumnTypeDescriptor(
+                    key_type="text",
+                    value_type="int",
+                ),
+            },
+            primary_key=TablePrimaryKeyDescriptor(
+                partition_by=["id"],
+                partition_sort={},
+            ),
+        )
+        atable = await async_database.create_table(
+            "table_collectionindexes",
+            definition=table_colidx_def,
+        )
+
+        try:
+            # create, list and drop baseline + various collection-column indexes
+            idx_t_t_column = "t"
+            idx_t_t_options = {
+                "caseSensitive": False,
+                "normalize": False,
+                "ascii": True,
+            }
+            idx_t_set_int_column = "set_int"
+            idx_t_set_int_column2 = {"set_int2": "$values"}
+            idx_t_list_int_column = "list_int"
+            idx_t_list_int_column2 = {"list_int2": "$values"}
+            idx_t_map_text_int_e_column = "map_text_int_e"
+            idx_t_map_text_int_k_column = {"map_text_int_k": "$keys"}
+            idx_t_map_text_int_v_column = {"map_text_int_v": "$values"}
+
+            await atable.create_index(
+                "idx_t_t", idx_t_t_column, options=idx_t_t_options
+            )
+            await atable.create_index("idx_t_set_int", idx_t_set_int_column)
+            await atable.create_index("idx_t_set_int2", idx_t_set_int_column2)
+            await atable.create_index("idx_t_list_int", idx_t_list_int_column)
+            await atable.create_index("idx_t_list_int2", idx_t_list_int_column2)
+            await atable.create_index(
+                "idx_t_map_text_int_e", idx_t_map_text_int_e_column
+            )
+            await atable.create_index(
+                "idx_t_map_text_int_k", idx_t_map_text_int_k_column
+            )
+            await atable.create_index(
+                "idx_t_map_text_int_v", idx_t_map_text_int_v_column
+            )
+
+            listed_indexes = sorted(
+                await atable.list_indexes(),
+                key=lambda idx_desc: idx_desc.name,
+            )
+            expected_indexes = sorted(
+                [
+                    TableIndexDescriptor(
+                        name="idx_t_t",
+                        definition=TableIndexDefinition(
+                            column=idx_t_t_column,
+                            options=TableIndexOptions.coerce(idx_t_t_options),
+                        ),
+                        index_type=TableIndexType.REGULAR,
+                    ),
+                    TableIndexDescriptor(
+                        name="idx_t_set_int",
+                        definition=TableIndexDefinition(
+                            column={idx_t_set_int_column: "$values"},
+                            options=TableIndexOptions(),
+                        ),
+                        index_type=TableIndexType.REGULAR,
+                    ),
+                    TableIndexDescriptor(
+                        name="idx_t_set_int2",
+                        definition=TableIndexDefinition(
+                            column=idx_t_set_int_column2,
+                            options=TableIndexOptions(),
+                        ),
+                        index_type=TableIndexType.REGULAR,
+                    ),
+                    TableIndexDescriptor(
+                        name="idx_t_list_int",
+                        definition=TableIndexDefinition(
+                            column={idx_t_list_int_column: "$values"},
+                            options=TableIndexOptions(),
+                        ),
+                        index_type=TableIndexType.REGULAR,
+                    ),
+                    TableIndexDescriptor(
+                        name="idx_t_list_int2",
+                        definition=TableIndexDefinition(
+                            column=idx_t_list_int_column2,
+                            options=TableIndexOptions(),
+                        ),
+                        index_type=TableIndexType.REGULAR,
+                    ),
+                    TableIndexDescriptor(
+                        name="idx_t_map_text_int_e",
+                        definition=TableIndexDefinition(
+                            column=idx_t_map_text_int_e_column,
+                            options=TableIndexOptions(),
+                        ),
+                        index_type=TableIndexType.REGULAR,
+                    ),
+                    TableIndexDescriptor(
+                        name="idx_t_map_text_int_k",
+                        definition=TableIndexDefinition(
+                            column=idx_t_map_text_int_k_column,
+                            options=TableIndexOptions(),
+                        ),
+                        index_type=TableIndexType.REGULAR,
+                    ),
+                    TableIndexDescriptor(
+                        name="idx_t_map_text_int_v",
+                        definition=TableIndexDefinition(
+                            column=idx_t_map_text_int_v_column,
+                            options=TableIndexOptions(),
+                        ),
+                        index_type=TableIndexType.REGULAR,
+                    ),
+                ],
+                key=lambda idx_desc: idx_desc.name,
+            )
+            assert listed_indexes == expected_indexes
+
+            await atable.database.drop_table_index("idx_t_t")
+            await atable.database.drop_table_index("idx_t_set_int")
+            await atable.database.drop_table_index("idx_t_set_int2")
+            await atable.database.drop_table_index("idx_t_list_int")
+            await atable.database.drop_table_index("idx_t_list_int2")
+            await atable.database.drop_table_index("idx_t_map_text_int_e")
+            await atable.database.drop_table_index("idx_t_map_text_int_k")
+            await atable.database.drop_table_index("idx_t_map_text_int_v")
+        finally:
+            await atable.drop()
+
+    # TODO: open to Astra DB once available
+    @pytest.mark.skipif(
+        IS_ASTRA_DB,
+        reason="Text indexes not on Astra DB yet",
+    )
+    @pytest.mark.describe("test of text indexes, async")
+    async def test_table_textindexes_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        table_textidx_def = CreateTableDefinition(
+            columns={
+                "id": TableScalarColumnTypeDescriptor(column_type="text"),
+                "txt_d": TableScalarColumnTypeDescriptor(column_type="text"),
+                "txt_s": TableScalarColumnTypeDescriptor(column_type="text"),
+                "txt_l": TableScalarColumnTypeDescriptor(column_type="text"),
+            },
+            primary_key=TablePrimaryKeyDescriptor(
+                partition_by=["id"],
+                partition_sort={},
+            ),
+        )
+        atable = await async_database.create_table(
+            "table_textindexes",
+            definition=table_textidx_def,
+        )
+
+        try:
+            # create, list and drop various analyzer text-column indexes
+            tx_id_opts_s = TableTextIndexOptions(analyzer="whitespace")
+            tx_id_opts_l = TableTextIndexOptions(
+                analyzer={
+                    "tokenizer": {"name": "standard", "args": {}},
+                    "filters": [
+                        {"name": "lowercase"},
+                        {"name": "stop"},
+                        {"name": "porterstem"},
+                        {"name": "asciifolding"},
+                    ],
+                    "charFilters": [],
+                },
+            )
+            await atable.create_text_index("idx_txt_d", "txt_d")
+            await atable.create_text_index("idx_txt_s", "txt_s", options=tx_id_opts_s)
+            await atable.create_text_index("idx_txt_l", "txt_l", options=tx_id_opts_l)
+
+            listed_indexes = sorted(
+                await atable.list_indexes(),
+                key=lambda idx_desc: idx_desc.name,
+            )
+            expected_indexes = sorted(
+                [
+                    TableIndexDescriptor(
+                        name="idx_txt_d",
+                        definition=TableTextIndexDefinition(
+                            column="txt_d",
+                            options=TableTextIndexOptions(analyzer="standard"),
+                        ),
+                        index_type=TableIndexType.TEXT,
+                    ),
+                    TableIndexDescriptor(
+                        name="idx_txt_s",
+                        definition=TableTextIndexDefinition(
+                            column="txt_s",
+                            options=tx_id_opts_s,
+                        ),
+                        index_type=TableIndexType.TEXT,
+                    ),
+                    TableIndexDescriptor(
+                        name="idx_txt_l",
+                        definition=TableTextIndexDefinition(
+                            column="txt_l",
+                            options=tx_id_opts_l,
+                        ),
+                        index_type=TableIndexType.TEXT,
+                    ),
+                ],
+                key=lambda idx_desc: idx_desc.name,
+            )
+            assert listed_indexes == expected_indexes
+
+            await atable.database.drop_table_index("idx_txt_d")
+            await atable.database.drop_table_index("idx_txt_s")
+            await atable.database.drop_table_index("idx_txt_l")
+        finally:
+            await atable.drop()
+
+    @pytest.mark.skipif(
+        "ASTRAPY_TEST_UDT" not in os.environ,
+        reason="UDT testing not enabled",
+    )
+    @pytest.mark.describe("test of create/verify/delete table with a simple UDT, async")
+    async def test_table_simpleudt_crd_async(
+        self,
+        async_database: AsyncDatabase,
+        simple_udt: str,
+    ) -> None:
+        udt_col_desc = TableUDTColumnDescriptor(udt_name=simple_udt)
+        table_simple_udt_def = CreateTableDefinition(
+            columns={
+                "id": TableScalarColumnTypeDescriptor("text"),
+                "udt_map": TableKeyValuedColumnTypeDescriptor(
+                    key_type=TableScalarColumnTypeDescriptor("ascii"),
+                    value_type=udt_col_desc,
+                ),
+                "udt_set": TableValuedColumnTypeDescriptor(
+                    column_type="set",
+                    value_type=udt_col_desc,
+                ),
+                "udt_list": TableValuedColumnTypeDescriptor(
+                    column_type="list",
+                    value_type=udt_col_desc,
+                ),
+                "udt_scalar": udt_col_desc,
+            },
+            primary_key=TablePrimaryKeyDescriptor(
+                partition_by=["id"],
+                partition_sort={},
+            ),
+        )
+        try:
+            atable = await async_database.create_table(
+                "table_simple_udt",
+                definition=table_simple_udt_def,
+            )
+            # Compare classes, not dicts, due to representational ambiguity:
+            assert (
+                CreateTableDefinition._from_dict(
+                    _remove_definition(
+                        _remove_apisupport((await atable.definition()).as_dict())
+                    )
+                )
+                == table_simple_udt_def
+            )
+
+            add_udt_columns = AlterTableAddColumns(
+                columns={
+                    "altered_udt_map": TableKeyValuedColumnTypeDescriptor(
+                        key_type=TableScalarColumnTypeDescriptor("ascii"),
+                        value_type=udt_col_desc,
+                    ),
+                    "altered_udt_set": TableValuedColumnTypeDescriptor(
+                        column_type="set",
+                        value_type=udt_col_desc,
+                    ),
+                    "altered_udt_list": TableValuedColumnTypeDescriptor(
+                        column_type="list",
+                        value_type=udt_col_desc,
+                    ),
+                    "altered_udt_scalar": udt_col_desc,
+                },
+            )
+            await atable.alter(add_udt_columns)
+            drop_udt_columns = AlterTableDropColumns(
+                columns=["udt_map", "udt_set", "udt_list", "udt_scalar"]
+            )
+            await atable.alter(drop_udt_columns)
+            altered_table_simple_udt_def = CreateTableDefinition(
+                columns={
+                    "id": TableScalarColumnTypeDescriptor("text"),
+                    "altered_udt_map": TableKeyValuedColumnTypeDescriptor(
+                        key_type=TableScalarColumnTypeDescriptor("ascii"),
+                        value_type=udt_col_desc,
+                    ),
+                    "altered_udt_set": TableValuedColumnTypeDescriptor(
+                        column_type="set",
+                        value_type=udt_col_desc,
+                    ),
+                    "altered_udt_list": TableValuedColumnTypeDescriptor(
+                        column_type="list",
+                        value_type=udt_col_desc,
+                    ),
+                    "altered_udt_scalar": udt_col_desc,
+                },
+                primary_key=TablePrimaryKeyDescriptor(
+                    partition_by=["id"],
+                    partition_sort={},
+                ),
+            )
+            # Compare classes, not dicts, due to representational ambiguity:
+            assert (
+                CreateTableDefinition._from_dict(
+                    _remove_definition(
+                        _remove_apisupport((await atable.definition()).as_dict())
+                    )
+                )
+                == altered_table_simple_udt_def
+            )
         finally:
             await atable.drop()

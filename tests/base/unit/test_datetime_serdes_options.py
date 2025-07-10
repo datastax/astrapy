@@ -28,20 +28,23 @@ from astrapy.info import (
     ColumnType,
     TableScalarColumnTypeDescriptor,
 )
-from astrapy.utils.api_options import FullSerdesOptions
+from astrapy.utils.api_options import SerdesOptions, defaultSerdesOptions
 
 
 class TestDatetimeSerdesOptions:
     @pytest.mark.describe("test reading timestamp from table, custom dt")
     def test_ddate_table_reading_customdt(self) -> None:
         tz = datetime.timezone(datetime.timedelta(hours=2, minutes=45))
-        sd_options = FullSerdesOptions(
-            binary_encode_vectors=False,
-            custom_datatypes_in_reading=True,
-            unroll_iterables_to_lists=False,
-            use_decimals_in_collections=False,
-            accept_naive_datetimes=False,
-            datetime_tzinfo=tz,
+        sd_options = defaultSerdesOptions.with_override(
+            SerdesOptions(
+                binary_encode_vectors=False,
+                custom_datatypes_in_reading=True,
+                unroll_iterables_to_lists=False,
+                use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="never",
+                accept_naive_datetimes=False,
+                datetime_tzinfo=tz,
+            ),
         )
         columns: dict[str, TableColumnTypeDescriptor] = {
             "mu": TableScalarColumnTypeDescriptor(ColumnType.TIMESTAMP),
@@ -60,13 +63,16 @@ class TestDatetimeSerdesOptions:
     @pytest.mark.describe("test reading timestamp from table, stdlib and tzaware")
     def test_ddate_table_reading_stdlibtz(self) -> None:
         tz = datetime.timezone(datetime.timedelta(hours=2, minutes=45))
-        sd_options = FullSerdesOptions(
-            binary_encode_vectors=False,
-            custom_datatypes_in_reading=False,
-            unroll_iterables_to_lists=False,
-            use_decimals_in_collections=False,
-            accept_naive_datetimes=False,
-            datetime_tzinfo=tz,
+        sd_options = defaultSerdesOptions.with_override(
+            SerdesOptions(
+                binary_encode_vectors=False,
+                custom_datatypes_in_reading=False,
+                unroll_iterables_to_lists=False,
+                use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="never",
+                accept_naive_datetimes=False,
+                datetime_tzinfo=tz,
+            ),
         )
         columns: dict[str, TableColumnTypeDescriptor] = {
             "mu": TableScalarColumnTypeDescriptor(ColumnType.TIMESTAMP),
@@ -84,13 +90,16 @@ class TestDatetimeSerdesOptions:
 
     @pytest.mark.describe("test reading timestamp from table, stdlib and naive")
     def test_ddate_table_reading_stdlibnaive(self) -> None:
-        sd_options = FullSerdesOptions(
-            binary_encode_vectors=False,
-            custom_datatypes_in_reading=False,
-            unroll_iterables_to_lists=False,
-            use_decimals_in_collections=False,
-            accept_naive_datetimes=False,
-            datetime_tzinfo=None,
+        sd_options = defaultSerdesOptions.with_override(
+            SerdesOptions(
+                binary_encode_vectors=False,
+                custom_datatypes_in_reading=False,
+                unroll_iterables_to_lists=False,
+                use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="never",
+                accept_naive_datetimes=False,
+                datetime_tzinfo=None,
+            ),
         )
         columns: dict[str, TableColumnTypeDescriptor] = {
             "mu": TableScalarColumnTypeDescriptor(ColumnType.TIMESTAMP),
@@ -109,16 +118,23 @@ class TestDatetimeSerdesOptions:
     @pytest.mark.describe("test writing tzaware datetime to table, no naive allowed")
     def test_ddate_table_writing_tzaware_strict(self) -> None:
         tz = datetime.timezone(datetime.timedelta(hours=2, minutes=45))
-        sd_options = FullSerdesOptions(
-            binary_encode_vectors=False,
-            custom_datatypes_in_reading=False,
-            unroll_iterables_to_lists=False,
-            use_decimals_in_collections=False,
-            accept_naive_datetimes=False,
-            datetime_tzinfo=None,
+        sd_options = defaultSerdesOptions.with_override(
+            SerdesOptions(
+                binary_encode_vectors=False,
+                custom_datatypes_in_reading=False,
+                unroll_iterables_to_lists=False,
+                use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="never",
+                accept_naive_datetimes=False,
+                datetime_tzinfo=None,
+            ),
         )
         dt = datetime.datetime(1991, 7, 23, 12, 34, 56, tzinfo=tz)
-        preprocessed = preprocess_table_payload({"mu": dt}, options=sd_options)
+        preprocessed = preprocess_table_payload(
+            {"mu": dt},
+            options=sd_options,
+            map2tuple_checker=None,
+        )
         assert preprocessed is not None
         assert DataAPITimestamp.from_string(
             preprocessed["mu"]
@@ -126,31 +142,45 @@ class TestDatetimeSerdesOptions:
 
     @pytest.mark.describe("test writing naive datetime to table, no naive allowed")
     def test_ddate_table_writing_naive_strict(self) -> None:
-        sd_options = FullSerdesOptions(
-            binary_encode_vectors=False,
-            custom_datatypes_in_reading=False,
-            unroll_iterables_to_lists=False,
-            use_decimals_in_collections=False,
-            accept_naive_datetimes=False,
-            datetime_tzinfo=None,
+        sd_options = defaultSerdesOptions.with_override(
+            SerdesOptions(
+                binary_encode_vectors=False,
+                custom_datatypes_in_reading=False,
+                unroll_iterables_to_lists=False,
+                use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="never",
+                accept_naive_datetimes=False,
+                datetime_tzinfo=None,
+            ),
         )
         dt = datetime.datetime(1991, 7, 23, 12, 34, 56)
         with pytest.raises(ValueError, match="tz"):
-            preprocess_table_payload({"mu": dt}, options=sd_options)
+            preprocess_table_payload(
+                {"mu": dt},
+                options=sd_options,
+                map2tuple_checker=None,
+            )
 
     @pytest.mark.describe("test writing tzaware datetime to table, naive permitted")
     def test_ddate_table_writing_tzaware_relaxed(self) -> None:
         tz = datetime.timezone(datetime.timedelta(hours=2, minutes=45))
-        sd_options = FullSerdesOptions(
-            binary_encode_vectors=False,
-            custom_datatypes_in_reading=False,
-            unroll_iterables_to_lists=False,
-            use_decimals_in_collections=False,
-            accept_naive_datetimes=True,
-            datetime_tzinfo=None,
+        sd_options = defaultSerdesOptions.with_override(
+            SerdesOptions(
+                binary_encode_vectors=False,
+                custom_datatypes_in_reading=False,
+                unroll_iterables_to_lists=False,
+                use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="never",
+                accept_naive_datetimes=True,
+                datetime_tzinfo=None,
+            ),
         )
         dt = datetime.datetime(1991, 7, 23, 12, 34, 56, tzinfo=tz)
-        preprocessed = preprocess_table_payload({"mu": dt}, options=sd_options)
+        preprocessed = preprocess_table_payload(
+            {"mu": dt},
+            options=sd_options,
+            map2tuple_checker=None,
+        )
         assert preprocessed is not None
         assert DataAPITimestamp.from_string(
             preprocessed["mu"]
@@ -158,16 +188,23 @@ class TestDatetimeSerdesOptions:
 
     @pytest.mark.describe("test writing naive datetime to table, naive permitted")
     def test_ddate_table_writing_naive_relaxed(self) -> None:
-        sd_options = FullSerdesOptions(
-            binary_encode_vectors=False,
-            custom_datatypes_in_reading=False,
-            unroll_iterables_to_lists=False,
-            use_decimals_in_collections=False,
-            accept_naive_datetimes=True,
-            datetime_tzinfo=None,
+        sd_options = defaultSerdesOptions.with_override(
+            SerdesOptions(
+                binary_encode_vectors=False,
+                custom_datatypes_in_reading=False,
+                unroll_iterables_to_lists=False,
+                use_decimals_in_collections=False,
+                encode_maps_as_lists_in_tables="never",
+                accept_naive_datetimes=True,
+                datetime_tzinfo=None,
+            ),
         )
         dt = datetime.datetime(1991, 7, 23, 12, 34, 56)
-        preprocessed = preprocess_table_payload({"mu": dt}, options=sd_options)
+        preprocessed = preprocess_table_payload(
+            {"mu": dt},
+            options=sd_options,
+            map2tuple_checker=None,
+        )
         assert preprocessed is not None
         assert DataAPITimestamp.from_string(
             preprocessed["mu"]

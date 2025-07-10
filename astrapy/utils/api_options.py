@@ -21,12 +21,21 @@ from typing import Iterable, Sequence
 from astrapy.authentication import (
     EmbeddingAPIKeyHeaderProvider,
     EmbeddingHeadersProvider,
+    RerankingAPIKeyHeaderProvider,
+    RerankingHeadersProvider,
     StaticTokenProvider,
     TokenProvider,
     coerce_possible_embedding_headers_provider,
+    coerce_possible_reranking_headers_provider,
     coerce_possible_token_provider,
 )
-from astrapy.constants import CallerType, Environment
+from astrapy.constants import (
+    CallerType,
+    Environment,
+    MapEncodingMode,
+    SerializerFunctionType,
+    UDTDeserializerFunctionType,
+)
 from astrapy.settings.defaults import (
     API_PATH_ENV_MAP,
     API_VERSION_ENV_MAP,
@@ -36,6 +45,7 @@ from astrapy.settings.defaults import (
     DEFAULT_CUSTOM_DATATYPES_IN_READING,
     DEFAULT_DATABASE_ADMIN_TIMEOUT_MS,
     DEFAULT_DATETIME_TZINFO,
+    DEFAULT_ENCODE_MAPS_AS_LISTS_IN_TABLES,
     DEFAULT_GENERAL_METHOD_TIMEOUT_MS,
     DEFAULT_KEYSPACE_ADMIN_TIMEOUT_MS,
     DEFAULT_REQUEST_TIMEOUT_MS,
@@ -95,7 +105,7 @@ class TimeoutOptions:
             Defaults to 30 s.
         database_admin_timeout_ms: a timeout for all database-related admin operations.
             Creating/dropping a database, listing databases, getting database info,
-            querying for the available embedding providers, are all subject
+            querying for the available embedding providers, and others, are all subject
             to this timeout. The longest-running operations in this class are
             the creation and the destruction of a database: if called with the
             `wait_until_complete=True` parameter, these can last several minutes.
@@ -166,7 +176,7 @@ class FullTimeoutOptions(TimeoutOptions):
             Defaults to 30 s.
         database_admin_timeout_ms: a timeout for all database-related admin operations.
             Creating/dropping a database, listing databases, getting database info,
-            querying for the available embedding providers, are all subject
+            querying for the available embedding providers, and others, are all subject
             to this timeout. The longest-running operations in this class are
             the creation and the destruction of a database: if called with the
             `wait_until_complete=True` parameter, these can last several minutes.
@@ -331,6 +341,17 @@ class SerdesOptions:
             fact that every number is then returned as an instance of `Decimal` when
             reading from collections, an additional performance cost is required to
             manage the serialization/deserialization of objects exchanged with the API.
+        encode_maps_as_lists_in_tables: Write-Path. Whether 'maps' (`dict` and/or
+            `DataAPIMap` objects alike) are automatically converted into association
+            lists if they are found in suitable portions of the write payload for Table
+            operations, i.e. if they represent parts of a row (including updates, etc).
+            Takes values in the `astrapy.constants.MapEncodingMode` enum: for "NEVER",
+            no such conversion occurs; for "DATAAPIMAPS" it takes place only for
+            instances of `DataAPIMap`, for "ALWAYS" also `dict` objects are transformed.
+            When (and where) enabled, the automatic conversions have the following form:
+            * `{10: "ten"} ==> [[10, "ten"]]`
+            * `DataAPIMap([('a', 1), ('b', 2)]) ==> [["a", 1], ["b", 2]]`.
+            Defaults to "DATAAPIMAPS".
         accept_naive_datetimes: Write-Path. Python datetimes can be either "naive" or
             "aware" of a timezone/offset information. Only the latter type can be
             translated unambiguously and without implied assumptions into a well-defined
@@ -349,14 +370,70 @@ class SerdesOptions:
             database. This setting (defaulting to `datetime.timezone.utc`) determines
             the timezone used in the returned datetime objects. Setting this value
             to None results in naive datetimes being returned (not recommended).
+        serializer_by_class: Write-Path. A dictionary associating, to specific classes
+            (not: instances), a function to use for serialization into a plain Python
+            dictionary with string keys. This is used by Tables, in the context of
+            user-defined types (UDTs), to seamlessly integrate third-party model
+            classes representing UDTs with astrapy.
+            When serializing the payload for a write, instances of classes found
+            in this mapping are processed through their serializer function, and the
+            resulting dictionary then undergoes the general payload serialization
+            logic.
+            A serializer function for class K is a `Callable[[K], dict[str, Any]]`.
+        deserializer_by_udt: Read-Path. A dictionary associating, to specific
+            user-defined type (UDT) names, a function to use for deserialization
+            into the desired class instance. This is used in Tables, when reads return
+            the values for UDTs in the form of plain JSON dictionaries: if the UDT name
+            is found in this mapping, the corresponding deserializer function is
+            invoked, which generally returns an instance of the third-party model class
+            of choice. If the UDT is not associated to a deserializer, by default
+            a `DataAPIDictUDT` (see) is returned for the UDT.
+            Deserializer functions accept two parameters: the dictionary received
+            for the UDT value, and the UDT definition as supplied by the Data API
+            alongside the read: so, they are a:
+            `Callable[[dict[str, Any], CreateTypeDefinition | None], K]`,
+            where `K` is the class of the returned object (i.e. the model class).
     """
 
-    binary_encode_vectors: bool | UnsetType = _UNSET
-    custom_datatypes_in_reading: bool | UnsetType = _UNSET
-    unroll_iterables_to_lists: bool | UnsetType = _UNSET
-    use_decimals_in_collections: bool | UnsetType = _UNSET
-    accept_naive_datetimes: bool | UnsetType = _UNSET
-    datetime_tzinfo: datetime.timezone | None | UnsetType = _UNSET
+    binary_encode_vectors: bool | UnsetType
+    custom_datatypes_in_reading: bool | UnsetType
+    unroll_iterables_to_lists: bool | UnsetType
+    use_decimals_in_collections: bool | UnsetType
+    encode_maps_as_lists_in_tables: MapEncodingMode | UnsetType
+    accept_naive_datetimes: bool | UnsetType
+    datetime_tzinfo: datetime.timezone | None | UnsetType
+    serializer_by_class: dict[type, SerializerFunctionType | None] | UnsetType
+    deserializer_by_udt: dict[str, UDTDeserializerFunctionType | None] | UnsetType
+
+    def __init__(
+        self,
+        *,
+        binary_encode_vectors: bool | UnsetType = _UNSET,
+        custom_datatypes_in_reading: bool | UnsetType = _UNSET,
+        unroll_iterables_to_lists: bool | UnsetType = _UNSET,
+        use_decimals_in_collections: bool | UnsetType = _UNSET,
+        encode_maps_as_lists_in_tables: str | MapEncodingMode | UnsetType = _UNSET,
+        accept_naive_datetimes: bool | UnsetType = _UNSET,
+        datetime_tzinfo: datetime.timezone | None | UnsetType = _UNSET,
+        serializer_by_class: dict[type, SerializerFunctionType | None]
+        | UnsetType = _UNSET,
+        deserializer_by_udt: dict[str, UDTDeserializerFunctionType | None]
+        | UnsetType = _UNSET,
+    ) -> None:
+        self.binary_encode_vectors = binary_encode_vectors
+        self.custom_datatypes_in_reading = custom_datatypes_in_reading
+        self.unroll_iterables_to_lists = unroll_iterables_to_lists
+        self.use_decimals_in_collections = use_decimals_in_collections
+        if isinstance(encode_maps_as_lists_in_tables, str):
+            self.encode_maps_as_lists_in_tables = MapEncodingMode.coerce(
+                encode_maps_as_lists_in_tables
+            )
+        else:
+            self.encode_maps_as_lists_in_tables = encode_maps_as_lists_in_tables
+        self.accept_naive_datetimes = accept_naive_datetimes
+        self.datetime_tzinfo = datetime_tzinfo
+        self.serializer_by_class = serializer_by_class
+        self.deserializer_by_udt = deserializer_by_udt
 
 
 @dataclass
@@ -438,6 +515,17 @@ class FullSerdesOptions(SerdesOptions):
             fact that every number is then returned as an instance of `Decimal` when
             reading from collections, an additional performance cost is required to
             manage the serialization/deserialization of objects exchanged with the API.
+        encode_maps_as_lists_in_tables: Write-Path. Whether 'maps' (`dict` and/or
+            `DataAPIMap` objects alike) are automatically converted into association
+            lists if they are found in suitable portions of the write payload for Table
+            operations, i.e. if they represent parts of a row (including updates, etc).
+            Takes values in the `astrapy.constants.MapEncodingMode` enum: for "NEVER",
+            no such conversion occurs; for "DATAAPIMAPS" it takes place only for
+            instances of `DataAPIMap`, for "ALWAYS" also `dict` objects are transformed.
+            When (and where) enabled, the automatic conversions have the following form:
+            * `{10: "ten"} ==> [[10, "ten"]]`
+            * `DataAPIMap([('a', 1), ('b', 2)]) ==> [["a", 1], ["b", 2]]`.
+            Defaults to "NEVER".
         accept_naive_datetimes: Write-Path. Python datetimes can be either "naive" or
             "aware" of a timezone/offset information. Only the latter type can be
             translated unambiguously and without implied assumptions into a well-defined
@@ -456,14 +544,40 @@ class FullSerdesOptions(SerdesOptions):
             database. This setting (defaulting to `datetime.timezone.utc`) determines
             the timezone used in the returned datetime objects. Setting this value
             to None results in naive datetimes being returned (not recommended).
+        serializer_by_class: Write-Path. A dictionary associating, to specific classes
+            (not: instances), a function to use for serialization into a plain Python
+            dictionary with string keys. This is used by Tables, in the context of
+            user-defined types (UDTs), to seamlessly integrate third-party model
+            classes representing UDTs with astrapy.
+            When serializing the payload for a write, instances of classes found
+            in this mapping are processed through their serializer function, and the
+            resulting dictionary then undergoes the general payload serialization
+            logic.
+            A serializer function for class K is a `Callable[[K], dict[str, Any]]`.
+        deserializer_by_udt: Read-Path. A dictionary associating, to specific
+            user-defined type (UDT) names, a function to use for deserialization
+            into the desired class instance. This is used in Tables, when reads return
+            the values for UDTs in the form of plain JSON dictionaries: if the UDT name
+            is found in this mapping, the corresponding deserializer function is
+            invoked, which generally returns an instance of the third-party model class
+            of choice. If the UDT is not associated to a deserializer, by default
+            a `DataAPIDictUDT` (see) is returned for the UDT.
+            Deserializer functions accept two parameters: the dictionary received
+            for the UDT value, and the UDT definition as supplied by the Data API
+            alongside the read: so, they are a:
+            `Callable[[dict[str, Any], CreateTypeDefinition | None], K]`,
+            where `K` is the class of the returned object (i.e. the model class).
     """
 
     binary_encode_vectors: bool
     custom_datatypes_in_reading: bool
     unroll_iterables_to_lists: bool
     use_decimals_in_collections: bool
+    encode_maps_as_lists_in_tables: MapEncodingMode
     accept_naive_datetimes: bool
     datetime_tzinfo: datetime.timezone | None
+    serializer_by_class: dict[type, SerializerFunctionType | None]
+    deserializer_by_udt: dict[str, UDTDeserializerFunctionType | None]
 
     def __init__(
         self,
@@ -472,8 +586,11 @@ class FullSerdesOptions(SerdesOptions):
         custom_datatypes_in_reading: bool,
         unroll_iterables_to_lists: bool,
         use_decimals_in_collections: bool,
+        encode_maps_as_lists_in_tables: str | MapEncodingMode,
         accept_naive_datetimes: bool,
         datetime_tzinfo: datetime.timezone | None,
+        serializer_by_class: dict[type, SerializerFunctionType | None],
+        deserializer_by_udt: dict[str, UDTDeserializerFunctionType | None],
     ) -> None:
         SerdesOptions.__init__(
             self,
@@ -481,8 +598,11 @@ class FullSerdesOptions(SerdesOptions):
             custom_datatypes_in_reading=custom_datatypes_in_reading,
             unroll_iterables_to_lists=unroll_iterables_to_lists,
             use_decimals_in_collections=use_decimals_in_collections,
+            encode_maps_as_lists_in_tables=encode_maps_as_lists_in_tables,
             accept_naive_datetimes=accept_naive_datetimes,
             datetime_tzinfo=datetime_tzinfo,
+            serializer_by_class=serializer_by_class,
+            deserializer_by_udt=deserializer_by_udt,
         )
 
     def with_override(self, other: SerdesOptions) -> FullSerdesOptions:
@@ -494,6 +614,23 @@ class FullSerdesOptions(SerdesOptions):
             other: a not-necessarily-fully-specified options object. All its defined
                 settings take precedence.
         """
+
+        _serializer_by_class: dict[type, SerializerFunctionType | None]
+        if isinstance(other.serializer_by_class, UnsetType):
+            _serializer_by_class = self.serializer_by_class
+        else:
+            _serializer_by_class = {
+                **self.serializer_by_class,
+                **other.serializer_by_class,
+            }
+        _deserializer_by_udt: dict[str, UDTDeserializerFunctionType | None]
+        if isinstance(other.deserializer_by_udt, UnsetType):
+            _deserializer_by_udt = self.deserializer_by_udt
+        else:
+            _deserializer_by_udt = {
+                **self.deserializer_by_udt,
+                **other.deserializer_by_udt,
+            }
 
         return FullSerdesOptions(
             binary_encode_vectors=(
@@ -516,6 +653,11 @@ class FullSerdesOptions(SerdesOptions):
                 if not isinstance(other.use_decimals_in_collections, UnsetType)
                 else self.use_decimals_in_collections
             ),
+            encode_maps_as_lists_in_tables=(
+                other.encode_maps_as_lists_in_tables
+                if not isinstance(other.encode_maps_as_lists_in_tables, UnsetType)
+                else self.encode_maps_as_lists_in_tables
+            ),
             accept_naive_datetimes=(
                 other.accept_naive_datetimes
                 if not isinstance(other.accept_naive_datetimes, UnsetType)
@@ -526,6 +668,8 @@ class FullSerdesOptions(SerdesOptions):
                 if not isinstance(other.datetime_tzinfo, UnsetType)
                 else self.datetime_tzinfo
             ),
+            serializer_by_class=_serializer_by_class,
+            deserializer_by_udt=_deserializer_by_udt,
         )
 
 
@@ -777,6 +921,11 @@ class APIOptions:
             Passing a string, or None, to this constructor parameter will get it
             automatically converted into the appropriate EmbeddingHeadersProvider
             object.
+        reranking_api_key: an instance of RerankingHeadersProvider should it be needed
+            for reranking-related data operations (used by Tables and Collections).
+            Passing a string, or None, to this constructor parameter will get it
+            automatically converted into the appropriate RerankingHeadersProvider
+            object.
         timeout_options: an instance of `TimeoutOptions` (see) to control the timeout
             behavior for the various kinds of operations involving the Data/DevOps API.
         serdes_options: an instance of `SerdesOptions` (see) to customize the
@@ -863,6 +1012,7 @@ class APIOptions:
     redacted_header_names: set[str] | UnsetType = _UNSET
     token: TokenProvider | UnsetType = _UNSET
     embedding_api_key: EmbeddingHeadersProvider | UnsetType = _UNSET
+    reranking_api_key: RerankingHeadersProvider | UnsetType = _UNSET
 
     timeout_options: TimeoutOptions | UnsetType = _UNSET
     serdes_options: SerdesOptions | UnsetType = _UNSET
@@ -878,6 +1028,7 @@ class APIOptions:
         redacted_header_names: Iterable[str] | UnsetType = _UNSET,
         token: str | TokenProvider | UnsetType = _UNSET,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         timeout_options: TimeoutOptions | UnsetType = _UNSET,
         serdes_options: SerdesOptions | UnsetType = _UNSET,
         data_api_url_options: DataAPIURLOptions | UnsetType = _UNSET,
@@ -896,6 +1047,9 @@ class APIOptions:
         self.token = coerce_possible_token_provider(token)
         self.embedding_api_key = coerce_possible_embedding_headers_provider(
             embedding_api_key,
+        )
+        self.reranking_api_key = coerce_possible_reranking_headers_provider(
+            reranking_api_key,
         )
         self.timeout_options = timeout_options
         self.serdes_options = serdes_options
@@ -950,6 +1104,9 @@ class APIOptions:
                 None
                 if isinstance(self.embedding_api_key, UnsetType)
                 else f"embedding_api_key={self.embedding_api_key}",
+                None
+                if isinstance(self.reranking_api_key, UnsetType)
+                else f"reranking_api_key={self.reranking_api_key}",
                 None
                 if isinstance(self.timeout_options, UnsetType)
                 else f"timeout_options={self.timeout_options}",
@@ -1017,6 +1174,11 @@ class FullAPIOptions(APIOptions):
             Passing a string, or None, to this constructor parameter will get it
             automatically converted into the appropriate EmbeddingHeadersProvider
             object.
+        reranking_api_key: an instance of RerankingHeadersProvider should it be needed
+            for reranking-related data operations (used by Tables and Collections).
+            Passing a string, or None, to this constructor parameter will get it
+            automatically converted into the appropriate RerankingHeadersProvider
+            object.
         timeout_options: an instance of `TimeoutOptions` (see) to control the timeout
             behavior for the various kinds of operations involving the Data/DevOps API.
         serdes_options: an instance of `SerdesOptions` (see) to customize the
@@ -1037,6 +1199,7 @@ class FullAPIOptions(APIOptions):
     redacted_header_names: set[str]
     token: TokenProvider
     embedding_api_key: EmbeddingHeadersProvider
+    reranking_api_key: RerankingHeadersProvider
 
     timeout_options: FullTimeoutOptions
     serdes_options: FullSerdesOptions
@@ -1053,6 +1216,7 @@ class FullAPIOptions(APIOptions):
         redacted_header_names: set[str],
         token: str | TokenProvider,
         embedding_api_key: str | EmbeddingHeadersProvider,
+        reranking_api_key: str | RerankingHeadersProvider,
         timeout_options: FullTimeoutOptions,
         serdes_options: FullSerdesOptions,
         data_api_url_options: FullDataAPIURLOptions,
@@ -1066,6 +1230,7 @@ class FullAPIOptions(APIOptions):
             redacted_header_names=redacted_header_names,
             token=token,
             embedding_api_key=embedding_api_key,
+            reranking_api_key=reranking_api_key,
             timeout_options=timeout_options,
             serdes_options=serdes_options,
             data_api_url_options=data_api_url_options,
@@ -1090,6 +1255,9 @@ class FullAPIOptions(APIOptions):
                 _token_desc,
                 f"embedding_api_key={self.embedding_api_key}"
                 if self.embedding_api_key
+                else None,
+                f"reranking_api_key={self.reranking_api_key}"
+                if self.reranking_api_key
                 else None,
                 "...",
             )
@@ -1190,6 +1358,11 @@ class FullAPIOptions(APIOptions):
                 if not isinstance(other.embedding_api_key, UnsetType)
                 else self.embedding_api_key
             ),
+            reranking_api_key=(
+                other.reranking_api_key
+                if not isinstance(other.reranking_api_key, UnsetType)
+                else self.reranking_api_key
+            ),
             timeout_options=timeout_options,
             serdes_options=serdes_options,
             data_api_url_options=data_api_url_options,
@@ -1210,8 +1383,11 @@ defaultSerdesOptions = FullSerdesOptions(
     custom_datatypes_in_reading=DEFAULT_CUSTOM_DATATYPES_IN_READING,
     unroll_iterables_to_lists=DEFAULT_UNROLL_ITERABLES_TO_LISTS,
     use_decimals_in_collections=DEFAULT_USE_DECIMALS_IN_COLLECTIONS,
+    encode_maps_as_lists_in_tables=DEFAULT_ENCODE_MAPS_AS_LISTS_IN_TABLES,
     accept_naive_datetimes=DEFAULT_ACCEPT_NAIVE_DATETIMES,
     datetime_tzinfo=DEFAULT_DATETIME_TZINFO,
+    serializer_by_class={},
+    deserializer_by_udt={},
 )
 
 
@@ -1244,6 +1420,7 @@ def defaultAPIOptions(environment: str) -> FullAPIOptions:
         redacted_header_names=set(),
         token=StaticTokenProvider(None),
         embedding_api_key=EmbeddingAPIKeyHeaderProvider(None),
+        reranking_api_key=RerankingAPIKeyHeaderProvider(None),
         timeout_options=defaultTimeoutOptions,
         serdes_options=defaultSerdesOptions,
         data_api_url_options=defaultDataAPIURLOptions,

@@ -93,6 +93,56 @@ Next steps:
 - [AstraPy reference](https://docs.datastax.com/en/astra-api-docs/_attachments/python-client/astrapy/index.html)
 - Package on [PyPI](https://pypi.org/project/astrapy/)
 
+### Server-side embeddings
+
+AstraPy works with the "vectorize" feature of the Data API. This means that one can define server-side computation for vector embeddings and use text strings in place of a document vector, both in writing and in reading.
+The transformation of said text into an embedding is handled by the Data API, using a provider and model you specify.
+
+```python
+my_collection = database.create_collection(
+    "my_vectorize_collection",
+    definition=(
+        CollectionDefinition.builder()
+        .set_vector_service(
+            provider="example_vendor",
+            model_name="embedding_model_name",
+            authentication={"providerKey": "<STORED_API_KEY_NAME>"}  # if needed
+        )
+        .build()
+    )
+)
+
+my_collection.insert_one({"$vectorize": "text to make into embedding"})
+
+documents = my_collection.find(sort={"$vectorize": "vector search query text"})
+```
+
+See the [Data API reference](https://docs.datastax.com/en/astra-db-serverless/databases/embedding-generation.html)
+for more on this topic.
+
+### Hybrid search
+
+AstraPy supports the "findAndRerank" Data API command,
+which performs a hybrid search by combining results from a lexical search
+and a vector-based search in a single operation.
+
+```python
+r_results = my_collection.find_and_rerank(
+    sort={"$hybrid": "query text"},
+    limit=10,
+    include_scores=True,
+)
+
+for r_result in r_results:
+    print(r_result.document, r_results.scores)
+```
+
+This command will execute if the collection was created with the required settings
+(they are enabled by default).
+
+See the Data API reference, and the docstring for the `find_and_rerank` method,
+for more on this topic.
+
 ### Using Tables
 
 The example above uses a _collection_, where schemaless "documents" can be stored and retrieved.
@@ -184,7 +234,17 @@ for result in cursor:
 my_table.drop()
 ```
 
-For more on Tables, consult the [Data API documentation about Tables](https://docs.datastax.com/en/astra-db-serverless/api-reference/tables.html).
+For more on Tables, consult the [Data API documentation about Tables](https://docs.datastax.com/en/astra-db-serverless/api-reference/tables.html). Note that most features of Collections, with due modifications, hold for Tables as well (e.g. "vectorize", i.e. server-side embeddings).
+
+#### Maps as association lists
+
+In the Data API, table `map` columns with key of a type other than text
+have to be expressed as association lists,
+i.e. nested lists of lists: `[[key1, value1], [key2, value2], ...]`.
+
+AstraPy objects can be configured to always do so automatically, for a seamless
+experience.
+See the API Option `serdes_options.encode_maps_as_lists_in_tables` for details.
 
 ### Usage with HCD and other non-Astra installations
 
@@ -393,9 +453,33 @@ my_collection.update_one(
 my_collection.insert_one({"_id": uuid8()})
 ```
 
+### Escaping field names
+
+Field names containing special characters (`.` and `&`) must be correctly escaped
+in certain Data API commands. It is a responsibility of the user to ensure escaping
+is done when needed; however, AstraPy offers utilities to escape sequences of "path
+segments" and -- should it ever be needed -- unescape path-strings back into
+literal segments:
+
+```python
+from astrapy.utils.document_paths import escape_field_names, unescape_field_path
+
+print(escape_field_names("f1", "f2", 12, "g.&3"))
+# prints: f1.f2.12.g&.&&3
+print(escape_field_names(["f1", "f2", 12, "g.&3"]))
+# prints: f1.f2.12.g&.&&3
+print(unescape_field_path("a&&&.b.c.d.12"))
+# prints: ['a&.b', 'c', 'd', '12']
+```
+
 ## For contributors
 
-First install poetry with `pip install poetry` and then the project dependencies with `poetry install --with dev`.
+First install `uv` (e.g. `pipx install uv`), then set up a dev environment with `make venv`, or equivalently:
+
+```
+uv venv
+uv sync --dev
+```
 
 Linter, style and typecheck should all pass for a PR:
 
@@ -419,7 +503,7 @@ Astrapy's CI only runs "base". The others are to be checked manually when it's n
 
 Tests can be run on three types of Data API _targets_ (with slight differences in what is applicable):
 
-- **DockerCompose**: DSE+Data API, started by the test initialization with `docker-compose`. _Note that in this case you will have to manually destroy the created containers._
+- **DockerCompose**: HCD+Data API, started by the test initialization with `docker-compose`. _Note that in this case you will have to manually destroy the created containers._
 - **nonAstra**: a ready-to-use (user-supplied) local Data API (e.g. using `tests/dse_compose`)
 - **Astra**: an Astra DB target account (or two, as some tests are specific to dev environment)
 
@@ -427,46 +511,91 @@ Depending on the test, different environment variables are needed: refer to
 the templates in `tests/env_templates`. The "basic" credentials (one of the three options)
 are always required, _even for unit testing_.
 
+#### Multiple Python versions
+
+If may be useful to run e.g. unit tests with multiple Python versions. You can have `uv`
+create more than one venv and specify the version, e.g. for each one:
+
+```
+uv venv --python 3.8 .venv-3.8
+. .venv-3.8/bin/activate
+uv sync --dev --active
+```
+
+Then, with the desired virtual env active, you will simply run e.g. `uv run pytest [...]`.
+
+Most make targets will also support running in the named virtual env:
+assuming you activated a certain virtual env, you can run e.g.: `make format VENV=true`.
+
+#### Adding/changing dependencies
+
+After editing the `pyproject.toml`, make sure you run
+
+```
+uv lock
+uv sync --dev
+```
+
+and then commit the new `uv.lock` to the repo as well.
+
 #### Sample testing commands
 
 Base:
 
 ```
 # choose one:
-poetry run pytest tests/base
-poetry run pytest tests/base/unit
-poetry run pytest tests/base/integration
+uv run pytest tests/base
+uv run pytest tests/base/unit
+uv run pytest tests/base/integration
 ```
+
+_Note: when running locally, the reranking-related tests require `ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER=y` and
+HEADER_RERANKING_API_KEY_NVIDIA="AstraCS:<dev token...>`._
 
 Admin:
 
 ```
 # depending on the environment, different 'admin tests' will run:
-poetry run pytest tests/admin
+uv run pytest tests/admin
 ```
 
 Extended vectorize:
 
 ```
 # very many env. variables required for this one:
-poetry run pytest tests/vectorize
+uv run pytest tests/vectorize
 
 # restrict to some combination(s) with e.g.:
 EMBEDDING_MODEL_TAGS="openai/text-embedding-3-large/HEADER/0,voyageAI/voyage-finance-2/SHARED_SECRET/f" \
-    poetry run pytest tests/vectorize/integration/test_vectorize_providers.py \
+    uv run pytest tests/vectorize/integration/test_vectorize_providers.py \
     -k test_vectorize_usage_auth_type_header_sync
 ```
 
 All the usual `pytest` ways of restricting the test selection hold
-(e.g. `poetry run pytest tests/idiomatic/unit` or `[...] -k <test_name_selector>`). Also e.g.:
+(e.g. `uv run pytest tests/idiomatic/unit` or `[...] -k <test_name_selector>`). Also e.g.:
 
 ```
 # suppress log noise
-poetry run pytest [...] -o log_cli=0
+uv run pytest [...] -o log_cli=0
 
 # increase log level
-poetry run pytest [...] -o log_cli=1 --log-cli-level=10
+uv run pytest [...] -o log_cli=1 --log-cli-level=10
 ```
+
+### Special tests
+
+The following are special provision to manage features under evolution or not
+entirely deployed to all environments. Typically they require manually passing
+certain environment variables, otherwise the associated tests are excluded from CI.
+
+#### Cutting-edge features on `main`
+
+Prepend tests with a `ASTRAPY_TEST_LATEST_MAIN=y` for features found on `main` that are not released anywhere.
+
+#### testing UDT support
+
+Prepend tests with a `ASTRAPY_TEST_UDT=y` to enable testing of Data API support for user-defined types (UDTs).
+These integration tests are off by default, pending release on all test target environments.
 
 ## Appendices
 
@@ -497,9 +626,26 @@ Constants for data-related use:
 from astrapy.constants import (
     DefaultIdType,
     Environment,
+    MapEncodingMode,
     ReturnDocument,
     SortMode,
     VectorMetric,
+)
+```
+
+Cursor for find-like operations:
+
+```python
+from astrapy.cursors import (
+  AbstractCursor,
+  AsyncCollectionFindAndRerankCursor,
+  AsyncCollectionFindCursor,
+  AsyncTableFindCursor,
+  CollectionFindAndRerankCursor,
+  CollectionFindCursor,
+  CursorState,
+  RerankedResult,
+  TableFindCursor,
 )
 ```
 
@@ -535,13 +681,14 @@ Data types:
 
 ```python
 from astrapy.data_types import (
-    DataAPITimestamp,
-    DataAPIVector,
     DataAPIDate,
     DataAPIDuration,
     DataAPIMap,
     DataAPISet,
     DataAPITime,
+    DataAPITimestamp,
+    DataAPIDictUDT,
+    DataAPIVector,
 )
 ```
 
@@ -553,24 +700,52 @@ from astrapy.info import (
     AlterTableAddVectorize,
     AlterTableDropColumns,
     AlterTableDropVectorize,
+    AlterTypeAddFields,
+    AlterTypeOperation,
+    AlterTypeRenameFields,
+    AstraDBAdminDatabaseInfo,
+    AstraDBDatabaseInfo,
     CollectionDefaultIDOptions,
     CollectionDefinition,
+    CollectionDescriptor,
+    CollectionInfo,
+    CollectionLexicalOptions,
+    CollectionRerankOptions,
     CollectionVectorOptions,
     ColumnType,
     CreateTableDefinition,
+    CreateTypeDefinition,
     EmbeddingProvider,
     EmbeddingProviderAuthentication,
     EmbeddingProviderModel,
     EmbeddingProviderParameter,
     EmbeddingProviderToken,
+    FindEmbeddingProvidersResult,
+    FindRerankingProvidersResult,
+    ListTableDefinition,
+    ListTableDescriptor,
+    RerankingProvider,
+    RerankingProviderAuthentication,
+    RerankingProviderModel,
+    RerankingProviderParameter,
+    RerankingProviderToken,
+    RerankServiceOptions,
+    TableAPIIndexSupportDescriptor,
+    TableAPISupportDescriptor,
     TableBaseIndexDefinition,
     TableIndexDefinition,
+    TableIndexDescriptor,
     TableIndexOptions,
+    TableInfo,
     TableKeyValuedColumnType,
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
+    TableTextIndexDefinition,
+    TableTextIndexOptions,
     TableUnsupportedColumnTypeDescriptor,
+    TableUnsupportedIndexDefinition,
+    TableUDTColumnDescriptor,
     TableValuedColumnType,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
@@ -589,6 +764,25 @@ from astrapy.authentication import (
     EmbeddingAPIKeyHeaderProvider,
     AWSEmbeddingHeadersProvider,
 )
+```
+
+Miscellaneous utilities:
+
+```python
+# Parsing API Endpoints for Astra DB:
+from astrapy.admin import (
+    ParsedAPIEndpoint,
+    parse_api_endpoint,
+)
+
+# Escaping/unescaping document paths:
+from astrapy.utils.document_paths import (
+    escape_field_names,
+    unescape_field_path,
+)
+
+# API Options defaults:
+from astrapy.utils.api_options import defaultAPIOptions
 ```
 
 ### Appendix B: compatibility with pre-1.0.0 library

@@ -92,11 +92,14 @@ class DataAPIClient:
         ...     ),
         ... )
         >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.3]})
-        >>> my_db1 = my_client.get_database("01234567-...")
-        >>> my_db2 = my_client.get_database("01234567-...", region="us-east1")
         >>> my_adm0 = my_client.get_admin()
         >>> my_adm1 = my_client.get_admin(token=more_powerful_token_override)
         >>> database_list = my_adm0.list_databases()
+        >>> my_new_db_admin = my_adm1.create_database(
+        ...     "new_database",
+        ...     cloud_provider="aws",
+        ...     region="ap-south-1",
+        ... )
     """
 
     def __init__(

@@ -21,6 +21,7 @@ from typing import Any
 
 from astrapy.data_types import (
     DataAPIDate,
+    DataAPIDictUDT,
     DataAPIDuration,
     DataAPIMap,
     DataAPISet,
@@ -29,6 +30,11 @@ from astrapy.data_types import (
     DataAPIVector,
 )
 from astrapy.ids import UUID
+from astrapy.info import (
+    AlterTypeAddFields,
+    AlterTypeRenameFields,
+    CreateTypeDefinition,
+)
 
 AR_ROW_PK_0 = {
     "p_ascii": "abc",
@@ -81,9 +87,9 @@ DISTINCT_AR_ROWS = [
         #
         "p_float": float("NaN"),
         "p_text": "a",
-        "p_list_int": [],
+        "p_list_int": [9999],  # FIXME back to [] once issue #1906 resolved
         "p_map_text_text": {"b": "VB"},
-        "p_set_int": set(),
+        "p_set_int": set([9999]),  # FIXME back to set() once issue #1906 resolved
     },
     {
         "p_ascii": "A",
@@ -250,3 +256,211 @@ COMPOSITE_VECTOR_ROWS = [
     for p_t in {"A", "B"}
     for p_i in range(COMPOSITE_VECTOR_ROWS_N)
 ]
+
+ALLMAPS_STDLIB_ROW = simplemap_row = {
+    "id": "sl_row",
+    "text_map": {
+        "text key": "text value",
+    },
+    "ascii_map": {
+        "ascii key": "ascii value",
+    },
+    "inet_map": {
+        ipaddress.IPv4Address("192.168.1.1"): ipaddress.IPv4Address("10.0.0.1"),
+    },
+    "date_map": {
+        datetime.date(2025, 1, 1): datetime.date(2026, 1, 1),
+    },
+    "duration_map": {
+        "duration text key": datetime.timedelta(seconds=4800),
+    },
+    "time_map": {
+        datetime.time(12, 0): datetime.time(23, 59, 59, 999999),
+    },
+    "timestamp_map": {
+        datetime.datetime(
+            2025, 1, 1, 12, 0, tzinfo=datetime.timezone.utc
+        ): datetime.datetime(2026, 1, 1, 12, 0, tzinfo=datetime.timezone.utc),
+    },
+    "uuid_map": {
+        UUID("123e4567-e89b-12d3-a456-426614174000"): UUID(
+            "550e8400-e29b-41d4-a716-446655440000"
+        ),
+    },
+    "tinyint_map": {
+        5: 10,
+    },
+    "varint_map": {
+        100000000: 200000000000,
+    },
+    "decimal_map": {
+        Decimal("1.23"): Decimal("4.56"),
+    },
+    "double_map": {
+        1.1: 2.2,
+    },
+    "int_map": {
+        42: 99,
+    },
+    "smallint_map": {
+        12: 34,
+    },
+    "bigint_map": {
+        1: 1,
+    },
+    "boolean_map": {
+        True: False,
+    },
+    "float_map": {
+        3.14: 6.28,
+    },
+    "blob_map": {
+        b"Hello World": b"Hello World",
+    },
+}
+ALLMAPS_CUSTOMTYPES_ROW = {
+    "id": "ct_row",
+    "text_map": DataAPIMap(
+        [
+            ("text key", "text value"),
+        ]
+    ),
+    "ascii_map": DataAPIMap(
+        [
+            ("ascii key", "ascii value"),
+        ]
+    ),
+    "inet_map": DataAPIMap(
+        [
+            (ipaddress.ip_address("192.168.1.1"), ipaddress.ip_address("10.0.0.1")),
+        ]
+    ),
+    "date_map": DataAPIMap(
+        [
+            (
+                DataAPIDate.from_string("2025-01-01"),
+                DataAPIDate.from_string("2026-01-01"),
+            ),
+        ]
+    ),
+    "duration_map": DataAPIMap(
+        [
+            ("duration text key", DataAPIDuration.from_c_string("1h20m")),
+        ]
+    ),
+    "time_map": DataAPIMap(
+        [
+            (
+                DataAPITime.from_string("12:00:00.000000000"),
+                DataAPITime.from_string("23:59:59.999999999"),
+            ),
+        ]
+    ),
+    "timestamp_map": DataAPIMap(
+        [
+            (
+                DataAPITimestamp.from_string("2025-01-01T12:00:00.000Z"),
+                DataAPITimestamp.from_string("2026-01-01T12:00:00.000Z"),
+            ),
+        ]
+    ),
+    "uuid_map": DataAPIMap(
+        [
+            (
+                UUID("123e4567-e89b-12d3-a456-426614174000"),
+                UUID("550e8400-e29b-41d4-a716-446655440000"),
+            ),
+        ]
+    ),
+    "tinyint_map": DataAPIMap(
+        [
+            (5, 10),
+        ]
+    ),
+    "varint_map": DataAPIMap(
+        [
+            (100000000, 200000000000),
+        ]
+    ),
+    "decimal_map": DataAPIMap(
+        [
+            (Decimal("1.23"), Decimal("4.56")),
+        ]
+    ),
+    "double_map": DataAPIMap(
+        [
+            (1.1, 2.2),
+        ]
+    ),
+    "int_map": DataAPIMap(
+        [
+            (42, 99),
+        ]
+    ),
+    "smallint_map": DataAPIMap(
+        [
+            (12, 34),
+        ]
+    ),
+    "bigint_map": DataAPIMap(
+        [
+            (1, 1),
+        ]
+    ),
+    "boolean_map": DataAPIMap(
+        [
+            (True, False),
+        ]
+    ),
+    "float_map": DataAPIMap(
+        [
+            (3.14, 6.28),
+        ]
+    ),
+    "blob_map": DataAPIMap(
+        [
+            (b"Hello World", b"Hello World"),
+        ]
+    ),
+}
+
+
+UDT_NAME = "test_udt"
+UDT_DEF0 = CreateTypeDefinition(
+    fields={
+        "f_float0": "float",
+        "f_float1": "float",
+        "f_float2": "float",
+    }
+)
+UDT_ALTER_OP_1 = AlterTypeAddFields(fields={"f_text0": "text"})
+UDT_ALTER_OP_2 = AlterTypeRenameFields(fields={"f_float0": "z_float0"})
+UDT_DEF1 = CreateTypeDefinition(
+    fields={
+        "z_float0": "float",
+        "f_float1": "float",
+        "f_float2": "float",
+        "f_text0": "text",
+    }
+)
+
+WEIRD_UDT_BASE_TABLE_NAME = "udt_weird_base"
+WEIRD_UDT_BASE_TYPE_NAME = "wrd_type_base"
+WEIRD_UDT_BASE_INITIALIZE_STATEMENTS = [
+    f"create type IF NOT EXISTS {WEIRD_UDT_BASE_TYPE_NAME} (a text, b int)",
+    (
+        f"create table IF NOT EXISTS {WEIRD_UDT_BASE_TABLE_NAME} (id text primary key, f_udt "
+        f"frozen<{WEIRD_UDT_BASE_TYPE_NAME}>, "
+        f"f_l_udt frozen<list<{WEIRD_UDT_BASE_TYPE_NAME}>>);"
+    ),
+]
+WEIRD_UDT_BASE_CLOSE_STATEMENTS = [
+    f"drop table {WEIRD_UDT_BASE_TABLE_NAME};",
+    f"drop type {WEIRD_UDT_BASE_TYPE_NAME};",
+]
+WEIRD_BASE_DOCUMENT_PK = {"id": "the_doc"}
+WEIRD_BASE_DOCUMENT = {
+    "f_udt": DataAPIDictUDT({"a": "A_of_f_udt", "b": 10}),
+    "f_l_udt": [DataAPIDictUDT({"a": "A_of_f_l_udt", "b": 12})],
+    **WEIRD_BASE_DOCUMENT_PK,
+}

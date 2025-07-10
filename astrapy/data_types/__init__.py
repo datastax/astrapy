@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from astrapy.data_types.data_api_date import DataAPIDate
+from astrapy.data_types.data_api_dict_udt import DataAPIDictUDT
 from astrapy.data_types.data_api_duration import DataAPIDuration
 from astrapy.data_types.data_api_map import DataAPIMap
 from astrapy.data_types.data_api_set import DataAPISet
@@ -26,6 +27,7 @@ __all__ = [
     "DataAPITimestamp",
     "DataAPIVector",
     "DataAPIDate",
+    "DataAPIDictUDT",
     "DataAPIDuration",
     "DataAPIMap",
     "DataAPISet",
