@@ -16,12 +16,13 @@ from __future__ import annotations
 
 import pytest
 
-from ..conftest import DefaultAsyncCollection
+from ..conftest import IS_ASTRA_DB, DefaultAsyncCollection
 
 PJ = {"_id": True, "title": False}
 
 
 class TestCollectionGeneralBM25Async:
+    @pytest.mark.skipif(IS_ASTRA_DB, reason="Feature not on Astra DB yet")
     @pytest.mark.describe("test of collection bm25 DML with vectorize, async")
     async def test_collection_bm25_dml_vectorize_async(
         self,

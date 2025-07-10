@@ -27,6 +27,7 @@ CollectionDefinition fluent interface: set_lexical and set_rerank accept also ju
 find_and_rerank scores' type enlarged to: `float|int|null`
 maintenance: improve integration test coverage for:
     - collection columns in tables: indexing, collection-specific DML commands ($push, $pullAll and so on)
+    - collection lexical/BM25-related DDL operations (various analyzer configurations for)
     - collection lexical/BM25-related DML operations (filtering, sorting based on $lexical)
 maintenance: subsumed the specific testing opt-in env. var 'ASTRAPY_TEST_MAP2TUPLES=y' into the catch-all 'cutting-edge main' `ASTRAPY_TEST_LATEST_MAIN=y`
 maintenance: simplified SerdesOptions management in unit testing; some rationalization/refactoring of pre- and post-processing logic for tables in unit tests
