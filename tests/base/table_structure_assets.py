@@ -201,6 +201,39 @@ TEST_KMS_VECTORIZE_TABLE_VECTOR_INDEX_DEFINITION = (
     TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS
 )
 
+TEST_MULTIPLEVECTORIZE_TABLE_NAME = "test_table_header_multiplevectorize"
+TEST_MULTIPLEVECTORIZE_TABLE_DEFINITION = CreateTableDefinition(
+    columns={
+        "id": TableScalarColumnTypeDescriptor(column_type="text"),
+        "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
+        "p_vector_small": TableVectorColumnTypeDescriptor(
+            column_type="vector",
+            dimension=1024,
+            service=VectorServiceOptions(
+                provider="openai",
+                model_name="text-embedding-3-small",
+            ),
+        ),
+        "p_vector_large": TableVectorColumnTypeDescriptor(
+            column_type="vector",
+            dimension=1024,
+            service=VectorServiceOptions(
+                provider="openai",
+                model_name="text-embedding-3-large",
+            ),
+        ),
+    },
+    primary_key=TablePrimaryKeyDescriptor(
+        partition_by=["id"],
+        partition_sort={},
+    ),
+)
+TEST_MULTIPLEVECTORIZE_TABLE_INDEXES: list[tuple[str, str]] = [
+    ("test_idx_p_vector_small", "p_vector_small"),
+    ("test_idx_p_vector_large", "p_vector_large"),
+]
+TEST_MULTIPLEVECTORIZE_TABLE_INDEX_OPTIONS = TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS
+
 TEST_SIMPLE_UDT_NAME = "test_simple_udt"
 TEST_SIMPLE_UDT_DEFINITION = CreateTypeDefinition(
     fields={

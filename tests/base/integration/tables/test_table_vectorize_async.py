@@ -195,3 +195,85 @@ class TestTableVectorizeAsync:
         assert match0 is not None
         # TODO: restore this check once #1949 is resolved
         # assert isinstance(match0["$similarity"], float)
+
+    @pytest.mark.skipif(
+        HEADER_EMBEDDING_API_KEY_OPENAI is None,
+        reason="No HEADER_EMBEDDING_API_KEY_OPENAI detected",
+    )
+    @pytest.mark.describe("test of multiple-vectorize table usage via header, async")
+    async def test_table_multiplevectorize_header_async(
+        self,
+        async_empty_table_multiplevectorize: DefaultAsyncTable,
+    ) -> None:
+        atable = async_empty_table_multiplevectorize
+
+        await atable.insert_one(
+            {
+                "id": "A",
+                "p_text": "p_text of A",
+                "p_vector_small": "a sentence on mountains",
+                "p_vector_large": "telephones and electricity?",
+            }
+        )
+
+        await atable.insert_many(
+            [
+                {
+                    "id": "B",
+                    "p_text": "p_text of B",
+                    "p_vector_small": "rivers, and has only the bee",
+                },
+                {
+                    "id": "C",
+                    "p_text": "p_text of C",
+                    "p_vector_large": "clouds, and has only the sea",
+                },
+            ]
+        )
+
+        reg_f_rows = await atable.find(projection={"id": True}).to_list()
+        assert {row["id"] for row in reg_f_rows} == {"A", "B", "C"}
+
+        ann_f_small = await atable.find(
+            sort={"p_vector_small": "flowing water and honey-producing animals"},
+            projection={"id": True},
+        ).to_list()
+        assert ann_f_small != []
+        assert ann_f_small[0]["id"] == "B"
+
+        ann_f1_small = await atable.find_one(
+            sort={"p_vector_small": "the utterance about orography"},
+            projection={"id": True},
+        )
+        assert ann_f1_small is not None
+        assert ann_f1_small["id"] == "A"
+
+        await atable.insert_one(
+            {
+                "id": "Z",
+                "p_text": "p_text of Z",
+                "p_vector_small": "telephones and electricity?",
+                "p_vector_large": "a sentence on mountains",
+            }
+        )
+
+        f1_ele_doc_sm = await atable.find_one(
+            sort={"p_vector_small": "phones and wires"}
+        )
+        f1_ele_doc_lg = await atable.find_one(
+            sort={"p_vector_large": "phones and wires"}
+        )
+        assert f1_ele_doc_sm is not None
+        assert f1_ele_doc_sm["id"] == "Z"
+        assert f1_ele_doc_lg is not None
+        assert f1_ele_doc_lg["id"] == "A"
+
+        await atable.update_one(
+            {"id": "A"},
+            update={
+                "$set": {
+                    "p_text": "the new p_text for A",
+                    "p_vector_small": "glaciers among the woods.",
+                },
+            },
+        )

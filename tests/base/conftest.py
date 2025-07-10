@@ -77,6 +77,10 @@ from .table_structure_assets import (
     TEST_LOGICALFILTERING_TABLE_DEFINITION,
     TEST_LOGICALFILTERING_TABLE_INDEXES,
     TEST_LOGICALFILTERING_TABLE_NAME,
+    TEST_MULTIPLEVECTORIZE_TABLE_DEFINITION,
+    TEST_MULTIPLEVECTORIZE_TABLE_INDEX_OPTIONS,
+    TEST_MULTIPLEVECTORIZE_TABLE_INDEXES,
+    TEST_MULTIPLEVECTORIZE_TABLE_NAME,
     TEST_SIMPLE_TABLE_DEFINITION,
     TEST_SIMPLE_TABLE_NAME,
     TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN,
@@ -639,6 +643,61 @@ def async_empty_table_vectorize(
 ) -> Iterable[DefaultAsyncTable]:
     """Emptied for each test function"""
     yield sync_empty_table_vectorize.to_async()
+
+
+###
+@pytest.fixture(scope="session")
+def sync_table_multiplevectorize(
+    data_api_credentials_kwargs: DataAPICredentials,
+    sync_database: Database,
+    service_collection_parameters: dict[str, Any],
+) -> Iterable[DefaultTable]:
+    """An actual table on DB, in the main keyspace"""
+    params = service_collection_parameters
+
+    table = sync_database.create_table(
+        TEST_MULTIPLEVECTORIZE_TABLE_NAME,
+        definition=TEST_MULTIPLEVECTORIZE_TABLE_DEFINITION,
+        embedding_api_key=params["api_key"],
+    )
+    for index_name, index_column in TEST_MULTIPLEVECTORIZE_TABLE_INDEXES:
+        table.create_vector_index(
+            index_name,
+            index_column,
+            options=TEST_MULTIPLEVECTORIZE_TABLE_INDEX_OPTIONS,
+        )
+
+    yield table
+
+    sync_database.drop_table(TEST_MULTIPLEVECTORIZE_TABLE_NAME)
+
+
+@pytest.fixture(scope="function")
+def sync_empty_table_multiplevectorize(
+    sync_table_multiplevectorize: DefaultTable,
+) -> Iterable[DefaultTable]:
+    """Emptied for each test function"""
+    sync_table_multiplevectorize.delete_many({})
+    yield sync_table_multiplevectorize
+
+
+@pytest.fixture(scope="function")
+def async_table_multiplevectorize(
+    sync_table_multiplevectorize: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """An actual table on DB, the same as the sync counterpart"""
+    yield sync_table_multiplevectorize.to_async()
+
+
+@pytest.fixture(scope="function")
+def async_empty_table_multiplevectorize(
+    sync_empty_table_multiplevectorize: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """Emptied for each test function"""
+    yield sync_empty_table_multiplevectorize.to_async()
+
+
+###
 
 
 @pytest.fixture(scope="session")
