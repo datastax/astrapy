@@ -251,6 +251,20 @@ TEST_COLLINDEXED_TABLE_INDEXES: list[tuple[str, str | dict[str, str]]] = [
     ("test_collidxtable_idx_mtiv", {"map_text_int_v": "$values"}),
 ]
 
+TEST_TEXTINDEX_TABLE_NAME = "test_table_textindex"
+TEST_TEXTINDEX_TABLE_DEFINITION = CreateTableDefinition(
+    columns={
+        "id": TableScalarColumnTypeDescriptor(column_type="text"),
+        "body": TableScalarColumnTypeDescriptor(column_type="text"),
+    },
+    primary_key=TablePrimaryKeyDescriptor(
+        partition_by=["id"],
+        partition_sort={},
+    ),
+)
+TEST_TEXTINDEX_INDEX_NAME = "test_table_textindex_idx"
+TEST_TEXTINDEX_INDEX_COLUMN = "body"
+
 
 VECTORIZE_TEXTS = [
     "The world is the totality of facts, not of things.",
