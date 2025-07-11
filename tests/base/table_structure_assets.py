@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from astrapy.constants import SortMode
 from astrapy.info import (
     ColumnType,
@@ -348,3 +350,23 @@ VECTORIZE_TEXTS = [
     "The possibility of its occurrence in atomic facts is the form of the object.",
     "The object is simple.",
 ]
+
+
+def dict_equal_same_class(
+    dct1: dict[Any, Any] | None, dct2: dict[Any, Any] | None
+) -> None:
+    """A strong equality that checks the class in each value is exactly the same."""
+    if dct1 is None:
+        assert dct2 is None
+    elif dct2 is None:
+        assert dct1 is None
+    else:
+        assert all(
+            [
+                dct1 == dct2,
+                all(
+                    dct1[k].__class__ == dct2[k].__class__
+                    for k in dct1.keys() | dct2.keys()
+                ),
+            ]
+        )

@@ -18,9 +18,11 @@ import pytest
 
 from astrapy.api_options import APIOptions, SerdesOptions
 
-from ..conftest import DefaultTable
+from ..conftest import DefaultTable, dict_equal_same_class
 from .table_row_assets import (
+    ALLMAPS_CUSTOMTYPES_EMPTY_ROW,
     ALLMAPS_CUSTOMTYPES_ROW,
+    ALLMAPS_STDLIB_EMPTY_ROW,
     ALLMAPS_STDLIB_ROW,
     DISTINCT_AR_ROWS,
 )
@@ -60,6 +62,46 @@ class TestTableMapsAsTuplesSync:
             stdlib_table.find_one({"id": ALLMAPS_STDLIB_ROW["id"]})
             == ALLMAPS_STDLIB_ROW
         )
+
+    @pytest.mark.describe("test of table maps-as-tuples, empty-map insertions, sync")
+    def test_table_mapsastuples_emptymaps_insertions_sync(
+        self,
+        sync_empty_table_allmaps: DefaultTable,
+    ) -> None:
+        tuplified_table = sync_empty_table_allmaps.with_options(
+            api_options=MAP2TUPLES_OPTIONS
+        )
+        customdt_table = tuplified_table
+        stdlib_table = tuplified_table.with_options(api_options=STDLIB_OPTIONS)
+
+        tuplified_table.insert_many(
+            [
+                ALLMAPS_CUSTOMTYPES_EMPTY_ROW,
+                ALLMAPS_STDLIB_EMPTY_ROW,
+            ]
+        )
+        tuplified_table.insert_one(ALLMAPS_CUSTOMTYPES_EMPTY_ROW)
+        tuplified_table.insert_one(ALLMAPS_STDLIB_EMPTY_ROW)
+
+        ct_e_ctrow = customdt_table.find_one(
+            {"id": ALLMAPS_CUSTOMTYPES_EMPTY_ROW["id"]},
+            projection={"id": False},
+        )
+        st_e_ctrow = customdt_table.find_one(
+            {"id": ALLMAPS_STDLIB_EMPTY_ROW["id"]},
+            projection={"id": False},
+        )
+        dict_equal_same_class(ct_e_ctrow, st_e_ctrow)
+
+        ct_e_strow = stdlib_table.find_one(
+            {"id": ALLMAPS_CUSTOMTYPES_EMPTY_ROW["id"]},
+            projection={"id": False},
+        )
+        st_e_strow = stdlib_table.find_one(
+            {"id": ALLMAPS_STDLIB_EMPTY_ROW["id"]},
+            projection={"id": False},
+        )
+        dict_equal_same_class(ct_e_strow, st_e_strow)
 
     @pytest.mark.describe("test of table maps-as-tuples, insert many and find, sync")
     def test_table_mapsastuples_insert_many_find_sync(
@@ -148,6 +190,56 @@ class TestTableMapsAsTuplesSync:
         )
         stdlib_table.delete_one({"id": ALLMAPS_STDLIB_ROW["id"]})
         assert stdlib_table.find_one({"id": ALLMAPS_STDLIB_ROW["id"]}) is None
+
+    @pytest.mark.describe("test of table maps-as-tuples, empty-map update one, sync")
+    def test_table_mapsastuples_emptymaps_update_one_sync(
+        self,
+        sync_empty_table_allmaps: DefaultTable,
+    ) -> None:
+        tuplified_table = sync_empty_table_allmaps.with_options(
+            api_options=MAP2TUPLES_OPTIONS
+        )
+        customdt_table = tuplified_table
+        stdlib_table = tuplified_table.with_options(api_options=STDLIB_OPTIONS)
+
+        # custom types and corresponding serdes options
+        tuplified_table.insert_one({"id": ALLMAPS_CUSTOMTYPES_EMPTY_ROW["id"]})
+        tuplified_table.update_one(
+            {"id": ALLMAPS_CUSTOMTYPES_EMPTY_ROW["id"]},
+            update={
+                "$set": {
+                    k: v for k, v in ALLMAPS_CUSTOMTYPES_EMPTY_ROW.items() if k != "id"
+                }
+            },
+        )
+        tuplified_table.insert_one({"id": ALLMAPS_STDLIB_EMPTY_ROW["id"]})
+        tuplified_table.update_one(
+            {"id": ALLMAPS_STDLIB_EMPTY_ROW["id"]},
+            update={
+                "$set": {k: v for k, v in ALLMAPS_STDLIB_EMPTY_ROW.items() if k != "id"}
+            },
+        )
+
+        # reading with a customtype and a stdlib-configured table:
+        ct_e_ctrow = customdt_table.find_one(
+            {"id": ALLMAPS_CUSTOMTYPES_EMPTY_ROW["id"]},
+            projection={"id": False},
+        )
+        st_e_ctrow = customdt_table.find_one(
+            {"id": ALLMAPS_STDLIB_EMPTY_ROW["id"]},
+            projection={"id": False},
+        )
+        dict_equal_same_class(ct_e_ctrow, st_e_ctrow)
+
+        ct_e_strow = stdlib_table.find_one(
+            {"id": ALLMAPS_CUSTOMTYPES_EMPTY_ROW["id"]},
+            projection={"id": False},
+        )
+        st_e_strow = stdlib_table.find_one(
+            {"id": ALLMAPS_STDLIB_EMPTY_ROW["id"]},
+            projection={"id": False},
+        )
+        dict_equal_same_class(ct_e_strow, st_e_strow)
 
     @pytest.mark.describe("test of table maps-as-tuples with ordinary rows, sync")
     def test_table_mapsastuples_ordinary_rows_sync(

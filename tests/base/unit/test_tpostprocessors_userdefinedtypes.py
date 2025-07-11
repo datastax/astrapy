@@ -25,6 +25,7 @@ from astrapy.data_types import (
 from astrapy.info import ListTableDescriptor
 from astrapy.utils.api_options import SerdesOptions, defaultSerdesOptions
 
+from ..table_structure_assets import dict_equal_same_class
 from ..table_udt_assets import (
     PLAYER_TYPE_DEFINITION,
     PLAYER_TYPE_NAME,
@@ -38,7 +39,6 @@ from ..table_udt_assets import (
     UNIT_EXTENDED_PLAYER_TYPE_NAME,
     UnitExtendedPlayer,
     _unit_extended_player_from_dict,
-    dict_equal_same_class,
 )
 
 TABLE_DESCRIPTION = {
