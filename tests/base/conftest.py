@@ -812,6 +812,8 @@ def sync_table_udt_extended_player(
     )
     yield table
 
+    sync_database.drop_table(EXTENDED_PLAYER_TABLE_NAME)
+
 
 @pytest.fixture(scope="function")
 def sync_empty_table_udt_player(
