@@ -25,6 +25,7 @@ from .table_row_assets import (
     ALLMAPS_STDLIB_EMPTY_ROW,
     ALLMAPS_STDLIB_ROW,
     DISTINCT_AR_ROWS,
+    DISTINCT_EMPTYMAP_AR_ROWS,
 )
 
 MAP2TUPLES_OPTIONS = APIOptions(
@@ -249,5 +250,6 @@ class TestTableMapsAsTuplesSync:
         tuplified_table = sync_empty_table_all_returns.with_options(
             api_options=MAP2TUPLES_OPTIONS
         )
-        tuplified_table.insert_many(DISTINCT_AR_ROWS)
-        assert len(tuplified_table.find({}).to_list()) == len(DISTINCT_AR_ROWS)
+        FULL_AR_ROWS = DISTINCT_AR_ROWS + DISTINCT_EMPTYMAP_AR_ROWS
+        tuplified_table.insert_many(FULL_AR_ROWS)
+        assert len(tuplified_table.find({}).to_list()) == len(FULL_AR_ROWS)

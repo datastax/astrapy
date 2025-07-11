@@ -112,6 +112,8 @@ DISTINCT_AR_ROWS = [
         "p_map_text_text": {"a": "VA", "b": "VB"},
         "p_set_int": {200, 300},
     },
+]
+DISTINCT_EMPTYMAP_AR_ROWS = [
     {
         "p_ascii": "A",
         "p_bigint": 1,
