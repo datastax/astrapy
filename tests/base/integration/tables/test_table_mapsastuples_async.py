@@ -18,11 +18,14 @@ import pytest
 
 from astrapy.api_options import APIOptions, SerdesOptions
 
-from ..conftest import DefaultAsyncTable
+from ..conftest import DefaultAsyncTable, dict_equal_same_class
 from .table_row_assets import (
+    ALLMAPS_CUSTOMTYPES_EMPTY_ROW,
     ALLMAPS_CUSTOMTYPES_ROW,
+    ALLMAPS_STDLIB_EMPTY_ROW,
     ALLMAPS_STDLIB_ROW,
     DISTINCT_AR_ROWS,
+    DISTINCT_EMPTYMAP_AR_ROWS,
 )
 
 MAP2TUPLES_OPTIONS = APIOptions(
@@ -62,6 +65,46 @@ class TestTableMapsAsTuplesAsync:
             await stdlib_atable.find_one({"id": ALLMAPS_STDLIB_ROW["id"]})
             == ALLMAPS_STDLIB_ROW
         )
+
+    @pytest.mark.describe("test of table maps-as-tuples, empty-map insertions, async")
+    async def test_table_mapsastuples_emptymaps_insertions_async(
+        self,
+        async_empty_table_allmaps: DefaultAsyncTable,
+    ) -> None:
+        tuplified_table = async_empty_table_allmaps.with_options(
+            api_options=MAP2TUPLES_OPTIONS
+        )
+        customdt_table = tuplified_table
+        stdlib_table = tuplified_table.with_options(api_options=STDLIB_OPTIONS)
+
+        await tuplified_table.insert_many(
+            [
+                ALLMAPS_CUSTOMTYPES_EMPTY_ROW,
+                ALLMAPS_STDLIB_EMPTY_ROW,
+            ]
+        )
+        await tuplified_table.insert_one(ALLMAPS_CUSTOMTYPES_EMPTY_ROW)
+        await tuplified_table.insert_one(ALLMAPS_STDLIB_EMPTY_ROW)
+
+        ct_e_ctrow = await customdt_table.find_one(
+            {"id": ALLMAPS_CUSTOMTYPES_EMPTY_ROW["id"]},
+            projection={"id": False},
+        )
+        st_e_ctrow = await customdt_table.find_one(
+            {"id": ALLMAPS_STDLIB_EMPTY_ROW["id"]},
+            projection={"id": False},
+        )
+        dict_equal_same_class(ct_e_ctrow, st_e_ctrow)
+
+        ct_e_strow = await stdlib_table.find_one(
+            {"id": ALLMAPS_CUSTOMTYPES_EMPTY_ROW["id"]},
+            projection={"id": False},
+        )
+        st_e_strow = await stdlib_table.find_one(
+            {"id": ALLMAPS_STDLIB_EMPTY_ROW["id"]},
+            projection={"id": False},
+        )
+        dict_equal_same_class(ct_e_strow, st_e_strow)
 
     @pytest.mark.describe("test of table maps-as-tuples, insert many and find, async")
     async def test_table_mapsastuples_insert_many_find_async(
@@ -158,6 +201,56 @@ class TestTableMapsAsTuplesAsync:
         await stdlib_atable.delete_one({"id": ALLMAPS_STDLIB_ROW["id"]})
         assert await stdlib_atable.find_one({"id": ALLMAPS_STDLIB_ROW["id"]}) is None
 
+    @pytest.mark.describe("test of table maps-as-tuples, empty-map update one, async")
+    async def test_table_mapsastuples_emptymaps_update_one_async(
+        self,
+        async_empty_table_allmaps: DefaultAsyncTable,
+    ) -> None:
+        tuplified_table = async_empty_table_allmaps.with_options(
+            api_options=MAP2TUPLES_OPTIONS
+        )
+        customdt_table = tuplified_table
+        stdlib_table = tuplified_table.with_options(api_options=STDLIB_OPTIONS)
+
+        # custom types and corresponding serdes options
+        await tuplified_table.insert_one({"id": ALLMAPS_CUSTOMTYPES_EMPTY_ROW["id"]})
+        await tuplified_table.update_one(
+            {"id": ALLMAPS_CUSTOMTYPES_EMPTY_ROW["id"]},
+            update={
+                "$set": {
+                    k: v for k, v in ALLMAPS_CUSTOMTYPES_EMPTY_ROW.items() if k != "id"
+                }
+            },
+        )
+        await tuplified_table.insert_one({"id": ALLMAPS_STDLIB_EMPTY_ROW["id"]})
+        await tuplified_table.update_one(
+            {"id": ALLMAPS_STDLIB_EMPTY_ROW["id"]},
+            update={
+                "$set": {k: v for k, v in ALLMAPS_STDLIB_EMPTY_ROW.items() if k != "id"}
+            },
+        )
+
+        # reading with a customtype and a stdlib-configured table:
+        ct_e_ctrow = await customdt_table.find_one(
+            {"id": ALLMAPS_CUSTOMTYPES_EMPTY_ROW["id"]},
+            projection={"id": False},
+        )
+        st_e_ctrow = await customdt_table.find_one(
+            {"id": ALLMAPS_STDLIB_EMPTY_ROW["id"]},
+            projection={"id": False},
+        )
+        dict_equal_same_class(ct_e_ctrow, st_e_ctrow)
+
+        ct_e_strow = await stdlib_table.find_one(
+            {"id": ALLMAPS_CUSTOMTYPES_EMPTY_ROW["id"]},
+            projection={"id": False},
+        )
+        st_e_strow = await stdlib_table.find_one(
+            {"id": ALLMAPS_STDLIB_EMPTY_ROW["id"]},
+            projection={"id": False},
+        )
+        dict_equal_same_class(ct_e_strow, st_e_strow)
+
     @pytest.mark.describe("test of table maps-as-tuples with ordinary rows, async")
     async def test_table_mapsastuples_ordinary_rows_async(
         self,
@@ -166,5 +259,6 @@ class TestTableMapsAsTuplesAsync:
         tuplified_atable = async_empty_table_all_returns.with_options(
             api_options=MAP2TUPLES_OPTIONS
         )
-        await tuplified_atable.insert_many(DISTINCT_AR_ROWS)
-        assert len(await tuplified_atable.find({}).to_list()) == len(DISTINCT_AR_ROWS)
+        FULL_AR_ROWS = DISTINCT_AR_ROWS + DISTINCT_EMPTYMAP_AR_ROWS
+        await tuplified_atable.insert_many(FULL_AR_ROWS)
+        assert len(await tuplified_atable.find({}).to_list()) == len(FULL_AR_ROWS)

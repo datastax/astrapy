@@ -25,6 +25,9 @@ from astrapy.data.utils.table_converters import preprocess_table_payload
 from astrapy.data_types import DataAPIMap
 from astrapy.utils.api_options import SerdesOptions, defaultSerdesOptions
 
+MAP2TUPLE_NEVER_OPTIONS = defaultSerdesOptions.with_override(
+    SerdesOptions(encode_maps_as_lists_in_tables="NEVER")
+)
 MAP2TUPLE_ALWAYS_OPTIONS = defaultSerdesOptions.with_override(
     SerdesOptions(encode_maps_as_lists_in_tables="ALWAYS")
 )
@@ -34,6 +37,187 @@ MAP2TUPLE_DATAAPIMAPS_OPTIONS = defaultSerdesOptions.with_override(
 
 
 class TestTPreprocessorsMapsAsTuples:
+    @pytest.mark.describe("test of tuple conversion as in insert_one, never convert")
+    def test_map2tuple_conversion_insertone_never(self) -> None:
+        payload_d = {"insertOne": {"document": {"a": {1: "x"}}}}
+        expected_d = {"insertOne": {"document": {"a": {1: "x"}}}}
+        converted_d = preprocess_table_payload(
+            payload_d,
+            MAP2TUPLE_NEVER_OPTIONS,
+            map2tuple_checker=map2tuple_checker_insert_one,
+        )
+        assert expected_d == converted_d
+
+        payload_m = {"insertOne": {"document": {"a": DataAPIMap([(1, "x")])}}}
+        expected_m = {"insertOne": {"document": {"a": {1: "x"}}}}
+        converted_m = preprocess_table_payload(
+            payload_m,
+            MAP2TUPLE_NEVER_OPTIONS,
+            map2tuple_checker=map2tuple_checker_insert_one,
+        )
+        assert expected_m == converted_m
+
+        # empty 'maps' must always encode as {}
+        payload_de = {"insertOne": {"document": {"a": {}}}}  # type: ignore[var-annotated]
+        expected_de = {"insertOne": {"document": {"a": {}}}}  # type: ignore[var-annotated]
+        converted_de = preprocess_table_payload(
+            payload_de,
+            MAP2TUPLE_NEVER_OPTIONS,
+            map2tuple_checker=map2tuple_checker_insert_one,
+        )
+        assert expected_de == converted_de
+
+        payload_me = {"insertOne": {"document": {"a": DataAPIMap([])}}}  # type: ignore[var-annotated]
+        expected_me = {"insertOne": {"document": {"a": {}}}}  # type: ignore[var-annotated]
+        converted_me = preprocess_table_payload(
+            payload_me,
+            MAP2TUPLE_NEVER_OPTIONS,
+            map2tuple_checker=map2tuple_checker_insert_one,
+        )
+        assert expected_me == converted_me
+
+    @pytest.mark.describe("test of tuple conversion as in insert_many, never convert")
+    def test_map2tuple_conversion_insertmany_never(self) -> None:
+        payload_d = {"insertMany": {"documents": [{"a": {1: "x"}}]}}
+        expected_d = {"insertMany": {"documents": [{"a": {1: "x"}}]}}
+        converted_d = preprocess_table_payload(
+            payload_d,
+            MAP2TUPLE_NEVER_OPTIONS,
+            map2tuple_checker=map2tuple_checker_insert_many,
+        )
+        assert expected_d == converted_d
+
+        payload_m = {"insertMany": {"documents": [{"a": DataAPIMap([(1, "x")])}]}}
+        expected_m = {"insertMany": {"documents": [{"a": {1: "x"}}]}}
+        converted_m = preprocess_table_payload(
+            payload_m,
+            MAP2TUPLE_NEVER_OPTIONS,
+            map2tuple_checker=map2tuple_checker_insert_many,
+        )
+        assert expected_m == converted_m
+
+        # empty 'maps' must always encode as {}
+        payload_de = {"insertMany": {"documents": [{"a": {}}]}}  # type: ignore[var-annotated]
+        expected_de = {"insertMany": {"documents": [{"a": {}}]}}  # type: ignore[var-annotated]
+        converted_de = preprocess_table_payload(
+            payload_de,
+            MAP2TUPLE_NEVER_OPTIONS,
+            map2tuple_checker=map2tuple_checker_insert_many,
+        )
+        assert expected_de == converted_de
+
+        payload_me = {"insertMany": {"documents": [{"a": DataAPIMap([])}]}}  # type: ignore[var-annotated]
+        expected_me = {"insertMany": {"documents": [{"a": {}}]}}  # type: ignore[var-annotated]
+        converted_me = preprocess_table_payload(
+            payload_me,
+            MAP2TUPLE_NEVER_OPTIONS,
+            map2tuple_checker=map2tuple_checker_insert_many,
+        )
+        assert expected_me == converted_me
+
+    @pytest.mark.describe("test of tuple conversion as in update_one, never convert")
+    def test_map2tuple_conversion_updateone_never(self) -> None:
+        payload_d = {
+            "updateOne": {
+                "filter": {"f": {1: "x"}},
+                "update": {
+                    "$set": {"s": {2: "y"}},
+                    "$unset": {"u": {3: "z"}},
+                },
+            }
+        }
+        expected_d = {
+            "updateOne": {
+                "filter": {"f": {1: "x"}},
+                "update": {
+                    "$set": {"s": {2: "y"}},
+                    "$unset": {"u": {3: "z"}},
+                },
+            }
+        }
+        converted_d = preprocess_table_payload(
+            payload_d,
+            MAP2TUPLE_NEVER_OPTIONS,
+            map2tuple_checker=map2tuple_checker_update_one,
+        )
+        assert expected_d == converted_d
+
+        payload_m = {
+            "updateOne": {
+                "filter": {"f": DataAPIMap([(1, "x")])},
+                "update": {
+                    "$set": {"s": DataAPIMap([(2, "y")])},
+                    "$unset": {"u": DataAPIMap([(3, "z")])},
+                },
+            }
+        }
+        expected_m = {
+            "updateOne": {
+                "filter": {"f": {1: "x"}},
+                "update": {
+                    "$set": {"s": {2: "y"}},
+                    "$unset": {"u": {3: "z"}},
+                },
+            }
+        }
+        converted_m = preprocess_table_payload(
+            payload_m,
+            MAP2TUPLE_NEVER_OPTIONS,
+            map2tuple_checker=map2tuple_checker_update_one,
+        )
+        assert expected_m == converted_m
+
+        # empty 'maps' must always encode as {}
+        payload_de = {
+            "updateOne": {
+                "filter": {"f": {}},
+                "update": {
+                    "$set": {"s": {}},
+                    "$unset": {"u": {}},
+                },
+            }
+        }
+        expected_de = {
+            "updateOne": {
+                "filter": {"f": {}},
+                "update": {
+                    "$set": {"s": {}},
+                    "$unset": {"u": {}},
+                },
+            }
+        }
+        converted_de = preprocess_table_payload(
+            payload_de,
+            MAP2TUPLE_NEVER_OPTIONS,
+            map2tuple_checker=map2tuple_checker_update_one,
+        )
+        assert expected_de == converted_de
+
+        payload_me = {
+            "updateOne": {
+                "filter": {"f": DataAPIMap([])},
+                "update": {
+                    "$set": {"s": DataAPIMap([])},
+                    "$unset": {"u": DataAPIMap([])},
+                },
+            }
+        }
+        expected_me = {
+            "updateOne": {
+                "filter": {"f": {}},
+                "update": {
+                    "$set": {"s": {}},
+                    "$unset": {"u": {}},
+                },
+            }
+        }
+        converted_me = preprocess_table_payload(
+            payload_me,
+            MAP2TUPLE_NEVER_OPTIONS,
+            map2tuple_checker=map2tuple_checker_update_one,
+        )
+        assert expected_me == converted_me
+
     @pytest.mark.describe("test of tuple conversion as in insert_one, convert always")
     def test_map2tuple_conversion_insertone_always(self) -> None:
         payload_d = {"insertOne": {"document": {"a": {1: "x"}}}}
@@ -54,6 +238,25 @@ class TestTPreprocessorsMapsAsTuples:
         )
         assert expected_m == converted_m
 
+        # empty 'maps' must always encode as {}
+        payload_de = {"insertOne": {"document": {"a": {}}}}  # type: ignore[var-annotated]
+        expected_de = {"insertOne": {"document": {"a": {}}}}  # type: ignore[var-annotated]
+        converted_de = preprocess_table_payload(
+            payload_de,
+            MAP2TUPLE_ALWAYS_OPTIONS,
+            map2tuple_checker=map2tuple_checker_insert_one,
+        )
+        assert expected_de == converted_de
+
+        payload_me = {"insertOne": {"document": {"a": DataAPIMap([])}}}  # type: ignore[var-annotated]
+        expected_me = {"insertOne": {"document": {"a": {}}}}  # type: ignore[var-annotated]
+        converted_me = preprocess_table_payload(
+            payload_me,
+            MAP2TUPLE_ALWAYS_OPTIONS,
+            map2tuple_checker=map2tuple_checker_insert_one,
+        )
+        assert expected_me == converted_me
+
     @pytest.mark.describe("test of tuple conversion as in insert_many, convert always")
     def test_map2tuple_conversion_insertmany_always(self) -> None:
         payload_d = {"insertMany": {"documents": [{"a": {1: "x"}}]}}
@@ -73,6 +276,25 @@ class TestTPreprocessorsMapsAsTuples:
             map2tuple_checker=map2tuple_checker_insert_many,
         )
         assert expected_m == converted_m
+
+        # empty 'maps' must always encode as {}
+        payload_de = {"insertMany": {"documents": [{"a": {}}]}}  # type: ignore[var-annotated]
+        expected_de = {"insertMany": {"documents": [{"a": {}}]}}  # type: ignore[var-annotated]
+        converted_de = preprocess_table_payload(
+            payload_de,
+            MAP2TUPLE_ALWAYS_OPTIONS,
+            map2tuple_checker=map2tuple_checker_insert_many,
+        )
+        assert expected_de == converted_de
+
+        payload_me = {"insertMany": {"documents": [{"a": DataAPIMap([])}]}}  # type: ignore[var-annotated]
+        expected_me = {"insertMany": {"documents": [{"a": {}}]}}  # type: ignore[var-annotated]
+        converted_me = preprocess_table_payload(
+            payload_me,
+            MAP2TUPLE_ALWAYS_OPTIONS,
+            map2tuple_checker=map2tuple_checker_insert_many,
+        )
+        assert expected_me == converted_me
 
     @pytest.mark.describe("test of tuple conversion as in update_one, convert always")
     def test_map2tuple_conversion_updateone_always(self) -> None:
@@ -126,6 +348,57 @@ class TestTPreprocessorsMapsAsTuples:
         )
         assert expected_m == converted_m
 
+        # empty 'maps' must always encode as {}
+        payload_de = {
+            "updateOne": {
+                "filter": {"f": {}},
+                "update": {
+                    "$set": {"s": {}},
+                    "$unset": {"u": {}},
+                },
+            }
+        }
+        expected_de = {
+            "updateOne": {
+                "filter": {"f": {}},
+                "update": {
+                    "$set": {"s": {}},
+                    "$unset": {"u": {}},
+                },
+            }
+        }
+        converted_de = preprocess_table_payload(
+            payload_de,
+            MAP2TUPLE_ALWAYS_OPTIONS,
+            map2tuple_checker=map2tuple_checker_update_one,
+        )
+        assert expected_de == converted_de
+
+        payload_me = {
+            "updateOne": {
+                "filter": {"f": DataAPIMap([])},
+                "update": {
+                    "$set": {"s": DataAPIMap([])},
+                    "$unset": {"u": DataAPIMap([])},
+                },
+            }
+        }
+        expected_me = {
+            "updateOne": {
+                "filter": {"f": {}},
+                "update": {
+                    "$set": {"s": {}},
+                    "$unset": {"u": {}},
+                },
+            }
+        }
+        converted_me = preprocess_table_payload(
+            payload_me,
+            MAP2TUPLE_ALWAYS_OPTIONS,
+            map2tuple_checker=map2tuple_checker_update_one,
+        )
+        assert expected_me == converted_me
+
     @pytest.mark.describe(
         "test of tuple conversion as in insert_one, convert DataAPIMaps"
     )
@@ -148,6 +421,25 @@ class TestTPreprocessorsMapsAsTuples:
         )
         assert expected_m == converted_m
 
+        # empty 'maps' must always encode as {}
+        payload_de = {"insertOne": {"document": {"a": {}}}}  # type: ignore[var-annotated]
+        expected_de = {"insertOne": {"document": {"a": {}}}}  # type: ignore[var-annotated]
+        converted_de = preprocess_table_payload(
+            payload_de,
+            MAP2TUPLE_DATAAPIMAPS_OPTIONS,
+            map2tuple_checker=map2tuple_checker_insert_one,
+        )
+        assert expected_de == converted_de
+
+        payload_me = {"insertOne": {"document": {"a": DataAPIMap([])}}}  # type: ignore[var-annotated]
+        expected_me = {"insertOne": {"document": {"a": {}}}}  # type: ignore[var-annotated]
+        converted_me = preprocess_table_payload(
+            payload_me,
+            MAP2TUPLE_DATAAPIMAPS_OPTIONS,
+            map2tuple_checker=map2tuple_checker_insert_one,
+        )
+        assert expected_me == converted_me
+
     @pytest.mark.describe(
         "test of tuple conversion as in insert_many, convert DataAPIMaps"
     )
@@ -169,6 +461,25 @@ class TestTPreprocessorsMapsAsTuples:
             map2tuple_checker=map2tuple_checker_insert_many,
         )
         assert expected_m == converted_m
+
+        # empty 'maps' must always encode as {}
+        payload_de = {"insertMany": {"documents": [{"a": {}}]}}  # type: ignore[var-annotated]
+        expected_de = {"insertMany": {"documents": [{"a": {}}]}}  # type: ignore[var-annotated]
+        converted_de = preprocess_table_payload(
+            payload_de,
+            MAP2TUPLE_DATAAPIMAPS_OPTIONS,
+            map2tuple_checker=map2tuple_checker_insert_many,
+        )
+        assert expected_de == converted_de
+
+        payload_me = {"insertMany": {"documents": [{"a": DataAPIMap([])}]}}  # type: ignore[var-annotated]
+        expected_me = {"insertMany": {"documents": [{"a": {}}]}}  # type: ignore[var-annotated]
+        converted_me = preprocess_table_payload(
+            payload_me,
+            MAP2TUPLE_DATAAPIMAPS_OPTIONS,
+            map2tuple_checker=map2tuple_checker_insert_many,
+        )
+        assert expected_me == converted_me
 
     @pytest.mark.describe(
         "test of tuple conversion as in update_one, convert DataAPIMaps"
@@ -223,3 +534,54 @@ class TestTPreprocessorsMapsAsTuples:
             map2tuple_checker=map2tuple_checker_update_one,
         )
         assert expected_m == converted_m
+
+        # empty 'maps' must always encode as {}
+        payload_de = {
+            "updateOne": {
+                "filter": {"f": {}},
+                "update": {
+                    "$set": {"s": {}},
+                    "$unset": {"u": {}},
+                },
+            }
+        }
+        expected_de = {
+            "updateOne": {
+                "filter": {"f": {}},
+                "update": {
+                    "$set": {"s": {}},
+                    "$unset": {"u": {}},
+                },
+            }
+        }
+        converted_de = preprocess_table_payload(
+            payload_de,
+            MAP2TUPLE_DATAAPIMAPS_OPTIONS,
+            map2tuple_checker=map2tuple_checker_update_one,
+        )
+        assert expected_de == converted_de
+
+        payload_me = {
+            "updateOne": {
+                "filter": {"f": DataAPIMap([])},
+                "update": {
+                    "$set": {"s": DataAPIMap([])},
+                    "$unset": {"u": DataAPIMap([])},
+                },
+            }
+        }
+        expected_me = {
+            "updateOne": {
+                "filter": {"f": {}},
+                "update": {
+                    "$set": {"s": {}},
+                    "$unset": {"u": {}},
+                },
+            }
+        }
+        converted_me = preprocess_table_payload(
+            payload_me,
+            MAP2TUPLE_DATAAPIMAPS_OPTIONS,
+            map2tuple_checker=map2tuple_checker_update_one,
+        )
+        assert expected_me == converted_me

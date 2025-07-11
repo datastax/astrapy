@@ -260,23 +260,3 @@ def _unit_extended_player_from_dict(
     definition: CreateTypeDefinition | None,
 ) -> UnitExtendedPlayer:
     return UnitExtendedPlayer(**udict)
-
-
-def dict_equal_same_class(
-    dct1: dict[Any, Any] | None, dct2: dict[Any, Any] | None
-) -> None:
-    """A strong equality that checks the class in each value is exactly the same."""
-    if dct1 is None:
-        assert dct2 is None
-    elif dct2 is None:
-        assert dct1 is None
-    else:
-        assert all(
-            [
-                dct1 == dct2,
-                all(
-                    dct1[k].__class__ == dct2[k].__class__
-                    for k in dct1.keys() | dct2.keys()
-                ),
-            ]
-        )

@@ -87,9 +87,9 @@ DISTINCT_AR_ROWS = [
         #
         "p_float": float("NaN"),
         "p_text": "a",
-        "p_list_int": [9999],  # FIXME back to [] once issue #1906 resolved
+        "p_list_int": [],
         "p_map_text_text": {"b": "VB"},
-        "p_set_int": set([9999]),  # FIXME back to set() once issue #1906 resolved
+        "p_set_int": set([]),
     },
     {
         "p_ascii": "A",
@@ -111,6 +111,28 @@ DISTINCT_AR_ROWS = [
         "p_list_int": [3, 1],
         "p_map_text_text": {"a": "VA", "b": "VB"},
         "p_set_int": {200, 300},
+    },
+]
+DISTINCT_EMPTYMAP_AR_ROWS = [
+    {
+        "p_ascii": "A",
+        "p_bigint": 1,
+        "p_int": 6,
+        "p_boolean": True,
+        #
+        "p_list_int": [],
+        "p_map_text_text": {},
+        "p_set_int": set(),
+    },
+    {
+        "p_ascii": "A",
+        "p_bigint": 1,
+        "p_int": 7,
+        "p_boolean": True,
+        #
+        "p_list_int": [],
+        "p_map_text_text": DataAPIMap([]),
+        "p_set_int": set(),
     },
 ]
 
@@ -257,7 +279,7 @@ COMPOSITE_VECTOR_ROWS = [
     for p_i in range(COMPOSITE_VECTOR_ROWS_N)
 ]
 
-ALLMAPS_STDLIB_ROW = simplemap_row = {
+ALLMAPS_STDLIB_ROW = {
     "id": "sl_row",
     "text_map": {
         "text key": "text value",
@@ -423,7 +445,48 @@ ALLMAPS_CUSTOMTYPES_ROW = {
         ]
     ),
 }
-
+ALLMAPS_CUSTOMTYPES_EMPTY_ROW = {
+    "id": "empty_maps_customtypes",
+    "ascii_map": DataAPIMap([]),
+    "bigint_map": DataAPIMap([]),
+    "blob_map": DataAPIMap([]),
+    "boolean_map": DataAPIMap([]),
+    "date_map": DataAPIMap([]),
+    "decimal_map": DataAPIMap([]),
+    "double_map": DataAPIMap([]),
+    "duration_map": DataAPIMap([]),
+    "float_map": DataAPIMap([]),
+    "inet_map": DataAPIMap([]),
+    "int_map": DataAPIMap([]),
+    "smallint_map": DataAPIMap([]),
+    "text_map": DataAPIMap([]),
+    "time_map": DataAPIMap([]),
+    "timestamp_map": DataAPIMap([]),
+    "tinyint_map": DataAPIMap([]),
+    "uuid_map": DataAPIMap([]),
+    "varint_map": DataAPIMap([]),
+}
+ALLMAPS_STDLIB_EMPTY_ROW = {
+    "id": "empty_maps_stdlib",
+    "ascii_map": {},
+    "bigint_map": {},
+    "blob_map": {},
+    "boolean_map": {},
+    "date_map": {},
+    "decimal_map": {},
+    "double_map": {},
+    "duration_map": {},
+    "float_map": {},
+    "inet_map": {},
+    "int_map": {},
+    "smallint_map": {},
+    "text_map": {},
+    "time_map": {},
+    "timestamp_map": {},
+    "tinyint_map": {},
+    "uuid_map": {},
+    "varint_map": {},
+}
 
 UDT_NAME = "test_udt"
 UDT_DEF0 = CreateTypeDefinition(

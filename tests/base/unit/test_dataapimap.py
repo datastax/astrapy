@@ -51,6 +51,9 @@ class TestDataAPIMap:
         assert list(mp1.items()) == items1
         assert len(mp1) == len(items1)
         assert list(mp1) == [1, 2, 3]
+        # bool
+        assert not bool(mp0)
+        assert bool(mp1)
 
     @pytest.mark.describe("test of table map usage with non-hashables")
     def test_dataapimap_nonhashables(self) -> None:

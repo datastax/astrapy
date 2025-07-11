@@ -35,6 +35,7 @@ from ..conftest import (
     clean_nulls_from_dict,
     sync_fail_if_not_removed,
 )
+from ..table_structure_assets import dict_equal_same_class
 from ..table_udt_assets import (
     EXTENDED_PLAYER_TYPE_NAME,
     PLAYER_TYPE_NAME,
@@ -51,7 +52,6 @@ from ..table_udt_assets import (
     _nullable_player_serializer,
     _player_from_dict,
     _player_serializer,
-    dict_equal_same_class,
 )
 
 __all__ = [

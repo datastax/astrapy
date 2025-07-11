@@ -1,6 +1,7 @@
 main
 ====
 Switch default encode_maps_as_lists_in_tables to "DATAAPIMAPS" (no observable changes w.r.t. previous releases)
+Bugfix: fix paykload encoding for empty maps/DataAPIMaps
 User-defined types in tables:
     - type management: `CreateTypeDefinition`, `AlterTypeOperation`, `AlterTypeAddFields` and `AlterTypeRenameFields` classes
     - type management: Database's `create_type`, `alter_type` and `drop_type` methods
@@ -25,6 +26,13 @@ allow sending `"$vector": None` when inserting into collections
 support for modelSupport in findRerankingProviders
 CollectionDefinition fluent interface: set_lexical and set_rerank accept also just 'enabled'
 find_and_rerank scores' type enlarged to: `float|int|null`
+maintenance: improve integration test coverage for:
+    - collection-columns in tables: indexing, collection-specific DML commands ($push, $pullAll and so on)
+    - collections, lexical/BM25-related DDL operations (various analyzer configurations for)
+    - collections, lexical/BM25-related DML operations (filtering, sorting based on $lexical)
+    - tables, lexical/BM25-related DML
+    - tables, logical filtering (i.e. $and, $or between clauses)
+    - multiple vectorize columns in a Table
 maintenance: subsumed the specific testing opt-in env. var 'ASTRAPY_TEST_MAP2TUPLES=y' into the catch-all 'cutting-edge main' `ASTRAPY_TEST_LATEST_MAIN=y`
 maintenance: simplified SerdesOptions management in unit testing; some rationalization/refactoring of pre- and post-processing logic for tables in unit tests
 maintenance: switched to uv (from poetry)

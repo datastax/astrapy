@@ -108,3 +108,6 @@ class DataAPIMap(Generic[T, U], Mapping[T, U]):
 
     def __reduce__(self) -> tuple[type, tuple[Iterable[tuple[T, U]]]]:
         return self.__class__, (list(zip(self._keys, self._values)),)
+
+    def __bool__(self) -> bool:
+        return self._keys != []

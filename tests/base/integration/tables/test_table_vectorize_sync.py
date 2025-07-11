@@ -195,3 +195,85 @@ class TestTableVectorizeSync:
         assert match0 is not None
         # TODO: restore this check once #1949 is resolved
         # assert isinstance(match0["$similarity"], float)
+
+    @pytest.mark.skipif(
+        HEADER_EMBEDDING_API_KEY_OPENAI is None,
+        reason="No HEADER_EMBEDDING_API_KEY_OPENAI detected",
+    )
+    @pytest.mark.describe("test of multiple-vectorize table usage via header, sync")
+    def test_table_multiplevectorize_header_sync(
+        self,
+        sync_empty_table_multiplevectorize: DefaultTable,
+    ) -> None:
+        table = sync_empty_table_multiplevectorize
+
+        table.insert_one(
+            {
+                "id": "A",
+                "p_text": "p_text of A",
+                "p_vector_small": "a sentence on mountains",
+                "p_vector_large": "telephones and electricity?",
+            }
+        )
+
+        table.insert_many(
+            [
+                {
+                    "id": "B",
+                    "p_text": "p_text of B",
+                    "p_vector_small": "rivers, and has only the bee",
+                },
+                {
+                    "id": "C",
+                    "p_text": "p_text of C",
+                    "p_vector_large": "clouds, and has only the sea",
+                },
+            ]
+        )
+
+        reg_f_rows = table.find(projection={"id": True}).to_list()
+        assert {row["id"] for row in reg_f_rows} == {"A", "B", "C"}
+
+        ann_f_small = table.find(
+            sort={"p_vector_small": "flowing water and honey-producing animals"},
+            projection={"id": True},
+        ).to_list()
+        assert ann_f_small != []
+        assert ann_f_small[0]["id"] == "B"
+
+        ann_f1_small = table.find_one(
+            sort={"p_vector_small": "the utterance about orography"},
+            projection={"id": True},
+        )
+        assert ann_f1_small is not None
+        assert ann_f1_small["id"] == "A"
+
+        table.insert_one(
+            {
+                "id": "Z",
+                "p_text": "p_text of Z",
+                "p_vector_small": "telephones and electricity?",
+                "p_vector_large": "a sentence on mountains",
+            }
+        )
+
+        f1_ele_doc_sm = table.find_one(
+            sort={"p_vector_small": "telephones and electricity"},
+        )
+        f1_ele_doc_lg = table.find_one(
+            sort={"p_vector_large": "telephones and electricity"},
+        )
+        assert f1_ele_doc_sm is not None
+        # assert f1_ele_doc_sm["id"] == "Z"  # suspended (delays in SAI, nondeterm.)
+        assert f1_ele_doc_lg is not None
+        # assert f1_ele_doc_lg["id"] == "A"  # suspended (delays in SAI, nondeterm.)
+
+        table.update_one(
+            {"id": "A"},
+            update={
+                "$set": {
+                    "p_text": "the new p_text for A",
+                    "p_vector_small": "glaciers among the woods.",
+                },
+            },
+        )

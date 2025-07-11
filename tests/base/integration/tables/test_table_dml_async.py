@@ -900,6 +900,78 @@ class TestTableDMLAsync:
         premapped_list = [mrow async for mrow in mapped_cursor]
         assert postmapped_list == premapped_list
 
+    # TODO: enable for Astra once #2089 gets to Astra
+    @pytest.mark.skipif(IS_ASTRA_DB, reason="Feature not on Astra DB yet")
+    @pytest.mark.describe("test of table logical filtering, async")
+    async def test_table_logicalfiltering_async(
+        self,
+        async_empty_table_logicalfiltering: DefaultAsyncTable,
+    ) -> None:
+        atable = async_empty_table_logicalfiltering
+        await atable.insert_one(
+            {
+                "id": "base",
+                "p_boolean": False,
+                "p_int_1": 10,
+                "p_int_2": 100,
+                "p_text": "Copper",
+            }
+        )
+
+        # match {and: {or: (f,t), or: (t,f)}}
+        row_0 = await atable.find_one(
+            {
+                "$and": [
+                    {"$or": [{"p_boolean": True}, {"p_int_1": {"$lt": 15}}]},
+                    {
+                        "$or": [
+                            {"p_text": {"$in": ["Iron", "Copper"]}},
+                            {"p_int_2": {"$gte": 150}},
+                        ]
+                    },
+                ]
+            }
+        )
+        assert row_0 is not None
+        assert row_0["id"] == "base"
+
+        # no {and: {or: (f,f), or: (t,f)}}
+        row_0_n = await atable.find_one(
+            {
+                "$and": [
+                    {"$or": [{"p_boolean": True}, {"p_int_1": {"$lt": 5}}]},
+                    {
+                        "$or": [
+                            {"p_text": {"$in": ["Iron", "Copper"]}},
+                            {"p_int_2": {"$gte": 50}},
+                        ]
+                    },
+                ]
+            }
+        )
+        assert row_0_n is None
+
+        await atable.insert_many(
+            [
+                {
+                    "id": f"i2_{i:02}",
+                    "p_int_2": i,
+                }
+                for i in range(20)
+            ]
+        )
+
+        # range find
+        rows_range = await atable.find(
+            {
+                "$and": [
+                    {"p_int_2": {"$gte": 10}},
+                    {"p_int_2": {"$lt": 15}},
+                ]
+            }
+        ).to_list()
+        assert {row["p_int_2"] for row in rows_range} == {10, 11, 12, 13, 14}
+
     @pytest.mark.describe("test of table command, async")
     async def test_table_command_async(
         self,

@@ -697,7 +697,8 @@ def preprocess_table_payload_value(
         else:
             maps_become_tuples = False
 
-        if maps_become_tuples:
+        # empty maps must always be encoded as `{}`, never as `[]` (#2005)
+        if maps_become_tuples and value:
             return [
                 [
                     preprocess_table_payload_value(

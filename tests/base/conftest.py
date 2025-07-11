@@ -74,6 +74,13 @@ from .table_structure_assets import (
     TEST_KMS_VECTORIZE_TABLE_DEFINITION,
     TEST_KMS_VECTORIZE_TABLE_NAME,
     TEST_KMS_VECTORIZE_TABLE_VECTOR_INDEX_NAME,
+    TEST_LOGICALFILTERING_TABLE_DEFINITION,
+    TEST_LOGICALFILTERING_TABLE_INDEXES,
+    TEST_LOGICALFILTERING_TABLE_NAME,
+    TEST_MULTIPLEVECTORIZE_TABLE_DEFINITION,
+    TEST_MULTIPLEVECTORIZE_TABLE_INDEX_OPTIONS,
+    TEST_MULTIPLEVECTORIZE_TABLE_INDEXES,
+    TEST_MULTIPLEVECTORIZE_TABLE_NAME,
     TEST_SIMPLE_TABLE_DEFINITION,
     TEST_SIMPLE_TABLE_NAME,
     TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN,
@@ -81,6 +88,10 @@ from .table_structure_assets import (
     TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS,
     TEST_SIMPLE_UDT_DEFINITION,
     TEST_SIMPLE_UDT_NAME,
+    TEST_TEXTINDEX_INDEX_COLUMN,
+    TEST_TEXTINDEX_INDEX_NAME,
+    TEST_TEXTINDEX_TABLE_DEFINITION,
+    TEST_TEXTINDEX_TABLE_NAME,
     TEST_VECTORIZE_TABLE_DEFINITION,
     TEST_VECTORIZE_TABLE_NAME,
     TEST_VECTORIZE_TABLE_VECTOR_INDEX_NAME,
@@ -634,6 +645,61 @@ def async_empty_table_vectorize(
     yield sync_empty_table_vectorize.to_async()
 
 
+###
+@pytest.fixture(scope="session")
+def sync_table_multiplevectorize(
+    data_api_credentials_kwargs: DataAPICredentials,
+    sync_database: Database,
+    service_collection_parameters: dict[str, Any],
+) -> Iterable[DefaultTable]:
+    """An actual table on DB, in the main keyspace"""
+    params = service_collection_parameters
+
+    table = sync_database.create_table(
+        TEST_MULTIPLEVECTORIZE_TABLE_NAME,
+        definition=TEST_MULTIPLEVECTORIZE_TABLE_DEFINITION,
+        embedding_api_key=params["api_key"],
+    )
+    for index_name, index_column in TEST_MULTIPLEVECTORIZE_TABLE_INDEXES:
+        table.create_vector_index(
+            index_name,
+            index_column,
+            options=TEST_MULTIPLEVECTORIZE_TABLE_INDEX_OPTIONS,
+        )
+
+    yield table
+
+    sync_database.drop_table(TEST_MULTIPLEVECTORIZE_TABLE_NAME)
+
+
+@pytest.fixture(scope="function")
+def sync_empty_table_multiplevectorize(
+    sync_table_multiplevectorize: DefaultTable,
+) -> Iterable[DefaultTable]:
+    """Emptied for each test function"""
+    sync_table_multiplevectorize.delete_many({})
+    yield sync_table_multiplevectorize
+
+
+@pytest.fixture(scope="function")
+def async_table_multiplevectorize(
+    sync_table_multiplevectorize: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """An actual table on DB, the same as the sync counterpart"""
+    yield sync_table_multiplevectorize.to_async()
+
+
+@pytest.fixture(scope="function")
+def async_empty_table_multiplevectorize(
+    sync_empty_table_multiplevectorize: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """Emptied for each test function"""
+    yield sync_empty_table_multiplevectorize.to_async()
+
+
+###
+
+
 @pytest.fixture(scope="session")
 def sync_table_kms_vectorize(
     data_api_credentials_kwargs: DataAPICredentials,
@@ -746,22 +812,7 @@ def sync_table_udt_extended_player(
     )
     yield table
 
-
-@pytest.fixture(scope="session")
-def sync_table_collindexed(
-    sync_database: Database,
-) -> Iterable[DefaultTable]:
-    """An actual table on DB, in the main keyspace"""
-    table = sync_database.create_table(
-        TEST_COLLINDEXED_TABLE_NAME,
-        definition=TEST_COLLINDEXED_TABLE_DEFINITION,
-    )
-    for index_name, index_column in TEST_COLLINDEXED_TABLE_INDEXES:
-        table.create_index(index_name, index_column)
-
-    yield table
-
-    sync_database.drop_table(TEST_COLLINDEXED_TABLE_NAME)
+    sync_database.drop_table(EXTENDED_PLAYER_TABLE_NAME)
 
 
 @pytest.fixture(scope="function")
@@ -783,15 +834,6 @@ def sync_empty_table_udt_extended_player(
 
 
 @pytest.fixture(scope="function")
-def sync_empty_table_collindexed(
-    sync_table_collindexed: DefaultTable,
-) -> Iterable[DefaultTable]:
-    """Emptied for each test function"""
-    sync_table_collindexed.delete_many({})
-    yield sync_table_collindexed
-
-
-@pytest.fixture(scope="function")
 def async_empty_table_udt_player(
     sync_empty_table_udt_player: DefaultTable,
 ) -> Iterable[DefaultAsyncTable]:
@@ -807,12 +849,116 @@ def async_empty_table_udt_extended_player(
     yield sync_empty_table_udt_extended_player.to_async()
 
 
+@pytest.fixture(scope="session")
+def sync_table_collindexed(
+    sync_database: Database,
+) -> Iterable[DefaultTable]:
+    """An actual table on DB, in the main keyspace"""
+    table = sync_database.create_table(
+        TEST_COLLINDEXED_TABLE_NAME,
+        definition=TEST_COLLINDEXED_TABLE_DEFINITION,
+    )
+    for index_name, index_column in TEST_COLLINDEXED_TABLE_INDEXES:
+        table.create_index(index_name, index_column)
+
+    yield table
+
+    sync_database.drop_table(TEST_COLLINDEXED_TABLE_NAME)
+
+
+@pytest.fixture(scope="function")
+def sync_empty_table_collindexed(
+    sync_table_collindexed: DefaultTable,
+) -> Iterable[DefaultTable]:
+    """Emptied for each test function"""
+    sync_table_collindexed.delete_many({})
+    yield sync_table_collindexed
+
+
 @pytest.fixture(scope="function")
 def async_empty_table_collindexed(
     sync_empty_table_collindexed: DefaultTable,
 ) -> Iterable[DefaultAsyncTable]:
     """Emptied for each test function"""
     yield sync_empty_table_collindexed.to_async()
+
+
+@pytest.fixture(scope="session")
+def sync_table_textindex(
+    data_api_credentials_kwargs: DataAPICredentials,
+    sync_database: Database,
+) -> Iterable[DefaultTable]:
+    """An actual table on DB, in the main keyspace"""
+    table = sync_database.create_table(
+        TEST_TEXTINDEX_TABLE_NAME,
+        definition=TEST_TEXTINDEX_TABLE_DEFINITION,
+    )
+    table.create_text_index(
+        TEST_TEXTINDEX_INDEX_NAME,
+        TEST_TEXTINDEX_INDEX_COLUMN,
+    )
+    yield table
+
+    sync_database.drop_table(TEST_TEXTINDEX_TABLE_NAME)
+
+
+@pytest.fixture(scope="function")
+def sync_empty_table_textindex(
+    sync_table_textindex: DefaultTable,
+) -> Iterable[DefaultTable]:
+    """Emptied for each test function"""
+    sync_table_textindex.delete_many({})
+    yield sync_table_textindex
+
+
+@pytest.fixture(scope="function")
+def async_table_textindex(
+    sync_table_textindex: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """An actual table on DB, the same as the sync counterpart"""
+    yield sync_table_textindex.to_async()
+
+
+@pytest.fixture(scope="function")
+def async_empty_table_textindex(
+    sync_empty_table_textindex: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """Emptied for each test function"""
+    yield sync_empty_table_textindex.to_async()
+
+
+@pytest.fixture(scope="session")
+def sync_table_logicalfiltering(
+    sync_database: Database,
+) -> Iterable[DefaultTable]:
+    """An actual table on DB, in the main keyspace"""
+    table = sync_database.create_table(
+        TEST_LOGICALFILTERING_TABLE_NAME,
+        definition=TEST_LOGICALFILTERING_TABLE_DEFINITION,
+    )
+    for index_name, index_column in TEST_LOGICALFILTERING_TABLE_INDEXES:
+        table.create_index(index_name, index_column)
+
+    yield table
+
+    sync_database.drop_table(TEST_LOGICALFILTERING_TABLE_NAME)
+
+
+@pytest.fixture(scope="function")
+def sync_empty_table_logicalfiltering(
+    sync_table_logicalfiltering: DefaultTable,
+) -> Iterable[DefaultTable]:
+    """Emptied for each test function"""
+    sync_table_logicalfiltering.delete_many({})
+    yield sync_table_logicalfiltering
+
+
+@pytest.fixture(scope="function")
+def async_empty_table_logicalfiltering(
+    sync_empty_table_logicalfiltering: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """Emptied for each test function"""
+    yield sync_empty_table_logicalfiltering.to_async()
 
 
 __all__ = [

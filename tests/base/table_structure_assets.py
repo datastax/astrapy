@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from astrapy.constants import SortMode
 from astrapy.info import (
     ColumnType,
@@ -201,6 +203,39 @@ TEST_KMS_VECTORIZE_TABLE_VECTOR_INDEX_DEFINITION = (
     TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS
 )
 
+TEST_MULTIPLEVECTORIZE_TABLE_NAME = "test_table_header_multiplevectorize"
+TEST_MULTIPLEVECTORIZE_TABLE_DEFINITION = CreateTableDefinition(
+    columns={
+        "id": TableScalarColumnTypeDescriptor(column_type="text"),
+        "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
+        "p_vector_small": TableVectorColumnTypeDescriptor(
+            column_type="vector",
+            dimension=1024,
+            service=VectorServiceOptions(
+                provider="openai",
+                model_name="text-embedding-3-small",
+            ),
+        ),
+        "p_vector_large": TableVectorColumnTypeDescriptor(
+            column_type="vector",
+            dimension=1024,
+            service=VectorServiceOptions(
+                provider="openai",
+                model_name="text-embedding-3-large",
+            ),
+        ),
+    },
+    primary_key=TablePrimaryKeyDescriptor(
+        partition_by=["id"],
+        partition_sort={},
+    ),
+)
+TEST_MULTIPLEVECTORIZE_TABLE_INDEXES: list[tuple[str, str]] = [
+    ("test_idx_p_vector_small", "p_vector_small"),
+    ("test_idx_p_vector_large", "p_vector_large"),
+]
+TEST_MULTIPLEVECTORIZE_TABLE_INDEX_OPTIONS = TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS
+
 TEST_SIMPLE_UDT_NAME = "test_simple_udt"
 TEST_SIMPLE_UDT_DEFINITION = CreateTypeDefinition(
     fields={
@@ -251,6 +286,40 @@ TEST_COLLINDEXED_TABLE_INDEXES: list[tuple[str, str | dict[str, str]]] = [
     ("test_collidxtable_idx_mtiv", {"map_text_int_v": "$values"}),
 ]
 
+TEST_TEXTINDEX_TABLE_NAME = "test_table_textindex"
+TEST_TEXTINDEX_TABLE_DEFINITION = CreateTableDefinition(
+    columns={
+        "id": TableScalarColumnTypeDescriptor(column_type="text"),
+        "body": TableScalarColumnTypeDescriptor(column_type="text"),
+    },
+    primary_key=TablePrimaryKeyDescriptor(
+        partition_by=["id"],
+        partition_sort={},
+    ),
+)
+TEST_TEXTINDEX_INDEX_NAME = "test_table_textindex_idx"
+TEST_TEXTINDEX_INDEX_COLUMN = "body"
+
+TEST_LOGICALFILTERING_TABLE_NAME = "test_table_logicalfiltering"
+TEST_LOGICALFILTERING_TABLE_DEFINITION = CreateTableDefinition(
+    columns={
+        "id": TableScalarColumnTypeDescriptor(column_type="text"),
+        "p_boolean": TableScalarColumnTypeDescriptor(column_type="boolean"),
+        "p_int_1": TableScalarColumnTypeDescriptor(column_type="int"),
+        "p_int_2": TableScalarColumnTypeDescriptor(column_type="int"),
+        "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
+    },
+    primary_key=TablePrimaryKeyDescriptor(
+        partition_by=["id"],
+        partition_sort={},
+    ),
+)
+TEST_LOGICALFILTERING_TABLE_INDEXES: list[tuple[str, str | dict[str, str]]] = [
+    ("test_logflt_idx_p_bool", "p_boolean"),
+    ("test_logflt_idx_p_int_1", "p_int_1"),
+    ("test_logflt_idx_p_int_2", "p_int_2"),
+    ("test_logflt_idx_p_text", "p_text"),
+]
 
 VECTORIZE_TEXTS = [
     "The world is the totality of facts, not of things.",
@@ -281,3 +350,23 @@ VECTORIZE_TEXTS = [
     "The possibility of its occurrence in atomic facts is the form of the object.",
     "The object is simple.",
 ]
+
+
+def dict_equal_same_class(
+    dct1: dict[Any, Any] | None, dct2: dict[Any, Any] | None
+) -> None:
+    """A strong equality that checks the class in each value is exactly the same."""
+    if dct1 is None:
+        assert dct2 is None
+    elif dct2 is None:
+        assert dct1 is None
+    else:
+        assert all(
+            [
+                dct1 == dct2,
+                all(
+                    dct1[k].__class__ == dct2[k].__class__
+                    for k in dct1.keys() | dct2.keys()
+                ),
+            ]
+        )
