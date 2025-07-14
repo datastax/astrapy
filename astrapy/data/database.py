@@ -30,7 +30,6 @@ from astrapy.constants import (
     DefaultRowType,
     Environment,
 )
-from astrapy.data.info.table_descriptor.type_altering import AlterTypeOperation
 from astrapy.exceptions import (
     DevOpsAPIException,
     InvalidEnvironmentException,
@@ -42,12 +41,14 @@ from astrapy.exceptions import (
     _TimeoutContext,
 )
 from astrapy.info import (
+    AlterTypeOperation,
     AstraDBDatabaseInfo,
     CollectionDefinition,
     CollectionDescriptor,
     CreateTableDefinition,
     CreateTypeDefinition,
     ListTableDescriptor,
+    ListTypeDescriptor,
 )
 from astrapy.settings.defaults import (
     DEFAULT_ASTRA_DB_KEYSPACE,
@@ -1737,6 +1738,116 @@ class Database:
                 raw_response=cty_response,
             )
         logger.info(f"finished createType('{name}')")
+
+    def list_type_names(
+        self,
+        *,
+        keyspace: str | None = None,
+        table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> list[str]:
+        """
+        List the names of all user-defined types (UDTs) in a keyspace of this database.
+
+        Args:
+            keyspace: the keyspace to be inspected. If not specified,
+                the general setting for this database is assumed.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
+
+        Returns:
+            a list of the user-defined type names as strings, in no particular order.
+
+        Example:
+            >>> database.list_type_names()
+            ['player', 'venue']
+        """
+
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+        driver_commander = self._get_driver_commander(keyspace=keyspace)
+        lt_payload: dict[str, Any] = {"listTypes": {}}
+        logger.info("listTypes")
+        lt_response = driver_commander.request(
+            payload=lt_payload,
+            timeout_context=_TimeoutContext(
+                request_ms=_table_admin_timeout_ms, label=_ta_label
+            ),
+        )
+        if "types" not in lt_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from listTypes API command.",
+                raw_response=lt_response,
+            )
+        else:
+            logger.info("finished listTypes")
+            return lt_response["status"]["types"]  # type: ignore[no-any-return]
+
+    def list_types(
+        self,
+        *,
+        keyspace: str | None = None,
+        table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> list[ListTypeDescriptor]:
+        """
+        List all user-defined types (UDTs) in a keyspace of this database.
+
+        Args:
+            keyspace: the keyspace to be inspected. If not specified,
+                the general setting for this database is assumed.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
+
+        Returns:
+            a list of the user-defined types, in no particular order, in the form
+            of as many `ListTypeDescriptor` objects.
+
+        Example:
+            >>> database.list_types()
+            [ListTypeDescriptor(player: CreateTypeDefinition(fields=[age,name])), ListTypeDescriptor(venue: CreateTypeDefinition(fields=[lat,lon,name,venue_id]))]
+        """
+
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+        driver_commander = self._get_driver_commander(keyspace=keyspace)
+        lt_payload: dict[str, Any] = {"listTypes": {"options": {"explain": True}}}
+        logger.info("listTypes")
+        lt_response = driver_commander.request(
+            payload=lt_payload,
+            timeout_context=_TimeoutContext(
+                request_ms=_table_admin_timeout_ms, label=_ta_label
+            ),
+        )
+        if "types" not in lt_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from listTypes API command.",
+                raw_response=lt_response,
+            )
+        else:
+            logger.info("finished listTypes")
+            return [
+                ListTypeDescriptor._from_dict(type_json)
+                for type_json in lt_response["status"]["types"]
+            ]
 
     def alter_type(
         self,
@@ -3780,6 +3891,120 @@ class AsyncDatabase:
                 raw_response=cty_response,
             )
         logger.info(f"finished createType('{name}')")
+
+    async def list_type_names(
+        self,
+        *,
+        keyspace: str | None = None,
+        table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> list[str]:
+        """
+        List the names of all user-defined types (UDTs) in a keyspace of this database.
+
+        Args:
+            keyspace: the keyspace to be inspected. If not specified,
+                the general setting for this database is assumed.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
+
+        Returns:
+            a list of the user-defined type names as strings, in no particular order.
+
+        Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
+            >>> await async_database.list_type_names()
+            ['player', 'venue']
+        """
+
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+        driver_commander = self._get_driver_commander(keyspace=keyspace)
+        lt_payload: dict[str, Any] = {"listTypes": {}}
+        logger.info("listTypes")
+        lt_response = await driver_commander.async_request(
+            payload=lt_payload,
+            timeout_context=_TimeoutContext(
+                request_ms=_table_admin_timeout_ms, label=_ta_label
+            ),
+        )
+        if "types" not in lt_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from listTypes API command.",
+                raw_response=lt_response,
+            )
+        else:
+            logger.info("finished listTypes")
+            return lt_response["status"]["types"]  # type: ignore[no-any-return]
+
+    async def list_types(
+        self,
+        *,
+        keyspace: str | None = None,
+        table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> list[ListTypeDescriptor]:
+        """
+        List all user-defined types (UDTs) in a keyspace of this database.
+
+        Args:
+            keyspace: the keyspace to be inspected. If not specified,
+                the general setting for this database is assumed.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
+
+        Returns:
+            a list of the user-defined types, in no particular order, in the form
+            of as many `ListTypeDescriptor` objects.
+
+        Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
+            >>> await async_database.list_types()
+            [ListTypeDescriptor(player: CreateTypeDefinition(fields=[age,name])), ListTypeDescriptor(venue: CreateTypeDefinition(fields=[lat,lon,name,venue_id]))]
+        """
+
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+        driver_commander = self._get_driver_commander(keyspace=keyspace)
+        lt_payload: dict[str, Any] = {"listTypes": {"options": {"explain": True}}}
+        logger.info("listTypes")
+        lt_response = await driver_commander.async_request(
+            payload=lt_payload,
+            timeout_context=_TimeoutContext(
+                request_ms=_table_admin_timeout_ms, label=_ta_label
+            ),
+        )
+        if "types" not in lt_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from listTypes API command.",
+                raw_response=lt_response,
+            )
+        else:
+            logger.info("finished listTypes")
+            return [
+                ListTypeDescriptor._from_dict(type_json)
+                for type_json in lt_response["status"]["types"]
+            ]
 
     async def alter_type(
         self,

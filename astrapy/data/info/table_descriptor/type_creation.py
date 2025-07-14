@@ -24,9 +24,9 @@ from astrapy.utils.parsing import _warn_residual_keys
 @dataclass
 class CreateTypeDefinition:
     """
-    A structure expressing the definition of a user-defined type to be created through
-    the Data API. This object is passed as the `definition` parameter to the database
-    `create_type` method.
+    A structure expressing the definition of a user-defined type( UDT) to be created
+    through the Data API. This object is passed as the `definition` parameter to
+    the database `create_type` method.
 
     See the Data API specifications for detailed specification and allowed values.
 

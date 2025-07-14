@@ -99,6 +99,15 @@ class TestTableUserDefinedTypes:
                 UDT_NAME,
             )
 
+            assert UDT_NAME in sync_database.list_type_names()
+            db_types_match = [
+                t_def
+                for t_def in sync_database.list_types()
+                if t_def.udt_name == UDT_NAME
+            ]
+            assert db_types_match != []
+            assert db_types_match[0].definition == UDT_DEF0
+
             sync_database.alter_type(UDT_NAME, operation=UDT_ALTER_OP_1)
             sync_database.alter_type(UDT_NAME, operation=UDT_ALTER_OP_2)
             with pytest.raises(DataAPIResponseException):

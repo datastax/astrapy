@@ -941,6 +941,7 @@ from astrapy.info import (
     FindRerankingProvidersResult,
     ListTableDefinition,
     ListTableDescriptor,
+    ListTypeDescriptor,
     RerankingProvider,
     RerankingProviderAuthentication,
     RerankingProviderModel,

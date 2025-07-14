@@ -29,7 +29,8 @@ AYO = TypeVar("AYO", bound="AlterTypeOperation")
 @dataclass
 class AlterTypeOperation(ABC):
     """
-    An abstract class representing a generic "alter type" operation. Concrete
+    An abstract class representing a generic "alter type" operation, i.e. a change
+    to be applied to a user-defined type (UDT) stored on the database. Concrete
     implementations are used to represent operations such as adding/renaming fields.
 
     `AlterTypeOperation` objects are used in the Database's `alter_type` method.

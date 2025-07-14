@@ -177,6 +177,7 @@ def test_imports() -> None:
         FindRerankingProvidersResult,
         ListTableDefinition,
         ListTableDescriptor,
+        ListTypeDescriptor,
         RerankingProvider,
         RerankingProviderAuthentication,
         RerankingProviderModel,
