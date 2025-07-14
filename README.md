@@ -280,7 +280,7 @@ my_options = APIOptions(serdes_options=SerdesOptions(
 my_table = my_database.get_table("my_table", spawn_api_options=my_options)
 ```
 
-See the section about API Optionsm and the docstring, for more details.
+See the section about API Options, and the docstring, for more details.
 
 _Caution: if one plans to use regular Python `dict` objects to express user-defined types (UDTs),_
 _setting this option to ALWAYS would interfere with the format expected by the API for UDTs._
@@ -320,7 +320,7 @@ table_definition = (
 udt_table = my_database.create_table("matches", definition=table_definition)
 ```
 
-To write data to UDT columns, the default settings (in part. the serdes settings)
+To write data to UDT columns, the default settings (in part. the `SerdesOptions` settings)
 admit using plain Python dictionaries. When reading from a `Table`, by default the
 UDT will be returned in the form of an `astrapy.data_types.DataAPIDictUDT`, a subclass
 of `dict`.
@@ -332,8 +332,7 @@ described in the "Maps as association lists" section.
 The default read behaviour can be changed by setting `serdes_options.custom_datatypes_in_reading`
 to False, in which case UDT data will be returned as a regular `dict`.
 
-The following code demonstrates the default read and write behaviour, assuming the table
-created earlier is available:
+The following code demonstrates the default read and write behaviour, using the `udt_table` just created:
 
 ```python
 from astrapy.data_types import DataAPIDictUDT
@@ -344,11 +343,11 @@ udt_table.insert_one({
     "player1": {"name": "Anita", "age": 49},
     "player2": DataAPIDictUDT({"name": "Pedro", "age": 50}),
 })
-# Using a DataAPIMap in the context of UDT is an error under the default serdes settings.
+# Conversely, use of DataAPIMap for UDTs is an error under the default serdes settings.
 ```
 
-If the map encoding as list is set to "ALWAYS" for some reason, the above expression
-for `"player1"` will fail insertion: usage of `DataAPIDictUDT` is guaranteed to work
+If the map list-encoding is set to "ALWAYS", the above insertion
+will fail because of `"player1"`: usage of `DataAPIDictUDT` is guaranteed to work
 in all circumstances instead.
 
 ##### Using models for UDTs
@@ -357,10 +356,11 @@ In many cases, one wants to 'bind' a certain UDT to a model class. AstraPy provi
 a way to "register" model classes both for the write and read paths, through the following
 serdes API Options:
 
-- `serdes_options.serializer_by_class`: a map from _classes_ (not class names; not class instances) to serializer functions producing a `dict` representation for the model;
-- `serdes_options.deserializer_by_udt`: a map from _UDT names_ to deserializer functions, which turn an input dict (and a UDT definition) into an instance of the model class.
+- `serdes_options.serializer_by_class`: a map from _classes_ (not class names; not class instances) to serializer functions. A serializer function accepts an instance of the model class and returns a corresponding `dict` representation;
+- `serdes_options.deserializer_by_udt`: a map from _UDT names_ to deserializer functions. A deserializer function accepts a dict representation, along with the UDT definition, and returns an instance of the model class.
 
-The following example demonstrates this procedure. Suppose you have a `dataclass` corresponding to `player_udt`:
+The following example demonstrates this procedure, including ser/deserializers.
+Suppose you have a `dataclass` corresponding to `player_udt`:
 
 ```python
 from dataclasses import dataclass
@@ -380,12 +380,14 @@ from astrapy.api_options import APIOptions, SerdesOptions
 from astrapy.info import CreateTypeDefinition
 
 def player_serializer(pl: Player) -> dict[str, Any]:
+    # the logic in this function will depend on the model class being used:
     return pl.__dict__
 
 def player_deserializer(
     pl_dict: dict[str, Any],
     udt_def: CreateTypeDefinition | None,
 ) -> Player:
+    # the logic in this function will depend on the model class being used:
     return Player(**pl_dict)
 
 my_options = APIOptions(serdes_options=SerdesOptions(
@@ -393,6 +395,7 @@ my_options = APIOptions(serdes_options=SerdesOptions(
     deserializer_by_udt={"player_udt": player_deserializer},
 ))
 
+# This statement does not create the table on DB, that is assumed to exist already:
 my_model_capable_table = database.get_table("matches", spawn_api_options=my_options)
 ```
 
@@ -415,12 +418,21 @@ print(the_match["player2"])
 ```
 ##### Summary for UDT usage and maps in Tables
 
+Under the default serdes settings, the following rules apply and constitute the suggested approach:
+
+- use DataAPIMap to write map columns;
+- use DataAPIDictUDTs, or plain `dict`, to write UDTs;
+- expect DataAPIMap when reading map columns;
+- expect DataAPIDictUDTs when reading UDTs;
+- to use model classes, associate them for reads and writes correspondingly.
+
 The following tables summarize the interplay between `dict`, `DataAPIMap`, `DataAPIDictUDT` and the
 serdes options for writes and reads in Tables:
 
-_Item in a write vs. `serdes_options.encode_maps_as_lists_in_tables`. "D" = `dict` in payload, "L" = list of pairs in payload._
+_Items in insertions vs. `serdes_options.encode_maps_as_lists_in_tables`._
+("D" = `dict` in payload, "L" = list of pairs in payload.)
 
-| Item written | NEVER | **DATAAPIMAPS** | ALWAYS |
+| Item being written | NEVER | **DATAAPIMAPS** (default) | ALWAYS |
 | --- | --- | --- | --- |
 | DataAPIDictUDT                      | ok, D | ok, D | ok, D |
 | dict (for UDT)                      | ok, D | ok, D | NO (L: rejected) |
@@ -433,11 +445,12 @@ Notes:
 
 1. The JSON serialization would silently convert the keys to string, leading to a type-mismatch API error upon insertion.
 2. In this case the `dict` is the result of the serializer function, of course.
-3. An error "Object of type `<classname>` is not JSON serializable" is raised.
+3. An error _"Object of type `<classname>` is not JSON serializable"_ is raised.
 
-_Item being read vs. `serdes_options.custom_datatypes_in_reading`. "M" = `DataAPIMap` found in row, "U" = `DataAPIDictUDT` found in row, "D" = `dict` found in row._
+_Items in reads vs. `serdes_options.custom_datatypes_in_reading`._
+("M" = `DataAPIMap` found in row, "U" = `DataAPIDictUDT` found in row, "D" = `dict` found in row.)
 
-| Item being read | **True** | False |
+| Item being read | **True** (default) | False |
 | --- | --- | --- |
 | map (as object, string keys)              | ok, M | ok, D |
 | map (as list, string keys)                | ok, M | ok, D |
