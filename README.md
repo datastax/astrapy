@@ -346,9 +346,9 @@ udt_table.insert_one({
 # Conversely, use of DataAPIMap for UDTs is an error under the default serdes settings.
 ```
 
-If the map list-encoding is set to "ALWAYS", the above insertion
+_Note that if the map list-encoding is set to "ALWAYS", the above insertion
 will fail because of `"player1"`: usage of `DataAPIDictUDT` is guaranteed to work
-in all circumstances instead.
+in all circumstances instead._
 
 ##### Using models for UDTs
 
@@ -460,7 +460,7 @@ _Items in reads vs. `serdes_options.custom_datatypes_in_reading`._
 
 Notes:
 
-4. Caution: the returned regular Python `dict` has nonstring keys.
+4. Caution: the returned regular Python `dict` will have nonstring keys.
 5. The class of the result is whatever the deserializer returns.
 
 ### Usage with HCD and other non-Astra installations
