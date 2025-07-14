@@ -238,13 +238,230 @@ For more on Tables, consult the [Data API documentation about Tables](https://do
 
 #### Maps as association lists
 
-In the Data API, table `map` columns with key of a type other than text
-have to be expressed as association lists,
-i.e. nested lists of lists: `[[key1, value1], [key2, value2], ...]`.
+When working with Tables, `map` columns with key of a type other than text
+must be expressed as association lists,
+i.e. nested lists of lists: `[[key1, value1], [key2, value2], ...]`, in payloads.
 
-AstraPy objects can be configured to always do so automatically, for a seamless
-experience.
-See the API Option `serdes_options.encode_maps_as_lists_in_tables` for details.
+By default, `Table` objects in AstraPy will use the association-list representation
+only for maps wrapped by a `DataAPIMap`, and leave regular Python `dict` objects
+unchanged in payloads: in practice the following row would be sent to the API as shown:
+
+```python
+from astrapy.data_types import DataAPIMap
+
+row_to_insert = {
+    "map_1": {"k": "v"},
+    "map_2": DataAPIMap({"k1": "v1", "k2": "v2"}),
+}
+
+# Will be serialized as JSON like this:
+#    {
+#        "map_1": {"k": "v"},
+#        "map_2": [["k1", "v1"], ["k2", "v2"]]
+#    }
+```
+
+This behaviour is controlled by the API Option `serdes_options.encode_maps_as_lists_in_tables`,
+which defaults to `MapEncodingMode.DATAAPIMAPS`. Other options are:
+
+- `MapEncodingMode.ALWAYS` to convert also regular Python `dict` values into lists of pairs;
+- `MapEncodingMode.NEVER` to never apply such conversion.
+
+The following code demonstrates getting a `Table` object with the desired setting:
+
+```python
+from astrapy.api_options import APIOptions, SerdesOptions
+from astrapy.constants import MapEncodingMode
+
+my_options = APIOptions(serdes_options=SerdesOptions(
+    encode_maps_as_lists_in_tables=MapEncodingMode.ALWAYS  # or even just "ALWAYS"
+))
+
+my_table = my_database.get_table("my_table", spawn_api_options=my_options)
+```
+
+See the section about API Options, and the docstring, for more details.
+
+_Caution: if one plans to use regular Python `dict` objects to express user-defined types (UDTs),_
+_setting this option to ALWAYS would interfere with the format expected by the API for UDTs._
+_See the section on UDTs for more details._
+
+#### User-defined types (UDTs)
+
+The Data API allows creation of "user-defined types" (UDTs), composite data types
+that can be subsequently used as table column types.
+
+```python
+from astrapy.info import (
+    ColumnType,
+    CreateTableDefinition,
+    CreateTypeDefinition,
+    TableScalarColumnTypeDescriptor,
+)
+
+player_udt_def = CreateTypeDefinition(
+    fields={
+        "name": TableScalarColumnTypeDescriptor(ColumnType.TEXT),
+        "age": TableScalarColumnTypeDescriptor(ColumnType.INT),
+    },
+)
+my_database.create_type("player_udt", definition=player_udt_def)
+
+# Create a table and a vector index on it
+table_definition = (
+    CreateTableDefinition.builder()
+    .add_column("match_id", ColumnType.TEXT)
+    .add_userdefinedtype_column("player1", "player_udt")
+    .add_userdefinedtype_column("player2", "player_udt")
+    .add_partition_by(["match_id"])
+    .build()
+)
+
+udt_table = my_database.create_table("matches", definition=table_definition)
+```
+
+To write data to UDT columns, the default settings (in part. the `SerdesOptions` settings)
+admit using plain Python dictionaries. When reading from a `Table`, by default the
+UDT will be returned in the form of an `astrapy.data_types.DataAPIDictUDT`, a subclass
+of `dict`.
+
+The default write behaviour can be changed through the
+`serdes_options.encode_maps_as_lists_in_tables` API Option,
+described in the "Maps as association lists" section.
+
+The default read behaviour can be changed by setting `serdes_options.custom_datatypes_in_reading`
+to False, in which case UDT data will be returned as a regular `dict`.
+
+The following code demonstrates the default read and write behaviour, using the `udt_table` just created:
+
+```python
+from astrapy.data_types import DataAPIDictUDT
+
+# both are valid ways to express a 'player_udt':
+udt_table.insert_one({
+    "match_id": "x001",
+    "player1": {"name": "Anita", "age": 49},
+    "player2": DataAPIDictUDT({"name": "Pedro", "age": 50}),
+})
+# Conversely, use of DataAPIMap for UDTs is an error under the default serdes settings.
+```
+
+_Note that if the map list-encoding is set to "ALWAYS", the above insertion
+will fail because of `"player1"`: usage of `DataAPIDictUDT` is guaranteed to work
+in all circumstances instead._
+
+##### Using models for UDTs
+
+In many cases, one wants to 'bind' a certain UDT to a model class. AstraPy provides
+a way to "register" model classes both for the write and read paths, through the following
+serdes API Options:
+
+- `serdes_options.serializer_by_class`: a map from _classes_ (not class names; not class instances) to serializer functions. A serializer function accepts an instance of the model class and returns a corresponding `dict` representation;
+- `serdes_options.deserializer_by_udt`: a map from _UDT names_ to deserializer functions. A deserializer function accepts a dict representation, along with the UDT definition, and returns an instance of the model class.
+
+The following example demonstrates this procedure, including ser/deserializers.
+Suppose you have a `dataclass` corresponding to `player_udt`:
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class Player:
+    name: str
+    age: int
+```
+
+The two required ser/des functions can be defined and configured for the API options in order to spawn a `Table` object able to use `Player`:
+
+```python
+from typing import Any
+
+from astrapy.api_options import APIOptions, SerdesOptions
+from astrapy.info import CreateTypeDefinition
+
+def player_serializer(pl: Player) -> dict[str, Any]:
+    # the logic in this function will depend on the model class being used:
+    return pl.__dict__
+
+def player_deserializer(
+    pl_dict: dict[str, Any],
+    udt_def: CreateTypeDefinition | None,
+) -> Player:
+    # the logic in this function will depend on the model class being used:
+    return Player(**pl_dict)
+
+my_options = APIOptions(serdes_options=SerdesOptions(
+    serializer_by_class={Player: player_serializer},
+    deserializer_by_udt={"player_udt": player_deserializer},
+))
+
+# This statement does not create the table on DB, that is assumed to exist already:
+my_model_capable_table = database.get_table("matches", spawn_api_options=my_options)
+```
+
+At this point, writes and reads can seamlessly use the `Player` class:
+
+```python
+my_model_capable_table.insert_one({
+    "match_id": "x001",
+    "player1": Player(name="Anita", age=49),
+    "player2": Player(name="Pedro", age=50),
+})
+
+the_match = my_model_capable_table.find_one({"match_id": "x001"})
+# the_match["player1"] and the_match["player2"] are Player objects:
+
+print(the_match["player1"])
+# prints: Player(name='Anita', age=49)
+print(the_match["player2"])
+# prints: Player(name='Pedro', age=50)
+```
+##### Summary for UDT usage and maps in Tables
+
+Under the default serdes settings, the following rules apply and constitute the suggested approach:
+
+- use DataAPIMap to write map columns;
+- use DataAPIDictUDTs, or plain `dict`, to write UDTs;
+- expect DataAPIMap when reading map columns;
+- expect DataAPIDictUDTs when reading UDTs;
+- to use model classes, associate them for reads and writes correspondingly.
+
+The following tables summarize the interplay between `dict`, `DataAPIMap`, `DataAPIDictUDT` and the
+serdes options for writes and reads in Tables:
+
+_Items in insertions vs. `serdes_options.encode_maps_as_lists_in_tables`._
+("D" = `dict` in payload, "L" = list of pairs in payload.)
+
+| Item being written | NEVER | **DATAAPIMAPS** (default) | ALWAYS |
+| --- | --- | --- | --- |
+| DataAPIDictUDT                      | ok, D | ok, D | ok, D |
+| dict (for UDT)                      | ok, D | ok, D | NO (L: rejected) |
+| dict (for map, string keys)         | ok, D | ok, D | ok, L |
+| dict (for map, nonstring keys)      | NO [1] | NO [1] | ok, L |
+| `MyClass`, in `serializer_by_class` | ok, D [2] | ok, D [2] | ok, D [2] |
+| `MyClass`, no registered serializer | NO [3] | NO [3] | NO [3] |
+
+Notes:
+
+1. The JSON serialization would silently convert the keys to string, leading to a type-mismatch API error upon insertion.
+2. In this case the `dict` is the result of the serializer function, of course.
+3. An error _"Object of type `<classname>` is not JSON serializable"_ is raised.
+
+_Items in reads vs. `serdes_options.custom_datatypes_in_reading`._
+("M" = `DataAPIMap` found in row, "U" = `DataAPIDictUDT` found in row, "D" = `dict` found in row.)
+
+| Item being read | **True** (default) | False |
+| --- | --- | --- |
+| map (as object, string keys)              | ok, M | ok, D |
+| map (as list, string keys)                | ok, M | ok, D |
+| map (as list, nonstring keys)             | ok, M | ok, D [4] |
+| UDT, with entry in `deserializer_by_udt`  | ok [5] | ok [5] |
+| UDT, no registered deserializer           | ok, U | ok, D |
+
+Notes:
+
+4. Caution: the returned regular Python `dict` will have nonstring keys.
+5. The class of the result is whatever the deserializer returns.
 
 ### Usage with HCD and other non-Astra installations
 
