@@ -170,10 +170,20 @@ class MapEncodingMode(StrEnum):
     ALWAYS = "ALWAYS"
 
 
+class ModelStatus(StrEnum):
+    """ """
+
+    ALL = ""
+    SUPPORTED = "SUPPORTED"
+    DEPRECATED = "DEPRECATED"
+    END_OF_LIFE = "END_OF_LIFE"
+
+
 __all__ = [
     "DefaultIdType",
     "Environment",
     "MapEncodingMode",
+    "ModelStatus",
     "ReturnDocument",
     "SortMode",
     "VectorMetric",

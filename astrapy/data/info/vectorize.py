@@ -168,9 +168,11 @@ class EmbeddingAPIModelSupport:
 
     Attributes:
         status: a string describing the support status.
+        message: an optional string message alongside the status.
     """
 
     status: str
+    message: str | None
 
     def __repr__(self) -> str:
         return f"EmbeddingAPIModelSupport({self.status})"
@@ -179,7 +181,12 @@ class EmbeddingAPIModelSupport:
         """Recast this object into a dictionary."""
 
         return {
-            "status": self.status,
+            k: v
+            for k, v in {
+                "status": self.status,
+                "message": self.message,
+            }.items()
+            if v is not None
         }
 
     @staticmethod
@@ -189,9 +196,7 @@ class EmbeddingAPIModelSupport:
         such as one from the Data API.
         """
 
-        residual_keys = raw_dict.keys() - {
-            "status",
-        }
+        residual_keys = raw_dict.keys() - {"status", "message"}
         if residual_keys:
             warnings.warn(
                 "Unexpected key(s) encountered parsing a dictionary into "
@@ -199,6 +204,7 @@ class EmbeddingAPIModelSupport:
             )
         return EmbeddingAPIModelSupport(
             status=raw_dict.get("status") or "SUPPORTED",
+            message=raw_dict.get("message"),
         )
 
 

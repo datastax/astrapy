@@ -168,9 +168,11 @@ class RerankingAPIModelSupport:
 
     Attributes:
         status: a string describing the support status.
+        message: an optional string message alongside the status.
     """
 
     status: str
+    message: str | None
 
     def __repr__(self) -> str:
         return f"RerankingAPIModelSupport({self.status})"
@@ -179,7 +181,12 @@ class RerankingAPIModelSupport:
         """Recast this object into a dictionary."""
 
         return {
-            "status": self.status,
+            k: v
+            for k, v in {
+                "status": self.status,
+                "message": self.message,
+            }.items()
+            if v is not None
         }
 
     @classmethod
@@ -189,15 +196,10 @@ class RerankingAPIModelSupport:
         such as one from the Data API.
         """
 
-        _warn_residual_keys(
-            cls,
-            raw_dict,
-            {
-                "status",
-            },
-        )
+        _warn_residual_keys(cls, raw_dict, {"status", "message"})
         return RerankingAPIModelSupport(
             status=raw_dict.get("status") or "SUPPORTED",
+            message=raw_dict.get("message"),
         )
 
 
