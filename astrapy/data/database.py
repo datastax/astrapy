@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, overload
 
@@ -1844,10 +1845,18 @@ class Database:
             )
         else:
             logger.info("finished listTypes")
-            return [
-                ListTypeDescriptor._from_dict(type_json)
-                for type_json in lt_response["status"]["types"]
-            ]
+            all_types_json = lt_response["status"]["types"]
+            lt_descriptors: list[ListTypeDescriptor] = []
+            for type_json in all_types_json:
+                if ListTypeDescriptor._is_valid_dict(type_json):
+                    lt_descriptors.append(ListTypeDescriptor._from_dict(type_json))
+                else:
+                    warnings.warn(
+                        "Unexpected item encountered while reading the response of "
+                        "listTypes. the offending item will be skipped from the "
+                        f"return value of `list_types`. Its value is: '{type_json}'."
+                    )
+            return lt_descriptors
 
     def alter_type(
         self,
@@ -4001,10 +4010,18 @@ class AsyncDatabase:
             )
         else:
             logger.info("finished listTypes")
-            return [
-                ListTypeDescriptor._from_dict(type_json)
-                for type_json in lt_response["status"]["types"]
-            ]
+            all_types_json = lt_response["status"]["types"]
+            lt_descriptors: list[ListTypeDescriptor] = []
+            for type_json in all_types_json:
+                if ListTypeDescriptor._is_valid_dict(type_json):
+                    lt_descriptors.append(ListTypeDescriptor._from_dict(type_json))
+                else:
+                    warnings.warn(
+                        "Unexpected item encountered while reading the response of "
+                        "listTypes. the offending item will be skipped from the "
+                        f"return value of `list_types`. Its value is: '{type_json}'."
+                    )
+            return lt_descriptors
 
     async def alter_type(
         self,

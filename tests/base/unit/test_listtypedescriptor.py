@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from astrapy.info import ListTypeDescriptor
@@ -67,3 +69,43 @@ class TestListTypeDescriptor:
             assert t_fd == t_co
 
             assert t_fd.as_dict() == type_json
+
+    @pytest.mark.describe("test of ListTypeDescriptor, faulty and unsupported UDTs")
+    def test_listtypedescriptor_weird_udts(self) -> None:
+        # good; empty; unsupported
+        good_dict = {
+            "type": "userDefined",
+            "udtName": "bla",
+            "definition": {"fields": {"a": {"type": "int"}}},
+            "apiSupport": {
+                "createTable": True,
+                "insert": True,
+                "read": True,
+                "filter": False,
+                "cqlDefinition": "default_keyspace.bla",
+            },
+        }
+        empty_dict: dict[str, Any] = {}
+        unsupported_dict = {
+            "type": "UNSUPPORTED",
+            "apiSupport": {
+                "createTable": False,
+                "insert": False,
+                "read": False,
+                "filter": False,
+                "cqlDefinition": "default_keyspace.blu",
+            },
+        }
+
+        assert ListTypeDescriptor._is_valid_dict(good_dict)
+        assert not ListTypeDescriptor._is_valid_dict(empty_dict)
+        assert ListTypeDescriptor._is_valid_dict(unsupported_dict)
+
+        good_parsed = ListTypeDescriptor._from_dict(good_dict)
+        assert good_parsed.as_dict() == good_dict
+
+        with pytest.raises(KeyError):
+            ListTypeDescriptor._from_dict(empty_dict)
+
+        unsupported_parsed = ListTypeDescriptor._from_dict(unsupported_dict)
+        assert unsupported_parsed.as_dict() == unsupported_dict
