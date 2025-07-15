@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 from typing import TYPE_CHECKING, Any
 
@@ -22,6 +23,7 @@ import pytest
 from astrapy import AsyncDatabase
 from astrapy.api_options import APIOptions, SerdesOptions
 from astrapy.constants import SerializerFunctionType, UDTDeserializerFunctionType
+from astrapy.data.utils.table_types import TableUnsupportedColumnType
 from astrapy.data_types import (
     DataAPIDictUDT,
     DataAPIMap,
@@ -57,6 +59,9 @@ from .table_row_assets import (
     UDT_DEF0,
     UDT_DEF1,
     UDT_NAME,
+    UNSUPPORTED_UDT_CREATE,
+    UNSUPPORTED_UDT_DROP,
+    UNSUPPORTED_UDT_NAME,
     WEIRD_BASE_DOCUMENT,
     WEIRD_BASE_DOCUMENT_PK,
     WEIRD_UDT_BASE_CLOSE_STATEMENTS,
@@ -512,3 +517,30 @@ class TestTableUserDefinedTypes:
         finally:
             for cql_statement in WEIRD_UDT_BASE_CLOSE_STATEMENTS:
                 cql_session.execute(cql_statement)
+
+    @pytest.mark.skipif(not CQL_AVAILABLE, reason="No CQL session available")
+    @pytest.mark.describe("Test of unsupported UDT listing, async")
+    async def test_table_udt_listunsupported_async(
+        self,
+        cql_session: Session,
+        async_database: AsyncDatabase,
+    ) -> None:
+        try:
+            cql_session.execute(UNSUPPORTED_UDT_CREATE)
+            await asyncio.sleep(1.5)  # udt propagation requires some time, it seems
+
+            assert UNSUPPORTED_UDT_NAME in await async_database.list_type_names()
+            lt_result = await async_database.list_types()
+            listed_udt_matches = [
+                l_u
+                for l_u in lt_result
+                # sloppy matching
+                if UNSUPPORTED_UDT_NAME in str(l_u.as_dict())
+            ]
+            assert len(listed_udt_matches) == 1
+            listed_udt_match = listed_udt_matches[0]
+            assert listed_udt_match.udt_type == TableUnsupportedColumnType.UNSUPPORTED
+            assert listed_udt_match.api_support is not None
+            assert UNSUPPORTED_UDT_NAME in listed_udt_match.api_support.cql_definition
+        finally:
+            cql_session.execute(UNSUPPORTED_UDT_DROP)
