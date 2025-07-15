@@ -20,7 +20,7 @@ Introduced the notion of 'passthrough columns' to cover all of the cql-only part
 Fix: methods `drop_[collection|table]` of `[Async]Database`, and their Collection/Table sugar methods, now consistently return None.
 AstraDBAdmin: introduced `[async_]find_available_regions()` method (and related response objects)
 embedding/reranking models' "API support status":
-    - db admins' `.find_[embedding|reranking]_providers()` methods have a `filter_model_status` parameter;
+    - db admins' `.find_[embedding|reranking]_providers()` methods have a `filter_model_status` parameter, with values in `astrapy.constants.ModelStatus`;
     - returned `*Model` objects have an appropriate "API Support" attribute.
 allow sending `"$vector": None` when inserting into collections
 support for modelSupport in findRerankingProviders

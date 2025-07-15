@@ -17,6 +17,7 @@ from __future__ import annotations
 import pytest
 
 from astrapy import Database
+from astrapy.constants import ModelStatus
 from astrapy.info import EmbeddingProvider, FindEmbeddingProvidersResult
 
 from ..conftest import IS_ASTRA_DB, clean_nulls_from_dict
@@ -88,6 +89,10 @@ class TestVectorizeOpsSync:
         all_count = _count_models(
             database_admin.find_embedding_providers(filter_model_status="")
         )
+        all_count_e = _count_models(
+            database_admin.find_embedding_providers(filter_model_status=ModelStatus.ALL)
+        )
+        assert all_count_e == all_count
 
         sup_count = _count_models(
             database_admin.find_embedding_providers(filter_model_status="SUPPORTED")
@@ -98,6 +103,24 @@ class TestVectorizeOpsSync:
         eol_count = _count_models(
             database_admin.find_embedding_providers(filter_model_status="END_OF_LIFE")
         )
+        sup_count_e = _count_models(
+            database_admin.find_embedding_providers(
+                filter_model_status=ModelStatus.SUPPORTED,
+            )
+        )
+        dep_count_e = _count_models(
+            database_admin.find_embedding_providers(
+                filter_model_status=ModelStatus.DEPRECATED,
+            )
+        )
+        eol_count_e = _count_models(
+            database_admin.find_embedding_providers(
+                filter_model_status=ModelStatus.END_OF_LIFE,
+            )
+        )
+        assert sup_count_e == sup_count
+        assert dep_count_e == dep_count
+        assert eol_count_e == eol_count
 
         assert sup_count + dep_count + eol_count == all_count
         assert sup_count == default_count

@@ -29,7 +29,7 @@ from astrapy.admin.endpoints import (
     database_id_matcher,
     parse_api_endpoint,
 )
-from astrapy.constants import Environment
+from astrapy.constants import Environment, ModelStatus
 from astrapy.exceptions import (
     DevOpsAPIException,
     InvalidEnvironmentException,
@@ -2147,7 +2147,7 @@ class ProviderQueryingDatabaseAdmin(DatabaseAdmin):
     def find_embedding_providers(
         self,
         *,
-        filter_model_status: str | None = None,
+        filter_model_status: str | ModelStatus | None = None,
         database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
@@ -2156,9 +2156,10 @@ class ProviderQueryingDatabaseAdmin(DatabaseAdmin):
         Query the API for the full information on available embedding providers.
 
         Args:
-            filter_model_status: A string to filter models by their support status.
-                Examples: "SUPPORTED", "DEPRECATED". Passing an empty string tells
-                the Data API to return all models, regardless of their support status.
+            filter_model_status: A value of support status to filter models.
+                This should be one of the values of `astrapy.constants.ModelStatus`,
+                such as `ModelStatus.SUPPORTED` or `ModelStatus.DEPRECATED`.
+                or an equivalent string. The value `ALL` does not apply any filter.
                 If omitted, the Data API default behaviour is to return fully supported
                 models only.
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
@@ -2198,7 +2199,11 @@ class ProviderQueryingDatabaseAdmin(DatabaseAdmin):
         fep_body = (
             {}
             if filter_model_status is None
-            else {"options": {"filterModelStatus": filter_model_status}}
+            else {
+                "options": {
+                    "filterModelStatus": ModelStatus.coerce(filter_model_status).value
+                }
+            }
         )
         logger.info("findEmbeddingProviders")
         fe_response = self._api_commander.request(
@@ -2219,7 +2224,7 @@ class ProviderQueryingDatabaseAdmin(DatabaseAdmin):
     async def async_find_embedding_providers(
         self,
         *,
-        filter_model_status: str | None = None,
+        filter_model_status: str | ModelStatus | None = None,
         database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
@@ -2230,9 +2235,10 @@ class ProviderQueryingDatabaseAdmin(DatabaseAdmin):
         Async version of the method, for use in an asyncio context.
 
         Args:
-            filter_model_status: A string to filter models by their support status.
-                Examples: "SUPPORTED", "DEPRECATED". Passing an empty string tells
-                the Data API to return all models, regardless of their support status.
+            filter_model_status: A value of support status to filter models.
+                This should be one of the values of `astrapy.constants.ModelStatus`,
+                such as `ModelStatus.SUPPORTED` or `ModelStatus.DEPRECATED`.
+                or an equivalent string. The value `ALL` does not apply any filter.
                 If omitted, the Data API default behaviour is to return fully supported
                 models only.
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
@@ -2274,7 +2280,11 @@ class ProviderQueryingDatabaseAdmin(DatabaseAdmin):
         fep_body = (
             {}
             if filter_model_status is None
-            else {"options": {"filterModelStatus": filter_model_status}}
+            else {
+                "options": {
+                    "filterModelStatus": ModelStatus.coerce(filter_model_status).value
+                }
+            }
         )
         logger.info("findEmbeddingProviders, async")
         fe_response = await self._api_commander.async_request(
@@ -2295,7 +2305,7 @@ class ProviderQueryingDatabaseAdmin(DatabaseAdmin):
     def find_reranking_providers(
         self,
         *,
-        filter_model_status: str | None = None,
+        filter_model_status: str | ModelStatus | None = None,
         database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
@@ -2304,9 +2314,10 @@ class ProviderQueryingDatabaseAdmin(DatabaseAdmin):
         Query the API for the full information on available reranking providers.
 
         Args:
-            filter_model_status: A string to filter models by their support status.
-                Examples: "SUPPORTED", "DEPRECATED". Passing an empty string tells
-                the Data API to return all models, regardless of their support status.
+            filter_model_status: A value of support status to filter models.
+                This should be one of the values of `astrapy.constants.ModelStatus`,
+                such as `ModelStatus.SUPPORTED` or `ModelStatus.DEPRECATED`.
+                or an equivalent string. The value `ALL` does not apply any filter.
                 If omitted, the Data API default behaviour is to return fully supported
                 models only.
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
@@ -2350,7 +2361,11 @@ class ProviderQueryingDatabaseAdmin(DatabaseAdmin):
         frp_body = (
             {}
             if filter_model_status is None
-            else {"options": {"filterModelStatus": filter_model_status}}
+            else {
+                "options": {
+                    "filterModelStatus": ModelStatus.coerce(filter_model_status).value
+                }
+            }
         )
         logger.info("findRerankingProviders")
         fr_response = self._api_commander.request(
@@ -2371,7 +2386,7 @@ class ProviderQueryingDatabaseAdmin(DatabaseAdmin):
     async def async_find_reranking_providers(
         self,
         *,
-        filter_model_status: str | None = None,
+        filter_model_status: str | ModelStatus | None = None,
         database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
@@ -2382,9 +2397,10 @@ class ProviderQueryingDatabaseAdmin(DatabaseAdmin):
         Async version of the method, for use in an asyncio context.
 
         Args:
-            filter_model_status: A string to filter models by their support status.
-                Examples: "SUPPORTED", "DEPRECATED". Passing an empty string tells
-                the Data API to return all models, regardless of their support status.
+            filter_model_status: A value of support status to filter models.
+                This should be one of the values of `astrapy.constants.ModelStatus`,
+                such as `ModelStatus.SUPPORTED` or `ModelStatus.DEPRECATED`.
+                or an equivalent string. The value `ALL` does not apply any filter.
                 If omitted, the Data API default behaviour is to return fully supported
                 models only.
             database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
@@ -2430,7 +2446,11 @@ class ProviderQueryingDatabaseAdmin(DatabaseAdmin):
         frp_body = (
             {}
             if filter_model_status is None
-            else {"options": {"filterModelStatus": filter_model_status}}
+            else {
+                "options": {
+                    "filterModelStatus": ModelStatus.coerce(filter_model_status).value
+                }
+            }
         )
         logger.info("findRerankingProviders, async")
         fr_response = await self._api_commander.async_request(
