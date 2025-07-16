@@ -19,11 +19,11 @@ import pytest
 from ..conftest import DefaultTable
 
 
-class TestSpecialShortformTypesInListTables:
+class TestTableSpecialShortformTypesInListTables:
     @pytest.mark.describe(
-        "Test that listTables returns the short form for key/valueType fields"
+        "Test listTables returns the short form for key/valueType primitive fields"
     )
-    def test_table_mapsastuples_insert_one_find_one_sync(
+    def test_table_special_shortform_types_listtables(
         self,
         sync_table_all_returns: DefaultTable,
     ) -> None:
@@ -46,6 +46,32 @@ class TestSpecialShortformTypesInListTables:
 
         for col_name in {"p_list_int", "p_map_text_text", "p_set_int"}:
             col_def = the_table_s[0]["definition"]["columns"][col_name]
+            if "valueType" in col_def:
+                assert isinstance(col_def["valueType"], str)
+            if "keyType" in col_def:
+                assert isinstance(col_def["keyType"], str)
+
+    @pytest.mark.describe(
+        "Test projectionSchema has the short form for key/valueType primitive fields"
+    )
+    def test_table_special_shortform_types_projectionschema(
+        self,
+        sync_table_all_returns: DefaultTable,
+    ) -> None:
+        """
+        Temporary test added as a guard to ensure short-form is used
+        for primitive types when inside collection columns. Once clients 2.1
+        are out for some time, this can be lifted and the newer, long-form-preferring
+        Data API can be deployed.
+        """
+
+        raw_response = sync_table_all_returns.command(
+            {"findOne": {"filter": {"p_ascii": "a", "p_bigint": 1}}}
+        )
+        proj_schema = raw_response["status"]["projectionSchema"]
+
+        for col_name in {"p_list_int", "p_map_text_text", "p_set_int"}:
+            col_def = proj_schema[col_name]
             if "valueType" in col_def:
                 assert isinstance(col_def["valueType"], str)
             if "keyType" in col_def:
