@@ -168,6 +168,20 @@ INCOMPLETE_UDTS_NULLFILLED_OUTPUT_ROW_TO_POSTPROCESS_TUPLES = {
     "set_udts": [None],
     "map_udts": [[123, None]],
 }
+INCOMPLETE_UDTS_EMPTIES_OUTPUT_ROW_TO_POSTPROCESS = {
+    "p_text": "empties",
+    "scalar_udt": {},
+    "list_udts": [{}],
+    "set_udts": [{}],
+    "map_udts": {321: {}},
+}
+INCOMPLETE_UDTS_EMPTIES_OUTPUT_ROW_TO_POSTPROCESS_TUPLES = {
+    "p_text": "empties",
+    "scalar_udt": {},
+    "list_udts": [{}],
+    "set_udts": [{}],
+    "map_udts": [[321, {}]],
+}
 INCOMPLETE_UDTS_PARTIAL_OUTPUT_ROW_TO_POSTPROCESS = {
     "p_text": "partials",
     "scalar_udt": INCOMPLETE_UDTS_PARTIAL_UDT_INPUT,
@@ -210,6 +224,13 @@ INCOMPLETE_UDTS_NULLFILLED_OUTPUT_EXPECTED_ROW = {
     "list_udts": [INCOMPLETE_UDTS_NULL_UDT_RESULT],
     "set_udts": DataAPISet([INCOMPLETE_UDTS_NULL_UDT_RESULT]),
     "map_udts": DataAPIMap({123: INCOMPLETE_UDTS_NULL_UDT_RESULT}),
+}
+INCOMPLETE_UDTS_EMPTIES_OUTPUT_EXPECTED_ROW = {
+    "p_text": "empties",
+    "scalar_udt": INCOMPLETE_UDTS_NULL_UDT_RESULT,
+    "list_udts": [INCOMPLETE_UDTS_NULL_UDT_RESULT],
+    "set_udts": DataAPISet([INCOMPLETE_UDTS_NULL_UDT_RESULT]),
+    "map_udts": DataAPIMap({321: INCOMPLETE_UDTS_NULL_UDT_RESULT}),
 }
 INCOMPLETE_UDTS_PARTIAL_OUTPUT_EXPECTED_ROW = {
     "p_text": "partials",
@@ -431,6 +452,28 @@ class TestTPostProcessorsUserDefinedTypes:
         dict_equal_same_class(
             deserialized_row_tuples,
             INCOMPLETE_UDTS_NULLFILLED_OUTPUT_EXPECTED_ROW,
+        )
+
+    @pytest.mark.describe("test of row postprocessors, incomplete UDT: emptydict data")
+    def test_row_postprocessors_incomplete_emptydict_udts(self) -> None:
+        tpostprocessor = create_row_tpostprocessor(
+            columns=INCOMPLETE_UDTS_TABLE_COLUMNS,
+            options=INCOMPLETE_DESERIALIZER_OPTIONS,
+            similarity_pseudocolumn=None,
+        )
+        deserialized_row = tpostprocessor(
+            INCOMPLETE_UDTS_EMPTIES_OUTPUT_ROW_TO_POSTPROCESS,
+        )
+        dict_equal_same_class(
+            deserialized_row,
+            INCOMPLETE_UDTS_EMPTIES_OUTPUT_EXPECTED_ROW,
+        )
+        deserialized_row_tuples = tpostprocessor(
+            INCOMPLETE_UDTS_EMPTIES_OUTPUT_ROW_TO_POSTPROCESS_TUPLES,
+        )
+        dict_equal_same_class(
+            deserialized_row_tuples,
+            INCOMPLETE_UDTS_EMPTIES_OUTPUT_EXPECTED_ROW,
         )
 
     @pytest.mark.describe("test of row postprocessors, incomplete UDT: partial data")
