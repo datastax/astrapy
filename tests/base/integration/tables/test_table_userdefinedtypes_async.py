@@ -497,6 +497,61 @@ class TestTableUserDefinedTypes:
                     )
                     dict_equal_same_class(prj_read_row, {fld: exp_row[fld]})
 
+    @pytest.mark.describe("Test of null/partial UDT in DML, async")
+    async def test_table_incomplete_udt_dml_async(
+        self,
+        player_udt: str,
+        async_empty_table_udt_player: DefaultAsyncTable,
+    ) -> None:
+        atable = async_empty_table_udt_player.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=True,
+                )
+            ),
+        )
+        insert_results = await atable.insert_many(
+            [
+                {
+                    "id": "nulls",
+                    "scalar_udt": None,
+                    "list_udt": [{}],
+                    "set_udt": DataAPISet([{}]),
+                    "map_udt": DataAPIMap({"k": {}}),
+                },
+                {
+                    "id": "partials",
+                    "scalar_udt": {"age": 75},
+                    "list_udt": [{"age": 75}],
+                    "set_udt": DataAPISet([{"age": 75}]),
+                    "map_udt": DataAPIMap({"k": {"age": 75}}),
+                },
+            ]
+        )
+        assert insert_results.inserted_id_tuples == [("nulls",), ("partials",)]
+
+        row_nulls = await atable.find_one({"id": "nulls"})
+        null_udt_dict = DataAPIDictUDT({"name": None, "age": None})
+        expected_row_nulls = {
+            "id": "nulls",
+            "scalar_udt": null_udt_dict,
+            "list_udt": [null_udt_dict],
+            "set_udt": DataAPISet([null_udt_dict]),
+            "map_udt": DataAPIMap({"k": null_udt_dict}),
+        }
+        dict_equal_same_class(row_nulls, expected_row_nulls)
+
+        row_partials = await atable.find_one({"id": "partials"})
+        partial_udt_dict = DataAPIDictUDT({"name": None, "age": 75})
+        expected_row_partials = {
+            "id": "partials",
+            "scalar_udt": partial_udt_dict,
+            "list_udt": [partial_udt_dict],
+            "set_udt": DataAPISet([partial_udt_dict]),
+            "map_udt": DataAPIMap({"k": partial_udt_dict}),
+        }
+        dict_equal_same_class(row_partials, expected_row_partials)
+
     @pytest.mark.skipif(not CQL_AVAILABLE, reason="No CQL session available")
     @pytest.mark.describe("Test of weird UDT columns, async")
     async def test_table_udt_weirdcolumns_async(
