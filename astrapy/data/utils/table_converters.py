@@ -22,10 +22,7 @@ import ipaddress
 import json
 import logging
 import math
-from typing import TYPE_CHECKING, Any, Callable, Dict, Generic, cast
-
-if TYPE_CHECKING:
-    from astrapy.info import CreateTypeDefinition
+from typing import Any, Callable, Dict, Generic, cast
 
 from astrapy.constants import ROW, MapEncodingMode
 from astrapy.data.info.table_descriptor.table_columns import (
@@ -72,13 +69,6 @@ DATETIME_DATE_FORMAT = "%Y-%m-%d"
 DATETIME_DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
 
 logger = logging.getLogger(__name__)
-
-
-def _default_dict_udt_wrapper(
-    in_dict: dict[str, Any],
-    type_definition: CreateTypeDefinition | None,
-) -> DataAPIDictUDT:
-    return DataAPIDictUDT(in_dict)
 
 
 def _create_scalar_tpostprocessor(
@@ -306,8 +296,16 @@ def _create_passthrough_tpostprocessor(
 
 def _column_filler_value(
     col_def: TableColumnTypeDescriptor,
-    options: FullSerdesOptions,
 ) -> Any:
+    """
+    Prepare a 'filler' for omitted columns. Usually a None, but not always,
+    e.g. for a list it is [].
+    This is used before any options-related choice is made. As such, regardless
+    of the serdes settings, it always uses a representation that could have come
+    from parsing a JSON.
+    For example it fills map columns with an empty dict (and never DataAPIMap).
+    """
+
     if isinstance(col_def, TableScalarColumnTypeDescriptor):
         return None
     elif isinstance(col_def, TableVectorColumnTypeDescriptor):
@@ -321,27 +319,28 @@ def _column_filler_value(
         if col_def.column_type == TableValuedColumnType.LIST:
             return []
         elif TableValuedColumnType.SET:
-            if options.custom_datatypes_in_reading:
-                return DataAPISet()
-            else:
-                return set()
+            return set()
         else:
             raise ValueError(
                 f"Unrecognized table valued-column descriptor for reads: {col_def.as_dict()}"
             )
     elif isinstance(col_def, TableKeyValuedColumnTypeDescriptor):
         if col_def.column_type == TableKeyValuedColumnType.MAP:
-            if options.custom_datatypes_in_reading:
-                return DataAPIMap()
-            else:
-                return {}
+            return {}
         else:
             raise ValueError(
                 f"Unrecognized table key-valued-column descriptor for reads: {col_def.as_dict()}"
             )
     elif isinstance(col_def, TableUDTColumnDescriptor):
-        # TODO: verify about fillers/null UDTs
-        return None
+        if col_def.definition is None:
+            raise ValueError(
+                "Read-path: received a UDT column schema without 'definition'."
+            )
+        filler_dict = {
+            fld_name: _column_filler_value(fld_def)
+            for fld_name, fld_def in col_def.definition.fields.items()
+        }
+        return filler_dict
     elif isinstance(col_def, TableUnsupportedColumnTypeDescriptor):
         # For lack of better information, the filler is a None:
         return None
@@ -517,49 +516,41 @@ def _create_column_tpostprocessor(
         # if there is a registered deserializer, no matter whether 'use custom dtypes':
         deserializer_for_udt = options.deserializer_by_udt.get(col_def.udt_name)
 
-        # TODO: for all three cases. What to do about
-        #   (1) whole-null return types, (2) partial returned UDT dicts.
+        # common to all settings: normalize (null/partials) to deserialized, full dicts:
+        null_filler_udt = _column_filler_value(col_def)
+
+        def _tpostprocessor_udt_baredict(
+            raw_items: dict[Any, Any] | None,
+        ) -> dict[Any, Any]:
+            # convert nulls to dicts and apply postprocessor to fields
+            udt_deserialized_dict = {
+                k_fieldname: values_tpostprocessor_map[k_fieldname](v_fieldraw)
+                for k_fieldname, v_fieldraw in (raw_items or {}).items()
+            }
+            # complete using fillers for missing fields
+            return {
+                **null_filler_udt,
+                **udt_deserialized_dict,
+            }
 
         if deserializer_for_udt:
 
             def _tpostprocessor_udt_w_deser(raw_items: dict[Any, Any] | None) -> Any:
-                # reconstruct the UDT as the requested custom class
-                if raw_items is None:
-                    return None
-                udt_deserialized_dict = {
-                    k_fieldname: values_tpostprocessor_map[k_fieldname](v_fieldraw)
-                    for k_fieldname, v_fieldraw in raw_items.items()
-                }
-                return deserializer_for_udt(udt_deserialized_dict, col_def.definition)
+                # further wrap with the desired configured deserializer
+                return deserializer_for_udt(
+                    _tpostprocessor_udt_baredict(raw_items),
+                    col_def.definition,
+                )
 
             return _tpostprocessor_udt_w_deser
         elif options.custom_datatypes_in_reading:
 
             def _tpostprocessor_udt_defdeser(raw_items: dict[Any, Any] | None) -> Any:
-                # reconstruct the UDT as a dict wrapped as per default dict wrapper
-                if raw_items is None:
-                    return None
-                udt_deserialized_dict = {
-                    k_fieldname: values_tpostprocessor_map[k_fieldname](v_fieldraw)
-                    for k_fieldname, v_fieldraw in raw_items.items()
-                }
-                return _default_dict_udt_wrapper(
-                    udt_deserialized_dict, col_def.definition
-                )
+                # further wrap as DataAPIDictUDT
+                return DataAPIDictUDT(_tpostprocessor_udt_baredict(raw_items))
 
             return _tpostprocessor_udt_defdeser
         else:
-
-            def _tpostprocessor_udt_baredict(raw_items: dict[Any, Any] | None) -> Any:
-                # reconstruct the UDT as just a plain dict
-                if raw_items is None:
-                    return None
-                udt_deserialized_dict = {
-                    k_fieldname: values_tpostprocessor_map[k_fieldname](v_fieldraw)
-                    for k_fieldname, v_fieldraw in raw_items.items()
-                }
-                return udt_deserialized_dict
-
             return _tpostprocessor_udt_baredict
 
     elif isinstance(col_def, TableUnsupportedColumnTypeDescriptor):
@@ -585,7 +576,7 @@ def create_row_tpostprocessor(
         for col_name, col_definition in columns.items()
     }
     tfiller_map = {
-        col_name: _column_filler_value(col_definition, options=options)
+        col_name: _column_filler_value(col_definition)
         for col_name, col_definition in columns.items()
     }
     if similarity_pseudocolumn is not None:
@@ -604,7 +595,7 @@ def create_row_tpostprocessor(
         return {
             col_name: (
                 # making a copy here, since the user may mutate e.g. a map:
-                copy.copy(tfiller_map[col_name])
+                tpostprocessor(copy.copy(tfiller_map[col_name]))
                 if col_name not in raw_dict
                 else tpostprocessor(raw_dict[col_name])
             )

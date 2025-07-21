@@ -27,8 +27,6 @@ from astrapy.utils.api_options import SerdesOptions, defaultSerdesOptions
 
 from ..table_structure_assets import dict_equal_same_class
 from ..table_udt_assets import (
-    PLAYER_TYPE_DEFINITION,
-    PLAYER_TYPE_NAME,
     THE_BYTES,
     THE_DATETIME,
     THE_SERIALIZED_BYTES,
@@ -37,8 +35,12 @@ from ..table_udt_assets import (
     THE_TIMEZONE,
     UNIT_EXTENDED_PLAYER_TYPE_DEFINITION,
     UNIT_EXTENDED_PLAYER_TYPE_NAME,
+    UNIT_OPTLST_PLAYER_TYPE_DEFINITION,
+    UNIT_OPTLST_PLAYER_TYPE_NAME,
     UnitExtendedPlayer,
+    UnitNullableRequiringPlayer,
     _unit_extended_player_from_dict,
+    _unit_optlst_player_from_dict,
 )
 
 TABLE_DESCRIPTION = {
@@ -91,35 +93,116 @@ TABLE_DESCRIPTION = {
 }
 COLUMNS = ListTableDescriptor.coerce(TABLE_DESCRIPTION).definition.columns
 
-MINI_TABLE_DESCRIPTION = {
-    "name": "table_unit_udt_deserialize_test",
+INCOMPLETE_UDTS_TABLE_DESCRIPTION = {
+    "name": "table_unit_incomplete_udt_deserialize_test",
     "definition": {
         "columns": {
             "p_text": {"type": "text"},
             "scalar_udt": {
                 "type": "userDefined",
-                "udtName": PLAYER_TYPE_NAME,
-                "definition": PLAYER_TYPE_DEFINITION.as_dict(),
+                "udtName": UNIT_OPTLST_PLAYER_TYPE_NAME,
+                "definition": UNIT_OPTLST_PLAYER_TYPE_DEFINITION.as_dict(),
+            },
+            "list_udts": {
+                "type": "list",
+                "valueType": {
+                    "type": "userDefined",
+                    "udtName": UNIT_OPTLST_PLAYER_TYPE_NAME,
+                    "definition": UNIT_OPTLST_PLAYER_TYPE_DEFINITION.as_dict(),
+                },
+            },
+            "set_udts": {
+                "type": "set",
+                "valueType": {
+                    "type": "userDefined",
+                    "udtName": UNIT_OPTLST_PLAYER_TYPE_NAME,
+                    "definition": UNIT_OPTLST_PLAYER_TYPE_DEFINITION.as_dict(),
+                },
+            },
+            "map_udts": {
+                "type": "map",
+                "keyType": "int",
+                "valueType": {
+                    "type": "userDefined",
+                    "udtName": UNIT_OPTLST_PLAYER_TYPE_NAME,
+                    "definition": UNIT_OPTLST_PLAYER_TYPE_DEFINITION.as_dict(),
+                },
             },
         },
-        "primaryKey": {"partitionBy": [], "partitionSort": {}},
+        "primaryKey": {"partitionBy": ["p_text"], "partitionSort": {}},
     },
 }
-MINI_COLUMNS = ListTableDescriptor.coerce(MINI_TABLE_DESCRIPTION).definition.columns
-MINI_RESPONSE_PARTIAL_UDT_DICT = {"age": 101}
-MINI_PARTIAL_OUTPUT_ROW_TO_POSTPROCESS = {
-    "p_text": "base",
-    "scalar_udt": MINI_RESPONSE_PARTIAL_UDT_DICT,
+INCOMPLETE_UDTS_TABLE_COLUMNS = ListTableDescriptor.coerce(
+    INCOMPLETE_UDTS_TABLE_DESCRIPTION,
+).definition.columns
+INCOMPLETE_UDTS_PARTIAL_UDT_INPUT = {"age": 42}
+INCOMPLETE_UDTS_FULL_UDT_INPUT = {"name": "Kyle", "age": 18, "victories": ["x", "y"]}
+INCOMPLETE_UDTS_NULL_UDT_RESULT = UnitNullableRequiringPlayer(
+    name=None,
+    age=None,
+    victories=[],
+)
+INCOMPLETE_UDTS_PARTIAL_UDT_RESULT = UnitNullableRequiringPlayer(
+    name=None,
+    age=42,
+    victories=[],
+)
+INCOMPLETE_UDTS_FULL_UDT_RESULT = UnitNullableRequiringPlayer(
+    name="Kyle",
+    age=18,
+    victories=["x", "y"],
+)
+#
+INCOMPLETE_UDTS_OMITTED_OUTPUT_ROW_TO_POSTPROCESS = {"p_text": "omitteds"}
+INCOMPLETE_UDTS_NULLFILLED_OUTPUT_ROW_TO_POSTPROCESS = {
+    "p_text": "nulls",
+    "scalar_udt": None,
+    "list_udts": [None],
+    "set_udts": [None],
+    "map_udts": {123: None},
 }
-# TODO - adjust expectations if different behaviour is discussed
-MINI_EXPECTED_PARTIAL_ROW_DICTUDT = {
-    "p_text": "base",
-    "scalar_udt": DataAPIDictUDT(
-        {
-            # TODO: no `"name": None` here expected so far.
-            "age": 101,
-        }
-    ),
+INCOMPLETE_UDTS_PARTIAL_OUTPUT_ROW_TO_POSTPROCESS = {
+    "p_text": "partials",
+    "scalar_udt": INCOMPLETE_UDTS_PARTIAL_UDT_INPUT,
+    "list_udts": [INCOMPLETE_UDTS_PARTIAL_UDT_INPUT],
+    "set_udts": [INCOMPLETE_UDTS_PARTIAL_UDT_INPUT],
+    "map_udts": {456: INCOMPLETE_UDTS_PARTIAL_UDT_INPUT},
+}
+INCOMPLETE_UDTS_FULL_OUTPUT_ROW_TO_POSTPROCESS = {
+    "p_text": "fulls",
+    "scalar_udt": INCOMPLETE_UDTS_FULL_UDT_INPUT,
+    "list_udts": [INCOMPLETE_UDTS_FULL_UDT_INPUT],
+    "set_udts": [INCOMPLETE_UDTS_FULL_UDT_INPUT],
+    "map_udts": {789: INCOMPLETE_UDTS_FULL_UDT_INPUT},
+}
+#
+INCOMPLETE_UDTS_OMITTED_OUTPUT_EXPECTED_ROW = {
+    "p_text": "omitteds",
+    "scalar_udt": INCOMPLETE_UDTS_NULL_UDT_RESULT,
+    "list_udts": [],
+    "set_udts": DataAPISet([]),
+    "map_udts": DataAPIMap({}),
+}
+INCOMPLETE_UDTS_NULLFILLED_OUTPUT_EXPECTED_ROW = {
+    "p_text": "nulls",
+    "scalar_udt": INCOMPLETE_UDTS_NULL_UDT_RESULT,
+    "list_udts": [INCOMPLETE_UDTS_NULL_UDT_RESULT],
+    "set_udts": DataAPISet([INCOMPLETE_UDTS_NULL_UDT_RESULT]),
+    "map_udts": DataAPIMap({123: INCOMPLETE_UDTS_NULL_UDT_RESULT}),
+}
+INCOMPLETE_UDTS_PARTIAL_OUTPUT_EXPECTED_ROW = {
+    "p_text": "partials",
+    "scalar_udt": INCOMPLETE_UDTS_PARTIAL_UDT_RESULT,
+    "list_udts": [INCOMPLETE_UDTS_PARTIAL_UDT_RESULT],
+    "set_udts": DataAPISet([INCOMPLETE_UDTS_PARTIAL_UDT_RESULT]),
+    "map_udts": DataAPIMap({456: INCOMPLETE_UDTS_PARTIAL_UDT_RESULT}),
+}
+INCOMPLETE_UDTS_FULL_OUTPUT_EXPECTED_ROW = {
+    "p_text": "fulls",
+    "scalar_udt": INCOMPLETE_UDTS_FULL_UDT_RESULT,
+    "list_udts": [INCOMPLETE_UDTS_FULL_UDT_RESULT],
+    "set_udts": DataAPISet([INCOMPLETE_UDTS_FULL_UDT_RESULT]),
+    "map_udts": DataAPIMap({789: INCOMPLETE_UDTS_FULL_UDT_RESULT}),
 }
 
 RAW_RESPONSE_UDT_DICT = {
@@ -220,6 +303,13 @@ OPTIONS_CUSTOM_CCLASS = OPTIONS_CUSTOM.with_override(
         }
     ),
 )
+INCOMPLETE_DESERIALIZER_OPTIONS = OPTIONS_CUSTOM.with_override(
+    SerdesOptions(
+        deserializer_by_udt={
+            UNIT_OPTLST_PLAYER_TYPE_NAME: _unit_optlst_player_from_dict,
+        }
+    ),
+)
 
 
 class TestTPostProcessorsUserDefinedTypes:
@@ -285,15 +375,62 @@ class TestTPostProcessorsUserDefinedTypes:
         }
         dict_equal_same_class(deserialized_row, expected_row)
 
-    @pytest.mark.describe("test of row postprocessors with partial UDT provided")
-    def test_row_postprocessors_partial_udt(self) -> None:
+    @pytest.mark.describe("test of row postprocessors, incomplete UDT: omitted data")
+    def test_row_postprocessors_incomplete_omitted_udts(self) -> None:
         tpostprocessor = create_row_tpostprocessor(
-            columns=MINI_COLUMNS,
-            options=OPTIONS_CUSTOM,
+            columns=INCOMPLETE_UDTS_TABLE_COLUMNS,
+            options=INCOMPLETE_DESERIALIZER_OPTIONS,
             similarity_pseudocolumn=None,
         )
-        deserialized_row = tpostprocessor(MINI_PARTIAL_OUTPUT_ROW_TO_POSTPROCESS)
+        deserialized_row = tpostprocessor(
+            INCOMPLETE_UDTS_OMITTED_OUTPUT_ROW_TO_POSTPROCESS,
+        )
         dict_equal_same_class(
             deserialized_row,
-            MINI_EXPECTED_PARTIAL_ROW_DICTUDT,
+            INCOMPLETE_UDTS_OMITTED_OUTPUT_EXPECTED_ROW,
+        )
+
+    @pytest.mark.describe("test of row postprocessors, incomplete UDT: nullfilled data")
+    def test_row_postprocessors_incomplete_nullfilled_udts(self) -> None:
+        tpostprocessor = create_row_tpostprocessor(
+            columns=INCOMPLETE_UDTS_TABLE_COLUMNS,
+            options=INCOMPLETE_DESERIALIZER_OPTIONS,
+            similarity_pseudocolumn=None,
+        )
+        deserialized_row = tpostprocessor(
+            INCOMPLETE_UDTS_NULLFILLED_OUTPUT_ROW_TO_POSTPROCESS,
+        )
+        dict_equal_same_class(
+            deserialized_row,
+            INCOMPLETE_UDTS_NULLFILLED_OUTPUT_EXPECTED_ROW,
+        )
+
+    @pytest.mark.describe("test of row postprocessors, incomplete UDT: partial data")
+    def test_row_postprocessors_incomplete_partial_udts(self) -> None:
+        tpostprocessor = create_row_tpostprocessor(
+            columns=INCOMPLETE_UDTS_TABLE_COLUMNS,
+            options=INCOMPLETE_DESERIALIZER_OPTIONS,
+            similarity_pseudocolumn=None,
+        )
+        deserialized_row = tpostprocessor(
+            INCOMPLETE_UDTS_PARTIAL_OUTPUT_ROW_TO_POSTPROCESS,
+        )
+        dict_equal_same_class(
+            deserialized_row,
+            INCOMPLETE_UDTS_PARTIAL_OUTPUT_EXPECTED_ROW,
+        )
+
+    @pytest.mark.describe("test of row postprocessors, incomplete UDT: full data")
+    def test_row_postprocessors_incomplete_full_udts(self) -> None:
+        tpostprocessor = create_row_tpostprocessor(
+            columns=INCOMPLETE_UDTS_TABLE_COLUMNS,
+            options=INCOMPLETE_DESERIALIZER_OPTIONS,
+            similarity_pseudocolumn=None,
+        )
+        deserialized_row = tpostprocessor(
+            INCOMPLETE_UDTS_FULL_OUTPUT_ROW_TO_POSTPROCESS,
+        )
+        dict_equal_same_class(
+            deserialized_row,
+            INCOMPLETE_UDTS_FULL_OUTPUT_EXPECTED_ROW,
         )

@@ -120,6 +120,18 @@ UNIT_EXTENDED_PLAYER_TYPE_DEFINITION = CreateTypeDefinition(
     },
 )
 
+UNIT_OPTLST_PLAYER_TYPE_NAME = "unit_udt_nullable_requiring_player"
+UNIT_OPTLST_PLAYER_TYPE_DEFINITION = CreateTypeDefinition(
+    fields={
+        "name": "text",
+        "age": "int",
+        "victories": {
+            "type": "list",
+            "valueType": "text",
+        },
+    },
+)
+
 THE_BYTES = b"\xa6"
 THE_SERIALIZED_BYTES = convert_to_ejson_bytes(THE_BYTES)
 THE_TIMESTAMP = DataAPITimestamp.from_string("2025-10-29T01:25:37.123Z")
@@ -218,6 +230,19 @@ class NullablePlayer:
     age: int | None = None
 
 
+@dataclass
+class UnitNullableRequiringPlayer:
+    """
+    A counterpart of the Player model class (see), but:
+    1. whose each field admit None, while still being mandatory;
+    2. with a field whose "filler" is not null, rather something nontrivial.
+    """
+
+    name: str | None
+    age: int | None
+    victories: list[str]
+
+
 def _extended_player_serializer(uexp: ExtendedPlayer) -> dict[str, Any]:
     return {k: v for k, v in uexp.__dict__.items() if v is not None}
 
@@ -246,6 +271,13 @@ def _nullable_player_from_dict(
     definition: CreateTypeDefinition | None,
 ) -> NullablePlayer:
     return NullablePlayer(**udict)
+
+
+def _unit_optlst_player_from_dict(
+    udict: dict[str, Any],
+    definition: CreateTypeDefinition | None,
+) -> UnitNullableRequiringPlayer:
+    return UnitNullableRequiringPlayer(**udict)
 
 
 def _player_from_dict(
