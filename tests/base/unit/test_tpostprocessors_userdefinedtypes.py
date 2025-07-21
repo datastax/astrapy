@@ -161,6 +161,13 @@ INCOMPLETE_UDTS_NULLFILLED_OUTPUT_ROW_TO_POSTPROCESS = {
     "set_udts": [None],
     "map_udts": {123: None},
 }
+INCOMPLETE_UDTS_NULLFILLED_OUTPUT_ROW_TO_POSTPROCESS_TUPLES = {
+    "p_text": "nulls",
+    "scalar_udt": None,
+    "list_udts": [None],
+    "set_udts": [None],
+    "map_udts": [[123, None]],
+}
 INCOMPLETE_UDTS_PARTIAL_OUTPUT_ROW_TO_POSTPROCESS = {
     "p_text": "partials",
     "scalar_udt": INCOMPLETE_UDTS_PARTIAL_UDT_INPUT,
@@ -168,12 +175,26 @@ INCOMPLETE_UDTS_PARTIAL_OUTPUT_ROW_TO_POSTPROCESS = {
     "set_udts": [INCOMPLETE_UDTS_PARTIAL_UDT_INPUT],
     "map_udts": {456: INCOMPLETE_UDTS_PARTIAL_UDT_INPUT},
 }
+INCOMPLETE_UDTS_PARTIAL_OUTPUT_ROW_TO_POSTPROCESS_TUPLES = {
+    "p_text": "partials",
+    "scalar_udt": INCOMPLETE_UDTS_PARTIAL_UDT_INPUT,
+    "list_udts": [INCOMPLETE_UDTS_PARTIAL_UDT_INPUT],
+    "set_udts": [INCOMPLETE_UDTS_PARTIAL_UDT_INPUT],
+    "map_udts": [[456, INCOMPLETE_UDTS_PARTIAL_UDT_INPUT]],
+}
 INCOMPLETE_UDTS_FULL_OUTPUT_ROW_TO_POSTPROCESS = {
     "p_text": "fulls",
     "scalar_udt": INCOMPLETE_UDTS_FULL_UDT_INPUT,
     "list_udts": [INCOMPLETE_UDTS_FULL_UDT_INPUT],
     "set_udts": [INCOMPLETE_UDTS_FULL_UDT_INPUT],
     "map_udts": {789: INCOMPLETE_UDTS_FULL_UDT_INPUT},
+}
+INCOMPLETE_UDTS_FULL_OUTPUT_ROW_TO_POSTPROCESS_TUPLES = {
+    "p_text": "fulls",
+    "scalar_udt": INCOMPLETE_UDTS_FULL_UDT_INPUT,
+    "list_udts": [INCOMPLETE_UDTS_FULL_UDT_INPUT],
+    "set_udts": [INCOMPLETE_UDTS_FULL_UDT_INPUT],
+    "map_udts": [[789, INCOMPLETE_UDTS_FULL_UDT_INPUT]],
 }
 #
 INCOMPLETE_UDTS_OMITTED_OUTPUT_EXPECTED_ROW = {
@@ -404,6 +425,13 @@ class TestTPostProcessorsUserDefinedTypes:
             deserialized_row,
             INCOMPLETE_UDTS_NULLFILLED_OUTPUT_EXPECTED_ROW,
         )
+        deserialized_row_tuples = tpostprocessor(
+            INCOMPLETE_UDTS_NULLFILLED_OUTPUT_ROW_TO_POSTPROCESS_TUPLES,
+        )
+        dict_equal_same_class(
+            deserialized_row_tuples,
+            INCOMPLETE_UDTS_NULLFILLED_OUTPUT_EXPECTED_ROW,
+        )
 
     @pytest.mark.describe("test of row postprocessors, incomplete UDT: partial data")
     def test_row_postprocessors_incomplete_partial_udts(self) -> None:
@@ -419,6 +447,13 @@ class TestTPostProcessorsUserDefinedTypes:
             deserialized_row,
             INCOMPLETE_UDTS_PARTIAL_OUTPUT_EXPECTED_ROW,
         )
+        deserialized_row_tuples = tpostprocessor(
+            INCOMPLETE_UDTS_PARTIAL_OUTPUT_ROW_TO_POSTPROCESS_TUPLES,
+        )
+        dict_equal_same_class(
+            deserialized_row_tuples,
+            INCOMPLETE_UDTS_PARTIAL_OUTPUT_EXPECTED_ROW,
+        )
 
     @pytest.mark.describe("test of row postprocessors, incomplete UDT: full data")
     def test_row_postprocessors_incomplete_full_udts(self) -> None:
@@ -432,5 +467,12 @@ class TestTPostProcessorsUserDefinedTypes:
         )
         dict_equal_same_class(
             deserialized_row,
+            INCOMPLETE_UDTS_FULL_OUTPUT_EXPECTED_ROW,
+        )
+        deserialized_row_tuples = tpostprocessor(
+            INCOMPLETE_UDTS_FULL_OUTPUT_ROW_TO_POSTPROCESS_TUPLES,
+        )
+        dict_equal_same_class(
+            deserialized_row_tuples,
             INCOMPLETE_UDTS_FULL_OUTPUT_EXPECTED_ROW,
         )
