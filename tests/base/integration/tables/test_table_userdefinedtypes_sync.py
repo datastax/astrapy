@@ -600,7 +600,6 @@ class TestTableUserDefinedTypes:
     @pytest.mark.describe("Test of UDT filtering, sync")
     def test_table_udt_filtering_sync(
         self,
-        sync_database: Database,
         sync_empty_table_udtcollindexed: DefaultTable,
     ) -> None:
         table = sync_empty_table_udtcollindexed
