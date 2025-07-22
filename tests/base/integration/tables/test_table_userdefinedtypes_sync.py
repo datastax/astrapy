@@ -592,3 +592,165 @@ class TestTableUserDefinedTypes:
             assert UNSUPPORTED_UDT_NAME in listed_udt_match.api_support.cql_definition
         finally:
             cql_session.execute(UNSUPPORTED_UDT_DROP)
+
+    @pytest.mark.skipif(
+        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
+        reason="Currently available only on cutting-edge Data API `main`",
+    )
+    @pytest.mark.describe("Test of UDT filtering, sync")
+    def test_table_udt_filtering_sync(
+        self,
+        sync_database: Database,
+        sync_empty_table_udtcollindexed: DefaultTable,
+    ) -> None:
+        table = sync_empty_table_udtcollindexed
+        u_dict = DataAPIDictUDT({"name": "Otto", "age": 8})
+        table.insert_one(
+            {
+                "id": "fullrow",
+                "scalar_udt": u_dict,
+                "set_udt": DataAPISet([u_dict]),
+                "list_udt": [u_dict],
+                "map_text_udt_e": {"ke": u_dict},
+                "map_text_udt_v": {"kv": u_dict},
+            }
+        )
+
+        # running different filtering patterns with UDTs
+        x_dict = DataAPIDictUDT({"name": "Ada", "age": 8})
+        prj = {"id": True}
+
+        with pytest.raises(DataAPIResponseException):
+            table.find_one(filter={"scalar_udt": u_dict})
+
+        su_row0 = table.find_one(
+            filter={"set_udt": {"$in": [u_dict, x_dict]}}, projection=prj
+        )
+        su_row1 = table.find_one(filter={"set_udt": {"$nin": [x_dict]}}, projection=prj)
+        su_rown0 = table.find_one(filter={"set_udt": {"$in": [x_dict]}}, projection=prj)
+        su_rown1 = table.find_one(
+            filter={"set_udt": {"$nin": [x_dict, u_dict]}}, projection=prj
+        )
+        assert su_row0 is not None and su_row0["id"] == "fullrow"
+        assert su_row1 is not None and su_row1["id"] == "fullrow"
+        assert su_rown0 is None
+        assert su_rown1 is None
+
+        lu_row0 = table.find_one(
+            filter={"list_udt": {"$in": [u_dict, x_dict]}}, projection=prj
+        )
+        lu_row1 = table.find_one(
+            filter={"list_udt": {"$nin": [x_dict]}}, projection=prj
+        )
+        lu_rown0 = table.find_one(
+            filter={"list_udt": {"$in": [x_dict]}}, projection=prj
+        )
+        lu_rown1 = table.find_one(
+            filter={"list_udt": {"$nin": [x_dict, u_dict]}}, projection=prj
+        )
+        assert lu_row0 is not None and lu_row0["id"] == "fullrow"
+        assert lu_row1 is not None and lu_row1["id"] == "fullrow"
+        assert lu_rown0 is None
+        assert lu_rown1 is None
+
+        meu_row0 = table.find_one(
+            filter={"map_text_udt_e": {"$in": [["ke", u_dict], ["ke", x_dict]]}},
+            projection=prj,
+        )
+        meu_row1 = table.find_one(
+            filter={"map_text_udt_e": {"$nin": [["ke", x_dict]]}}, projection=prj
+        )
+        meu_rown0 = table.find_one(
+            filter={"map_text_udt_e": {"$in": [["KE", u_dict], ["ke", x_dict]]}},
+            projection=prj,
+        )
+        meu_rown1 = table.find_one(
+            filter={"map_text_udt_e": {"$nin": [["ke", u_dict], ["ke", x_dict]]}},
+            projection=prj,
+        )
+        assert meu_row0 is not None and meu_row0["id"] == "fullrow"
+        assert meu_row1 is not None and meu_row1["id"] == "fullrow"
+        assert meu_rown0 is None
+        assert meu_rown1 is None
+
+        mvu_row0 = table.find_one(
+            filter={"map_text_udt_v": {"$values": {"$in": [u_dict, x_dict]}}},
+            projection=prj,
+        )
+        mvu_row1 = table.find_one(
+            filter={"map_text_udt_v": {"$values": {"$nin": [x_dict]}}},
+            projection=prj,
+        )
+        mvu_row2 = table.find_one(
+            filter={"map_text_udt_v": {"$values": {"$all": [u_dict]}}},
+            projection=prj,
+        )
+        mvu_rown0 = table.find_one(
+            filter={"map_text_udt_v": {"$values": {"$in": [x_dict]}}},
+            projection=prj,
+        )
+        mvu_rown1 = table.find_one(
+            filter={"map_text_udt_v": {"$values": {"$nin": [u_dict, x_dict]}}},
+            projection=prj,
+        )
+        mvu_rown2 = table.find_one(
+            filter={"map_text_udt_v": {"$values": {"$all": [u_dict, x_dict]}}},
+            projection=prj,
+        )
+        assert mvu_row0 is not None and mvu_row0["id"] == "fullrow"
+        assert mvu_row1 is not None and mvu_row1["id"] == "fullrow"
+        assert mvu_row2 is not None and mvu_row2["id"] == "fullrow"
+        assert mvu_rown0 is None
+        assert mvu_rown1 is None
+        assert mvu_rown2 is None
+
+        # using partial UDTs for filtering in various ways
+        p_dict = DataAPIDictUDT({"age": 8})
+
+        with pytest.raises(DataAPIResponseException):
+            table.find_one(filter={"scalar_udt": p_dict})
+
+        psu_rown0 = table.find_one(filter={"set_udt": {"$in": [p_dict]}})
+        assert psu_rown0 is None
+        plu_rown0 = table.find_one(filter={"list_udt": {"$in": [p_dict]}})
+        assert plu_rown0 is None
+        pmeu_rown0 = table.find_one(filter={"map_text_udt_e": {"$in": [["h", p_dict]]}})
+        assert pmeu_rown0 is None
+        pmvu_rown0 = table.find_one(
+            filter={"map_text_udt_e": {"$values": {"$in": [p_dict]}}}
+        )
+        assert pmvu_rown0 is None
+        pmvu_rown1 = table.find_one(
+            filter={"map_text_udt_e": {"$values": {"$all": [p_dict]}}}
+        )
+        assert pmvu_rown1 is None
+
+        table.insert_one(
+            {
+                "id": "withnulls",
+                "scalar_udt": p_dict,
+                "set_udt": DataAPISet([p_dict]),
+                "list_udt": [p_dict],
+                "map_text_udt_e": {"he": p_dict},
+                "map_text_udt_v": {"hv": p_dict},
+            }
+        )
+
+        psu_row0 = table.find_one(filter={"set_udt": {"$in": [p_dict]}}, projection=prj)
+        assert psu_row0 is not None and psu_row0["id"] == "withnulls"
+        plu_row0 = table.find_one(
+            filter={"list_udt": {"$in": [p_dict]}}, projection=prj
+        )
+        assert plu_row0 is not None and plu_row0["id"] == "withnulls"
+        pmeu_row0 = table.find_one(
+            filter={"map_text_udt_e": {"$in": [["he", p_dict]]}}, projection=prj
+        )
+        assert pmeu_row0 is not None and pmeu_row0["id"] == "withnulls"
+        pmvu_row0 = table.find_one(
+            filter={"map_text_udt_e": {"$values": {"$in": [p_dict]}}}, projection=prj
+        )
+        assert pmvu_row0 is not None and pmvu_row0["id"] == "withnulls"
+        pmvu_row1 = table.find_one(
+            filter={"map_text_udt_e": {"$values": {"$all": [p_dict]}}}, projection=prj
+        )
+        assert pmvu_row1 is not None and pmvu_row1["id"] == "withnulls"

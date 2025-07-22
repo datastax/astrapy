@@ -20,7 +20,15 @@ from typing import Any
 
 from astrapy.data.utils.extended_json_converters import convert_to_ejson_bytes
 from astrapy.data_types import DataAPITimestamp
-from astrapy.info import CreateTableDefinition, CreateTypeDefinition
+from astrapy.info import (
+    CreateTableDefinition,
+    CreateTypeDefinition,
+    TableKeyValuedColumnTypeDescriptor,
+    TablePrimaryKeyDescriptor,
+    TableScalarColumnTypeDescriptor,
+    TableUDTColumnDescriptor,
+    TableValuedColumnTypeDescriptor,
+)
 
 PLAYER_TYPE_NAME = "udt_player"
 PLAYER_TYPE_DEFINITION = CreateTypeDefinition(
@@ -131,6 +139,40 @@ UNIT_OPTLST_PLAYER_TYPE_DEFINITION = CreateTypeDefinition(
         },
     },
 )
+
+TEST_UDTCOLLINDEXED_TABLE_NAME = "test_table_udtcollindexed"
+TEST_UDTCOLLINDEXED_TABLE_DEFINITION = CreateTableDefinition(
+    columns={
+        "id": TableScalarColumnTypeDescriptor(column_type="text"),
+        "scalar_udt": TableUDTColumnDescriptor(udt_name=PLAYER_TYPE_NAME),
+        "set_udt": TableValuedColumnTypeDescriptor(
+            column_type="set",
+            value_type=TableUDTColumnDescriptor(udt_name=PLAYER_TYPE_NAME),
+        ),
+        "list_udt": TableValuedColumnTypeDescriptor(
+            column_type="list",
+            value_type=TableUDTColumnDescriptor(udt_name=PLAYER_TYPE_NAME),
+        ),
+        "map_text_udt_e": TableKeyValuedColumnTypeDescriptor(
+            key_type="text",
+            value_type=TableUDTColumnDescriptor(udt_name=PLAYER_TYPE_NAME),
+        ),
+        "map_text_udt_v": TableKeyValuedColumnTypeDescriptor(
+            key_type="text",
+            value_type=TableUDTColumnDescriptor(udt_name=PLAYER_TYPE_NAME),
+        ),
+    },
+    primary_key=TablePrimaryKeyDescriptor(
+        partition_by=["id"],
+        partition_sort={},
+    ),
+)
+TEST_UDTCOLLINDEXED_TABLE_INDEXES: list[tuple[str, str | dict[str, str]]] = [
+    ("test_udtcollidxtable_idx_sudt", "set_udt"),
+    ("test_udtcollidxtable_idx_ludt", "list_udt"),
+    ("test_udtcollidxtable_idx_mtudte", "map_text_udt_e"),
+    ("test_udtcollidxtable_idx_mtudtv", {"map_text_udt_v": "$values"}),
+]
 
 THE_BYTES = b"\xa6"
 THE_SERIALIZED_BYTES = convert_to_ejson_bytes(THE_BYTES)
