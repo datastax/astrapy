@@ -387,9 +387,13 @@ class TestTableUserDefinedTypes:
                                 }
                             )
                         elif udt_mode == "partial":
-                            expected_udt_unit = DataAPIDictUDT({"age": 90})
+                            expected_udt_unit = DataAPIDictUDT(
+                                {"name": None, "age": 90}
+                            )
                         elif udt_mode == "empty":
-                            expected_udt_unit = DataAPIDictUDT({})
+                            expected_udt_unit = DataAPIDictUDT(
+                                {"name": None, "age": None}
+                            )
                         elif udt_mode == "extended":
                             expected_udt_unit = DataAPIDictUDT(
                                 {
@@ -403,10 +407,7 @@ class TestTableUserDefinedTypes:
                         else:
                             raise ValueError(f"Unknown udt mode '{udt_mode}'.")
                     exp_row = {
-                        # TODO: reflects the behaviour for 'whole-null' udt:
-                        "scalar_udt": expected_udt_unit
-                        if udt_mode != "empty"
-                        else None,
+                        "scalar_udt": expected_udt_unit,
                         "list_udt": [expected_udt_unit],
                         "set_udt": DataAPISet([expected_udt_unit]),
                         "map_udt": DataAPIMap([("k", expected_udt_unit)]),
@@ -437,9 +438,9 @@ class TestTableUserDefinedTypes:
                                 "age": 90,
                             }
                         elif udt_mode == "partial":
-                            expected_udt_unit = {"age": 90}
+                            expected_udt_unit = {"name": None, "age": 90}
                         elif udt_mode == "empty":
-                            expected_udt_unit = {}
+                            expected_udt_unit = {"name": None, "age": None}
                         elif udt_mode == "extended":
                             expected_udt_unit = {
                                 "name": "John",
@@ -451,10 +452,7 @@ class TestTableUserDefinedTypes:
                         else:
                             raise ValueError(f"Unknown udt mode '{udt_mode}'.")
                     exp_row = {
-                        # TODO: reflects the behaviour for 'whole-null' udt:
-                        "scalar_udt": expected_udt_unit
-                        if udt_mode != "empty"
-                        else None,
+                        "scalar_udt": expected_udt_unit,
                         "list_udt": [expected_udt_unit],
                         "map_udt": {"k": expected_udt_unit},
                     }
