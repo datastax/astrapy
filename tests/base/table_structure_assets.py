@@ -361,12 +361,7 @@ def dict_equal_same_class(
     elif dct2 is None:
         assert dct1 is None
     else:
-        assert all(
-            [
-                dct1 == dct2,
-                all(
-                    dct1[k].__class__ == dct2[k].__class__
-                    for k in dct1.keys() | dct2.keys()
-                ),
-            ]
-        )
+        assert dct1 == dct2
+        for k in dct1.keys() | dct2.keys():
+            assert dct1 == dct2
+            assert dct1[k].__class__ == dct2[k].__class__

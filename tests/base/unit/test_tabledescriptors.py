@@ -865,6 +865,14 @@ class TestListTableDescriptors:
             },
         )
 
+        type_definition_fluent = (
+            CreateTypeDefinition.builder()
+            .add_field("tagline", ColumnType.TEXT)
+            .add_field("score", "int")
+            .add_field("weight", ColumnType.FLOAT)
+            .build()
+        )
+
         fields_dict_simple = {
             "fields": {
                 "tagline": "text",
@@ -892,6 +900,7 @@ class TestListTableDescriptors:
         }
         type_definition_mixed = CreateTypeDefinition.coerce(fields_dict_mixed)
 
+        assert type_definition_objects == type_definition_fluent
         assert type_definition_objects == type_definition_simple
         assert type_definition_objects == type_definition_dicts
         assert type_definition_objects == type_definition_mixed

@@ -20,7 +20,15 @@ from typing import Any
 
 from astrapy.data.utils.extended_json_converters import convert_to_ejson_bytes
 from astrapy.data_types import DataAPITimestamp
-from astrapy.info import CreateTableDefinition, CreateTypeDefinition
+from astrapy.info import (
+    CreateTableDefinition,
+    CreateTypeDefinition,
+    TableKeyValuedColumnTypeDescriptor,
+    TablePrimaryKeyDescriptor,
+    TableScalarColumnTypeDescriptor,
+    TableUDTColumnDescriptor,
+    TableValuedColumnTypeDescriptor,
+)
 
 PLAYER_TYPE_NAME = "udt_player"
 PLAYER_TYPE_DEFINITION = CreateTypeDefinition(
@@ -120,6 +128,52 @@ UNIT_EXTENDED_PLAYER_TYPE_DEFINITION = CreateTypeDefinition(
     },
 )
 
+UNIT_OPTLST_PLAYER_TYPE_NAME = "unit_udt_nullable_requiring_player"
+UNIT_OPTLST_PLAYER_TYPE_DEFINITION = CreateTypeDefinition(
+    fields={
+        "name": "text",
+        "age": "int",
+        "victories": {
+            "type": "list",
+            "valueType": "text",
+        },
+    },
+)
+
+TEST_UDTCOLLINDEXED_TABLE_NAME = "test_table_udtcollindexed"
+TEST_UDTCOLLINDEXED_TABLE_DEFINITION = CreateTableDefinition(
+    columns={
+        "id": TableScalarColumnTypeDescriptor(column_type="text"),
+        "scalar_udt": TableUDTColumnDescriptor(udt_name=PLAYER_TYPE_NAME),
+        "set_udt": TableValuedColumnTypeDescriptor(
+            column_type="set",
+            value_type=TableUDTColumnDescriptor(udt_name=PLAYER_TYPE_NAME),
+        ),
+        "list_udt": TableValuedColumnTypeDescriptor(
+            column_type="list",
+            value_type=TableUDTColumnDescriptor(udt_name=PLAYER_TYPE_NAME),
+        ),
+        "map_text_udt_e": TableKeyValuedColumnTypeDescriptor(
+            key_type="text",
+            value_type=TableUDTColumnDescriptor(udt_name=PLAYER_TYPE_NAME),
+        ),
+        "map_text_udt_v": TableKeyValuedColumnTypeDescriptor(
+            key_type="text",
+            value_type=TableUDTColumnDescriptor(udt_name=PLAYER_TYPE_NAME),
+        ),
+    },
+    primary_key=TablePrimaryKeyDescriptor(
+        partition_by=["id"],
+        partition_sort={},
+    ),
+)
+TEST_UDTCOLLINDEXED_TABLE_INDEXES: list[tuple[str, str | dict[str, str]]] = [
+    ("test_udtcollidxtable_idx_sudt", "set_udt"),
+    ("test_udtcollidxtable_idx_ludt", "list_udt"),
+    ("test_udtcollidxtable_idx_mtudte", "map_text_udt_e"),
+    ("test_udtcollidxtable_idx_mtudtv", {"map_text_udt_v": "$values"}),
+]
+
 THE_BYTES = b"\xa6"
 THE_SERIALIZED_BYTES = convert_to_ejson_bytes(THE_BYTES)
 THE_TIMESTAMP = DataAPITimestamp.from_string("2025-10-29T01:25:37.123Z")
@@ -218,6 +272,19 @@ class NullablePlayer:
     age: int | None = None
 
 
+@dataclass
+class UnitNullableRequiringPlayer:
+    """
+    A counterpart of the Player model class (see), but:
+    1. whose each field admit None, while still being mandatory;
+    2. with a field whose "filler" is not null, rather something nontrivial.
+    """
+
+    name: str | None
+    age: int | None
+    victories: list[str]
+
+
 def _extended_player_serializer(uexp: ExtendedPlayer) -> dict[str, Any]:
     return {k: v for k, v in uexp.__dict__.items() if v is not None}
 
@@ -246,6 +313,13 @@ def _nullable_player_from_dict(
     definition: CreateTypeDefinition | None,
 ) -> NullablePlayer:
     return NullablePlayer(**udict)
+
+
+def _unit_optlst_player_from_dict(
+    udict: dict[str, Any],
+    definition: CreateTypeDefinition | None,
+) -> UnitNullableRequiringPlayer:
+    return UnitNullableRequiringPlayer(**udict)
 
 
 def _player_from_dict(

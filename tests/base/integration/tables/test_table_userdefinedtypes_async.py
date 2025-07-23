@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 from typing import TYPE_CHECKING, Any
 
@@ -22,6 +23,7 @@ import pytest
 from astrapy import AsyncDatabase
 from astrapy.api_options import APIOptions, SerdesOptions
 from astrapy.constants import SerializerFunctionType, UDTDeserializerFunctionType
+from astrapy.data.utils.table_types import TableUnsupportedColumnType
 from astrapy.data_types import (
     DataAPIDictUDT,
     DataAPIMap,
@@ -57,6 +59,9 @@ from .table_row_assets import (
     UDT_DEF0,
     UDT_DEF1,
     UDT_NAME,
+    UNSUPPORTED_UDT_CREATE,
+    UNSUPPORTED_UDT_DROP,
+    UNSUPPORTED_UDT_NAME,
     WEIRD_BASE_DOCUMENT,
     WEIRD_BASE_DOCUMENT_PK,
     WEIRD_UDT_BASE_CLOSE_STATEMENTS,
@@ -214,9 +219,6 @@ class TestTableUserDefinedTypes:
         # combinations of write settings that are not supposed to work are skipped:
         if udt_format == "dict" and encode_maps_as_lists_in_tables == "ALWAYS":
             pytest.skip("The Data API is not supposed to accept such a write format.")
-
-        if udt_mode == "extended":
-            pytest.skip("Manually scoped out for now.")
 
         # choice of serdes options for writes
         src_atable: DefaultAsyncTable
@@ -389,9 +391,13 @@ class TestTableUserDefinedTypes:
                                 }
                             )
                         elif udt_mode == "partial":
-                            expected_udt_unit = DataAPIDictUDT({"age": 90})
+                            expected_udt_unit = DataAPIDictUDT(
+                                {"name": None, "age": 90}
+                            )
                         elif udt_mode == "empty":
-                            expected_udt_unit = DataAPIDictUDT({})
+                            expected_udt_unit = DataAPIDictUDT(
+                                {"name": None, "age": None}
+                            )
                         elif udt_mode == "extended":
                             expected_udt_unit = DataAPIDictUDT(
                                 {
@@ -405,10 +411,7 @@ class TestTableUserDefinedTypes:
                         else:
                             raise ValueError(f"Unknown udt mode '{udt_mode}'.")
                     exp_row = {
-                        # TODO: reflects the behaviour for 'whole-null' udt:
-                        "scalar_udt": expected_udt_unit
-                        if udt_mode != "empty"
-                        else None,
+                        "scalar_udt": expected_udt_unit,
                         "list_udt": [expected_udt_unit],
                         "set_udt": DataAPISet([expected_udt_unit]),
                         "map_udt": DataAPIMap([("k", expected_udt_unit)]),
@@ -439,9 +442,13 @@ class TestTableUserDefinedTypes:
                                 "age": 90,
                             }
                         elif udt_mode == "partial":
-                            expected_udt_unit = {"age": 90}
+                            expected_udt_unit = DataAPIDictUDT(
+                                {"name": None, "age": 90}
+                            )
                         elif udt_mode == "empty":
-                            expected_udt_unit = {}
+                            expected_udt_unit = DataAPIDictUDT(
+                                {"name": None, "age": None}
+                            )
                         elif udt_mode == "extended":
                             expected_udt_unit = {
                                 "name": "John",
@@ -453,10 +460,7 @@ class TestTableUserDefinedTypes:
                         else:
                             raise ValueError(f"Unknown udt mode '{udt_mode}'.")
                     exp_row = {
-                        # TODO: reflects the behaviour for 'whole-null' udt:
-                        "scalar_udt": expected_udt_unit
-                        if udt_mode != "empty"
-                        else None,
+                        "scalar_udt": expected_udt_unit,
                         "list_udt": [expected_udt_unit],
                         "map_udt": {"k": expected_udt_unit},
                     }
@@ -492,6 +496,61 @@ class TestTableUserDefinedTypes:
                     )
                     dict_equal_same_class(prj_read_row, {fld: exp_row[fld]})
 
+    @pytest.mark.describe("Test of null/partial UDT in DML, async")
+    async def test_table_incomplete_udt_dml_async(
+        self,
+        player_udt: str,
+        async_empty_table_udt_player: DefaultAsyncTable,
+    ) -> None:
+        atable = async_empty_table_udt_player.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=True,
+                )
+            ),
+        )
+        insert_results = await atable.insert_many(
+            [
+                {
+                    "id": "nulls",
+                    "scalar_udt": None,
+                    "list_udt": [{}],
+                    "set_udt": DataAPISet([{}]),
+                    "map_udt": DataAPIMap({"k": {}}),
+                },
+                {
+                    "id": "partials",
+                    "scalar_udt": {"age": 75},
+                    "list_udt": [{"age": 75}],
+                    "set_udt": DataAPISet([{"age": 75}]),
+                    "map_udt": DataAPIMap({"k": {"age": 75}}),
+                },
+            ]
+        )
+        assert insert_results.inserted_id_tuples == [("nulls",), ("partials",)]
+
+        row_nulls = await atable.find_one({"id": "nulls"})
+        null_udt_dict = DataAPIDictUDT({"name": None, "age": None})
+        expected_row_nulls = {
+            "id": "nulls",
+            "scalar_udt": null_udt_dict,
+            "list_udt": [null_udt_dict],
+            "set_udt": DataAPISet([null_udt_dict]),
+            "map_udt": DataAPIMap({"k": null_udt_dict}),
+        }
+        dict_equal_same_class(row_nulls, expected_row_nulls)
+
+        row_partials = await atable.find_one({"id": "partials"})
+        partial_udt_dict = DataAPIDictUDT({"name": None, "age": 75})
+        expected_row_partials = {
+            "id": "partials",
+            "scalar_udt": partial_udt_dict,
+            "list_udt": [partial_udt_dict],
+            "set_udt": DataAPISet([partial_udt_dict]),
+            "map_udt": DataAPIMap({"k": partial_udt_dict}),
+        }
+        dict_equal_same_class(row_partials, expected_row_partials)
+
     @pytest.mark.skipif(not CQL_AVAILABLE, reason="No CQL session available")
     @pytest.mark.describe("Test of weird UDT columns, async")
     async def test_table_udt_weirdcolumns_async(
@@ -512,3 +571,199 @@ class TestTableUserDefinedTypes:
         finally:
             for cql_statement in WEIRD_UDT_BASE_CLOSE_STATEMENTS:
                 cql_session.execute(cql_statement)
+
+    @pytest.mark.skipif(not CQL_AVAILABLE, reason="No CQL session available")
+    @pytest.mark.describe("Test of unsupported UDT listing, async")
+    async def test_table_udt_listunsupported_async(
+        self,
+        cql_session: Session,
+        async_database: AsyncDatabase,
+    ) -> None:
+        try:
+            cql_session.execute(UNSUPPORTED_UDT_CREATE)
+            await asyncio.sleep(1.5)  # udt propagation requires some time, it seems
+
+            assert UNSUPPORTED_UDT_NAME in await async_database.list_type_names()
+            lt_result = await async_database.list_types()
+            listed_udt_matches = [
+                l_u
+                for l_u in lt_result
+                # sloppy matching
+                if UNSUPPORTED_UDT_NAME in str(l_u.as_dict())
+            ]
+            assert len(listed_udt_matches) == 1
+            listed_udt_match = listed_udt_matches[0]
+            assert listed_udt_match.udt_type == TableUnsupportedColumnType.UNSUPPORTED
+            assert listed_udt_match.api_support is not None
+            assert UNSUPPORTED_UDT_NAME in listed_udt_match.api_support.cql_definition
+        finally:
+            cql_session.execute(UNSUPPORTED_UDT_DROP)
+
+    @pytest.mark.skipif(
+        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
+        reason="Currently available only on cutting-edge Data API `main`",
+    )
+    @pytest.mark.describe("Test of UDT filtering, async")
+    async def test_table_udt_filtering_async(
+        self,
+        async_empty_table_udtcollindexed: DefaultAsyncTable,
+    ) -> None:
+        atable = async_empty_table_udtcollindexed
+        u_dict = DataAPIDictUDT({"name": "Otto", "age": 8})
+        await atable.insert_one(
+            {
+                "id": "fullrow",
+                "scalar_udt": u_dict,
+                "set_udt": DataAPISet([u_dict]),
+                "list_udt": [u_dict],
+                "map_text_udt_e": {"ke": u_dict},
+                "map_text_udt_v": {"kv": u_dict},
+            }
+        )
+
+        # running different filtering patterns with UDTs
+        x_dict = DataAPIDictUDT({"name": "Ada", "age": 8})
+        prj = {"id": True}
+
+        with pytest.raises(DataAPIResponseException):
+            await atable.find_one(filter={"scalar_udt": u_dict})
+
+        su_row0 = await atable.find_one(
+            filter={"set_udt": {"$in": [u_dict, x_dict]}}, projection=prj
+        )
+        su_row1 = await atable.find_one(
+            filter={"set_udt": {"$nin": [x_dict]}}, projection=prj
+        )
+        su_rown0 = await atable.find_one(
+            filter={"set_udt": {"$in": [x_dict]}}, projection=prj
+        )
+        su_rown1 = await atable.find_one(
+            filter={"set_udt": {"$nin": [x_dict, u_dict]}}, projection=prj
+        )
+        assert su_row0 is not None and su_row0["id"] == "fullrow"
+        assert su_row1 is not None and su_row1["id"] == "fullrow"
+        assert su_rown0 is None
+        assert su_rown1 is None
+
+        lu_row0 = await atable.find_one(
+            filter={"list_udt": {"$in": [u_dict, x_dict]}}, projection=prj
+        )
+        lu_row1 = await atable.find_one(
+            filter={"list_udt": {"$nin": [x_dict]}}, projection=prj
+        )
+        lu_rown0 = await atable.find_one(
+            filter={"list_udt": {"$in": [x_dict]}}, projection=prj
+        )
+        lu_rown1 = await atable.find_one(
+            filter={"list_udt": {"$nin": [x_dict, u_dict]}}, projection=prj
+        )
+        assert lu_row0 is not None and lu_row0["id"] == "fullrow"
+        assert lu_row1 is not None and lu_row1["id"] == "fullrow"
+        assert lu_rown0 is None
+        assert lu_rown1 is None
+
+        meu_row0 = await atable.find_one(
+            filter={"map_text_udt_e": {"$in": [["ke", u_dict], ["ke", x_dict]]}},
+            projection=prj,
+        )
+        meu_row1 = await atable.find_one(
+            filter={"map_text_udt_e": {"$nin": [["ke", x_dict]]}}, projection=prj
+        )
+        meu_rown0 = await atable.find_one(
+            filter={"map_text_udt_e": {"$in": [["KE", u_dict], ["ke", x_dict]]}},
+            projection=prj,
+        )
+        meu_rown1 = await atable.find_one(
+            filter={"map_text_udt_e": {"$nin": [["ke", u_dict], ["ke", x_dict]]}},
+            projection=prj,
+        )
+        assert meu_row0 is not None and meu_row0["id"] == "fullrow"
+        assert meu_row1 is not None and meu_row1["id"] == "fullrow"
+        assert meu_rown0 is None
+        assert meu_rown1 is None
+
+        mvu_row0 = await atable.find_one(
+            filter={"map_text_udt_v": {"$values": {"$in": [u_dict, x_dict]}}},
+            projection=prj,
+        )
+        mvu_row1 = await atable.find_one(
+            filter={"map_text_udt_v": {"$values": {"$nin": [x_dict]}}},
+            projection=prj,
+        )
+        mvu_row2 = await atable.find_one(
+            filter={"map_text_udt_v": {"$values": {"$all": [u_dict]}}},
+            projection=prj,
+        )
+        mvu_rown0 = await atable.find_one(
+            filter={"map_text_udt_v": {"$values": {"$in": [x_dict]}}},
+            projection=prj,
+        )
+        mvu_rown1 = await atable.find_one(
+            filter={"map_text_udt_v": {"$values": {"$nin": [u_dict, x_dict]}}},
+            projection=prj,
+        )
+        mvu_rown2 = await atable.find_one(
+            filter={"map_text_udt_v": {"$values": {"$all": [u_dict, x_dict]}}},
+            projection=prj,
+        )
+        assert mvu_row0 is not None and mvu_row0["id"] == "fullrow"
+        assert mvu_row1 is not None and mvu_row1["id"] == "fullrow"
+        assert mvu_row2 is not None and mvu_row2["id"] == "fullrow"
+        assert mvu_rown0 is None
+        assert mvu_rown1 is None
+        assert mvu_rown2 is None
+
+        # using partial UDTs for filtering in various ways
+        p_dict = DataAPIDictUDT({"age": 8})
+
+        with pytest.raises(DataAPIResponseException):
+            await atable.find_one(filter={"scalar_udt": p_dict})
+
+        psu_rown0 = await atable.find_one(filter={"set_udt": {"$in": [p_dict]}})
+        assert psu_rown0 is None
+        plu_rown0 = await atable.find_one(filter={"list_udt": {"$in": [p_dict]}})
+        assert plu_rown0 is None
+        pmeu_rown0 = await atable.find_one(
+            filter={"map_text_udt_e": {"$in": [["h", p_dict]]}}
+        )
+        assert pmeu_rown0 is None
+        pmvu_rown0 = await atable.find_one(
+            filter={"map_text_udt_e": {"$values": {"$in": [p_dict]}}}
+        )
+        assert pmvu_rown0 is None
+        pmvu_rown1 = await atable.find_one(
+            filter={"map_text_udt_e": {"$values": {"$all": [p_dict]}}}
+        )
+        assert pmvu_rown1 is None
+
+        await atable.insert_one(
+            {
+                "id": "withnulls",
+                "scalar_udt": p_dict,
+                "set_udt": DataAPISet([p_dict]),
+                "list_udt": [p_dict],
+                "map_text_udt_e": {"he": p_dict},
+                "map_text_udt_v": {"hv": p_dict},
+            }
+        )
+
+        psu_row0 = await atable.find_one(
+            filter={"set_udt": {"$in": [p_dict]}}, projection=prj
+        )
+        assert psu_row0 is not None and psu_row0["id"] == "withnulls"
+        plu_row0 = await atable.find_one(
+            filter={"list_udt": {"$in": [p_dict]}}, projection=prj
+        )
+        assert plu_row0 is not None and plu_row0["id"] == "withnulls"
+        pmeu_row0 = await atable.find_one(
+            filter={"map_text_udt_e": {"$in": [["he", p_dict]]}}, projection=prj
+        )
+        assert pmeu_row0 is not None and pmeu_row0["id"] == "withnulls"
+        pmvu_row0 = await atable.find_one(
+            filter={"map_text_udt_e": {"$values": {"$in": [p_dict]}}}, projection=prj
+        )
+        assert pmvu_row0 is not None and pmvu_row0["id"] == "withnulls"
+        pmvu_row1 = await atable.find_one(
+            filter={"map_text_udt_e": {"$values": {"$all": [p_dict]}}}, projection=prj
+        )
+        assert pmvu_row1 is not None and pmvu_row1["id"] == "withnulls"

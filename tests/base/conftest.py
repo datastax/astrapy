@@ -106,6 +106,9 @@ from .table_udt_assets import (
     PLAYER_TABLE_NAME,
     PLAYER_TYPE_DEFINITION,
     PLAYER_TYPE_NAME,
+    TEST_UDTCOLLINDEXED_TABLE_DEFINITION,
+    TEST_UDTCOLLINDEXED_TABLE_INDEXES,
+    TEST_UDTCOLLINDEXED_TABLE_NAME,
 )
 
 DefaultCollection = Collection[Dict[str, Any]]
@@ -847,6 +850,41 @@ def async_empty_table_udt_extended_player(
 ) -> Iterable[DefaultAsyncTable]:
     """Emptied for each test function"""
     yield sync_empty_table_udt_extended_player.to_async()
+
+
+@pytest.fixture(scope="session")
+def sync_table_udtcollindexed(
+    sync_database: Database,
+    player_udt: str,
+) -> Iterable[DefaultTable]:
+    """An actual table on DB, in the main keyspace"""
+    table = sync_database.create_table(
+        TEST_UDTCOLLINDEXED_TABLE_NAME,
+        definition=TEST_UDTCOLLINDEXED_TABLE_DEFINITION,
+    )
+    for index_name, index_column in TEST_UDTCOLLINDEXED_TABLE_INDEXES:
+        table.create_index(index_name, index_column)
+
+    yield table
+
+    sync_database.drop_table(TEST_UDTCOLLINDEXED_TABLE_NAME)
+
+
+@pytest.fixture(scope="function")
+def sync_empty_table_udtcollindexed(
+    sync_table_udtcollindexed: DefaultTable,
+) -> Iterable[DefaultTable]:
+    """Emptied for each test function"""
+    sync_table_udtcollindexed.delete_many({})
+    yield sync_table_udtcollindexed
+
+
+@pytest.fixture(scope="function")
+def async_empty_table_udtcollindexed(
+    sync_empty_table_udtcollindexed: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """Emptied for each test function"""
+    yield sync_empty_table_udtcollindexed.to_async()
 
 
 @pytest.fixture(scope="session")
