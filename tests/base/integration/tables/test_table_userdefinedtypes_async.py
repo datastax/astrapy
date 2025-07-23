@@ -442,13 +442,9 @@ class TestTableUserDefinedTypes:
                                 "age": 90,
                             }
                         elif udt_mode == "partial":
-                            expected_udt_unit = DataAPIDictUDT(
-                                {"name": None, "age": 90}
-                            )
+                            expected_udt_unit = {"name": None, "age": 90}
                         elif udt_mode == "empty":
-                            expected_udt_unit = DataAPIDictUDT(
-                                {"name": None, "age": None}
-                            )
+                            expected_udt_unit = {"name": None, "age": None}
                         elif udt_mode == "extended":
                             expected_udt_unit = {
                                 "name": "John",
