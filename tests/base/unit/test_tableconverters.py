@@ -493,12 +493,7 @@ class TestTableConverters:
             columns=col_desc.definition.columns,
             options=defaultSerdesOptions.with_override(
                 SerdesOptions(
-                    binary_encode_vectors=True,
                     custom_datatypes_in_reading=True,
-                    unroll_iterables_to_lists=False,
-                    use_decimals_in_collections=False,
-                    encode_maps_as_lists_in_tables="never",
-                    accept_naive_datetimes=False,
                     datetime_tzinfo=None,
                 ),
             ),
@@ -524,12 +519,7 @@ class TestTableConverters:
             },
             options=defaultSerdesOptions.with_override(
                 SerdesOptions(
-                    binary_encode_vectors=True,
                     custom_datatypes_in_reading=False,
-                    unroll_iterables_to_lists=False,
-                    use_decimals_in_collections=False,
-                    encode_maps_as_lists_in_tables="never",
-                    accept_naive_datetimes=False,
                     datetime_tzinfo=datetime.timezone.utc,
                 ),
             ),
@@ -569,12 +559,7 @@ class TestTableConverters:
             primary_key_schema=primary_key_schema,
             options=defaultSerdesOptions.with_override(
                 SerdesOptions(
-                    binary_encode_vectors=True,
                     custom_datatypes_in_reading=True,
-                    unroll_iterables_to_lists=False,
-                    use_decimals_in_collections=False,
-                    encode_maps_as_lists_in_tables="never",
-                    accept_naive_datetimes=False,
                     datetime_tzinfo=None,
                 ),
             ),
@@ -613,12 +598,7 @@ class TestTableConverters:
             primary_key_schema=primary_key_schema,
             options=defaultSerdesOptions.with_override(
                 SerdesOptions(
-                    binary_encode_vectors=True,
                     custom_datatypes_in_reading=False,
-                    unroll_iterables_to_lists=False,
-                    use_decimals_in_collections=False,
-                    encode_maps_as_lists_in_tables="never",
-                    accept_naive_datetimes=False,
                     datetime_tzinfo=datetime.timezone.utc,
                 ),
             ),
@@ -633,12 +613,7 @@ class TestTableConverters:
         ptp_opts = defaultSerdesOptions.with_override(
             SerdesOptions(
                 binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=True,
-                use_decimals_in_collections=False,
-                encode_maps_as_lists_in_tables="never",
-                accept_naive_datetimes=False,
-                datetime_tzinfo=None,
             ),
         )
         preprocessed_row = preprocess_table_payload(
@@ -661,13 +636,7 @@ class TestTableConverters:
             gen_row_1,
             options=defaultSerdesOptions.with_override(
                 SerdesOptions(
-                    binary_encode_vectors=True,
-                    custom_datatypes_in_reading=True,
                     unroll_iterables_to_lists=False,
-                    use_decimals_in_collections=False,
-                    encode_maps_as_lists_in_tables="never",
-                    accept_naive_datetimes=False,
-                    datetime_tzinfo=None,
                 ),
             ),
             map2tuple_checker=None,
@@ -688,12 +657,6 @@ class TestTableConverters:
             options=defaultSerdesOptions.with_override(
                 SerdesOptions(
                     binary_encode_vectors=False,
-                    custom_datatypes_in_reading=True,
-                    unroll_iterables_to_lists=True,
-                    use_decimals_in_collections=False,
-                    encode_maps_as_lists_in_tables="never",
-                    accept_naive_datetimes=False,
-                    datetime_tzinfo=None,
                 ),
             ),
             map2tuple_checker=None,
@@ -714,13 +677,7 @@ class TestTableConverters:
             columns=col_desc.definition.columns,
             options=defaultSerdesOptions.with_override(
                 SerdesOptions(
-                    binary_encode_vectors=True,
                     custom_datatypes_in_reading=True,
-                    unroll_iterables_to_lists=False,
-                    use_decimals_in_collections=False,
-                    encode_maps_as_lists_in_tables="never",
-                    accept_naive_datetimes=False,
-                    datetime_tzinfo=None,
                 ),
             ),
             similarity_pseudocolumn=None,
@@ -740,13 +697,7 @@ class TestTableConverters:
             columns=col_desc.definition.columns,
             options=defaultSerdesOptions.with_override(
                 SerdesOptions(
-                    binary_encode_vectors=True,
                     custom_datatypes_in_reading=False,
-                    unroll_iterables_to_lists=False,
-                    use_decimals_in_collections=False,
-                    encode_maps_as_lists_in_tables="never",
-                    accept_naive_datetimes=False,
-                    datetime_tzinfo=None,
                 ),
             ),
             similarity_pseudocolumn=None,
@@ -763,17 +714,7 @@ class TestTableConverters:
         col_desc = ListTableDescriptor.coerce(ROGUE_TABLE_DESCRIPTION)
         tpostprocessor = create_row_tpostprocessor(
             columns=col_desc.definition.columns,
-            options=defaultSerdesOptions.with_override(
-                SerdesOptions(
-                    binary_encode_vectors=True,
-                    custom_datatypes_in_reading=True,
-                    unroll_iterables_to_lists=False,
-                    use_decimals_in_collections=False,
-                    encode_maps_as_lists_in_tables="never",
-                    accept_naive_datetimes=False,
-                    datetime_tzinfo=None,
-                ),
-            ),
+            options=defaultSerdesOptions,
             similarity_pseudocolumn=None,
         )
 
