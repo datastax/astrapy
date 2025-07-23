@@ -67,24 +67,17 @@ def preprocess_collection_payload_value(
             or isinstance(_value, DataAPIVector)
         ):
             _value = convert_vector_to_floats(_value)
-        # now _value is either a list or a DataAPIVector.
-        # can/should it be binary-encoded?
-        can_bin_encode = path[0] in {"insertOne", "insertMany"}
-        # will it be bin-encoded?
+        # now _value is either a list or a DataAPIVector. Check for binary-encoding:
         if isinstance(_value, DataAPIVector):
-            # if I can, I will
-            if can_bin_encode and options.binary_encode_vectors:
+            # Binary-encode if serdes options allow it
+            if options.binary_encode_vectors:
                 return convert_to_ejson_bytes(_value.to_bytes())
             else:
                 # back to a regular list
                 return _value.data
         else:
-            # this is a list. Encode if serdes options allow it
-            if (
-                can_bin_encode
-                and options.binary_encode_vectors
-                and isinstance(_value, list)
-            ):
+            # if this is a list, encode if serdes options allow it:
+            if options.binary_encode_vectors and isinstance(_value, list):
                 return convert_to_ejson_bytes(DataAPIVector(_value).to_bytes())
             else:
                 return _value

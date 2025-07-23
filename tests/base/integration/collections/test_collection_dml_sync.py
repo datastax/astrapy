@@ -1891,3 +1891,121 @@ class TestCollectionDMLSync:
             )
             < one_day_ms
         )
+
+    @pytest.mark.describe("test of collection binary-encoding vectors everywhere, sync")
+    def test_collection_binencvectors_everywhere_sync(
+        self,
+        sync_empty_collection: DefaultCollection,
+    ) -> None:
+        binenc_options = APIOptions(
+            serdes_options=SerdesOptions(binary_encode_vectors=True),
+        )
+        binenc_coll = sync_empty_collection.with_options(api_options=binenc_options)
+
+        # Using DataAPIVector (the serializer binary-encodes all of these)
+        binenc_coll.insert_one({"_id": "0", "$vector": DataAPIVector([1, 1])})
+        binenc_coll.insert_many([{"_id": "X1", "$vector": DataAPIVector([1, 1])}])
+        binenc_coll.update_one(
+            {"_id": "0"}, {"$set": {"$vector": DataAPIVector([0, 1])}}, upsert=True
+        )
+        binenc_coll.update_one(
+            {"_id": "X2"},
+            {"$setOnInsert": {"$vector": DataAPIVector([0, 1])}},
+            upsert=True,
+        )
+        binenc_coll.update_one(
+            {},
+            sort={"$vector": DataAPIVector([-1, 0])},
+            update={"$set": {"oc": "ooo0"}},
+            upsert=True,
+        )
+        binenc_coll.update_many(
+            {"_id": "0"}, {"$set": {"$vector": DataAPIVector([0, 1])}}, upsert=True
+        )
+        binenc_coll.update_many(
+            {"_id": "X3"},
+            {"$setOnInsert": {"$vector": DataAPIVector([0, 1])}},
+            upsert=True,
+        )
+        binenc_coll.replace_one(
+            {"_id": "0"}, {"$vector": DataAPIVector([1, 2])}, upsert=True
+        )
+        binenc_coll.replace_one(
+            {}, {"oc": "ooo1"}, sort={"$vector": DataAPIVector([4, 1])}, upsert=True
+        )
+        binenc_coll.delete_one({}, sort={"$vector": DataAPIVector([5, 4])})
+        binenc_coll.find_one(sort={"$vector": DataAPIVector([5, 4])})
+        binenc_coll.find(sort={"$vector": DataAPIVector([5, 4])}).to_list()
+        binenc_coll.find_and_rerank(
+            {},
+            sort={"$hybrid": {"$vector": DataAPIVector([-1, -2]), "$lexical": "bla"}},
+            rerank_query="bla",
+            rerank_on="$lexical",
+        ).to_list()
+        binenc_coll.find_one_and_replace(
+            {}, {"$vector": DataAPIVector([5, 4])}, upsert=True
+        )
+        binenc_coll.find_one_and_replace(
+            {}, {"oc": "ooo2"}, sort={"$vector": DataAPIVector([9, 1])}, upsert=True
+        )
+        binenc_coll.find_one_and_delete({}, sort={"$vector": DataAPIVector([9, 1])})
+        binenc_coll.find_one_and_update(
+            {"_id": "0"}, {"$set": {"$vector": DataAPIVector([5, 2])}}, upsert=True
+        )
+        binenc_coll.find_one_and_update(
+            {"_id": "X4"},
+            {"$setOnInsert": {"$vector": DataAPIVector([5, 2])}},
+            upsert=True,
+        )
+        binenc_coll.find_one_and_update(
+            {},
+            {"$set": {"oc": "ooo3"}},
+            sort={"$vector": DataAPIVector([7, 1])},
+            upsert=True,
+        )
+
+        # Using a plain list (the serializer binary-encodes all of these anyway)
+        binenc_coll.insert_one({"_id": "L0", "$vector": [1, 1]})
+        binenc_coll.insert_many([{"_id": "LX1", "$vector": [1, 1]}])
+        binenc_coll.update_one(
+            {"_id": "L0"}, {"$set": {"$vector": [0, 1]}}, upsert=True
+        )
+        binenc_coll.update_one(
+            {"_id": "LX2"}, {"$setOnInsert": {"$vector": [0, 1]}}, upsert=True
+        )
+        binenc_coll.update_one(
+            {}, sort={"$vector": [-1, 0]}, update={"$set": {"oc": "qqq0"}}, upsert=True
+        )
+        binenc_coll.update_many(
+            {"_id": "L0"}, {"$set": {"$vector": [0, 1]}}, upsert=True
+        )
+        binenc_coll.update_many(
+            {"_id": "LX3"}, {"$setOnInsert": {"$vector": [0, 1]}}, upsert=True
+        )
+        binenc_coll.replace_one({"_id": "L0"}, {"$vector": [1, 2]}, upsert=True)
+        binenc_coll.replace_one(
+            {}, {"oc": "qqq1"}, sort={"$vector": [4, 1]}, upsert=True
+        )
+        binenc_coll.delete_one({}, sort={"$vector": [5, 4]})
+        binenc_coll.find_one(sort={"$vector": [5, 4]})
+        binenc_coll.find(sort={"$vector": [5, 4]}).to_list()
+        binenc_coll.find_and_rerank(
+            {},
+            sort={"$hybrid": {"$vector": [-1, -2], "$lexical": "bla"}},
+            rerank_query="bla",
+            rerank_on="$lexical",
+        ).to_list()
+        binenc_coll.find_one_and_replace({}, {"$vector": [5, 4]}, upsert=True)
+        binenc_coll.find_one_and_replace(
+            {}, {"oc": "qqq2"}, sort={"$vector": [9, 1]}, upsert=True
+        )
+        binenc_coll.find_one_and_delete({}, sort={"$vector": [9, 1]})
+        binenc_coll.find_one_and_update(
+            {"_id": "L0"}, {"$set": {"$vector": [5, 2]}}, upsert=True
+        )
+        binenc_coll.find_one_and_update(
+            {"_id": "LX4"}, {"$setOnInsert": {"$vector": [5, 2]}}, upsert=True
+        )
+        binenc_coll.find_one_and_update(
+            {}, {"$set": {"oc": "qqq3"}}, sort={"$vector": [7, 1]}, upsert=True
+        )
