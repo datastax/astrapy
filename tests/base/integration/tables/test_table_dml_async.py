@@ -97,6 +97,13 @@ class TestTableDMLAsync:
         assert no_row_0b is None
 
         # ANN and non-ANN sorting in find_one
+        await async_empty_table_composite.insert_one(
+            {
+                "p_text": "pA",
+                "p_int": 0,
+                "p_vector": DataAPIVector([0, 1, 0]),
+            }
+        )
         await async_empty_table_composite.insert_many(
             [
                 {
