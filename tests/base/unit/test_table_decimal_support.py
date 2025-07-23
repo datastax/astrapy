@@ -97,13 +97,8 @@ class TestTableDecimalSupportUnit:
         t_agent: _TableConverterAgent[DefaultRowType] = _TableConverterAgent(
             options=defaultSerdesOptions.with_override(
                 SerdesOptions(
-                    binary_encode_vectors=True,
                     custom_datatypes_in_reading=colltype_custom,
-                    unroll_iterables_to_lists=True,
                     use_decimals_in_collections=True,
-                    encode_maps_as_lists_in_tables="never",
-                    accept_naive_datetimes=False,
-                    datetime_tzinfo=None,
                 ),
             ),
         )

@@ -20,26 +20,10 @@ from typing import Any
 from astrapy.utils.api_options import SerdesOptions, defaultSerdesOptions
 
 S_OPTS_NO_DECS = defaultSerdesOptions.with_override(
-    SerdesOptions(
-        binary_encode_vectors=False,
-        custom_datatypes_in_reading=True,
-        unroll_iterables_to_lists=True,
-        use_decimals_in_collections=False,
-        encode_maps_as_lists_in_tables="NEVER",
-        accept_naive_datetimes=False,
-        datetime_tzinfo=None,
-    ),
+    SerdesOptions(use_decimals_in_collections=False),
 )
 S_OPTS_OK_DECS = defaultSerdesOptions.with_override(
-    SerdesOptions(
-        binary_encode_vectors=False,
-        custom_datatypes_in_reading=True,
-        unroll_iterables_to_lists=True,
-        use_decimals_in_collections=True,
-        encode_maps_as_lists_in_tables="NEVER",
-        accept_naive_datetimes=False,
-        datetime_tzinfo=None,
-    ),
+    SerdesOptions(use_decimals_in_collections=True),
 )
 _BASELINE_SCALAR_CASES = {
     "_id": "baseline",
