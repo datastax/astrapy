@@ -504,9 +504,7 @@ class TestTableUserDefinedTypes:
     ) -> None:
         atable = async_empty_table_udt_player.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=True,
-                )
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=True)
             ),
         )
         insert_results = await atable.insert_many(

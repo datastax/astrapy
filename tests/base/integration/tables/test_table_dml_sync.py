@@ -670,16 +670,12 @@ class TestTableDMLSync:
     ) -> None:
         col_v0 = sync_table_simple.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=False,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=False),
             ),
         )
         col_v1 = sync_table_simple.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=True,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=True),
             ),
         )
         cur0_v0_inpf = col_v0.find(sort={"p_vector": [1, 2, 3]})

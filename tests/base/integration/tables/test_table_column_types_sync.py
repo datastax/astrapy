@@ -33,9 +33,7 @@ class TestTableColumnTypesSync:
     ) -> None:
         cdtypes_table = sync_empty_table_all_returns.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=True,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=True),
             ),
         )
         cdtypes_table.insert_one(FULL_AR_ROW_CUSTOMTYPED)
@@ -49,9 +47,7 @@ class TestTableColumnTypesSync:
     ) -> None:
         rdtypes_table = sync_empty_table_all_returns.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=False,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=False),
             ),
         )
         rdtypes_table.insert_one(FULL_AR_ROW_NONCUSTOMTYPED)

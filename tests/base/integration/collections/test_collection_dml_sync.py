@@ -235,16 +235,12 @@ class TestCollectionDMLSync:
 
         collection_Ycc = sync_empty_collection.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=True,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=True),
             ),
         )
         collection_Ncc = sync_empty_collection.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=False,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=False),
             ),
         )
         docs_Ycc = list(collection_Ycc.find(projection={"$vector": True}))
@@ -662,9 +658,7 @@ class TestCollectionDMLSync:
 
         d_items_noncustom = col.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=False,
-                )
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=False)
             ),
         ).distinct("f")
         assert len(d_items_noncustom) == 8
@@ -1169,16 +1163,12 @@ class TestCollectionDMLSync:
     ) -> None:
         col_standard_dtypes = sync_empty_collection.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=False,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=False),
             ),
         )
         col_custom_dtypes = sync_empty_collection.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=True,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=True),
             ),
         )
         the_dtime = datetime(2000, 1, 1, 10, 11, 12, 123000, tzinfo=timezone.utc)

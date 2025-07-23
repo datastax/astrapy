@@ -259,16 +259,12 @@ class TestCollectionDMLAsync:
 
         acollection_Ycc = async_empty_collection.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=True,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=True),
             ),
         )
         acollection_Ncc = async_empty_collection.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=False,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=False),
             ),
         )
         docs_Ycc = [
@@ -723,9 +719,7 @@ class TestCollectionDMLAsync:
 
         d_items_noncustom = await acol.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=False,
-                )
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=False)
             ),
         ).distinct("f")
         assert len(d_items_noncustom) == 8
@@ -1239,16 +1233,12 @@ class TestCollectionDMLAsync:
     ) -> None:
         acol_standard_dtypes = async_empty_collection.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=False,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=False),
             ),
         )
         acol_custom_dtypes = async_empty_collection.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=True,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=True),
             ),
         )
         the_dtime = datetime(2000, 1, 1, 10, 11, 12, 123000, tzinfo=timezone.utc)

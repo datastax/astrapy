@@ -690,16 +690,12 @@ class TestTableDMLAsync:
     ) -> None:
         acol_v0 = async_table_simple.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=False,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=False),
             ),
         )
         acol_v1 = async_table_simple.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=True,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=True),
             ),
         )
         cur0_v0_inpf = acol_v0.find(sort={"p_vector": [1, 2, 3]})

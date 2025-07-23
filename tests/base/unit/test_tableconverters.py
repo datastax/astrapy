@@ -635,9 +635,7 @@ class TestTableConverters:
         preprocessed_gen_1 = preprocess_table_payload(
             gen_row_1,
             options=defaultSerdesOptions.with_override(
-                SerdesOptions(
-                    unroll_iterables_to_lists=False,
-                ),
+                SerdesOptions(unroll_iterables_to_lists=False),
             ),
             map2tuple_checker=None,
         )
@@ -655,9 +653,7 @@ class TestTableConverters:
         preprocessed_dvec_1 = preprocess_table_payload(
             dvec_row,
             options=defaultSerdesOptions.with_override(
-                SerdesOptions(
-                    binary_encode_vectors=False,
-                ),
+                SerdesOptions(binary_encode_vectors=False),
             ),
             map2tuple_checker=None,
         )
@@ -676,9 +672,7 @@ class TestTableConverters:
         tpostprocessor = create_row_tpostprocessor(
             columns=col_desc.definition.columns,
             options=defaultSerdesOptions.with_override(
-                SerdesOptions(
-                    custom_datatypes_in_reading=True,
-                ),
+                SerdesOptions(custom_datatypes_in_reading=True),
             ),
             similarity_pseudocolumn=None,
         )
@@ -696,9 +690,7 @@ class TestTableConverters:
         tpostprocessor = create_row_tpostprocessor(
             columns=col_desc.definition.columns,
             options=defaultSerdesOptions.with_override(
-                SerdesOptions(
-                    custom_datatypes_in_reading=False,
-                ),
+                SerdesOptions(custom_datatypes_in_reading=False),
             ),
             similarity_pseudocolumn=None,
         )
