@@ -1,5 +1,5 @@
-main
-====
+v 2.1.0rc1
+==========
 Switch default encode_maps_as_lists_in_tables to "DATAAPIMAPS" (no observable changes w.r.t. previous releases)
 Bugfix: fix paykload encoding for empty maps/DataAPIMaps
 User-defined types in tables:
@@ -8,6 +8,7 @@ User-defined types in tables:
     - full support for UDTs in table ddl: `Database.create_table()`/`Database.list_tables()`/`table.definition()`
     - UDT support in tables: introduced `serializer_by_class` and `deserializer_by_udt` serdes options
     - UDT support in tables: introduced `DataAPIDictUDT` default dict-wrapper type
+Tables, all index creation methods support a `definition` parameter, alternatively to the "column[+options]" call pattern
 Tables, support for "text indexes":
     - classes `TableTextIndexDefinition` and `TableTextIndexOptions` (e.g. for `list_indexes()` method)
     - tables got a `.create_text_index()` method

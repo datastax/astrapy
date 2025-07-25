@@ -97,6 +97,13 @@ class TestTableDMLSync:
         assert no_row_0b is None
 
         # ANN and non-ANN sorting in find_one
+        sync_empty_table_composite.insert_one(
+            {
+                "p_text": "pA",
+                "p_int": 0,
+                "p_vector": DataAPIVector([0, 1, 0]),
+            }
+        )
         sync_empty_table_composite.insert_many(
             [
                 {
@@ -670,16 +677,12 @@ class TestTableDMLSync:
     ) -> None:
         col_v0 = sync_table_simple.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=False,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=False),
             ),
         )
         col_v1 = sync_table_simple.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=True,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=True),
             ),
         )
         cur0_v0_inpf = col_v0.find(sort={"p_vector": [1, 2, 3]})

@@ -97,6 +97,13 @@ class TestTableDMLAsync:
         assert no_row_0b is None
 
         # ANN and non-ANN sorting in find_one
+        await async_empty_table_composite.insert_one(
+            {
+                "p_text": "pA",
+                "p_int": 0,
+                "p_vector": DataAPIVector([0, 1, 0]),
+            }
+        )
         await async_empty_table_composite.insert_many(
             [
                 {
@@ -690,16 +697,12 @@ class TestTableDMLAsync:
     ) -> None:
         acol_v0 = async_table_simple.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=False,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=False),
             ),
         )
         acol_v1 = async_table_simple.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=True,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=True),
             ),
         )
         cur0_v0_inpf = acol_v0.find(sort={"p_vector": [1, 2, 3]})

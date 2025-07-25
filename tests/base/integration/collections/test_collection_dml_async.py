@@ -259,16 +259,12 @@ class TestCollectionDMLAsync:
 
         acollection_Ycc = async_empty_collection.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=True,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=True),
             ),
         )
         acollection_Ncc = async_empty_collection.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=False,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=False),
             ),
         )
         docs_Ycc = [
@@ -723,9 +719,7 @@ class TestCollectionDMLAsync:
 
         d_items_noncustom = await acol.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=False,
-                )
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=False)
             ),
         ).distinct("f")
         assert len(d_items_noncustom) == 8
@@ -1239,16 +1233,12 @@ class TestCollectionDMLAsync:
     ) -> None:
         acol_standard_dtypes = async_empty_collection.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=False,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=False),
             ),
         )
         acol_custom_dtypes = async_empty_collection.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=True,
-                ),
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=True),
             ),
         )
         the_dtime = datetime(2000, 1, 1, 10, 11, 12, 123000, tzinfo=timezone.utc)
@@ -2003,4 +1993,128 @@ class TestCollectionDMLAsync:
                 - at_expected["dataapidate"].timestamp_ms  # type: ignore[attr-defined]
             )
             < one_day_ms
+        )
+
+    @pytest.mark.describe(
+        "test of collection binary-encoding vectors everywhere, async"
+    )
+    async def test_collection_binencvectors_everywhere_async(
+        self,
+        async_empty_collection: DefaultAsyncCollection,
+    ) -> None:
+        binenc_options = APIOptions(
+            serdes_options=SerdesOptions(binary_encode_vectors=True),
+        )
+        binenc_acoll = async_empty_collection.with_options(api_options=binenc_options)
+
+        # Using DataAPIVector (the serializer binary-encodes all of these)
+        await binenc_acoll.insert_one({"_id": "0", "$vector": DataAPIVector([1, 1])})
+        await binenc_acoll.insert_many(
+            [{"_id": "X1", "$vector": DataAPIVector([1, 1])}]
+        )
+        await binenc_acoll.update_one(
+            {"_id": "0"}, {"$set": {"$vector": DataAPIVector([0, 1])}}, upsert=True
+        )
+        await binenc_acoll.update_one(
+            {"_id": "X2"},
+            {"$setOnInsert": {"$vector": DataAPIVector([0, 1])}},
+            upsert=True,
+        )
+        await binenc_acoll.update_one(
+            {},
+            sort={"$vector": DataAPIVector([-1, 0])},
+            update={"$set": {"oc": "ooo0"}},
+            upsert=True,
+        )
+        await binenc_acoll.update_many(
+            {"_id": "0"}, {"$set": {"$vector": DataAPIVector([0, 1])}}, upsert=True
+        )
+        await binenc_acoll.update_many(
+            {"_id": "X3"},
+            {"$setOnInsert": {"$vector": DataAPIVector([0, 1])}},
+            upsert=True,
+        )
+        await binenc_acoll.replace_one(
+            {"_id": "0"}, {"$vector": DataAPIVector([1, 2])}, upsert=True
+        )
+        await binenc_acoll.replace_one(
+            {}, {"oc": "ooo1"}, sort={"$vector": DataAPIVector([4, 1])}, upsert=True
+        )
+        await binenc_acoll.delete_one({}, sort={"$vector": DataAPIVector([5, 4])})
+        await binenc_acoll.find_one(sort={"$vector": DataAPIVector([5, 4])})
+        await binenc_acoll.find(sort={"$vector": DataAPIVector([5, 4])}).to_list()
+        await binenc_acoll.find_and_rerank(
+            {},
+            sort={"$hybrid": {"$vector": DataAPIVector([-1, -2]), "$lexical": "bla"}},
+            rerank_query="bla",
+            rerank_on="$lexical",
+        ).to_list()
+        await binenc_acoll.find_one_and_replace(
+            {}, {"$vector": DataAPIVector([5, 4])}, upsert=True
+        )
+        await binenc_acoll.find_one_and_replace(
+            {}, {"oc": "ooo2"}, sort={"$vector": DataAPIVector([9, 1])}, upsert=True
+        )
+        await binenc_acoll.find_one_and_delete(
+            {}, sort={"$vector": DataAPIVector([9, 1])}
+        )
+        await binenc_acoll.find_one_and_update(
+            {"_id": "0"}, {"$set": {"$vector": DataAPIVector([5, 2])}}, upsert=True
+        )
+        await binenc_acoll.find_one_and_update(
+            {"_id": "X4"},
+            {"$setOnInsert": {"$vector": DataAPIVector([5, 2])}},
+            upsert=True,
+        )
+        await binenc_acoll.find_one_and_update(
+            {},
+            {"$set": {"oc": "ooo3"}},
+            sort={"$vector": DataAPIVector([7, 1])},
+            upsert=True,
+        )
+
+        # Using a plain list (the serializer binary-encodes all of these anyway)
+        await binenc_acoll.insert_one({"_id": "L0", "$vector": [1, 1]})
+        await binenc_acoll.insert_many([{"_id": "LX1", "$vector": [1, 1]}])
+        await binenc_acoll.update_one(
+            {"_id": "L0"}, {"$set": {"$vector": [0, 1]}}, upsert=True
+        )
+        await binenc_acoll.update_one(
+            {"_id": "LX2"}, {"$setOnInsert": {"$vector": [0, 1]}}, upsert=True
+        )
+        await binenc_acoll.update_one(
+            {}, sort={"$vector": [-1, 0]}, update={"$set": {"oc": "qqq0"}}, upsert=True
+        )
+        await binenc_acoll.update_many(
+            {"_id": "L0"}, {"$set": {"$vector": [0, 1]}}, upsert=True
+        )
+        await binenc_acoll.update_many(
+            {"_id": "LX3"}, {"$setOnInsert": {"$vector": [0, 1]}}, upsert=True
+        )
+        await binenc_acoll.replace_one({"_id": "L0"}, {"$vector": [1, 2]}, upsert=True)
+        await binenc_acoll.replace_one(
+            {}, {"oc": "qqq1"}, sort={"$vector": [4, 1]}, upsert=True
+        )
+        await binenc_acoll.delete_one({}, sort={"$vector": [5, 4]})
+        await binenc_acoll.find_one(sort={"$vector": [5, 4]})
+        await binenc_acoll.find(sort={"$vector": [5, 4]}).to_list()
+        await binenc_acoll.find_and_rerank(
+            {},
+            sort={"$hybrid": {"$vector": [-1, -2], "$lexical": "bla"}},
+            rerank_query="bla",
+            rerank_on="$lexical",
+        ).to_list()
+        await binenc_acoll.find_one_and_replace({}, {"$vector": [5, 4]}, upsert=True)
+        await binenc_acoll.find_one_and_replace(
+            {}, {"oc": "qqq2"}, sort={"$vector": [9, 1]}, upsert=True
+        )
+        await binenc_acoll.find_one_and_delete({}, sort={"$vector": [9, 1]})
+        await binenc_acoll.find_one_and_update(
+            {"_id": "L0"}, {"$set": {"$vector": [5, 2]}}, upsert=True
+        )
+        await binenc_acoll.find_one_and_update(
+            {"_id": "LX4"}, {"$setOnInsert": {"$vector": [5, 2]}}, upsert=True
+        )
+        await binenc_acoll.find_one_and_update(
+            {}, {"$set": {"oc": "qqq3"}}, sort={"$vector": [7, 1]}, upsert=True
         )

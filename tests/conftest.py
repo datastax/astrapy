@@ -107,8 +107,14 @@ def database_id_from_endpoint(api_endpoint: str) -> str | None:
 
 
 def is_future_version(v_string: str) -> bool:
-    current_tuple = tuple(int(pc) for pc in astrapy.__version__.split("."))
-    v_tuple = tuple(int(pc) for pc in v_string.split("."))
+    def _my_int(st: str) -> int:
+        rpos = st.find("rc")
+        if rpos >= 0:
+            return int(st[:rpos])
+        return int(st)
+
+    current_tuple = tuple(_my_int(pc) for pc in astrapy.__version__.split("."))
+    v_tuple = tuple(_my_int(pc) for pc in v_string.split("."))
     return v_tuple > current_tuple
 
 

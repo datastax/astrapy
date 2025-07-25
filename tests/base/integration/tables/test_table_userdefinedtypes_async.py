@@ -442,13 +442,9 @@ class TestTableUserDefinedTypes:
                                 "age": 90,
                             }
                         elif udt_mode == "partial":
-                            expected_udt_unit = DataAPIDictUDT(
-                                {"name": None, "age": 90}
-                            )
+                            expected_udt_unit = {"name": None, "age": 90}
                         elif udt_mode == "empty":
-                            expected_udt_unit = DataAPIDictUDT(
-                                {"name": None, "age": None}
-                            )
+                            expected_udt_unit = {"name": None, "age": None}
                         elif udt_mode == "extended":
                             expected_udt_unit = {
                                 "name": "John",
@@ -504,9 +500,7 @@ class TestTableUserDefinedTypes:
     ) -> None:
         atable = async_empty_table_udt_player.with_options(
             api_options=APIOptions(
-                serdes_options=SerdesOptions(
-                    custom_datatypes_in_reading=True,
-                )
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=True)
             ),
         )
         insert_results = await atable.insert_many(

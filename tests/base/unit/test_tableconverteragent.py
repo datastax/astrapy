@@ -19,25 +19,14 @@ import pytest
 from astrapy.constants import DefaultRowType
 from astrapy.data.utils.table_converters import _TableConverterAgent
 from astrapy.data_types import DataAPIDate
-from astrapy.utils.api_options import SerdesOptions, defaultSerdesOptions
+from astrapy.utils.api_options import defaultSerdesOptions
 
 
 class TestTableConverterAgent:
     @pytest.mark.describe("test of table converter agent, row converters")
     def test_tableconverteragent_row(self) -> None:
-        options = defaultSerdesOptions.with_override(
-            SerdesOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                unroll_iterables_to_lists=True,
-                use_decimals_in_collections=False,
-                encode_maps_as_lists_in_tables="NEVER",
-                accept_naive_datetimes=False,
-                datetime_tzinfo=None,
-            ),
-        )
         agent: _TableConverterAgent[DefaultRowType] = _TableConverterAgent(
-            options=options
+            options=defaultSerdesOptions,
         )
         assert len(agent.row_postprocessors) == 0
 
@@ -82,19 +71,8 @@ class TestTableConverterAgent:
 
     @pytest.mark.describe("test of table converter agent, row with similarity")
     def test_tableconverteragent_row_similarity(self) -> None:
-        options = defaultSerdesOptions.with_override(
-            SerdesOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                unroll_iterables_to_lists=True,
-                use_decimals_in_collections=False,
-                encode_maps_as_lists_in_tables="NEVER",
-                accept_naive_datetimes=False,
-                datetime_tzinfo=None,
-            ),
-        )
         agent: _TableConverterAgent[DefaultRowType] = _TableConverterAgent(
-            options=options
+            options=defaultSerdesOptions,
         )
         schema1 = {
             "$similarity": {"type": "date"},
@@ -118,19 +96,8 @@ class TestTableConverterAgent:
 
     @pytest.mark.describe("test of table converter agent, key converters")
     def test_tableconverteragent_key(self) -> None:
-        options = defaultSerdesOptions.with_override(
-            SerdesOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                unroll_iterables_to_lists=True,
-                use_decimals_in_collections=False,
-                encode_maps_as_lists_in_tables="NEVER",
-                accept_naive_datetimes=False,
-                datetime_tzinfo=None,
-            ),
-        )
         agent: _TableConverterAgent[DefaultRowType] = _TableConverterAgent(
-            options=options
+            options=defaultSerdesOptions,
         )
         assert len(agent.key_postprocessors) == 0
 
