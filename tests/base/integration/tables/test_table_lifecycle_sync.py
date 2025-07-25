@@ -782,3 +782,175 @@ class TestTableLifecycle:
             )
         finally:
             table.drop()
+
+    @pytest.mark.describe("test of table index creation dict call patterns, sync")
+    def test_tableindex_creationdictpatterns_sync(
+        self,
+        sync_database: Database,
+    ) -> None:
+        try:
+            table = sync_database.create_table(
+                "table_for_idxcallpattern_dict",
+                definition=CreateTableDefinition(
+                    columns={
+                        "id": TableScalarColumnTypeDescriptor("text"),
+                        "a1": TableScalarColumnTypeDescriptor("ascii"),
+                        "a2": TableScalarColumnTypeDescriptor("ascii"),
+                        "a3": TableScalarColumnTypeDescriptor("ascii"),
+                        "s1": TableScalarColumnTypeDescriptor("text"),
+                        "s2": TableScalarColumnTypeDescriptor("text"),
+                        "s3": TableScalarColumnTypeDescriptor("text"),
+                        "v1": TableVectorColumnTypeDescriptor(dimension=2),
+                        "v2": TableVectorColumnTypeDescriptor(dimension=2),
+                        "v3": TableVectorColumnTypeDescriptor(dimension=2),
+                    },
+                    primary_key=TablePrimaryKeyDescriptor(
+                        partition_by=["id"],
+                        partition_sort={},
+                    ),
+                ),
+            )
+
+            # create_index, working patterns
+            table.create_index("test_idx_a1", "a1", options={"ascii": True})
+            table.create_index("test_idx_a2", "a2")
+            table.create_index(
+                "test_idx_a3", definition={"column": "a3", "options": {"ascii": True}}
+            )
+            # create_index, failing patterns
+            with pytest.raises(ValueError, match="cannot be used simultaneously"):
+                table.create_index("x", "x", definition=1, options=1)
+            with pytest.raises(ValueError, match="cannot be used simultaneously"):
+                table.create_index("x", "x", definition=1)
+            with pytest.raises(ValueError, match="cannot be used simultaneously"):
+                table.create_index("x", definition=1, options=1)
+            with pytest.raises(ValueError, match="is required for an index"):
+                table.create_index("x", options=1)
+            with pytest.raises(ValueError, match="is required for an index"):
+                table.create_index("x")
+
+            # create_vector_index, working patterns
+            table.create_vector_index(
+                "test_idx_v1", "v1", options={"metric": "EUCLIDEAN"}
+            )
+            table.create_vector_index("test_idx_v2", "v2")
+            table.create_vector_index(
+                "test_idx_v3",
+                definition={"column": "v3", "options": {"metric": "EUCLIDEAN"}},
+            )
+            # create_vector_index, failing patterns
+            with pytest.raises(ValueError, match="cannot be used simultaneously"):
+                table.create_vector_index("x", "x", definition=1, options=1)
+            with pytest.raises(ValueError, match="cannot be used simultaneously"):
+                table.create_vector_index("x", "x", definition=1)
+            with pytest.raises(ValueError, match="cannot be used simultaneously"):
+                table.create_vector_index("x", definition=1, options=1)
+            with pytest.raises(ValueError, match="is required for an index"):
+                table.create_vector_index("x", options=1)
+            with pytest.raises(ValueError, match="is required for an index"):
+                table.create_vector_index("x")
+
+            # create_text_index, working patterns
+            table.create_text_index(
+                "test_idx_s1", "s1", options={"analyzer": "whitespace"}
+            )
+            table.create_text_index("test_idx_s2", "s2")
+            table.create_text_index(
+                "test_idx_s3",
+                definition={"column": "s3", "options": {"analyzer": "whitespace"}},
+            )
+            # create_text_index, failing patterns
+            with pytest.raises(ValueError, match="cannot be used simultaneously"):
+                table.create_text_index("x", "x", definition=1, options=1)
+            with pytest.raises(ValueError, match="cannot be used simultaneously"):
+                table.create_text_index("x", "x", definition=1)
+            with pytest.raises(ValueError, match="cannot be used simultaneously"):
+                table.create_text_index("x", definition=1, options=1)
+            with pytest.raises(ValueError, match="is required for an index"):
+                table.create_text_index("x", options=1)
+            with pytest.raises(ValueError, match="is required for an index"):
+                table.create_text_index("x")
+
+            # some indexes should formally coincide:
+            indexes = table.list_indexes()
+            options_per_idx = {idx.name: idx.definition.options for idx in indexes}
+            assert options_per_idx["test_idx_a1"] == options_per_idx["test_idx_a3"]
+            assert options_per_idx["test_idx_v1"] == options_per_idx["test_idx_v3"]
+            assert options_per_idx["test_idx_s1"] == options_per_idx["test_idx_s3"]
+        finally:
+            sync_database.drop_table("table_for_idxcallpattern_dict")
+
+    @pytest.mark.describe("test of table index creation object call patterns, sync")
+    def test_tableindex_creationobjpatterns_sync(
+        self,
+        sync_database: Database,
+    ) -> None:
+        try:
+            table = sync_database.create_table(
+                "table_for_idxcallpattern_obj",
+                definition=CreateTableDefinition(
+                    columns={
+                        "id": TableScalarColumnTypeDescriptor("text"),
+                        "a1": TableScalarColumnTypeDescriptor("ascii"),
+                        "a2": TableScalarColumnTypeDescriptor("ascii"),
+                        "a3": TableScalarColumnTypeDescriptor("ascii"),
+                        "s1": TableScalarColumnTypeDescriptor("text"),
+                        "s2": TableScalarColumnTypeDescriptor("text"),
+                        "s3": TableScalarColumnTypeDescriptor("text"),
+                        "v1": TableVectorColumnTypeDescriptor(dimension=2),
+                        "v2": TableVectorColumnTypeDescriptor(dimension=2),
+                        "v3": TableVectorColumnTypeDescriptor(dimension=2),
+                    },
+                    primary_key=TablePrimaryKeyDescriptor(
+                        partition_by=["id"],
+                        partition_sort={},
+                    ),
+                ),
+            )
+
+            # create_index, working patterns
+            table.create_index(
+                "test_idx_a1", "a1", options=TableIndexOptions(ascii=True)
+            )
+            table.create_index("test_idx_a2", "a2")
+            table.create_index(
+                "test_idx_a3",
+                definition=TableIndexDefinition(
+                    column="a3", options=TableIndexOptions(ascii=True)
+                ),
+            )
+
+            # create_vector_index, working patterns
+            table.create_vector_index(
+                "test_idx_v1", "v1", options=TableVectorIndexOptions(metric="EUCLIDEAN")
+            )
+            table.create_vector_index("test_idx_v2", "v2")
+            table.create_vector_index(
+                "test_idx_v3",
+                definition=TableVectorIndexDefinition(
+                    column="v3", options=TableVectorIndexOptions(metric="EUCLIDEAN")
+                ),
+            )
+
+            # create_text_index, working patterns
+            table.create_text_index(
+                "test_idx_s1",
+                "s1",
+                options=TableTextIndexOptions(analyzer="whitespace"),
+            )
+            table.create_text_index("test_idx_s2", "s2")
+            table.create_text_index(
+                "test_idx_s3",
+                definition=TableTextIndexDefinition(
+                    column="s3", options=TableTextIndexOptions(analyzer="whitespace")
+                ),
+            )
+
+            # some indexes should formally coincide:
+            indexes = table.list_indexes()
+            options_per_idx = {idx.name: idx.definition.options for idx in indexes}
+            assert options_per_idx["test_idx_a1"] == options_per_idx["test_idx_a3"]
+            assert options_per_idx["test_idx_v1"] == options_per_idx["test_idx_v3"]
+            assert options_per_idx["test_idx_s1"] == options_per_idx["test_idx_s3"]
+        finally:
+            sync_database.drop_table("table_for_idxcallpattern_obj")

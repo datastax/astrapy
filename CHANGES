@@ -8,6 +8,7 @@ User-defined types in tables:
     - full support for UDTs in table ddl: `Database.create_table()`/`Database.list_tables()`/`table.definition()`
     - UDT support in tables: introduced `serializer_by_class` and `deserializer_by_udt` serdes options
     - UDT support in tables: introduced `DataAPIDictUDT` default dict-wrapper type
+Tables, all index creation methods support a `definition` parameter, alternatively to the "column[+options]" call pattern
 Tables, support for "text indexes":
     - classes `TableTextIndexDefinition` and `TableTextIndexOptions` (e.g. for `list_indexes()` method)
     - tables got a `.create_text_index()` method
