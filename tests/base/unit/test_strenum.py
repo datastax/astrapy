@@ -19,25 +19,25 @@ import pytest
 from astrapy.utils.str_enum import StrEnum
 
 
-class TestEnum(StrEnum):
+class MyTestEnum(StrEnum):
     VALUE = "value"
     VALUE_DASH = "value-dash"
 
 
 class TestStrEnum:
     def test_strenum_contains(self) -> None:
-        assert "value" in TestEnum
-        assert "value_dash" in TestEnum
-        assert "value-dash" in TestEnum
-        assert "VALUE-DASH" in TestEnum
-        assert "pippo" not in TestEnum
-        assert {6: 12} not in TestEnum
+        assert "value" in MyTestEnum
+        assert "value_dash" in MyTestEnum
+        assert "value-dash" in MyTestEnum
+        assert "VALUE-DASH" in MyTestEnum
+        assert "pippo" not in MyTestEnum
+        assert {6: 12} not in MyTestEnum
 
     def test_strenum_coerce(self) -> None:
-        TestEnum.coerce("value")
-        TestEnum.coerce("value_dash")
-        TestEnum.coerce("value-dash")
-        TestEnum.coerce("VALUE-DASH")
-        TestEnum.coerce(TestEnum.VALUE)
+        MyTestEnum.coerce("value")
+        MyTestEnum.coerce("value_dash")
+        MyTestEnum.coerce("value-dash")
+        MyTestEnum.coerce("VALUE-DASH")
+        MyTestEnum.coerce(MyTestEnum.VALUE)
         with pytest.raises(ValueError):
-            TestEnum.coerce("pippo")
+            MyTestEnum.coerce("pippo")
