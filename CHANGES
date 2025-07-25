@@ -1,5 +1,5 @@
-main
-====
+v 2.1.0rc1
+==========
 Switch default encode_maps_as_lists_in_tables to "DATAAPIMAPS" (no observable changes w.r.t. previous releases)
 Bugfix: fix paykload encoding for empty maps/DataAPIMaps
 User-defined types in tables:
