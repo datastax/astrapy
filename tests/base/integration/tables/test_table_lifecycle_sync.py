@@ -819,13 +819,13 @@ class TestTableLifecycle:
             )
             # create_index, failing patterns
             with pytest.raises(ValueError, match="cannot be used simultaneously"):
-                table.create_index("x", "x", definition=1, options=1)
+                table.create_index("x", "x", definition={}, options={})
             with pytest.raises(ValueError, match="cannot be used simultaneously"):
-                table.create_index("x", "x", definition=1)
+                table.create_index("x", "x", definition={})
             with pytest.raises(ValueError, match="cannot be used simultaneously"):
-                table.create_index("x", definition=1, options=1)
+                table.create_index("x", definition={}, options={})
             with pytest.raises(ValueError, match="is required for an index"):
-                table.create_index("x", options=1)
+                table.create_index("x", options={})
             with pytest.raises(ValueError, match="is required for an index"):
                 table.create_index("x")
 
@@ -840,13 +840,13 @@ class TestTableLifecycle:
             )
             # create_vector_index, failing patterns
             with pytest.raises(ValueError, match="cannot be used simultaneously"):
-                table.create_vector_index("x", "x", definition=1, options=1)
+                table.create_vector_index("x", "x", definition={}, options={})
             with pytest.raises(ValueError, match="cannot be used simultaneously"):
-                table.create_vector_index("x", "x", definition=1)
+                table.create_vector_index("x", "x", definition={})
             with pytest.raises(ValueError, match="cannot be used simultaneously"):
-                table.create_vector_index("x", definition=1, options=1)
+                table.create_vector_index("x", definition={}, options={})
             with pytest.raises(ValueError, match="is required for an index"):
-                table.create_vector_index("x", options=1)
+                table.create_vector_index("x", options={})
             with pytest.raises(ValueError, match="is required for an index"):
                 table.create_vector_index("x")
 
@@ -861,19 +861,21 @@ class TestTableLifecycle:
             )
             # create_text_index, failing patterns
             with pytest.raises(ValueError, match="cannot be used simultaneously"):
-                table.create_text_index("x", "x", definition=1, options=1)
+                table.create_text_index("x", "x", definition={}, options={})
             with pytest.raises(ValueError, match="cannot be used simultaneously"):
-                table.create_text_index("x", "x", definition=1)
+                table.create_text_index("x", "x", definition={})
             with pytest.raises(ValueError, match="cannot be used simultaneously"):
-                table.create_text_index("x", definition=1, options=1)
+                table.create_text_index("x", definition={}, options={})
             with pytest.raises(ValueError, match="is required for an index"):
-                table.create_text_index("x", options=1)
+                table.create_text_index("x", options={})
             with pytest.raises(ValueError, match="is required for an index"):
                 table.create_text_index("x")
 
             # some indexes should formally coincide:
             indexes = table.list_indexes()
-            options_per_idx = {idx.name: idx.definition.options for idx in indexes}
+            options_per_idx = {
+                idx.name: idx.definition.as_dict().get("options") for idx in indexes
+            }
             assert options_per_idx["test_idx_a1"] == options_per_idx["test_idx_a3"]
             assert options_per_idx["test_idx_v1"] == options_per_idx["test_idx_v3"]
             assert options_per_idx["test_idx_s1"] == options_per_idx["test_idx_s3"]
@@ -948,7 +950,9 @@ class TestTableLifecycle:
 
             # some indexes should formally coincide:
             indexes = table.list_indexes()
-            options_per_idx = {idx.name: idx.definition.options for idx in indexes}
+            options_per_idx = {
+                idx.name: idx.definition.as_dict().get("options") for idx in indexes
+            }
             assert options_per_idx["test_idx_a1"] == options_per_idx["test_idx_a3"]
             assert options_per_idx["test_idx_v1"] == options_per_idx["test_idx_v3"]
             assert options_per_idx["test_idx_s1"] == options_per_idx["test_idx_s3"]
