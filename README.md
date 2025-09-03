@@ -307,7 +307,6 @@ player_udt_def = CreateTypeDefinition(
 )
 my_database.create_type("player_udt", definition=player_udt_def)
 
-# Create a table and a vector index on it
 table_definition = (
     CreateTableDefinition.builder()
     .add_column("match_id", ColumnType.TEXT)
@@ -316,7 +315,6 @@ table_definition = (
     .add_partition_by(["match_id"])
     .build()
 )
-
 udt_table = my_database.create_table("matches", definition=table_definition)
 ```
 
