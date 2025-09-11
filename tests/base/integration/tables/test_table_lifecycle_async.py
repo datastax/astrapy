@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -689,10 +688,6 @@ class TestTableLifecycle:
         finally:
             await atable.drop()
 
-    @pytest.mark.skipif(
-        "ASTRAPY_TEST_UDT" not in os.environ,
-        reason="UDT testing not enabled",
-    )
     @pytest.mark.describe("test of create/verify/delete table with a simple UDT, async")
     async def test_table_simpleudt_crd_async(
         self,

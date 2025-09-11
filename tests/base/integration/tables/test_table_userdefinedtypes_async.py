@@ -79,10 +79,6 @@ SERIALIZER_BY_CLASS: dict[type, SerializerFunctionType] = {
 }
 
 
-@pytest.mark.skipif(
-    "ASTRAPY_TEST_UDT" not in os.environ,
-    reason="UDT testing not enabled",
-)
 @pytest.mark.skipif(not CQL_AVAILABLE, reason="No CQL session available")
 class TestTableUserDefinedTypes:
     @pytest.mark.describe("Test of UDT lifecycle, async")
