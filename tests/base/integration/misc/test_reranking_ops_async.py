@@ -20,8 +20,6 @@ from astrapy import AsyncDatabase
 from astrapy.constants import ModelStatus
 from astrapy.info import FindRerankingProvidersResult, RerankingProvider
 
-from ..conftest import IS_ASTRA_DB
-
 
 def _count_models(frp_result: FindRerankingProvidersResult) -> int:
     return len(
@@ -57,8 +55,6 @@ class TestRerankingOpsAsync:
             == rp_result.reranking_providers
         )
 
-    # TODO: open to Astra DB once available
-    @pytest.mark.skipif(IS_ASTRA_DB, reason="Filtering models not yet on Astra DB")
     @pytest.mark.describe("test of find_reranking_providers filtering, async")
     async def test_filtered_findrerankingproviders_async(
         self,

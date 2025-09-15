@@ -43,7 +43,7 @@ def test_recast_api_collection_dict() -> None:
                     "metric": "cosine",
                     "service": {
                         "provider": "nvidia",
-                        "modelName": "NV-Embed-QA",
+                        "modelName": "nvidia/nv-embedqa-e5-v5",
                     },
                 },
                 "indexing": {"deny": ["a"]},
@@ -79,7 +79,7 @@ def test_recast_api_collection_dict() -> None:
                     "metric": "cosine",
                     "service": {
                         "provider": "nvidia",
-                        "modelName": "NV-Embed-QA",
+                        "modelName": "nvidia/nv-embedqa-e5-v5",
                     },
                 },
                 "indexing": {"deny": ["a"]},
@@ -103,7 +103,7 @@ def test_recast_api_collection_dict() -> None:
                     "dimension": 1024,
                     "service": {
                         "provider": "nvidia",
-                        "modelName": "NV-Embed-QA",
+                        "modelName": "nvidia/nv-embedqa-e5-v5",
                     },
                 },
                 "indexing": {"deny": ["a"]},
@@ -123,7 +123,7 @@ def test_recast_api_collection_dict() -> None:
                 "vector": {
                     "service": {
                         "provider": "nvidia",
-                        "modelName": "NV-Embed-QA",
+                        "modelName": "nvidia/nv-embedqa-e5-v5",
                     },
                 },
                 "indexing": {"deny": ["a"]},
@@ -156,7 +156,7 @@ def test_recast_api_collection_dict() -> None:
                     "metric": "cosine",
                     "service": {
                         "provider": "nvidia",
-                        "modelName": "NV-Embed-QA",
+                        "modelName": "nvidia/nv-embedqa-e5-v5",
                     },
                 },
                 "defaultId": {"type": "objectId"},
@@ -181,7 +181,7 @@ def test_recast_api_collection_dict() -> None:
                     "metric": "cosine",
                     "service": {
                         "provider": "nvidia",
-                        "modelName": "NV-Embed-QA",
+                        "modelName": "nvidia/nv-embedqa-e5-v5",
                     },
                 },
                 "indexing": {"deny": ["a"]},
@@ -205,7 +205,7 @@ def test_recast_api_collection_dict() -> None:
                     "metric": "cosine",
                     "service": {
                         "provider": "nvidia",
-                        "modelName": "NV-Embed-QA",
+                        "modelName": "nvidia/nv-embedqa-e5-v5",
                     },
                 },
             },
