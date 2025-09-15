@@ -34,7 +34,6 @@ from astrapy.exceptions import DataAPIResponseException
 from ..conftest import (
     CQL_AVAILABLE,
     EXTENDED_PLAYER_TYPE_NAME,
-    IS_ASTRA_DB,
     PLAYER_TYPE_NAME,
     # THE_BYTES,
     THE_DATETIME,
@@ -95,13 +94,11 @@ class TestTableUserDefinedTypes:
                 sync_database.create_type(UDT_NAME, definition=UDT_DEF0)
             sync_database.create_type(UDT_NAME, definition=UDT_DEF0, if_not_exists=True)
 
-            # TODO: re-enable once the 'describe' statements limitation is lifted on Astra
-            if not IS_ASTRA_DB:
-                assert UDT_DEF0 == _extract_udt_definition(
-                    cql_session,
-                    data_api_credentials_kwargs["keyspace"],
-                    UDT_NAME,
-                )
+            assert UDT_DEF0 == _extract_udt_definition(
+                cql_session,
+                data_api_credentials_kwargs["keyspace"],
+                UDT_NAME,
+            )
 
             assert UDT_NAME in sync_database.list_type_names()
             db_types_match = [
@@ -117,25 +114,21 @@ class TestTableUserDefinedTypes:
             with pytest.raises(DataAPIResponseException):
                 sync_database.alter_type(UDT_NAME, operation=UDT_ALTER_OP_1)
 
-            # TODO: re-enable once the 'describe' statements limitation is lifted on Astra
-            if not IS_ASTRA_DB:
-                assert UDT_DEF1 == _extract_udt_definition(
+            assert UDT_DEF1 == _extract_udt_definition(
+                cql_session,
+                data_api_credentials_kwargs["keyspace"],
+                UDT_NAME,
+            )
+
+            sync_database.drop_type(UDT_NAME)
+            assert (
+                _extract_udt_definition(
                     cql_session,
                     data_api_credentials_kwargs["keyspace"],
                     UDT_NAME,
                 )
-
-            sync_database.drop_type(UDT_NAME)
-            # TODO: re-enable once the 'describe' statements limitation is lifted on Astra
-            if not IS_ASTRA_DB:
-                assert (
-                    _extract_udt_definition(
-                        cql_session,
-                        data_api_credentials_kwargs["keyspace"],
-                        UDT_NAME,
-                    )
-                    is None
-                )
+                is None
+            )
             with pytest.raises(DataAPIResponseException):
                 sync_database.drop_type(UDT_NAME)
             sync_database.drop_type(UDT_NAME, if_exists=True)
