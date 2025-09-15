@@ -761,6 +761,10 @@ class TestListTableDescriptors:
         # Test coerce with dict input
         operation_from_dict = operation_class.coerce(test_dict)
 
+        # test init expecting inner coerce
+        operation_inner_coerce = operation_class(test_dict["columns"])
+        assert operation_inner_coerce == operation_from_dict
+
         # Test coerce with object input (should return same object)
         operation_from_obj = operation_class.coerce(operation_from_dict)
         assert operation_from_obj == operation_from_dict

@@ -1,6 +1,9 @@
 v 2.1.0rc1
 ==========
-Added positional passing of parameter to all AlterTableOperation subclasses; accept single-string parameters for the drop-column and drop-vectorize cases
+AlterTableOperation subclasses:
+    - Added positional passing of parameter constructor
+    - Accept single-string parameter for the drop-column and drop-vectorize cases
+    - Add and AddVectorize constructors accept a 'columns' dict with dict values (now individually coerced)
 Switch default encode_maps_as_lists_in_tables to "DATAAPIMAPS" (no observable changes w.r.t. previous releases)
 Bugfix: fix paykload encoding for empty maps/DataAPIMaps
 User-defined types in tables:
