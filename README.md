@@ -806,7 +806,7 @@ certain environment variables, otherwise the associated tests are excluded from 
 #### Cutting-edge features on `main`
 
 Prepend tests with a `ASTRAPY_TEST_LATEST_MAIN=y` for features found on `main` that are not released anywhere.
-
+_(Tip: run a code search first to see what is currently marked as such. Chances are nothing is.)_
 
 ## Appendices
 

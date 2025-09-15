@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import os
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -585,10 +584,6 @@ class TestTableUserDefinedTypes:
         finally:
             cql_session.execute(UNSUPPORTED_UDT_DROP)
 
-    @pytest.mark.skipif(
-        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
-        reason="Currently available only on cutting-edge Data API `main`",
-    )
     @pytest.mark.describe("Test of UDT filtering, sync")
     def test_table_udt_filtering_sync(
         self,

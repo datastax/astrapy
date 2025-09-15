@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -589,10 +588,6 @@ class TestTableUserDefinedTypes:
         finally:
             cql_session.execute(UNSUPPORTED_UDT_DROP)
 
-    @pytest.mark.skipif(
-        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
-        reason="Currently available only on cutting-edge Data API `main`",
-    )
     @pytest.mark.describe("Test of UDT filtering, async")
     async def test_table_udt_filtering_async(
         self,
