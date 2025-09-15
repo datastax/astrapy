@@ -110,7 +110,7 @@ class AlterTableAddColumns(AlterTableOperation):
 
     columns: dict[str, TableColumnTypeDescriptor]
 
-    def __init__(self, *, columns: dict[str, TableColumnTypeDescriptor]) -> None:
+    def __init__(self, columns: dict[str, TableColumnTypeDescriptor]) -> None:
         self._name = "add"
         self.columns = columns
 
@@ -162,13 +162,14 @@ class AlterTableDropColumns(AlterTableOperation):
 
     Attributes:
         columns: a list of the column names to drop.
+            Passing a single string has the same effect as passing a single-item list.
     """
 
     columns: list[str]
 
-    def __init__(self, *, columns: list[str]) -> None:
+    def __init__(self, columns: list[str] | str) -> None:
         self._name = "drop"
-        self.columns = columns
+        self.columns = [columns] if isinstance(columns, str) else columns
 
     def __repr__(self) -> str:
         _col_desc = f"columns=[{','.join(self.columns)}]"
@@ -221,7 +222,7 @@ class AlterTableAddVectorize(AlterTableOperation):
 
     columns: dict[str, VectorServiceOptions]
 
-    def __init__(self, *, columns: dict[str, VectorServiceOptions]) -> None:
+    def __init__(self, columns: dict[str, VectorServiceOptions]) -> None:
         self._name = "addVectorize"
         self.columns = columns
 
@@ -289,13 +290,14 @@ class AlterTableDropVectorize(AlterTableOperation):
 
     Attributes:
         columns: a list of the column names whose vectorize service is to be removed.
+            Passing a single string has the same effect as passing a single-item list.
     """
 
     columns: list[str]
 
-    def __init__(self, *, columns: list[str]) -> None:
+    def __init__(self, columns: list[str] | str) -> None:
         self._name = "dropVectorize"
-        self.columns = columns
+        self.columns = [columns] if isinstance(columns, str) else columns
 
     def __repr__(self) -> str:
         _col_desc = f"columns=[{','.join(self.columns)}]"

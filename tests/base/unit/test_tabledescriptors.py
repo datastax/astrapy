@@ -687,6 +687,13 @@ class TestListTableDescriptors:
         assert dropv_o == dropv
 
     @pytest.mark.describe(
+        "test of single-string being coerced into a list for AlterTableDropColumns and AlterTableDropVectorize"
+    )
+    def test_altertableremovals_singlestringpattern(self) -> None:
+        assert AlterTableDropColumns("c") == AlterTableDropColumns(["c"])
+        assert AlterTableDropVectorize("c") == AlterTableDropVectorize(["c"])
+
+    @pytest.mark.describe(
         "test of coerce normalizing column types for AlterTableAddColumns"
     )
     def test_altertableaddcolumns_normalizetypes(self) -> None:
