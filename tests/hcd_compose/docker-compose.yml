@@ -1,6 +1,6 @@
 services:
   hcd:
-    image: 559669398656.dkr.ecr.us-west-2.amazonaws.com/engops-shared/hcd/staging/hcd:1.2.1-early-preview
+    image: 559669398656.dkr.ecr.us-west-2.amazonaws.com/engops-shared/hcd/prod/hcd:1.2.3
     networks:
       - stargate
     mem_limit: 2G
@@ -20,7 +20,7 @@ services:
       retries: 20
 
   data-api:
-    image: stargateio/data-api:v1.0.27
+    image: stargateio/data-api:v1.0.32
     depends_on:
       hcd:
         condition: service_healthy
