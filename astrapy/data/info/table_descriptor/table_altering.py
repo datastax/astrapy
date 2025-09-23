@@ -273,7 +273,7 @@ class AlterTableAddVectorize(AlterTableOperation):
             )
         return AlterTableAddVectorize(
             columns=cast(
-                Dict[str, Union[VectorServiceOptions, dict[str, Any]]],
+                Dict[str, Union[VectorServiceOptions, Dict[str, Any]]],
                 _columns,
             )
         )
