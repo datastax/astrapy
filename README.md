@@ -726,6 +726,11 @@ Depending on the test, different environment variables are needed: refer to
 the templates in `tests/env_templates`. The "basic" credentials (one of the three options)
 are always required, _even for unit testing_.
 
+#### Docker vs. Podman
+
+In case you use a different Docker-compatible container runtime, viz. `podman`, make sure to export
+the environment variable `DOCKER_COMMAND_NAME="podman"` to have the **DockerCompose** tests use it properly.
+
 #### Multiple Python versions
 
 If may be useful to run e.g. unit tests with multiple Python versions. You can have `uv`
