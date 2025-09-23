@@ -240,7 +240,6 @@ class Collection(Generic[DOC]):
         ...     definition=collection_definition_vz2,
         ... )
         >>>
-        >>>
         >>> # Get a reference to an existing collection and set its 'vectorize' authentication:
         >>> my_collection_vz1a = database.get_collection("my_entries", embedding_api_key="sk-...")
 
@@ -3192,7 +3191,6 @@ class AsyncCollection(Generic[DOC]):
         ...     "my_kms_entries",
         ...     definition=collection_definition_vz2,
         ... )
-        >>>
         >>>
         >>> # Get a reference to an existing collection and set its 'vectorize' authentication:
         >>> my_collection_vz1a = async_database.get_collection("my_entries", embedding_api_key="sk-...")

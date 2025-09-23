@@ -1356,6 +1356,63 @@ class Database:
             ...     definition=table_definition_2,
             ...     if_not_exists=True,
             ... )
+            >>>
+            >>> # Examples with an embedding service ('vectorize'):
+            >>> (An index is needed for vector search: see table `create_vector_index` method)
+            >>>
+            >>> # Create a table with 'vectorize' and on-the-fly authentication (by headers)
+            >>> from astrapy.info import (
+            ...     CreateTableDefinition,
+            ...     ColumnType,
+            ...     VectorServiceOptions,
+            ... )
+            >>> table_definition_vz1 = (
+            ...     CreateTableDefinition.builder()
+            ...     .add_column("motto_id", ColumnType.TEXT)
+            ...     .add_column("motto_text", ColumnType.TEXT)
+            ...     .add_vector_column(
+            ...         "motto_vector",
+            ...         service=VectorServiceOptions(
+            ...             provider="openai",
+            ...             model_name="text-embedding-3-small",
+            ...         ),
+            ...     )
+            ...     .add_partition_by(["motto_id"])
+            ...     .build()
+            ... )
+            >>> my_table_vz1 = database.create_table(
+            ...     "mottos_vz1",
+            ...     definition=table_definition_vz1,
+            ...     embedding_api_key="sk-...",
+            ... )
+            >>>
+            >>> # Create a 'vectorize' table, its secret pre-stored on DB as 'EMB_AUTH_KEY'
+            >>> from astrapy.info import (
+            ...     CreateTableDefinition,
+            ...     ColumnType,
+            ...     VectorServiceOptions,
+            ... )
+            >>> table_definition_vz2 = (
+            ...     CreateTableDefinition.builder()
+            ...     .add_column("motto_id", ColumnType.TEXT)
+            ...     .add_column("motto_text", ColumnType.TEXT)
+            ...     .add_vector_column(
+            ...         "motto_vector",
+            ...         service=VectorServiceOptions(
+            ...             provider="openai",
+            ...             model_name="text-embedding-3-small",
+            ...             authentication={
+            ...                 "providerKey": "EMB_AUTH_KEY",
+            ...             },
+            ...         ),
+            ...     )
+            ...     .add_partition_by(["motto_id"])
+            ...     .build()
+            ... )
+            >>> my_table_vz2 = database.create_table(
+            ...     "mottos_vz2",
+            ...     definition=table_definition_vz2,
+            ... )
         """
 
         ct_options: dict[str, bool]
@@ -3540,6 +3597,63 @@ class AsyncDatabase:
             ...     "games",
             ...     definition=table_definition_2,
             ...     if_not_exists=True,
+            ... ))
+             >>>
+            >>> # Examples with an embedding service ('vectorize'):
+            >>> (An index is needed for vector search: see table `create_vector_index` method)
+            >>>
+            >>> # Create a table with 'vectorize' and on-the-fly authentication (by headers)
+            >>> from astrapy.info import (
+            ...     CreateTableDefinition,
+            ...     ColumnType,
+            ...     VectorServiceOptions,
+            ... )
+            >>> table_definition_vz1 = (
+            ...     CreateTableDefinition.builder()
+            ...     .add_column("motto_id", ColumnType.TEXT)
+            ...     .add_column("motto_text", ColumnType.TEXT)
+            ...     .add_vector_column(
+            ...         "motto_vector",
+            ...         service=VectorServiceOptions(
+            ...             provider="openai",
+            ...             model_name="text-embedding-3-small",
+            ...         ),
+            ...     )
+            ...     .add_partition_by(["motto_id"])
+            ...     .build()
+            ... )
+            >>> my_table_vz1 = asyncio.run(async_database.create_table(
+            ...     "mottos_vz1",
+            ...     definition=table_definition_vz1,
+            ...     embedding_api_key="sk-...",
+            ... ))
+            >>>
+            >>> # Create a 'vectorize' table, its secret pre-stored on DB as 'EMB_AUTH_KEY'
+            >>> from astrapy.info import (
+            ...     CreateTableDefinition,
+            ...     ColumnType,
+            ...     VectorServiceOptions,
+            ... )
+            >>> table_definition_vz2 = (
+            ...     CreateTableDefinition.builder()
+            ...     .add_column("motto_id", ColumnType.TEXT)
+            ...     .add_column("motto_text", ColumnType.TEXT)
+            ...     .add_vector_column(
+            ...         "motto_vector",
+            ...         service=VectorServiceOptions(
+            ...             provider="openai",
+            ...             model_name="text-embedding-3-small",
+            ...             authentication={
+            ...                 "providerKey": "EMB_AUTH_KEY",
+            ...             },
+            ...         ),
+            ...     )
+            ...     .add_partition_by(["motto_id"])
+            ...     .build()
+            ... )
+            >>> my_table_vz2 = asyncio.run(async_database.create_table(
+            ...     "mottos_vz2",
+            ...     definition=table_definition_vz2,
             ... ))
         """
 
