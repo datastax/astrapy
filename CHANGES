@@ -1,3 +1,7 @@
+v 2.1.0
+=======
+Same as 2.1.0rc1
+
 v 2.1.0rc1
 ==========
 AlterTableOperation subclasses:
