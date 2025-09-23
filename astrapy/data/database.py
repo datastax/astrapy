@@ -729,7 +729,7 @@ class Database:
             ...     "my_events",
             ...     definition=collection_definition,
             ... )
-
+            >>>
             >>>
             >>> # Create a collection with the definition as object
             >>> from astrapy.info import CollectionVectorOptions
@@ -746,7 +746,7 @@ class Database:
             ...     definition=collection_definition_1,
             ... )
             >>>
-
+            >>>
             >>> # Create a collection with the definition as plain dictionary
             >>> collection_definition_2 = {
             ...     "indexing": {"deny": ["annotations", "logs"]},
@@ -759,6 +759,43 @@ class Database:
             ...     "my_events",
             ...     definition=collection_definition_2,
             ... )
+            >>>
+            >>>
+            >>> # Examples with an embedding service ('vectorize'):
+            >>>
+            >>> # Create a collection with 'vectorize' and on-the-fly authentication (by headers)
+            >>> collection_definition_vz1 = (
+            ...     CollectionDefinition.builder()
+            ...     .set_vector_service(
+            ...         "openai",
+            ...         "text-embedding-3-small",
+            ...     )
+            ...     .build()
+            ... )
+            >>> my_collection_vz1 = database.create_collection(
+            ...     "my_entries",
+            ...     definition=collection_definition_vz1,
+            ...     embedding_api_key="sk-...",
+            ... )
+            >>>
+            >>>
+            >>> # Create a 'vectorize' collection, its secret pre-stored on DB as 'EMB_AUTH_KEY'
+            >>> collection_definition_vz2 = (
+            ...     CollectionDefinition.builder()
+            ...     .set_vector_service(
+            ...         "openai",
+            ...         "text-embedding-3-small",
+            ...         authentication={
+            ...             "providerKey": "EMB_AUTH_KEY",
+            ...         },
+            ...     )
+            ...     .build()
+            ... )
+            >>> my_collection_vz2 = database.create_collection(
+            ...     "my_kms_entries",
+            ...     definition=collection_definition_vz2,
+            ... )
+            >>>
         """
 
         cc_definition: dict[str, Any] = CollectionDefinition.coerce(
@@ -2868,6 +2905,7 @@ class AsyncDatabase:
             ...     definition=collection_definition,
             ... ))
             >>>
+            >>>
             >>> # Create a collection with the definition as object
             >>> from astrapy.info import CollectionVectorOptions
             >>>
@@ -2896,6 +2934,43 @@ class AsyncDatabase:
             ...     "my_events",
             ...     definition=collection_definition_2,
             ... ))
+            >>>
+            >>>
+            >>> # Examples with an embedding service ('vectorize'):
+            >>>
+            >>> # Create a collection with 'vectorize' and on-the-fly authentication (by headers)
+            >>> collection_definition_vz1 = (
+            ...     CollectionDefinition.builder()
+            ...     .set_vector_service(
+            ...         "openai",
+            ...         "text-embedding-3-small",
+            ...     )
+            ...     .build()
+            ... )
+            >>> my_collection_vz1 = asyncio.run(async_database.create_collection(
+            ...     "my_entries",
+            ...     definition=collection_definition_vz1,
+            ...     embedding_api_key="sk-...",
+            ... ))
+            >>>
+            >>>
+            >>> # Create a 'vectorize' collection, its secret pre-stored on DB as 'EMB_AUTH_KEY'
+            >>> collection_definition_vz2 = (
+            ...     CollectionDefinition.builder()
+            ...     .set_vector_service(
+            ...         "openai",
+            ...         "text-embedding-3-small",
+            ...         authentication={
+            ...             "providerKey": "EMB_AUTH_KEY",
+            ...         },
+            ...     )
+            ...     .build()
+            ... )
+            >>> my_collection_vz2 = asyncio.run(async_database.create_collection(()
+            ...     "my_kms_entries",
+            ...     definition=collection_definition_vz2,
+            ... ))
+            >>>
         """
 
         cc_definition: dict[str, Any] = CollectionDefinition.coerce(

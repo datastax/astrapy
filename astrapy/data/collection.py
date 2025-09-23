@@ -152,7 +152,7 @@ class Collection(Generic[DOC]):
         ...     "https://01234567-....apps.astra.datastax.com",
         ...     token="AstraCS:..."
         ... )
-
+        >>>
         >>> # Create a collection using the fluent syntax for its definition
         >>> from astrapy.constants import VectorMetric
         >>> from astrapy.info import CollectionDefinition
@@ -168,7 +168,7 @@ class Collection(Generic[DOC]):
         ...     "my_events",
         ...     definition=collection_definition,
         ... )
-
+        >>>
         >>>
         >>> # Create a collection with the definition as object
         >>> from astrapy.info import CollectionVectorOptions
@@ -185,7 +185,7 @@ class Collection(Generic[DOC]):
         ...     definition=collection_definition_1,
         ... )
         >>>
-
+        >>>
         >>> # Create a collection with the definition as plain dictionary
         >>> collection_definition_2 = {
         ...     "indexing": {"deny": ["annotations", "logs"]},
@@ -198,12 +198,51 @@ class Collection(Generic[DOC]):
         ...     "my_events",
         ...     definition=collection_definition_2,
         ... )
-
+        >>>
         >>> # Get a reference to an existing collection
         >>> # (no checks are performed on DB)
         >>> my_collection_3a = database.get_collection("my_events")
         >>> my_collection_3b = database.my_events
         >>> my_collection_3c = database["my_events"]
+        >>>
+        >>> # Examples with an embedding service ('vectorize'):
+        >>>
+        >>> # Create a collection with 'vectorize' and on-the-fly authentication (by headers)
+        >>> collection_definition_vz1 = (
+        ...     CollectionDefinition.builder()
+        ...     .set_vector_service(
+        ...         "openai",
+        ...         "text-embedding-3-small",
+        ...     )
+        ...     .build()
+        ... )
+        >>> my_collection_vz1 = database.create_collection(
+        ...     "my_entries",
+        ...     definition=collection_definition_vz1,
+        ...     embedding_api_key="sk-...",
+        ... )
+        >>>
+        >>>
+        >>> # Create a 'vectorize' collection, its secret pre-stored on DB as 'EMB_AUTH_KEY'
+        >>> collection_definition_vz2 = (
+        ...     CollectionDefinition.builder()
+        ...     .set_vector_service(
+        ...         "openai",
+        ...         "text-embedding-3-small",
+        ...         authentication={
+        ...             "providerKey": "EMB_AUTH_KEY",
+        ...         },
+        ...     )
+        ...     .build()
+        ... )
+        >>> my_collection_vz2 = database.create_collection(
+        ...     "my_kms_entries",
+        ...     definition=collection_definition_vz2,
+        ... )
+        >>>
+        >>>
+        >>> # Get a reference to an existing collection and set its 'vectorize' authentication:
+        >>> my_collection_vz1a = database.get_collection("my_entries", embedding_api_key="sk-...")
 
     Note:
         creating an instance of Collection does not trigger actual creation
@@ -3066,7 +3105,7 @@ class AsyncCollection(Generic[DOC]):
         ...     "https://01234567-....apps.astra.datastax.com",
         ...     token="AstraCS:..."
         ... )
-
+        >>>
         >>> # Create a collection using the fluent syntax for its definition
         >>> from astrapy.constants import VectorMetric
         >>> from astrapy.info import CollectionDefinition
@@ -3082,7 +3121,7 @@ class AsyncCollection(Generic[DOC]):
         ...     "my_events",
         ...     definition=collection_definition,
         ... )
-
+        >>>
         >>>
         >>> # Create a collection with the definition as object
         >>> from astrapy.info import CollectionVectorOptions
@@ -3099,7 +3138,7 @@ class AsyncCollection(Generic[DOC]):
         ...     definition=collection_definition_1,
         ... )
         >>>
-
+        >>>
         >>> # Create a collection with the definition as plain dictionary
         >>> collection_definition_2 = {
         ...     "indexing": {"deny": ["annotations", "logs"]},
@@ -3112,12 +3151,51 @@ class AsyncCollection(Generic[DOC]):
         ...     "my_events",
         ...     definition=collection_definition_2,
         ... )
-
+        >>>
         >>> # Get a reference to an existing collection
         >>> # (no checks are performed on DB)
         >>> my_collection_3a = async_database.get_collection("my_events")
         >>> my_collection_3b = async_database.my_events
         >>> my_collection_3c = async_database["my_events"]
+        >>>
+        >>> # Examples with an embedding service ('vectorize'):
+        >>>
+        >>> # Create a collection with 'vectorize' and on-the-fly authentication (by headers)
+        >>> collection_definition_vz1 = (
+        ...     CollectionDefinition.builder()
+        ...     .set_vector_service(
+        ...         "openai",
+        ...         "text-embedding-3-small",
+        ...     )
+        ...     .build()
+        ... )
+        >>> my_collection_vz1 = await async_database.create_collection(
+        ...     "my_entries",
+        ...     definition=collection_definition_vz1,
+        ...     embedding_api_key="sk-...",
+        ... )
+        >>>
+        >>>
+        >>> # Create a 'vectorize' collection, its secret pre-stored on DB as 'EMB_AUTH_KEY'
+        >>> collection_definition_vz2 = (
+        ...     CollectionDefinition.builder()
+        ...     .set_vector_service(
+        ...         "openai",
+        ...         "text-embedding-3-small",
+        ...         authentication={
+        ...             "providerKey": "EMB_AUTH_KEY",
+        ...         },
+        ...     )
+        ...     .build()
+        ... )
+        >>> my_collection_vz2 = await async_database.create_collection(
+        ...     "my_kms_entries",
+        ...     definition=collection_definition_vz2,
+        ... )
+        >>>
+        >>>
+        >>> # Get a reference to an existing collection and set its 'vectorize' authentication:
+        >>> my_collection_vz1a = async_database.get_collection("my_entries", embedding_api_key="sk-...")
 
     Note:
         creating an instance of AsyncCollection does not trigger actual creation
