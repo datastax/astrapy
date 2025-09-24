@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-import re
+import time
 from typing import TYPE_CHECKING
 
 from astrapy.data_types import DataAPITimestamp
@@ -24,6 +24,8 @@ from astrapy.info import CreateTypeDefinition
 if TYPE_CHECKING:
     from cassandra.cluster import Session
 
+
+SCHEMA_PROPAGATION_DELAY_SECONDS = 1.0
 
 TABLE_NAME_COUNTER = "test_table_counter"
 CREATE_TABLE_COUNTER = (
@@ -128,33 +130,20 @@ LOWSUPPORT_TIMEUUID_DOC1 = {
 
 
 def _extract_udt_definition(
-    session: Session, keyspace: str, udt_name: str
+    session: Session,
+    keyspace: str,
+    udt_name: str,
+    allow_schema_propagation_delay: bool = True,
 ) -> CreateTypeDefinition | None:
-    udt_names: list[str] = [
-        row.name
-        for row in session.execute("desc types;")
-        if row.keyspace_name == "default_keyspace"
-    ]
-    if udt_name not in udt_names:
-        return None
-    udt_create_stmt = session.execute(f"desc type {udt_name};").one().create_statement
+    if allow_schema_propagation_delay:
+        time.sleep(SCHEMA_PROPAGATION_DELAY_SECONDS)
 
-    full_type_name = f"{keyspace}.{udt_name}"
-    pattern = re.compile(
-        rf"(?i)\bCREATE\s+TYPE\s+{re.escape(full_type_name)}\s*\(\s*(.*?)\s*\);",
-        re.DOTALL,
+    metadata_type = session.cluster.metadata.keyspaces[keyspace].user_types.get(
+        udt_name
     )
-    match = pattern.search(udt_create_stmt)
+    if metadata_type is None:
+        return None
 
-    fields: list[tuple[str, str]]
-    if match:
-        fields_str = match.group(1)
-        fields = [
-            tuple(map(str.strip, line.split(None, 1)))  # type: ignore[misc]
-            for line in re.split(r",\s*(?![^(]*\))", fields_str.strip())
-            if line.strip()
-        ]
-    else:
-        fields = []
+    fields = dict(zip(metadata_type.field_names, metadata_type.field_types))
 
     return CreateTypeDefinition(fields=dict(fields))

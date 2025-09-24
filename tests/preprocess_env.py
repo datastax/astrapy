@@ -129,7 +129,10 @@ if DOCKER_COMPOSE_LOCAL_DATA_API:
 
         class RedefineCommandDockerCompose(DockerCompose):
             def docker_compose_command(self) -> list[str]:
-                docker_compose_cmd = ["docker", "compose"]
+                docker_compose_cmd = [
+                    os.environ.get("DOCKER_COMMAND_NAME", "docker"),
+                    "compose",
+                ]
                 for file in self.compose_file_names:
                     docker_compose_cmd += ["-f", file]
                 if self.env_file:

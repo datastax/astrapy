@@ -137,7 +137,6 @@ class Table(Generic[ROW]):
         ...     token="AstraCS:..."
         ... )
         >>>
-
         >>> # Create a table using the fluent syntax for definition
         >>> from astrapy.constants import SortMode
         >>> from astrapy.info import (
@@ -161,7 +160,7 @@ class Table(Generic[ROW]):
         ...     "games",
         ...     definition=table_definition,
         ... )
-
+        >>>
         >>> # Create a table with the definition as object
         >>> # (and do not raise an error if the table exists already)
         >>> from astrapy.info import (
@@ -207,7 +206,7 @@ class Table(Generic[ROW]):
         ...     definition=table_definition_1,
         ...     if_not_exists=True,
         ... )
-
+        >>>
         >>> # Create a table with the definition as plain dictionary
         >>> # (and do not raise an error if the table exists already)
         >>> table_definition_2 = {
@@ -230,10 +229,70 @@ class Table(Generic[ROW]):
         ...     definition=table_definition_2,
         ...     if_not_exists=True,
         ... )
-
+        >>>
         >>> # Get a reference to an existing table
         >>> # (no checks are performed on DB)
         >>> my_table_3 = database.get_table("games")
+        >>>
+        >>> # Examples with an embedding service ('vectorize'):
+        >>> (An index is needed for vector search: see table `create_vector_index` method)
+        >>>
+        >>> # Create a table with 'vectorize' and on-the-fly authentication (by headers)
+        >>> from astrapy.info import (
+        ...     CreateTableDefinition,
+        ...     ColumnType,
+        ...     VectorServiceOptions,
+        ... )
+        >>> table_definition_vz1 = (
+        ...     CreateTableDefinition.builder()
+        ...     .add_column("motto_id", ColumnType.TEXT)
+        ...     .add_column("motto_text", ColumnType.TEXT)
+        ...     .add_vector_column(
+        ...         "motto_vector",
+        ...         service=VectorServiceOptions(
+        ...             provider="openai",
+        ...             model_name="text-embedding-3-small",
+        ...         ),
+        ...     )
+        ...     .add_partition_by(["motto_id"])
+        ...     .build()
+        ... )
+        >>> my_table_vz1 = database.create_table(
+        ...     "mottos_vz1",
+        ...     definition=table_definition_vz1,
+        ...     embedding_api_key="sk-...",
+        ... )
+        >>>
+        >>> # Create a 'vectorize' table, its secret pre-stored on DB as 'EMB_AUTH_KEY'
+        >>> from astrapy.info import (
+        ...     CreateTableDefinition,
+        ...     ColumnType,
+        ...     VectorServiceOptions,
+        ... )
+        >>> table_definition_vz2 = (
+        ...     CreateTableDefinition.builder()
+        ...     .add_column("motto_id", ColumnType.TEXT)
+        ...     .add_column("motto_text", ColumnType.TEXT)
+        ...     .add_vector_column(
+        ...         "motto_vector",
+        ...         service=VectorServiceOptions(
+        ...             provider="openai",
+        ...             model_name="text-embedding-3-small",
+        ...             authentication={
+        ...                 "providerKey": "EMB_AUTH_KEY",
+        ...             },
+        ...         ),
+        ...     )
+        ...     .add_partition_by(["motto_id"])
+        ...     .build()
+        ... )
+        >>> my_table_vz2 = database.create_table(
+        ...     "mottos_vz2",
+        ...     definition=table_definition_vz2,
+        ... )
+        >>>
+        >>> # Get a reference to an existing table and set its 'vectorize' authentication:
+        >>> my_table_vz1a = database.get_table("mottos_vz1", embedding_api_key="sk-...")
 
     Note:
         creating an instance of Table does not trigger, in itself, actual
@@ -3107,7 +3166,7 @@ class AsyncTable(Generic[ROW]):
         ...     "https://01234567-....apps.astra.datastax.com",
         ...     token="AstraCS:..."
         ... )
-
+        >>>
         >>> # Create a table using the fluent syntax for definition
         >>> from astrapy.constants import SortMode
         >>> from astrapy.info import (
@@ -3131,7 +3190,7 @@ class AsyncTable(Generic[ROW]):
         ...     "games",
         ...     definition=table_definition,
         ... )
-
+        >>>
         >>> # Create a table with the definition as object
         >>> # (and do not raise an error if the table exists already)
         >>> from astrapy.info import (
@@ -3177,7 +3236,7 @@ class AsyncTable(Generic[ROW]):
         ...     definition=table_definition_1,
         ...     if_not_exists=True,
         ... )
-
+        >>>
         >>> # Create a table with the definition as plain dictionary
         >>> # (and do not raise an error if the table exists already)
         >>> table_definition_2 = {
@@ -3200,10 +3259,70 @@ class AsyncTable(Generic[ROW]):
         ...     definition=table_definition_2,
         ...     if_not_exists=True,
         ... )
-
+        >>>
         >>> # Get a reference to an existing table
         >>> # (no checks are performed on DB)
         >>> my_table_4 = async_database.get_table("my_already_existing_table")
+        >>>
+        >>> # Examples with an embedding service ('vectorize'):
+        >>> (An index is needed for vector search: see table `create_vector_index` method)
+        >>>
+        >>> # Create a table with 'vectorize' and on-the-fly authentication (by headers)
+        >>> from astrapy.info import (
+        ...     CreateTableDefinition,
+        ...     ColumnType,
+        ...     VectorServiceOptions,
+        ... )
+        >>> table_definition_vz1 = (
+        ...     CreateTableDefinition.builder()
+        ...     .add_column("motto_id", ColumnType.TEXT)
+        ...     .add_column("motto_text", ColumnType.TEXT)
+        ...     .add_vector_column(
+        ...         "motto_vector",
+        ...         service=VectorServiceOptions(
+        ...             provider="openai",
+        ...             model_name="text-embedding-3-small",
+        ...         ),
+        ...     )
+        ...     .add_partition_by(["motto_id"])
+        ...     .build()
+        ... )
+        >>> my_table_vz1 = await async_database.create_table(
+        ...     "mottos_vz1",
+        ...     definition=table_definition_vz1,
+        ...     embedding_api_key="sk-...",
+        ... )
+        >>>
+        >>> # Create a 'vectorize' table, its secret pre-stored on DB as 'EMB_AUTH_KEY'
+        >>> from astrapy.info import (
+        ...     CreateTableDefinition,
+        ...     ColumnType,
+        ...     VectorServiceOptions,
+        ... )
+        >>> table_definition_vz2 = (
+        ...     CreateTableDefinition.builder()
+        ...     .add_column("motto_id", ColumnType.TEXT)
+        ...     .add_column("motto_text", ColumnType.TEXT)
+        ...     .add_vector_column(
+        ...         "motto_vector",
+        ...         service=VectorServiceOptions(
+        ...             provider="openai",
+        ...             model_name="text-embedding-3-small",
+        ...             authentication={
+        ...                 "providerKey": "EMB_AUTH_KEY",
+        ...             },
+        ...         ),
+        ...     )
+        ...     .add_partition_by(["motto_id"])
+        ...     .build()
+        ... )
+        >>> my_table_vz2 = await async_database.create_table(
+        ...     "mottos_vz2",
+        ...     definition=table_definition_vz2,
+        ... )
+        >>>
+        >>> # Get a reference to an existing table and set its 'vectorize' authentication:
+        >>> my_table_vz1a = async_database.get_table("mottos_vz1", embedding_api_key="sk-...")
 
     Note:
         creating an instance of AsyncTable does not trigger, in itself, actual

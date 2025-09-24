@@ -14,8 +14,6 @@
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from astrapy.data_types import DataAPIMap, DataAPISet
@@ -24,10 +22,6 @@ from ..conftest import IS_ASTRA_DB, DefaultTable
 
 
 class TestTableCollectionColumnsSync:
-    @pytest.mark.skipif(
-        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
-        reason="Currently available only on cutting-edge Data API `main`",
-    )
     @pytest.mark.describe("test of table list and set columns, filtering, sync")
     def test_table_listset_columns_filtering_sync(
         self,
@@ -117,10 +111,6 @@ class TestTableCollectionColumnsSync:
         assert res_l3 is None
         assert table.find({"list_int": {"$all": [21, 99]}}, limit=1).to_list() == []
 
-    @pytest.mark.skipif(
-        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
-        reason="Currently available only on cutting-edge Data API `main`",
-    )
     @pytest.mark.describe("test of table map columns, filtering, sync")
     def test_table_map_columns_filtering_sync(
         self,

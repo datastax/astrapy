@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, TypeVar, cast
+from typing import Any, Dict, TypeVar, Union, cast
 
 from astrapy.data.info.table_descriptor.table_columns import (
     TableColumnTypeDescriptor,
@@ -110,9 +110,14 @@ class AlterTableAddColumns(AlterTableOperation):
 
     columns: dict[str, TableColumnTypeDescriptor]
 
-    def __init__(self, *, columns: dict[str, TableColumnTypeDescriptor]) -> None:
+    def __init__(
+        self, columns: dict[str, TableColumnTypeDescriptor | dict[str, Any]]
+    ) -> None:
         self._name = "add"
-        self.columns = columns
+        self.columns = {
+            col_n: TableColumnTypeDescriptor.coerce(col_v)
+            for col_n, col_v in columns.items()
+        }
 
     def __repr__(self) -> str:
         _col_desc = f"columns=[{','.join(sorted(self.columns.keys()))}]"
@@ -162,13 +167,14 @@ class AlterTableDropColumns(AlterTableOperation):
 
     Attributes:
         columns: a list of the column names to drop.
+            Passing a single string has the same effect as passing a single-item list.
     """
 
     columns: list[str]
 
-    def __init__(self, *, columns: list[str]) -> None:
+    def __init__(self, columns: list[str] | str) -> None:
         self._name = "drop"
-        self.columns = columns
+        self.columns = [columns] if isinstance(columns, str) else columns
 
     def __repr__(self) -> str:
         _col_desc = f"columns=[{','.join(self.columns)}]"
@@ -221,9 +227,19 @@ class AlterTableAddVectorize(AlterTableOperation):
 
     columns: dict[str, VectorServiceOptions]
 
-    def __init__(self, *, columns: dict[str, VectorServiceOptions]) -> None:
+    def __init__(
+        self, columns: dict[str, VectorServiceOptions | dict[str, Any]]
+    ) -> None:
         self._name = "addVectorize"
-        self.columns = columns
+        columns_ = {
+            col_n: VectorServiceOptions.coerce(col_v)
+            for col_n, col_v in columns.items()
+        }
+        if any(_col_svc is None for _col_svc in columns_.values()):
+            raise ValueError(
+                "Vector service definition cannot be None for AlterTableAddVectorize"
+            )
+        self.columns = cast(Dict[str, VectorServiceOptions], columns_)
 
     def __repr__(self) -> str:
         _cols_desc = [
@@ -257,7 +273,7 @@ class AlterTableAddVectorize(AlterTableOperation):
             )
         return AlterTableAddVectorize(
             columns=cast(
-                Dict[str, VectorServiceOptions],
+                Dict[str, Union[VectorServiceOptions, Dict[str, Any]]],
                 _columns,
             )
         )
@@ -289,13 +305,14 @@ class AlterTableDropVectorize(AlterTableOperation):
 
     Attributes:
         columns: a list of the column names whose vectorize service is to be removed.
+            Passing a single string has the same effect as passing a single-item list.
     """
 
     columns: list[str]
 
-    def __init__(self, *, columns: list[str]) -> None:
+    def __init__(self, columns: list[str] | str) -> None:
         self._name = "dropVectorize"
-        self.columns = columns
+        self.columns = [columns] if isinstance(columns, str) else columns
 
     def __repr__(self) -> str:
         _col_desc = f"columns=[{','.join(self.columns)}]"

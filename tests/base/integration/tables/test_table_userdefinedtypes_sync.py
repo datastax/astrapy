@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import os
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -79,10 +78,6 @@ SERIALIZER_BY_CLASS: dict[type, SerializerFunctionType] = {
 }
 
 
-@pytest.mark.skipif(
-    "ASTRAPY_TEST_UDT" not in os.environ,
-    reason="UDT testing not enabled",
-)
 class TestTableUserDefinedTypes:
     @pytest.mark.skipif(not CQL_AVAILABLE, reason="No CQL session available")
     @pytest.mark.describe("Test of UDT lifecycle, sync")
@@ -589,10 +584,6 @@ class TestTableUserDefinedTypes:
         finally:
             cql_session.execute(UNSUPPORTED_UDT_DROP)
 
-    @pytest.mark.skipif(
-        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
-        reason="Currently available only on cutting-edge Data API `main`",
-    )
     @pytest.mark.describe("Test of UDT filtering, sync")
     def test_table_udt_filtering_sync(
         self,

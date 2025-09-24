@@ -1,5 +1,13 @@
+v 2.1.0
+=======
+Same as 2.1.0rc1
+
 v 2.1.0rc1
 ==========
+AlterTableOperation subclasses:
+    - Added positional passing of parameter constructor
+    - Accept single-string parameter for the drop-column and drop-vectorize cases
+    - Add and AddVectorize constructors accept a 'columns' dict with dict values (now individually coerced)
 Switch default encode_maps_as_lists_in_tables to "DATAAPIMAPS" (no observable changes w.r.t. previous releases)
 Bugfix: fix paykload encoding for empty maps/DataAPIMaps
 User-defined types in tables:
@@ -34,6 +42,8 @@ maintenance: improve integration test coverage for:
     - tables, lexical/BM25-related DML
     - tables, logical filtering (i.e. $and, $or between clauses)
     - multiple vectorize columns in a Table
+maintenance: replaced "DESC TYPES"-based cql-driven UDT testing into cluster-metadata-inspection-based equivalent (supported on Astra)
+maintenance: streamlined several integration tests into targeting Astra as the latest Data API deploy supports the corresponding features
 maintenance: subsumed the specific testing opt-in env. var 'ASTRAPY_TEST_MAP2TUPLES=y' into the catch-all 'cutting-edge main' `ASTRAPY_TEST_LATEST_MAIN=y`
 maintenance: simplified SerdesOptions management in unit testing; some rationalization/refactoring of pre- and post-processing logic for tables in unit tests
 maintenance: switched to uv (from poetry)

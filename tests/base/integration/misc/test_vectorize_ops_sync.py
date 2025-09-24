@@ -20,7 +20,7 @@ from astrapy import Database
 from astrapy.constants import ModelStatus
 from astrapy.info import EmbeddingProvider, FindEmbeddingProvidersResult
 
-from ..conftest import IS_ASTRA_DB, clean_nulls_from_dict
+from ..conftest import clean_nulls_from_dict
 
 
 def _count_models(fep_result: FindEmbeddingProvidersResult) -> int:
@@ -62,22 +62,8 @@ class TestVectorizeOpsSync:
         cleaned_raw_info = clean_nulls_from_dict(
             ep_result.raw_info["embeddingProviders"]  # type: ignore[index]
         )
-        if IS_ASTRA_DB:
-            # TODO remove this (Astra-only) cleanup once apiModelSupport deployed
-            raw_info_has_ams = any(
-                "apiModelSupport" in model_dict
-                for prov_v in cleaned_raw_info.values()
-                for model_dict in prov_v["models"]
-            )
-            if not raw_info_has_ams:
-                for emb_prov in cleaned_dict_mapping.values():
-                    for model in emb_prov["models"]:
-                        if "apiModelSupport" in model:
-                            del model["apiModelSupport"]
-            assert cleaned_dict_mapping == cleaned_raw_info
+        assert cleaned_dict_mapping == cleaned_raw_info
 
-    # TODO: open to Astra DB once available
-    @pytest.mark.skipif(IS_ASTRA_DB, reason="Filtering models not yet on Astra DB")
     @pytest.mark.describe("test of find_embedding_providers filtering, sync")
     def test_filtered_findembeddingproviders_sync(
         self,

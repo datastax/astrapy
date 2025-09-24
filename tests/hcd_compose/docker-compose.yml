@@ -1,6 +1,6 @@
 services:
   hcd:
-    image: 559669398656.dkr.ecr.us-west-2.amazonaws.com/engops-shared/hcd/staging/hcd:1.2.1-early-preview
+    image: 559669398656.dkr.ecr.us-west-2.amazonaws.com/engops-shared/hcd/prod/hcd:1.2.1-early-preview
     networks:
       - stargate
     mem_limit: 2G
@@ -8,9 +8,9 @@ services:
       - MAX_HEAP_SIZE=1536M
       - CLUSTER_NAME=hcd-1.2.1-early-preview-cluster
       - DS_LICENSE=accept
-      - HCD_AUTO_CONF_OFF=cassandra.yaml
+      - HCD_AUTO_CONF_OFF=xcassandra.yaml
     volumes:
-      - ./cassandra-hcd.yaml:/opt/hcd/resources/cassandra/conf/cassandra.yaml:rw
+      - ./cassandra-hcd.yaml:/opt/hcd/resources/cassandra/conf/xcassandra.yaml:rw
     ports:
       - "9042:9042"
     healthcheck:
@@ -20,7 +20,7 @@ services:
       retries: 20
 
   data-api:
-    image: stargateio/data-api:v1.0.27
+    image: stargateio/data-api:v1.0.32
     depends_on:
       hcd:
         condition: service_healthy

@@ -726,6 +726,11 @@ Depending on the test, different environment variables are needed: refer to
 the templates in `tests/env_templates`. The "basic" credentials (one of the three options)
 are always required, _even for unit testing_.
 
+#### Docker vs. Podman
+
+In case you use a different Docker-compatible container runtime, viz. `podman`, make sure to export
+the environment variable `DOCKER_COMMAND_NAME="podman"` to have the **DockerCompose** tests use it properly.
+
 #### Multiple Python versions
 
 If may be useful to run e.g. unit tests with multiple Python versions. You can have `uv`
@@ -737,7 +742,7 @@ uv venv --python 3.8 .venv-3.8
 uv sync --dev --active
 ```
 
-Then, with the desired virtual env active, you will simply run e.g. `uv run pytest [...]`.
+Then, with the desired virtual env active, you will run e.g. `uv run --active pytest [...]`.
 
 Most make targets will also support running in the named virtual env:
 assuming you activated a certain virtual env, you can run e.g.: `make format VENV=true`.
@@ -806,11 +811,7 @@ certain environment variables, otherwise the associated tests are excluded from 
 #### Cutting-edge features on `main`
 
 Prepend tests with a `ASTRAPY_TEST_LATEST_MAIN=y` for features found on `main` that are not released anywhere.
-
-#### testing UDT support
-
-Prepend tests with a `ASTRAPY_TEST_UDT=y` to enable testing of Data API support for user-defined types (UDTs).
-These integration tests are off by default, pending release on all test target environments.
+_(Tip: run a code search first to see what is currently marked as such. Chances are nothing is.)_
 
 ## Appendices
 
