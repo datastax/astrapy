@@ -1,4 +1,4 @@
-name: Run unit tests
+name: Test OIDC-powered ECR image pull
 
 on:
   push:
@@ -18,7 +18,7 @@ env:
   AWS_ECR_ROLE_NAME: ${{ secrets.AWS_ECR_ROLE_NAME }}
   AWS_ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPOSITORY }}
   AWS_ECR_REGISTRY: ${{ secrets.AWS_ECR_REGISTRY }}
-  AWS_ECR_HCD_IMAGE_TAG: "v1.2.1-early-preview"
+  AWS_ECR_HCD_IMAGE_TAG: "1.2.1-early-preview"
 
 jobs:
   pull:
