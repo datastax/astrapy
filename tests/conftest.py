@@ -213,8 +213,14 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
         token=api_creds["token"],
     )
     _database_admin = _database.get_database_admin()
-    _database_admin.create_keyspace(api_creds["keyspace"])
-    _database_admin.create_keyspace(SECONDARY_KEYSPACE)
+    found_keyspaces = _database_admin.list_keyspaces()
+    # This is an ugly way to reduce the risk of collision from concurrent
+    # unit tests in CI/CD (which shows as "409 Conflict")
+    if api_creds["keyspace"] not in found_keyspaces:
+        _database_admin.create_keyspace(api_creds["keyspace"])
+    found_keyspaces_2 = _database_admin.list_keyspaces()
+    if SECONDARY_KEYSPACE not in found_keyspaces_2:
+        _database_admin.create_keyspace(SECONDARY_KEYSPACE)
     # end of keyspace-ensuring block
 
     return api_creds
