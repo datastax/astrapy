@@ -1,6 +1,15 @@
+main
+====
+maintenance. Improvement in testing machinery:
+    - Simplified keyspace management in testing.
+    - Made keyspace names fully optional in all cases (typically one can forget about them).
+    - Adapted/simplified README about testing.
+
+
 v 2.1.0
 =======
 Same as 2.1.0rc1
+
 
 v 2.1.0rc1
 ==========
@@ -52,9 +61,11 @@ maintenance: pin h11 to 0.16.0 or higher (after a vulnerability report)
 maintenance: switch to latest HCD for non-Astra CI github action
 maintenance: introduce CQL-driven testing for low/no-support table columns. `LOCAL_DATA_API_APPLICATION_TOKEN` local test auth not supported anymore.
 
+
 v 2.0.1
 =======
 bugfix: receiving `'$vector': null` caused response parsing to break
+
 
 v 2.0.0
 =======

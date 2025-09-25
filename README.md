@@ -709,6 +709,17 @@ naming convention and module structure).
 
 ### Running tests
 
+#### Typical testing
+
+In most cases you want to run the "base" test suite (the one in the CI/CD automation) against either Astra DB or a local Data API + HCD.
+
+Steps:
+
+1. export variables as in one of the `tests/env_templates/*.base.template` examples.
+2. `uv venv --python ">=3.8<3.13" && uv run pytest tests/base`
+
+#### All available tests/targets
+
 Tests are grouped in:
 - "base", covering general-purpose astrapy functionality. Divided in unit/integration;
 - "vectorize", extensively running a base workload on all provider/integration choices;
@@ -718,18 +729,24 @@ Astrapy's CI only runs "base". The others are to be checked manually when it's n
 
 Tests can be run on three types of Data API _targets_ (with slight differences in what is applicable):
 
-- **DockerCompose**: HCD+Data API, started by the test initialization with `docker-compose`. _Note that in this case you will have to manually destroy the created containers._
-- **nonAstra**: a ready-to-use (user-supplied) local Data API (e.g. using `tests/dse_compose`)
 - **Astra**: an Astra DB target account (or two, as some tests are specific to dev environment)
+- **Local**: a ready-to-use (user-supplied) local Data API on top of a DSE/HCD (e.g. using `tests/hcd_compose`).
+- **DockerCompose**: HCD+Data API, started by the test itself on startup. This is used in the Github action `local` workflow. _Note that in this case the containers created will not be automatically destroyed._
 
-Depending on the test, different environment variables are needed: refer to
-the templates in `tests/env_templates`. The "basic" credentials (one of the three options)
-are always required, _even for unit testing_.
+Depending on the target chosen, different environment variables are needed: refer to
+the `tests/env_templates/*.base.template` examples.
+Note that the variables defined in the desired "base" template **must** be set to run test, even for unit tests.
 
 #### Docker vs. Podman
 
-In case you use a different Docker-compatible container runtime, viz. `podman`, make sure to export
-the environment variable `DOCKER_COMMAND_NAME="podman"` to have the **DockerCompose** tests use it properly.
+In case you use a different Docker-compatible container runtime (e.g. `podman`) and are running against the
+"DockerCompose" target make sure to export the environment variable such as `DOCKER_COMMAND_NAME="podman"`
+to maek the test startup logic work properly.
+
+#### Keyspaces
+
+You shoud never need to worry about keyspaces. Tests use two keyspaces, which are created if not found, with default names.
+The env templates show how to override those names, if you want to.
 
 #### Multiple Python versions
 
@@ -746,6 +763,8 @@ Then, with the desired virtual env active, you will run e.g. `uv run --active py
 
 Most make targets will also support running in the named virtual env:
 assuming you activated a certain virtual env, you can run e.g.: `make format VENV=true`.
+
+**Warning: Python 3.13+ currently not supported to run integration tests! (but the package itself is all right).**
 
 #### Adding/changing dependencies
 
@@ -770,7 +789,7 @@ uv run pytest tests/base/integration
 ```
 
 _Note: when running locally, the reranking-related tests require `ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER=y` and
-HEADER_RERANKING_API_KEY_NVIDIA="AstraCS:<dev token...>`._
+HEADER_RERANKING_API_KEY_NVIDIA="AstraCS:<dev token...>` (as exemplified in the local env templates)._
 
 Admin:
 

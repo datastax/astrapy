@@ -30,8 +30,10 @@ from astrapy.authentication import (
     TokenProvider,
     UsernamePasswordTokenProvider,
 )
+from astrapy.settings.defaults import DEFAULT_ASTRA_DB_KEYSPACE
 
 DOCKER_COMPOSE_SLEEP_TIME_SECONDS = 20
+DEFAULT_SECONDARY_KEYSPACE = "secondary_keyspace"
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 docker_compose_filepath = os.path.join(base_dir, "hcd_compose")
@@ -39,7 +41,7 @@ docker_compose_filepath = os.path.join(base_dir, "hcd_compose")
 
 IS_ASTRA_DB: bool
 DOCKER_COMPOSE_LOCAL_DATA_API: bool
-SECONDARY_KEYSPACE: str | None = None
+SECONDARY_KEYSPACE: str
 ASTRA_DB_API_ENDPOINT: str | None = None
 ASTRA_DB_APPLICATION_TOKEN: str | None = None
 ASTRA_DB_KEYSPACE: str | None = None
@@ -48,7 +50,7 @@ LOCAL_DATA_API_PASSWORD: str | None = None
 LOCAL_DATA_API_ENDPOINT: str | None = None
 LOCAL_CASSANDRA_CONTACT_POINT: str | None = None
 LOCAL_CASSANDRA_PORT: str | None = None
-LOCAL_DATA_API_KEYSPACE: str | None = None
+LOCAL_DATA_API_KEYSPACE: str = DEFAULT_ASTRA_DB_KEYSPACE
 
 ASTRA_DB_TOKEN_PROVIDER: TokenProvider | None = None
 LOCAL_DATA_API_TOKEN_PROVIDER: TokenProvider | None = None
@@ -62,10 +64,12 @@ if "LOCAL_DATA_API_ENDPOINT" in os.environ:
     LOCAL_DATA_API_ENDPOINT = os.environ["LOCAL_DATA_API_ENDPOINT"]
     LOCAL_CASSANDRA_PORT = os.environ.get("LOCAL_CASSANDRA_PORT")
     LOCAL_CASSANDRA_CONTACT_POINT = os.environ["LOCAL_CASSANDRA_CONTACT_POINT"]
-    LOCAL_DATA_API_KEYSPACE = os.environ.get("LOCAL_DATA_API_KEYSPACE")
+    LOCAL_DATA_API_KEYSPACE = os.environ.get(
+        "LOCAL_DATA_API_KEYSPACE", DEFAULT_ASTRA_DB_KEYSPACE
+    )
     # no reason not to use it
     SECONDARY_KEYSPACE = os.environ.get(
-        "LOCAL_DATA_API_SECONDARY_KEYSPACE", "alternate_keyspace"
+        "LOCAL_DATA_API_SECONDARY_KEYSPACE", DEFAULT_SECONDARY_KEYSPACE
     )
 elif "DOCKER_COMPOSE_LOCAL_DATA_API" in os.environ:
     IS_ASTRA_DB = False
@@ -74,18 +78,22 @@ elif "DOCKER_COMPOSE_LOCAL_DATA_API" in os.environ:
     LOCAL_DATA_API_PASSWORD = "cassandra"
     LOCAL_DATA_API_ENDPOINT = "http://localhost:8181"
     LOCAL_CASSANDRA_CONTACT_POINT = "127.0.0.1"
-    LOCAL_DATA_API_KEYSPACE = os.environ.get("LOCAL_DATA_API_KEYSPACE")
+    LOCAL_DATA_API_KEYSPACE = os.environ.get(
+        "LOCAL_DATA_API_KEYSPACE", DEFAULT_ASTRA_DB_KEYSPACE
+    )
     # no reason not to use it
     SECONDARY_KEYSPACE = os.environ.get(
-        "LOCAL_DATA_API_SECONDARY_KEYSPACE", "alternate_keyspace"
+        "LOCAL_DATA_API_SECONDARY_KEYSPACE", DEFAULT_SECONDARY_KEYSPACE
     )
 elif "ASTRA_DB_API_ENDPOINT" in os.environ:
     IS_ASTRA_DB = True
     DOCKER_COMPOSE_LOCAL_DATA_API = False
-    SECONDARY_KEYSPACE = os.environ.get("ASTRA_DB_SECONDARY_KEYSPACE")
+    SECONDARY_KEYSPACE = os.environ.get(
+        "ASTRA_DB_SECONDARY_KEYSPACE", DEFAULT_SECONDARY_KEYSPACE
+    )
     ASTRA_DB_API_ENDPOINT = os.environ["ASTRA_DB_API_ENDPOINT"]
     ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
-    ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE")
+    ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_ASTRA_DB_KEYSPACE)
 else:
     raise ValueError("No credentials.")
 

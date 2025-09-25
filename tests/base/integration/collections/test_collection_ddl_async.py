@@ -34,7 +34,6 @@ from astrapy.info import (
 
 from ..conftest import (
     IS_ASTRA_DB,
-    SECONDARY_KEYSPACE,
     TEST_COLLECTION_NAME,
     DataAPICredentials,
     DataAPICredentialsInfo,
@@ -298,9 +297,6 @@ class TestCollectionDDLAsync:
         assert options.vector is not None
         assert options.vector.dimension == 2
 
-    @pytest.mark.skipif(
-        SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
-    )
     @pytest.mark.describe("test of Database list_collections on cross-keyspaces, async")
     async def test_database_list_collections_cross_keyspace_async(
         self,
@@ -312,9 +308,6 @@ class TestCollectionDDLAsync:
             keyspace=data_api_credentials_info["secondary_keyspace"]
         )
 
-    @pytest.mark.skipif(
-        SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
-    )
     @pytest.mark.describe("test of Database use_keyspace, async")
     async def test_database_use_keyspace_async(
         self,
@@ -329,14 +322,11 @@ class TestCollectionDDLAsync:
         assert at_database.keyspace == data_api_credentials_kwargs["keyspace"]
         assert TEST_COLLECTION_NAME in await at_database.list_collection_names()
 
-        at_database.use_keyspace(data_api_credentials_info["secondary_keyspace"])  # type: ignore[arg-type]
+        at_database.use_keyspace(data_api_credentials_info["secondary_keyspace"])
         assert at_database != async_database
         assert at_database.keyspace == data_api_credentials_info["secondary_keyspace"]
         assert TEST_COLLECTION_NAME not in await at_database.list_collection_names()
 
-    @pytest.mark.skipif(
-        SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
-    )
     @pytest.mark.describe("test of cross-keyspace collection lifecycle, async")
     async def test_collection_keyspace_async(
         self,

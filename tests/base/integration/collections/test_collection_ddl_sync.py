@@ -34,7 +34,6 @@ from astrapy.info import (
 
 from ..conftest import (
     IS_ASTRA_DB,
-    SECONDARY_KEYSPACE,
     TEST_COLLECTION_NAME,
     DataAPICredentials,
     DataAPICredentialsInfo,
@@ -296,9 +295,6 @@ class TestCollectionDDLSync:
         assert options.vector is not None
         assert options.vector.dimension == 2
 
-    @pytest.mark.skipif(
-        SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
-    )
     @pytest.mark.describe("test of Database list_collections on cross-keyspaces, sync")
     def test_database_list_collections_cross_keyspace_sync(
         self,
@@ -310,9 +306,6 @@ class TestCollectionDDLSync:
             keyspace=data_api_credentials_info["secondary_keyspace"]
         )
 
-    @pytest.mark.skipif(
-        SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
-    )
     @pytest.mark.describe("test of Database use_keyspace, sync")
     def test_database_use_keyspace_sync(
         self,
@@ -327,14 +320,11 @@ class TestCollectionDDLSync:
         assert t_database.keyspace == data_api_credentials_kwargs["keyspace"]
         assert TEST_COLLECTION_NAME in t_database.list_collection_names()
 
-        t_database.use_keyspace(data_api_credentials_info["secondary_keyspace"])  # type: ignore[arg-type]
+        t_database.use_keyspace(data_api_credentials_info["secondary_keyspace"])
         assert t_database != sync_database
         assert t_database.keyspace == data_api_credentials_info["secondary_keyspace"]
         assert TEST_COLLECTION_NAME not in t_database.list_collection_names()
 
-    @pytest.mark.skipif(
-        SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
-    )
     @pytest.mark.describe("test of cross-keyspace collection lifecycle, sync")
     def test_collection_keyspace_sync(
         self,

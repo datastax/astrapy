@@ -25,7 +25,6 @@ from astrapy.utils.api_options import APIOptions, FullAPIOptions, defaultAPIOpti
 from astrapy.utils.unset import _UNSET, UnsetType
 
 from ..conftest import (
-    SECONDARY_KEYSPACE,
     DataAPICredentialsInfo,
     DefaultAsyncCollection,
 )
@@ -198,9 +197,6 @@ class TestCollectionsAsync:
         )
         assert col1.name == "coll"
 
-    @pytest.mark.skipif(
-        SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
-    )
     @pytest.mark.describe("test collection keyspace property, async")
     async def test_collection_keyspace_async(
         self,

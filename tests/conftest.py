@@ -87,7 +87,7 @@ class DataAPICredentials(TypedDict):
 class DataAPICredentialsInfo(TypedDict):
     environment: str
     region: str
-    secondary_keyspace: str | None
+    secondary_keyspace: str
 
 
 def env_region_from_endpoint(api_endpoint: str) -> tuple[str, str]:
@@ -185,40 +185,39 @@ def clean_nulls_from_dict(in_dict: dict[str, Any]) -> dict[str, Any]:
 
 @pytest.fixture(scope="session")
 def data_api_credentials_kwargs() -> DataAPICredentials:
+    api_creds: DataAPICredentials
     if IS_ASTRA_DB:
         if ASTRA_DB_API_ENDPOINT is None:
             raise ValueError("No endpoint data for local Data API")
-        astra_db_creds: DataAPICredentials = {
+        api_creds = {
             "token": ASTRA_DB_TOKEN_PROVIDER or "",
             "api_endpoint": ASTRA_DB_API_ENDPOINT or "",
             "keyspace": ASTRA_DB_KEYSPACE or DEFAULT_ASTRA_DB_KEYSPACE,
         }
-        return astra_db_creds
     else:
         if LOCAL_DATA_API_ENDPOINT is None:
             raise ValueError("No endpoint data for local Data API")
-        local_db_creds: DataAPICredentials = {
+        api_creds = {
             "token": LOCAL_DATA_API_TOKEN_PROVIDER or "",
             "api_endpoint": LOCAL_DATA_API_ENDPOINT or "",
             "keyspace": LOCAL_DATA_API_KEYSPACE or DEFAULT_ASTRA_DB_KEYSPACE,
         }
 
-        # ensure keyspace(s) exist at this point
-        # (we have to bypass the fixture hierarchy as the ..._info fixture
-        # comes later, so this part instantiates and uses throwaway objects)
-        _env, _ = env_region_from_endpoint(local_db_creds["api_endpoint"])
-        _client = DataAPIClient(environment=_env)
-        _database = _client.get_database(
-            local_db_creds["api_endpoint"],
-            token=local_db_creds["token"],
-        )
-        _database_admin = _database.get_database_admin()
-        _database_admin.create_keyspace(local_db_creds["keyspace"])
-        if SECONDARY_KEYSPACE:
-            _database_admin.create_keyspace(SECONDARY_KEYSPACE)
-        # end of keyspace-ensuring block
+    # ensure keyspace(s) exist at this point
+    # (we have to bypass the fixture hierarchy as the ..._info fixture
+    # comes later, so this part instantiates and uses throwaway objects)
+    _env, _ = env_region_from_endpoint(api_creds["api_endpoint"])
+    _client = DataAPIClient(environment=_env)
+    _database = _client.get_database(
+        api_creds["api_endpoint"],
+        token=api_creds["token"],
+    )
+    _database_admin = _database.get_database_admin()
+    _database_admin.create_keyspace(api_creds["keyspace"])
+    _database_admin.create_keyspace(SECONDARY_KEYSPACE)
+    # end of keyspace-ensuring block
 
-        return local_db_creds
+    return api_creds
 
 
 @pytest.fixture(scope="session")
