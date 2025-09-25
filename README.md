@@ -716,7 +716,8 @@ In most cases you want to run the "base" test suite (the one in the CI/CD automa
 Steps:
 
 1. export variables as in one of the `tests/env_templates/*.base.template` examples.
-2. `uv venv --python ">=3.8<3.13" && uv run pytest tests/base`
+2. export variables as in the `tests/env_templates/env.vectorize-minimal.template` example.
+3. `uv venv --python ">=3.8<3.13" && uv run pytest tests/base`
 
 #### All available tests/targets
 
@@ -736,6 +737,9 @@ Tests can be run on three types of Data API _targets_ (with slight differences i
 Depending on the target chosen, different environment variables are needed: refer to
 the `tests/env_templates/*.base.template` examples.
 Note that the variables defined in the desired "base" template **must** be set to run test, even for unit tests.
+
+Additionally, you will need to define the environment variables in `tests/env_templates/env.vectorize-minimal.template`,
+which are needed by the minimal set of "vectorize" testing belonging to the "base" test group.
 
 #### Docker vs. Podman
 
