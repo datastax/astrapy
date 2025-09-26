@@ -22,9 +22,10 @@ from astrapy.cursors import CursorState, RerankedResult
 from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import CursorException
 
-from ..conftest import DefaultAsyncCollection
+from ..conftest import IS_ASTRA_DB, USE_RERANKER_API_KEY_HEADER, DefaultAsyncCollection
 
 NUM_DOCS = 25  # keep this between 20 and 39
+RUN_RERANKER_TESTS = IS_ASTRA_DB or USE_RERANKER_API_KEY_HEADER
 
 
 @pytest.fixture
@@ -45,6 +46,10 @@ def afilled_vectorize_collection(
     return async_empty_farr_vectorize_collection
 
 
+@pytest.mark.skipif(
+    not RUN_RERANKER_TESTS,
+    reason="Reranker-related tests skipped (no Astra and no header reranker key provided)",
+)
 class TestCollectionCursorSync:
     @pytest.mark.describe("test of an IDLE collection farr-cursors properties, async")
     async def test_collection_farrcursors_idle_properties_async(

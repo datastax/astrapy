@@ -52,6 +52,7 @@ LOCAL_CASSANDRA_CONTACT_POINT: str | None = None
 LOCAL_CASSANDRA_PORT: str | None = None
 LOCAL_DATA_API_KEYSPACE: str = DEFAULT_ASTRA_DB_KEYSPACE
 RUN_SHARED_SECRET_VECTORIZE_TESTS: bool = True
+USE_RERANKER_API_KEY_HEADER: bool = False
 
 ASTRA_DB_TOKEN_PROVIDER: TokenProvider | None = None
 LOCAL_DATA_API_TOKEN_PROVIDER: TokenProvider | None = None
@@ -129,6 +130,9 @@ else:
 RUN_SHARED_SECRET_VECTORIZE_TESTS = extended_booleanize_env(
     "RUN_SHARED_SECRET_VECTORIZE_TESTS", default=True
 )
+
+if os.environ.get("HEADER_RERANKING_API_KEY_NVIDIA") is not None:
+    USE_RERANKER_API_KEY_HEADER = True
 
 # token provider setup
 if IS_ASTRA_DB:

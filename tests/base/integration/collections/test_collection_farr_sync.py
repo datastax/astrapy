@@ -19,9 +19,15 @@ import pytest
 from astrapy.cursors import RerankedResult
 from astrapy.data_types import DataAPIVector
 
-from ..conftest import DefaultCollection
+from ..conftest import IS_ASTRA_DB, USE_RERANKER_API_KEY_HEADER, DefaultCollection
+
+RUN_RERANKER_TESTS = IS_ASTRA_DB or USE_RERANKER_API_KEY_HEADER
 
 
+@pytest.mark.skipif(
+    not RUN_RERANKER_TESTS,
+    reason="Reranker-related tests skipped (no Astra and no header reranker key provided)",
+)
 class TestCollectionFindAndRerankSync:
     @pytest.mark.describe("test of collection find-and-rerank vectorize, sync")
     def test_collection_farr_vectorize_sync(

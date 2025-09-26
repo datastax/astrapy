@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import math
-import os
 from decimal import Decimal
 from typing import Any, Dict, Iterable
 
@@ -38,7 +37,7 @@ from astrapy.info import (
     CollectionVectorOptions,
     RerankServiceOptions,
 )
-from astrapy.utils.unset import _UNSET, UnsetType
+from astrapy.utils.unset import _UNSET
 
 from ..conftest import (
     ADMIN_ENV_LIST,
@@ -49,6 +48,7 @@ from ..conftest import (
     IS_ASTRA_DB,
     RUN_SHARED_SECRET_VECTORIZE_TESTS,
     SECONDARY_KEYSPACE,
+    USE_RERANKER_API_KEY_HEADER,
     DataAPICredentials,
     DataAPICredentialsInfo,
     async_fail_if_not_removed,
@@ -309,14 +309,6 @@ def sync_farr_vectorize_collection(
     """
     params = service_collection_parameters
 
-    # reranker credentials through header is needed for non-Astra (HCD) runs
-    reranking_api_key: str | UnsetType
-    if "ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER" in os.environ:
-        assert params["reranking_api_key"] is not None
-        reranking_api_key = params["reranking_api_key"]
-    else:
-        reranking_api_key = _UNSET
-
     collection = sync_database.create_collection(
         TEST_FARR_VECTORIZE_COLLECTION_NAME,
         definition=(
@@ -331,7 +323,9 @@ def sync_farr_vectorize_collection(
             .build()
         ),
         embedding_api_key=params["api_key"],
-        reranking_api_key=reranking_api_key,
+        reranking_api_key=params["reranking_api_key"]
+        if USE_RERANKER_API_KEY_HEADER
+        else _UNSET,
     )
     yield collection
 
@@ -368,14 +362,6 @@ def sync_farr_vector_collection(
     """
     params = service_collection_parameters
 
-    # reranker credentials through header is needed for non-Astra (HCD) runs
-    reranking_api_key: str | UnsetType
-    if "ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER" in os.environ:
-        assert params["reranking_api_key"] is not None
-        reranking_api_key = params["reranking_api_key"]
-    else:
-        reranking_api_key = _UNSET
-
     collection = sync_database.create_collection(
         TEST_FARR_VECTOR_COLLECTION_NAME,
         definition=(
@@ -386,7 +372,9 @@ def sync_farr_vector_collection(
             .set_lexical(lexical_collection_parameters)
             .build()
         ),
-        reranking_api_key=reranking_api_key,
+        reranking_api_key=params["reranking_api_key"]
+        if USE_RERANKER_API_KEY_HEADER
+        else _UNSET,
     )
     yield collection
 
@@ -1014,6 +1002,7 @@ __all__ = [
     "CQL_AVAILABLE",
     "RUN_SHARED_SECRET_VECTORIZE_TESTS",
     "SECONDARY_KEYSPACE",
+    "USE_RERANKER_API_KEY_HEADER",
     "VECTORIZE_TEXTS",
     "_repaint_NaNs",
     "_typify_tuple",
