@@ -22,7 +22,12 @@ from astrapy.api_options import APIOptions
 from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import TableInsertManyException
 
-from ..conftest import IS_ASTRA_DB, VECTORIZE_TEXTS, DefaultTable
+from ..conftest import (
+    IS_ASTRA_DB,
+    RUN_SHARED_SECRET_VECTORIZE_TESTS,
+    VECTORIZE_TEXTS,
+    DefaultTable,
+)
 
 HEADER_EMBEDDING_API_KEY_OPENAI = os.environ.get("HEADER_EMBEDDING_API_KEY_OPENAI")
 
@@ -131,6 +136,10 @@ class TestTableVectorizeSync:
     @pytest.mark.skipif(
         not IS_ASTRA_DB,
         reason="KMS vectorize is available only on Astra DB",
+    )
+    @pytest.mark.skipif(
+        not RUN_SHARED_SECRET_VECTORIZE_TESTS,
+        reason="Shared-secret vectorize tests are suppressed",
     )
     @pytest.mark.describe(
         "test of basic table vectorize with key via shared secret, sync"

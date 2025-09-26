@@ -715,9 +715,9 @@ In most cases you want to run the "base" test suite (the one in the CI/CD automa
 
 Steps:
 
-1. export variables as in one of the `tests/env_templates/*.base.template` examples.
-2. export variables as in the `tests/env_templates/env.vectorize-minimal.template` example.
-3. `uv venv --python ">=3.8<3.13" && uv run pytest tests/base`
+- Export variables as in one of the `tests/env_templates/*.base.template` examples.
+- Export variables as in the `tests/env_templates/env.vectorize-minimal.template` example.
+- Run: `uv venv --python ">=3.8<3.13" && uv run pytest tests/base`
 
 #### All available tests/targets
 
@@ -740,6 +740,14 @@ Note that the variables defined in the desired "base" template **must** be set t
 
 Additionally, you will need to define the environment variables in `tests/env_templates/env.vectorize-minimal.template`,
 which are needed by the minimal set of "vectorize" testing belonging to the "base" test group.
+
+For Astra DB, you can include "shared secret" vectorize tests (i.e. KMS-based authentication).
+To run those tests, you must scope an OpenAI API key
+to the target Astra DB with secret name `"SHARED_SECRET_EMBEDDING_API_KEY_OPENAI"`
+and comment the environment flag that suppresses them (see the base Astra env template).
+
+For non-Astra, the reranking-related tests run only if one sets
+`HEADER_RERANKING_API_KEY_NVIDIA="AstraCS:<dev token...>` (as shown in the Local/DockerCompose base env templates).
 
 #### Docker vs. Podman
 
@@ -791,9 +799,6 @@ uv run pytest tests/base
 uv run pytest tests/base/unit
 uv run pytest tests/base/integration
 ```
-
-_Note: when running locally, the reranking-related tests require `ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER=y` and
-HEADER_RERANKING_API_KEY_NVIDIA="AstraCS:<dev token...>` (as exemplified in the local env templates)._
 
 Admin:
 

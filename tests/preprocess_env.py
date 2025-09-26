@@ -51,9 +51,39 @@ LOCAL_DATA_API_ENDPOINT: str | None = None
 LOCAL_CASSANDRA_CONTACT_POINT: str | None = None
 LOCAL_CASSANDRA_PORT: str | None = None
 LOCAL_DATA_API_KEYSPACE: str = DEFAULT_ASTRA_DB_KEYSPACE
+RUN_SHARED_SECRET_VECTORIZE_TESTS: bool = True
+USE_RERANKER_API_KEY_HEADER: bool = False
 
 ASTRA_DB_TOKEN_PROVIDER: TokenProvider | None = None
 LOCAL_DATA_API_TOKEN_PROVIDER: TokenProvider | None = None
+
+
+def extended_booleanize_env(env_var_name: str, default: bool = False) -> bool:
+    """
+    Extended booleanize for environment variables.
+    Accepts also "1"/"0", "yes"/"no", "true"/"false" (case insensitive).
+    If the variable is not set, returns the default value.
+    """
+    value = os.environ.get(env_var_name)
+    if value is None or value == "":
+        return default
+    # test if any integer:
+    try:
+        int_value = int(value)
+        return int_value != 0
+    except ValueError:
+        pass
+    value_lower = value.lower()
+    if value_lower in ("yes", "true", "y", "t"):
+        return True
+    elif value_lower in ("no", "false", "n", "f"):
+        return False
+    else:
+        raise ValueError(
+            f"Invalid value for {env_var_name}: {value}. Expected an integer "
+            "or one of 'yes', 'no', 'true', 'false', 'y', 'n', 't', 'f' (case insensitive)."
+        )
+
 
 # basic settings about which DB/API to use
 if "LOCAL_DATA_API_ENDPOINT" in os.environ:
@@ -96,6 +126,13 @@ elif "ASTRA_DB_API_ENDPOINT" in os.environ:
     ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_ASTRA_DB_KEYSPACE)
 else:
     raise ValueError("No credentials.")
+
+RUN_SHARED_SECRET_VECTORIZE_TESTS = extended_booleanize_env(
+    "RUN_SHARED_SECRET_VECTORIZE_TESTS", default=True
+)
+
+if os.environ.get("HEADER_RERANKING_API_KEY_NVIDIA") is not None:
+    USE_RERANKER_API_KEY_HEADER = True
 
 # token provider setup
 if IS_ASTRA_DB:

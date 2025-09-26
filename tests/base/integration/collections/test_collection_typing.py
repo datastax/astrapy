@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import Any, TypedDict
 
 import pytest
@@ -22,9 +21,13 @@ import pytest
 from astrapy import AsyncCollection, AsyncDatabase, Collection, Database
 from astrapy.constants import VectorMetric
 from astrapy.info import CollectionDefinition
-from astrapy.utils.unset import _UNSET, UnsetType
+from astrapy.utils.unset import _UNSET
 
-from ..conftest import DefaultAsyncCollection, DefaultCollection
+from ..conftest import (
+    USE_RERANKER_API_KEY_HEADER,
+    DefaultAsyncCollection,
+    DefaultCollection,
+)
 
 
 class MyTestDoc(TypedDict):
@@ -328,16 +331,12 @@ class TestCollectionTyping:
 
         params = service_collection_parameters
 
-        reranking_api_key: str | UnsetType
-        if "ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER" in os.environ:
-            assert params["reranking_api_key"] is not None
-            reranking_api_key = params["reranking_api_key"]
-        else:
-            reranking_api_key = _UNSET
-
         # Untyped baseline
         f_co_untyped = sync_database.get_collection(
-            sync_empty_collection.name, reranking_api_key=reranking_api_key
+            sync_empty_collection.name,
+            reranking_api_key=params["reranking_api_key"]
+            if USE_RERANKER_API_KEY_HEADER
+            else _UNSET,
         )
         f_co_untyped.insert_one(VLEX_DOCUMENT)
         farr_u_hits = f_co_untyped.find_and_rerank(
@@ -365,7 +364,9 @@ class TestCollectionTyping:
         f_co_typed: Collection[MyTestDoc] = sync_database.get_collection(
             sync_empty_collection.name,
             document_type=MyTestDoc,
-            reranking_api_key=reranking_api_key,
+            reranking_api_key=params["reranking_api_key"]
+            if USE_RERANKER_API_KEY_HEADER
+            else _UNSET,
         )
         f_co_typed.insert_one(TYPED_VLEX_DOCUMENT)
         farr_t_hits = f_co_typed.find_and_rerank(
@@ -679,17 +680,12 @@ class TestCollectionTyping:
 
         params = service_collection_parameters
 
-        reranking_api_key: str | UnsetType
-        if "ASTRAPY_FINDANDRERANK_USE_RERANKER_HEADER" in os.environ:
-            assert params["reranking_api_key"] is not None
-            reranking_api_key = params["reranking_api_key"]
-        else:
-            reranking_api_key = _UNSET
-
         # Untyped baseline
         f_co_untyped = async_database.get_collection(
             async_empty_collection.name,
-            reranking_api_key=reranking_api_key,
+            reranking_api_key=params["reranking_api_key"]
+            if USE_RERANKER_API_KEY_HEADER
+            else _UNSET,
         )
         await f_co_untyped.insert_one(VLEX_DOCUMENT)
         farr_u_hits = await f_co_untyped.find_and_rerank(
@@ -717,7 +713,9 @@ class TestCollectionTyping:
         af_co_typed: AsyncCollection[MyTestDoc] = async_database.get_collection(
             async_empty_collection.name,
             document_type=MyTestDoc,
-            reranking_api_key=reranking_api_key,
+            reranking_api_key=params["reranking_api_key"]
+            if USE_RERANKER_API_KEY_HEADER
+            else _UNSET,
         )
         await af_co_typed.insert_one(TYPED_VLEX_DOCUMENT)
         farr_t_hits = await af_co_typed.find_and_rerank(
