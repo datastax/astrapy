@@ -715,9 +715,10 @@ In most cases you want to run the "base" test suite (the one in the CI/CD automa
 
 Steps:
 
-1. export variables as in one of the `tests/env_templates/*.base.template` examples.
-2. export variables as in the `tests/env_templates/env.vectorize-minimal.template` example.
-3. `uv venv --python ">=3.8<3.13" && uv run pytest tests/base`
+1. Export variables as in one of the `tests/env_templates/*.base.template` examples.
+2. _Astra only_: Uncomment the shared-secret vectorize testing in the env-file; (alternatively, store an API Key in Astra DB for use by the tests).
+3. Export variables as in the `tests/env_templates/env.vectorize-minimal.template` example.
+4. Run: `uv venv --python ">=3.8<3.13" && uv run pytest tests/base`
 
 #### All available tests/targets
 
@@ -740,6 +741,10 @@ Note that the variables defined in the desired "base" template **must** be set t
 
 Additionally, you will need to define the environment variables in `tests/env_templates/env.vectorize-minimal.template`,
 which are needed by the minimal set of "vectorize" testing belonging to the "base" test group.
+
+The Astra DB test also cover KMS, or shared-secret, vectorize mode. To run it, you must 
+scope an OpenAI API key to the target Astra DB with secret name `"SHARED_SECRET_EMBEDDING_API_KEY_OPENAI"`.
+Alternatively, look in the Astra env file template for how to suppress these tests.
 
 #### Docker vs. Podman
 
