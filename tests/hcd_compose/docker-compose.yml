@@ -1,14 +1,15 @@
 services:
   hcd:
-    image: 559669398656.dkr.ecr.us-west-2.amazonaws.com/engops-shared/hcd/prod/hcd:1.2.1-early-preview
+    image: 559669398656.dkr.ecr.us-west-2.amazonaws.com/engops-shared/hcd/prod/hcd:1.2.3
     networks:
       - stargate
     mem_limit: 2G
     environment:
       - MAX_HEAP_SIZE=1536M
-      - CLUSTER_NAME=hcd-1.2.1-early-preview-cluster
+      - CLUSTER_NAME=hcd-1.2.3-cluster
       - DS_LICENSE=accept
       - HCD_AUTO_CONF_OFF=xcassandra.yaml
+      - JVM_EXTRA_OPTS=-Dcassandra.sai.latest.version=ec
     volumes:
       - ./cassandra-hcd.yaml:/opt/hcd/resources/cassandra/conf/xcassandra.yaml:rw
     ports:
