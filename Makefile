@@ -38,13 +38,13 @@ format-fix-tests: FMT_FLAGS=
 format-fix-tests: format-tests
 
 test-integration:
-	uv run $(VENV_FLAGS) pytest tests/base -vv
+	uv run $(VENV_FLAGS) pytest tests/base/integration -vv
 
 test:
 	uv run $(VENV_FLAGS) pytest tests/base/unit -vv
 
 docker-test-integration:
-	DOCKER_COMPOSE_LOCAL_DATA_API="yes" uv run pytest tests/base -vv
+	DOCKER_COMPOSE_LOCAL_DATA_API="yes" uv run pytest tests/base/integration -vv
 
 build:
 	rm -f dist/astrapy*

@@ -132,14 +132,14 @@ jobs:
           VIRTUAL_ENV=.venv uv pip install dist/*.whl
 
       - name: Run unit tests
-        run: make tests
+        run: make test
 
       - name: Run integration tests
         env:
           ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
           ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
           HEADER_EMBEDDING_API_KEY_OPENAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_OPENAI }}
-        run: make integration_tests
+        run: make test-integration
         working-directory: ${{ inputs.working-directory }}
 
       # TODO: another unit test on the least python supported version
