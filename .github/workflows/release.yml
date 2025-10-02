@@ -147,21 +147,31 @@ jobs:
       #   run: make test-integration
       #   working-directory: ${{ inputs.working-directory }}
 
+  pre-release-unit-lowest-python:
+    needs:
+      - build
+      - test-pypi-publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python + uv
+        uses: "./.github/actions/uv_setup"
+        with:
+          python-version: ${{ env.LEAST_PYTHON_VERSION }}
+
       - name: Run unit test on least Python version
         env:
           ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
           ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
         run: |
-          uv venv --python ${{ env.LEAST_PYTHON_VERSION }} .venv-lowestpy
-          . .venv-lowestpy/bin/activate
-          uv sync --dev --active
-          .venv-lowestpy/bin/python -m pytest tests/base/unit -vv
+          uv sync --dev
+          make test
 
   # publish:
   #   needs:
   #     - build
   #     - test-pypi-publish
   #     - pre-release-checks
+  #     - pre-release-unit-lowest-python
   #   runs-on: ubuntu-latest
   #   permissions:
   #     # This permission is used for trusted publishing:
@@ -202,6 +212,7 @@ jobs:
   #     - build
   #     - test-pypi-publish
   #     - pre-release-checks
+  #     - pre-release-unit-lowest-python
   #     - publish
   #   runs-on: ubuntu-latest
   #   permissions:
