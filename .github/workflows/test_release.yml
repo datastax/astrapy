@@ -1,25 +1,21 @@
 name: test-release
+# TODO: rename this file with a leading underscore once part of the broader actual publish flow
 
 on:
   workflow_call:
     inputs:
-      working-directory:
-        required: true
-        type: string
-        description: "From which folder this pipeline executes"
       dangerous-nonmaster-release:
         required: false
         type: boolean
         default: false
         description: "Release from a non-master branch (danger!)"
-  # TODO: rename file with a leading underscore
+  # TODO: remove this trigger when done testing
+    pull_request:
+    branches:
+      - main
   # TODO: remove this trigger once full pipeline is up
   workflow_dispatch:
     inputs:
-      working-directory:
-        required: true
-        type: string
-        default: '.'
       dangerous-nonmaster-release:
         required: false
         type: boolean
@@ -32,7 +28,8 @@ env:
 
 jobs:
   build:
-    if: github.ref == 'refs/heads/main' || inputs.dangerous-nonmaster-release
+    # TODO: restore handling of this flag
+    # if: github.ref == 'refs/heads/main' || inputs.dangerous-nonmaster-release
     runs-on: ubuntu-latest
 
     outputs:
@@ -66,18 +63,16 @@ jobs:
       # https://github.com/pypa/gh-action-pypi-publish#non-goals
       - name: Build project for distribution
         run: uv build
-        working-directory: ${{ inputs.working-directory }}
 
       - name: Upload build
         uses: actions/upload-artifact@v4
         with:
           name: test-dist
-          path: ${{ inputs.working-directory }}/dist/
+          path: dist/
 
       - name: Check Version
         id: check-version
         shell: python
-        working-directory: ${{ inputs.working-directory }}
         run: |
           import os
           import tomllib
@@ -107,12 +102,12 @@ jobs:
   #     - uses: actions/download-artifact@v5
   #       with:
   #         name: test-dist
-  #         path: ${{ inputs.working-directory }}/dist/
+  #         path: dist/
 
   #     - name: Publish to test PyPI
   #       uses: pypa/gh-action-pypi-publish@release/v1
   #       with:
-  #         packages-dir: ${{ inputs.working-directory }}/dist/
+  #         packages-dir: dist/
   #         verbose: true
   #         print-hash: true
   #         repository-url: https://test.pypi.org/legacy/
