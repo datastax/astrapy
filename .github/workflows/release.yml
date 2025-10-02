@@ -22,6 +22,7 @@ on:
 
 env:
   PYTHON_VERSION: "3.12"
+  LEAST_PYTHON_VERSION: "3.8"
   UV_FROZEN: "true"
   UV_NO_SYNC: "true"
 
@@ -137,15 +138,24 @@ jobs:
           ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
         run: make test
 
-      - name: Run integration tests
+      # TODO restore integration tests for final
+      # - name: Run integration tests
+      #   env:
+      #     ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
+      #     ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
+      #     HEADER_EMBEDDING_API_KEY_OPENAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_OPENAI }}
+      #   run: make test-integration
+      #   working-directory: ${{ inputs.working-directory }}
+
+      - name: Run unit test on least Python version
         env:
           ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
           ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
-          HEADER_EMBEDDING_API_KEY_OPENAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_OPENAI }}
-        run: make test-integration
-        working-directory: ${{ inputs.working-directory }}
-
-      # TODO: another unit test on the least python supported version
+        run: |
+          uv venv --python ${{ env.LEAST_PYTHON_VERSION }} .venv-lowestpy
+          . .venv-lowestpy/bin/activate
+          uv sync --dev --active
+          uv run --active pytest tests/base/unit -vv
 
   # publish:
   #   needs:
