@@ -9,18 +9,6 @@ on:
         type: boolean
         default: false
         description: "Release from a non-master branch (danger!)"
-  # TODO: remove this trigger when done testing
-  pull_request:
-    branches:
-      - main
-  # TODO: remove this trigger once full pipeline is up
-  workflow_dispatch:
-    inputs:
-      dangerous-nonmaster-release:
-        required: false
-        type: boolean
-        default: false
-        description: "Test-release from a non-master branch"
 
 env:
   PYTHON_VERSION: "3.12"

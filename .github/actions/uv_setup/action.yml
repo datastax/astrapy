@@ -17,7 +17,3 @@ runs:
       with:
         version: ${{ env.UV_VERSION }}
         python-version: ${{ inputs.python-version }}
-
-    - name: Install dependencies with dev packages
-      run: uv sync --dev
-      shell: bash
