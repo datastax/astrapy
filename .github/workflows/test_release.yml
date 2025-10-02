@@ -39,28 +39,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - name: Set up Python + uv
+        uses: "./.github/actions/uv_setup"
         with:
-          python-version: 3.12
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pipx install uv
-          make venv
-
-      # We want to keep this build stage *separate* from the release stage,
-      # so that there's no sharing of permissions between them.
-      # The release stage has trusted publishing and GitHub repo contents write access,
-      # and we want to keep the scope of that access limited just to the release job.
-      # Otherwise, a malicious `build` step (e.g. via a compromised dependency)
-      # could get access to our GitHub or PyPI credentials.
-      #
-      # Per the trusted publishing GitHub Action:
-      # > It is strongly advised to separate jobs for building [...]
-      # > from the publish job.
-      # https://github.com/pypa/gh-action-pypi-publish#non-goals
+      # Separation of build and release, to minimize permissions to the former.
+      # See: https://github.com/pypa/gh-action-pypi-publish#non-goals
       - name: Build project for distribution
         run: uv build
 
@@ -88,13 +73,11 @@ jobs:
     needs:
       - build
     runs-on: ubuntu-latest
+    # This requires an 'environment' with this name on the github repo (and is best practice to restrict permissions)
     environment: pypi
     permissions:
-      # This permission is used for trusted publishing:
-      # https://blog.pypi.org/posts/2023-04-20-introducing-trusted-publishers/
-      #
-      # Trusted publishing has to also be configured on PyPI for each package:
-      # https://docs.pypi.org/trusted-publishers/adding-a-publisher/
+      # Needed by trusted publish: https://blog.pypi.org/posts/2023-04-20-introducing-trusted-publishers/
+      # Must be configured on (test) PyPI, see https://docs.pypi.org/trusted-publishers/adding-a-publisher/
       id-token: write
 
     steps:
@@ -113,9 +96,7 @@ jobs:
           print-hash: true
           repository-url: https://test.pypi.org/legacy/
 
-          # We overwrite any existing distributions with the same name and version.
-          # This is *only for CI use* and is *extremely dangerous* otherwise!
-          # https://github.com/pypa/gh-action-pypi-publish#tolerating-release-package-file-duplicates
+          # This setting ONLY IN CI AND ON TEST PYPI! See https://github.com/pypa/gh-action-pypi-publish#tolerating-release-package-file-duplicates
           skip-existing: true
-          # Temp workaround since attestations are on by default as of gh-action-pypi-publish v1.11.0
+          # TODO whether to enable attestations
           attestations: false
