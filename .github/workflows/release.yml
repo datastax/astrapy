@@ -155,7 +155,7 @@ jobs:
           uv venv --python ${{ env.LEAST_PYTHON_VERSION }} .venv-lowestpy
           . .venv-lowestpy/bin/activate
           uv sync --dev --active
-          uv run --active pytest tests/base/unit -vv
+          .venv-lowestpy/bin/python -m pytest tests/base/unit -vv
 
   # publish:
   #   needs:
