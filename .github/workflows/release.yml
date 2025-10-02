@@ -80,7 +80,9 @@ jobs:
       ./.github/workflows/_test_release.yml
     permissions: write-all
     with:
-      dangerous-nonmaster-release: ${{ inputs.dangerous-nonmaster-release }}
+      dangerous-nonmaster-release: true
+      # TODO: restore the below once the pull_request trigger is replaced
+      # dangerous-nonmaster-release: ${{ inputs.dangerous-nonmaster-release }}
     secrets: inherit
 
   pre-release-checks:
@@ -91,7 +93,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Any caching here is disabled (to catch any trouble)
       - name: Set up Python + uv
         uses: "./.github/actions/uv_setup"
         id: setup-python
