@@ -20,3 +20,4 @@ runs:
 
     - name: Install dependencies with dev packages
       run: uv sync --dev
+      shell: bash
