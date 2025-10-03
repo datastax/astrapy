@@ -1,17 +1,10 @@
 name: release
-run-name: Release ${{ inputs.working-directory }} by @${{ github.actor }}
+run-name: Release by @${{ github.actor }}
 on:
   # TODO: remove this trigger when done testing
   pull_request:
     branches:
       - main
-  # TODO: confirm this is useless, remove
-  # workflow_call:
-  #   inputs:
-  #     working-directory:
-  #       required: true
-  #       type: string
-  #       description: "From which folder this pipeline executes"
   workflow_dispatch:
     inputs:
       dangerous-nonmaster-release:
@@ -62,7 +55,6 @@ jobs:
       - name: Check Version
         id: check-version
         shell: python
-        working-directory: ${{ inputs.working-directory }}
         run: |
           import os
           import tomllib
@@ -142,7 +134,6 @@ jobs:
       #     ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
       #     HEADER_EMBEDDING_API_KEY_OPENAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_OPENAI }}
       #   run: make test-integration
-      #   working-directory: ${{ inputs.working-directory }}
 
   pre-release-unit-lowest-python:
     needs:
@@ -204,7 +195,7 @@ jobs:
       - uses: actions/download-artifact@v5
         with:
           name: dist
-          path: ${{ inputs.working-directory }}/dist/
+          path: dist/
 
       # TODO: retarget prod PyPI (remove 'repository-url' and skip-existing)
       - name: Publish package distributions to PyPI - TEST FOR NOW
@@ -243,7 +234,7 @@ jobs:
       - uses: actions/download-artifact@v5
         with:
           name: dist
-          path: ${{ inputs.working-directory }}/dist/
+          path: dist/
 
       - name: Create release
         uses: ncipollo/release-action@v1
