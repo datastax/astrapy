@@ -126,9 +126,6 @@ jobs:
       # Overwrite the local version of the package with the built version
       - name: Import published package (again)
         shell: bash
-        env:
-          PKG_NAME: ${{ needs.build.outputs.pkg-name }}
-          VERSION: ${{ needs.build.outputs.version }}
         run: |
           VIRTUAL_ENV=.venv uv pip install dist/*.whl
 
@@ -160,13 +157,27 @@ jobs:
         with:
           python-version: ${{ env.LEAST_PYTHON_VERSION }}
 
+      - uses: actions/download-artifact@v5
+        with:
+          name: dist
+          path: dist/
+
+      - name: Install dependencies including dev
+        run: |
+          uv sync --dev
+        shell: bash
+
+      # Overwrite the local version of the package with the built version
+      - name: Import published package (again)
+        shell: bash
+        run: |
+          VIRTUAL_ENV=.venv uv pip install dist/*.whl
+
       - name: Run unit test on least Python version
         env:
           ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
           ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
-        run: |
-          uv sync --dev
-          make test
+        run: make test
 
   # publish:
   #   needs:
