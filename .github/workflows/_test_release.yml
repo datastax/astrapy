@@ -1,5 +1,4 @@
 name: test-release
-# TODO: rename this file with a leading underscore once part of the broader actual publish flow
 
 on:
   workflow_call:
@@ -16,8 +15,7 @@ env:
 
 jobs:
   build:
-    # TODO: restore handling of this flag
-    # if: github.ref == 'refs/heads/main' || inputs.dangerous-nonmaster-release
+    if: github.ref == 'refs/heads/main' || inputs.dangerous-nonmaster-release
     runs-on: ubuntu-latest
 
     outputs:
@@ -85,5 +83,5 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
           # This setting ONLY IN CI AND ON TEST PYPI! See https://github.com/pypa/gh-action-pypi-publish#tolerating-release-package-file-duplicates
           skip-existing: true
-          # TODO whether to enable attestations
+          # TODO determine whether to enable attestations later on, and how
           attestations: false

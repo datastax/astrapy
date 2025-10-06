@@ -1,0 +1,50 @@
+name: ruff and mypy checks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  mypy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.11' # Or any version you prefer
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pipx install uv
+        make venv
+
+    - name: Ruff Linting AstraPy
+      run: |
+        uv run ruff check astrapy
+
+    - name: Ruff Linting Tests
+      run: |
+        uv run ruff check tests
+
+    - name: Ruff formatting astrapy
+      run: |
+        uv run ruff format --check astrapy
+  
+    - name: Ruff formatting tests
+      run: |
+        uv run ruff format --check tests
+
+    - name: Run MyPy AstraPy
+      run: |
+        uv run mypy astrapy
+
+    - name: Run MyPy Tests
+      run: |
+        uv run mypy tests
