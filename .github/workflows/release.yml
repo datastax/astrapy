@@ -1,0 +1,247 @@
+name: release
+run-name: Release by @${{ github.actor }}
+on:
+  workflow_dispatch:
+    inputs:
+      dangerous-nonmaster-release:
+        required: false
+        type: boolean
+        default: false
+        description: "Release from a non-master branch (danger!)"
+
+env:
+  PYTHON_VERSION: "3.12"
+  LEAST_PYTHON_VERSION: "3.8"
+  UV_FROZEN: "true"
+  UV_NO_SYNC: "true"
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main' || inputs.dangerous-nonmaster-release
+    runs-on: ubuntu-latest
+
+    outputs:
+      pkg-name: ${{ steps.check-version.outputs.pkg-name }}
+      version: ${{ steps.check-version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python + uv
+        uses: "./.github/actions/uv_setup"
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies including dev
+        run: uv sync --dev
+        shell: bash
+
+      # Separation of build and release, to minimize permissions to the former.
+      # See: https://github.com/pypa/gh-action-pypi-publish#non-goals
+      - name: Build project for distribution
+        run: uv build
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Check Version
+        id: check-version
+        shell: python
+        run: |
+          import os
+          import tomllib
+          with open("pyproject.toml", "rb") as f:
+              data = tomllib.load(f)
+          pkg_name = data["project"]["name"]
+          version = data["project"]["version"]
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"pkg-name={pkg_name}\n")
+              f.write(f"version={version}\n")
+
+  test-pypi-publish:
+    needs:
+      - build
+    uses:
+      ./.github/workflows/_test_release.yml
+    permissions: write-all
+    with:
+      dangerous-nonmaster-release: true
+      dangerous-nonmaster-release: ${{ inputs.dangerous-nonmaster-release }}
+    secrets: inherit
+
+  pre-release-checks:
+    needs:
+      - build
+      - test-pypi-publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python + uv
+        uses: "./.github/actions/uv_setup"
+        id: setup-python
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: dist
+          path: dist/
+
+      - name: Import dist package
+        shell: bash
+        env:
+          PKG_NAME: ${{ needs.build.outputs.pkg-name }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          uv venv
+          VIRTUAL_ENV=.venv uv pip install dist/*.whl
+
+          # Make the package (file)name into the imported package name
+          IMPORT_NAME="$(echo "$PKG_NAME" | sed s/-/_/g)"
+
+          uv run python -c "import $IMPORT_NAME; print(dir($IMPORT_NAME))"
+
+      - name: Install dependencies including dev
+        run: uv sync --dev
+        shell: bash
+
+      # Overwrite the local version of the package with the built version
+      - name: Override-import built package to use for tests
+        shell: bash
+        run: |
+          VIRTUAL_ENV=.venv uv pip install dist/*.whl
+
+      - name: Run unit tests
+        env:
+          ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
+          ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
+        run: make test
+
+      # TODO restore integration tests for final
+      # - name: Run integration tests
+      #   env:
+      #     ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
+      #     ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
+      #     HEADER_EMBEDDING_API_KEY_OPENAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_OPENAI }}
+      #   run: make test-integration
+
+  pre-release-unit-lowest-python:
+    needs:
+      - build
+      - test-pypi-publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python + uv
+        uses: "./.github/actions/uv_setup"
+        with:
+          python-version: ${{ env.LEAST_PYTHON_VERSION }}
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: dist
+          path: dist/
+
+      - name: Install dependencies including dev
+        run: |
+          uv sync --dev
+        shell: bash
+
+      # Overwrite the local version of the package with the built version
+      - name: Override-import built package to use for tests
+        shell: bash
+        run: |
+          VIRTUAL_ENV=.venv uv pip install dist/*.whl
+
+      - name: Run unit test on least Python version
+        env:
+          ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
+          ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
+        run: make test
+
+  publish:
+    needs:
+      - build
+      - test-pypi-publish
+      - pre-release-checks
+      - pre-release-unit-lowest-python
+    runs-on: ubuntu-latest
+    # This requires an 'environment' with this name on the github repo (and is best practice to restrict permissions)
+    environment: pypi
+    permissions:
+      # Needed by trusted publish: https://blog.pypi.org/posts/2023-04-20-introducing-trusted-publishers/
+      # Must be configured on (test) PyPI, see https://docs.pypi.org/trusted-publishers/adding-a-publisher/
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python + uv
+        uses: "./.github/actions/uv_setup"
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: dist
+          path: dist/
+
+      # TODO: retarget prod PyPI (remove 'repository-url' and skip-existing)
+      - name: Publish package distributions to PyPI - TEST FOR NOW
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          verbose: true
+          print-hash: true
+          repository-url: https://test.pypi.org/legacy/
+          # This setting ONLY IN CI AND ON TEST PYPI! See https://github.com/pypa/gh-action-pypi-publish#tolerating-release-package-file-duplicates
+          skip-existing: true
+          # TODO determine whether to enable attestations later on, and how
+          attestations: false
+
+  mark-release:
+    needs:
+      - build
+      - test-pypi-publish
+      - pre-release-checks
+      - pre-release-unit-lowest-python
+      - publish
+    runs-on: ubuntu-latest
+    permissions:
+      # Needed by `ncipollo/release-action` for creating the release
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python + uv
+        uses: "./.github/actions/uv_setup"
+        id: setup-python
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: dist
+          path: dist/
+
+      - name: Create release (TMP draft, prerelease)
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "dist/*"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # TODO: restore to false
+          draft: true
+          generateReleaseNotes: true
+          # TODO: restore `v${{ needs.build.outputs.version }}`
+          tag: test-v${{ needs.build.outputs.version }}
+          # TODO: restore (no 'test-'')
+          name: "test-Release v${{ needs.build.outputs.version }}"
+          commit: ${{ github.sha }}
+          # TODO: restore false
+          prerelease: true
