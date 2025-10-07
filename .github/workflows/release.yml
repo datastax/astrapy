@@ -68,7 +68,6 @@ jobs:
       ./.github/workflows/_test_release.yml
     permissions: write-all
     with:
-      dangerous-nonmaster-release: true
       dangerous-nonmaster-release: ${{ inputs.dangerous-nonmaster-release }}
     secrets: inherit
 
