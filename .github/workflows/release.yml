@@ -120,13 +120,12 @@ jobs:
           ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
         run: make test
 
-      # TODO restore integration tests for final
-      # - name: Run integration tests
-      #   env:
-      #     ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
-      #     ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
-      #     HEADER_EMBEDDING_API_KEY_OPENAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_OPENAI }}
-      #   run: make test-integration
+      - name: Run integration tests
+        env:
+          ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
+          ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
+          HEADER_EMBEDDING_API_KEY_OPENAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_OPENAI }}
+        run: make test-integration
 
   pre-release-unit-lowest-python:
     needs:
@@ -190,16 +189,12 @@ jobs:
           name: dist
           path: dist/
 
-      # TODO: retarget prod PyPI (remove 'repository-url' and skip-existing)
       - name: Publish package distributions to PyPI - TEST FOR NOW
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
           verbose: true
           print-hash: true
-          repository-url: https://test.pypi.org/legacy/
-          # This setting ONLY IN CI AND ON TEST PYPI! See https://github.com/pypa/gh-action-pypi-publish#tolerating-release-package-file-duplicates
-          skip-existing: true
           # TODO determine whether to enable attestations later on, and how
           attestations: false
 
@@ -229,18 +224,12 @@ jobs:
           name: dist
           path: dist/
 
-      - name: Create release (TMP draft, prerelease)
+      - name: Create release on Github
         uses: ncipollo/release-action@v1
         with:
           artifacts: "dist/*"
           token: ${{ secrets.GITHUB_TOKEN }}
-          # TODO: restore to false
-          draft: true
           generateReleaseNotes: true
-          # TODO: restore `v${{ needs.build.outputs.version }}`
-          tag: test-v${{ needs.build.outputs.version }}
-          # TODO: restore (no 'test-'')
-          name: "test-Release v${{ needs.build.outputs.version }}"
+          tag: v${{ needs.build.outputs.version }}
+          name: "Release v${{ needs.build.outputs.version }}"
           commit: ${{ github.sha }}
-          # TODO: restore false
-          prerelease: true
