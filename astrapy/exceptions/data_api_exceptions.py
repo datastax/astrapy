@@ -36,23 +36,23 @@ class DataAPIException(Exception):
 @dataclass
 class DataAPIErrorDescriptor:
     """
-    An object representing a single error, or warning, as returned from the Data API,
+    An object representing a single error, as returned from the Data API,
     typically with an error code, a text message and other properties.
 
-    This object is used to describe errors/warnings received from the Data API,
+    This object is used to describe errors received from the Data API,
     in the form of HTTP-200 ("success") responses containing errors
-    (and possibly warnings).
-    Depending on the API command semantics, responses may express partial successes
-    with some errors (for instance, an insertMany command inserting most of the
-    documents/rows, but failing on a couple of incompatible inputs).
+
+    Depending on the API command semantics, responses may express partial
+    successes with some errors (for instance, an insertMany command inserting
+    most of the documents/rows, but failing on a couple of incompatible inputs).
 
     Attributes:
-        error_code: a string code as found in the API "error" item.
-        message: the text found in the API "error" item.
-        title:  the text found in the API "title" item.
-        family:  the text found in the API "family" item.
-        scope:  the text found in the API "scope" item.
-        id:  the text found in the API "id" item.
+        error_code: a string code as found in the API error's "errorCode" field.
+        message: the text found in the API error's "message" field.
+        title:  the text found in the API error's "title" field.
+        family:  the text found in the API error's "family" field.
+        scope:  the text found in the API error's "scope" field.
+        id:  the text found in the API error's "id" field.
         attributes: a dict with any further key-value pairs returned by the API.
     """
 
@@ -110,7 +110,7 @@ class DataAPIErrorDescriptor:
 
     def summary(self) -> str:
         """
-        Determine a string succinct description of this error descriptor.
+        Determine a string succinct description of this descriptor.
 
         The precise format of this summary is determined by which fields are set.
         """
@@ -137,7 +137,27 @@ class DataAPIErrorDescriptor:
                 return ""
 
 
-DataAPIWarningDescriptor = DataAPIErrorDescriptor
+@dataclass
+class DataAPIWarningDescriptor(DataAPIErrorDescriptor):
+    """
+    An object representing a single warning, as returned from the Data API,
+    typically with a code, a text message and other properties.
+
+    This object is used to describe warnings received from the Data API,
+    in the form of HTTP-200 ("success") responses with accompanying warnings.
+
+    Attributes:
+        error_code: a string code found in the API warning's "errorCode" field.
+        message: the text found in the API warning's "message" field.
+        title:  the text found in the API warning's "title" field.
+        family:  the text found in the API warning's "family" field.
+        scope:  the text found in the API warning's "scope" field.
+        id:  the text found in the API warning's "id" field.
+        attributes: a dict with any further key-value pairs returned by the API.
+    """
+
+    def __init__(self, error_dict: dict[str, str] | str) -> None:
+        return DataAPIErrorDescriptor.__init__(self, error_dict=error_dict)
 
 
 @dataclass

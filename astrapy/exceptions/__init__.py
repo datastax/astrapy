@@ -32,6 +32,7 @@ from astrapy.exceptions.data_api_exceptions import (
     DataAPIHttpException,
     DataAPIResponseException,
     DataAPITimeoutException,
+    DataAPIWarningDescriptor,
     UnexpectedDataAPIResponseException,
 )
 from astrapy.exceptions.devops_api_exceptions import (
@@ -518,6 +519,7 @@ __all__ = [
     "TooManyDocumentsToCountException",
     "UnexpectedDataAPIResponseException",
     "DataAPIResponseException",
+    "DataAPIWarningDescriptor",
     "CollectionInsertManyException",
     "CollectionDeleteManyException",
     "CollectionUpdateManyException",
