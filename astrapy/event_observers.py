@@ -30,8 +30,8 @@ class ObservableEventType(StrEnum):
     LOG = "log"
     WARNING = "warning"
     ERROR = "error"
-    # LOG = "log"
-    # LOG = "log" TODO
+    REQUEST = "request"
+    RESPONSE = "response"
 
 
 @dataclass
@@ -52,7 +52,7 @@ class ObservableLog(ObservableEvent):
     A log entry event, with a severity level and a string message.
 
     Attributes:
-        event_type: it has value "log" in this case.
+        event_type: it has value ObservableEventType.LOG in this case.
         level: a number following the scale of `logging.INFO`, `DEBUG`, etc.
         message: a string containing the full log message.
     """
@@ -81,7 +81,7 @@ class ObservableError(ObservableEvent):
         can occur during a method call are not necessarily of this form.
 
     Attributes:
-        event_type: it has value "error" in this case.
+        event_type: it has value ObservableEventType.ERROR in this case.
         error: a descriptor of the error, as found in the Data API response.
     """
 
@@ -100,7 +100,7 @@ class ObservableWarning(ObservableEvent):
     These are dispatched to the attached observers as the response is parsed.
 
     Attributes:
-        event_type: it has value "warning" in this case.
+        event_type: it has value ObservableEventType.WARNING in this case.
         warning: a descriptor of the warning, as found in the Data API response.
     """
 
@@ -109,6 +109,42 @@ class ObservableWarning(ObservableEvent):
     def __init__(self, warning: DataAPIWarningDescriptor) -> None:
         self.event_type = ObservableEventType.WARNING
         self.warning = warning
+
+
+@dataclass
+class ObservableRequest(ObservableEvent):
+    """
+    An event representing a request being sent, captured with its
+    payload exactly as will be sent to the API.
+
+    Attributes:
+        event_type: it has value ObservableEventType.REQUEST in this case.
+        payload: a dictionary expressing the payload JSON.
+    """
+
+    payload: dict[str, Any]
+
+    def __init__(self, payload: dict[str, Any]) -> None:
+        self.event_type = ObservableEventType.REQUEST
+        self.payload = payload
+
+
+@dataclass
+class ObservableResponse(ObservableEvent):
+    """
+    An event representing a response received by the Data API, whose body
+    is captured exactly as is sent by the Data API.
+
+    Attributes:
+        event_type: it has value ObservableEventType.RESPONSE in this case.
+        body: a dictionary expressing the response JSON, if applicable.
+    """
+
+    body: dict[str, Any] | None
+
+    def __init__(self, body: dict[str, Any] | None) -> None:
+        self.event_type = ObservableEventType.RESPONSE
+        self.body = body
 
 
 class Observer(ABC):
