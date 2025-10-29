@@ -22,6 +22,7 @@ import pytest
 from astrapy.event_observers import (
     ObservableError,
     ObservableEvent,
+    ObservableEventType,
     ObservableLog,
     ObservableWarning,
     Observer,
@@ -53,7 +54,9 @@ class TestEventObservers:
     @pytest.mark.describe("test of custom observer receiving events")
     def test_custom_observer(self) -> None:
         class MyObserver(Observer):
-            def __init__(self, evt_map: dict[str, list[ObservableEvent]]) -> None:
+            def __init__(
+                self, evt_map: dict[ObservableEventType, list[ObservableEvent]]
+            ) -> None:
                 self.evt_map = evt_map
 
             def receive(
@@ -66,7 +69,7 @@ class TestEventObservers:
                     event.event_type, []
                 ) + [event]
 
-        received_events: dict[str, list[ObservableEvent]] = {}
+        received_events: dict[ObservableEventType, list[ObservableEvent]] = {}
         my_obs = MyObserver(received_events)
 
         my_obs.receive(ObservableLog(level=logging.DEBUG, message=LOG_MESSAGE_1))
@@ -74,9 +77,92 @@ class TestEventObservers:
         my_obs.receive(ObservableWarning(warning=WRN_DESC))
         my_obs.receive(ObservableLog(level=logging.ERROR, message=LOG_MESSAGE_2))
 
-        assert received_events["log"] == [
+        assert received_events[ObservableEventType.LOG] == [
             ObservableLog(level=logging.DEBUG, message=LOG_MESSAGE_1),
             ObservableLog(level=logging.ERROR, message=LOG_MESSAGE_2),
         ]
-        assert received_events["warning"] == [ObservableWarning(warning=WRN_DESC)]
-        assert received_events["error"] == [ObservableError(error=ERR_DESC)]
+        assert received_events[ObservableEventType.ERROR] == [
+            ObservableError(error=ERR_DESC)
+        ]
+        assert received_events[ObservableEventType.WARNING] == [
+            ObservableWarning(warning=WRN_DESC)
+        ]
+        assert len(received_events) == 3
+
+    @pytest.mark.describe("test of observer from event dict")
+    def test_observer_from_evdict(self) -> None:
+        received_events: dict[ObservableEventType, list[ObservableEvent]] = {}
+        my_obs = Observer.from_event_dict(received_events)
+
+        my_obs.receive(ObservableLog(level=logging.DEBUG, message=LOG_MESSAGE_1))
+        my_obs.receive(ObservableError(error=ERR_DESC))
+        my_obs.receive(ObservableWarning(warning=WRN_DESC))
+        my_obs.receive(ObservableLog(level=logging.ERROR, message=LOG_MESSAGE_2))
+
+        assert received_events[ObservableEventType.LOG] == [
+            ObservableLog(level=logging.DEBUG, message=LOG_MESSAGE_1),
+            ObservableLog(level=logging.ERROR, message=LOG_MESSAGE_2),
+        ]
+        assert received_events[ObservableEventType.ERROR] == [
+            ObservableError(error=ERR_DESC)
+        ]
+        assert received_events[ObservableEventType.WARNING] == [
+            ObservableWarning(warning=WRN_DESC)
+        ]
+        assert len(received_events) == 3
+
+        # now with filtering by event type
+        received_events_f: dict[ObservableEventType, list[ObservableEvent]] = {}
+        my_obs_f = Observer.from_event_dict(
+            received_events_f,
+            event_types=(ObservableEventType.LOG, ObservableEventType.WARNING),
+        )
+
+        my_obs_f.receive(ObservableLog(level=logging.DEBUG, message=LOG_MESSAGE_1))
+        my_obs_f.receive(ObservableError(error=ERR_DESC))
+        my_obs_f.receive(ObservableWarning(warning=WRN_DESC))
+        my_obs_f.receive(ObservableLog(level=logging.ERROR, message=LOG_MESSAGE_2))
+
+        assert received_events_f[ObservableEventType.LOG] == [
+            ObservableLog(level=logging.DEBUG, message=LOG_MESSAGE_1),
+            ObservableLog(level=logging.ERROR, message=LOG_MESSAGE_2),
+        ]
+        assert received_events_f[ObservableEventType.WARNING] == [
+            ObservableWarning(warning=WRN_DESC)
+        ]
+        assert len(received_events_f) == 2
+
+    @pytest.mark.describe("test of observer from event list")
+    def test_observer_from_evlist(self) -> None:
+        ev_list: list[ObservableEvent] = []
+        my_obs = Observer.from_event_list(ev_list)
+
+        my_obs.receive(ObservableLog(level=logging.DEBUG, message=LOG_MESSAGE_1))
+        my_obs.receive(ObservableError(error=ERR_DESC))
+        my_obs.receive(ObservableWarning(warning=WRN_DESC))
+        my_obs.receive(ObservableLog(level=logging.ERROR, message=LOG_MESSAGE_2))
+
+        assert ev_list == [
+            ObservableLog(level=logging.DEBUG, message=LOG_MESSAGE_1),
+            ObservableError(error=ERR_DESC),
+            ObservableWarning(warning=WRN_DESC),
+            ObservableLog(level=logging.ERROR, message=LOG_MESSAGE_2),
+        ]
+
+        # now with filtering by event type
+        ev_list_f: list[ObservableEvent] = []
+        my_obs_f = Observer.from_event_list(
+            ev_list_f,
+            event_types=(ObservableEventType.LOG, ObservableEventType.WARNING),
+        )
+
+        my_obs_f.receive(ObservableLog(level=logging.DEBUG, message=LOG_MESSAGE_1))
+        my_obs_f.receive(ObservableError(error=ERR_DESC))
+        my_obs_f.receive(ObservableWarning(warning=WRN_DESC))
+        my_obs_f.receive(ObservableLog(level=logging.ERROR, message=LOG_MESSAGE_2))
+
+        assert ev_list_f == [
+            ObservableLog(level=logging.DEBUG, message=LOG_MESSAGE_1),
+            ObservableWarning(warning=WRN_DESC),
+            ObservableLog(level=logging.ERROR, message=LOG_MESSAGE_2),
+        ]

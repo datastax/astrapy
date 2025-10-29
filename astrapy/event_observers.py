@@ -16,9 +16,22 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Iterable
 
 from astrapy.exceptions import DataAPIErrorDescriptor, DataAPIWarningDescriptor
+from astrapy.utils.str_enum import StrEnum
+
+
+class ObservableEventType(StrEnum):
+    """
+    Enum for the possible values of the event type for observable events
+    """
+
+    LOG = "log"
+    WARNING = "warning"
+    ERROR = "error"
+    # LOG = "log"
+    # LOG = "log" TODO
 
 
 @dataclass
@@ -30,7 +43,7 @@ class ObservableEvent(ABC):
         event_type: the type of the event, such as "log", "error", or "warning".
     """
 
-    event_type: str
+    event_type: ObservableEventType
 
 
 @dataclass
@@ -48,7 +61,7 @@ class ObservableLog(ObservableEvent):
     message: str
 
     def __init__(self, level: int, message: str) -> None:
-        self.event_type = "log"
+        self.event_type = ObservableEventType.LOG
         self.level = level
         self.message = message
 
@@ -75,7 +88,7 @@ class ObservableError(ObservableEvent):
     error: DataAPIErrorDescriptor
 
     def __init__(self, error: DataAPIErrorDescriptor) -> None:
-        self.event_type = "error"
+        self.event_type = ObservableEventType.ERROR
         self.error = error
 
 
@@ -94,7 +107,7 @@ class ObservableWarning(ObservableEvent):
     warning: DataAPIWarningDescriptor
 
     def __init__(self, warning: DataAPIWarningDescriptor) -> None:
-        self.event_type = "warning"
+        self.event_type = ObservableEventType.WARNING
         self.warning = warning
 
 
@@ -102,8 +115,10 @@ class Observer(ABC):
     """
     An observer that can be attached to astrapy events through the API options.
 
-    Users are expected to subclass and provide their implementation
+    Users can subclass Obsrever and provide their implementation
     of the `receive` method.
+
+    Alternatively, the class offers factory static methods for common use-cases.
     """
 
     @abstractmethod
@@ -122,3 +137,73 @@ class Observer(ABC):
                 that triggered the event.
         """
         ...
+
+    @staticmethod
+    def from_event_list(
+        event_list: list[ObservableEvent],
+        *,
+        event_types: Iterable[ObservableEventType] | None = None,
+    ) -> Observer:
+        """
+        TODO
+        """
+
+        class _ObserverFromList(Observer):
+            def __init__(
+                self,
+                _event_list: list[ObservableEvent],
+                _event_types: Iterable[ObservableEventType] | None,
+            ) -> None:
+                self.event_list = _event_list
+                self.event_types = (
+                    set(ObservableEventType.__members__.values())
+                    if _event_types is None
+                    else set(_event_types)
+                )
+
+            def receive(
+                self,
+                event: ObservableEvent,
+                sender: Any = None,
+                function_name: str | None = None,
+            ) -> None:
+                if event.event_type in self.event_types:
+                    self.event_list.append(event)
+
+        return _ObserverFromList(event_list, event_types)
+
+    @staticmethod
+    def from_event_dict(
+        event_dict: dict[ObservableEventType, list[ObservableEvent]],
+        *,
+        event_types: Iterable[ObservableEventType] | None = None,
+    ) -> Observer:
+        """
+        TODO
+        """
+
+        class _ObserverFromDict(Observer):
+            def __init__(
+                self,
+                _event_dict: dict[ObservableEventType, list[ObservableEvent]],
+                _event_types: Iterable[ObservableEventType] | None,
+            ) -> None:
+                self.event_dict = _event_dict
+                self.event_types = (
+                    set(ObservableEventType.__members__.values())
+                    if _event_types is None
+                    else set(_event_types)
+                )
+
+            def receive(
+                self,
+                event: ObservableEvent,
+                sender: Any = None,
+                function_name: str | None = None,
+            ) -> None:
+                if event.event_type in self.event_types:
+                    self.event_dict[event.event_type] = self.event_dict.get(
+                        event.event_type, []
+                    ) + [event]
+
+        return _ObserverFromDict(event_dict, event_types)
