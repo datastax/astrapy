@@ -24,7 +24,13 @@ from typing import Any, Dict, Iterable, Sequence, cast
 import httpx
 
 from astrapy.constants import CallerType
-from astrapy.event_observers import ObservableRequest, Observer
+from astrapy.event_observers import (
+    ObservableError,
+    ObservableRequest,
+    ObservableResponse,
+    ObservableWarning,
+    Observer,
+)
 from astrapy.exceptions import (
     DataAPIHttpException,
     DataAPIResponseException,
@@ -35,6 +41,10 @@ from astrapy.exceptions import (
     _TimeoutContext,
     to_dataapi_timeout_exception,
     to_devopsapi_timeout_exception,
+)
+from astrapy.exceptions.error_descriptors import (
+    DataAPIErrorDescriptor,
+    DataAPIWarningDescriptor,
 )
 from astrapy.settings.defaults import (
     CHECK_DECIMAL_ESCAPING_CONSISTENCY,
@@ -270,23 +280,49 @@ class APICommander:
                 },
             )
 
-        if raise_api_errors and "errors" in raw_response_json:
-            logger.warning(
-                f"APICommander about to raise from: {raw_response_json['errors']}"
-            )
-            raise self._response_exc_class.from_response(
-                command=payload,
-                raw_response=raw_response_json,
-            )
+        if "errors" in raw_response_json:
+            if self.event_observers:
+                err_events = [
+                    ObservableError(error=DataAPIErrorDescriptor(err_dict))
+                    for err_dict in raw_response_json["errors"]
+                ]
+                for ev_obs in self.event_observers.values():
+                    if ev_obs is not None:
+                        for err_event in err_events:
+                            ev_obs.receive(err_event)
+            if raise_api_errors:
+                logger.warning(
+                    f"APICommander about to raise from: {raw_response_json['errors']}"
+                )
+                raise self._response_exc_class.from_response(
+                    command=payload,
+                    raw_response=raw_response_json,
+                )
 
         # no warnings check for DevOps API (there, 'status' may contain a string)
         if not self.dev_ops_api:
-            warning_messages: list[str] = (raw_response_json.get("status") or {}).get(
-                "warnings"
-            ) or []
-            if warning_messages:
-                for warning_message in warning_messages:
-                    full_warning = f"The {self._api_description} returned a warning: {warning_message}"
+            warning_items: list[str | dict[str, Any]] = (
+                raw_response_json.get("status") or {}
+            ).get("warnings") or []
+            if warning_items:
+                warning_descriptors = [
+                    DataAPIWarningDescriptor(warning_item)
+                    for warning_item in warning_items
+                ]
+                if self.event_observers:
+                    wrn_events = [
+                        ObservableWarning(warning=warning_descriptor)
+                        for warning_descriptor in warning_descriptors
+                    ]
+                    for ev_obs in self.event_observers.values():
+                        if ev_obs is not None:
+                            for wrn_event in wrn_events:
+                                ev_obs.receive(wrn_event)
+                for warning_descriptor in warning_descriptors:
+                    full_warning = (
+                        f"The {self._api_description} returned "
+                        f"a warning: {warning_descriptor}"
+                    )
                     logger.warning(full_warning)
 
         return raw_response_json
@@ -377,8 +413,7 @@ class APICommander:
         )
         httpx_timeout_s = to_httpx_timeout(_timeout_context)
         if self.event_observers:
-            # TODO: encoded_payload (is a str), preferrable?
-            req_event = ObservableRequest(payload=payload)
+            req_event = ObservableRequest(payload=encoded_payload)
             for ev_obs in self.event_observers.values():
                 if ev_obs is not None:
                     ev_obs.receive(
@@ -407,6 +442,14 @@ class APICommander:
                     timeout_exc, timeout_context=_timeout_context
                 )
 
+        if self.event_observers:
+            rsp_event = ObservableResponse(body=raw_response.text)
+            for ev_obs in self.event_observers.values():
+                if ev_obs is not None:
+                    ev_obs.receive(
+                        rsp_event,
+                        # TODO: sender/function_name
+                    )
         try:
             raw_response.raise_for_status()
         except httpx.HTTPStatusError as http_exc:
@@ -441,8 +484,7 @@ class APICommander:
         )
         httpx_timeout_s = to_httpx_timeout(_timeout_context)
         if self.event_observers:
-            # TODO: encoded_payload (is a str), preferrable?
-            req_event = ObservableRequest(payload=payload)
+            req_event = ObservableRequest(payload=encoded_payload)
             for ev_obs in self.event_observers.values():
                 if ev_obs is not None:
                     ev_obs.receive(
@@ -471,6 +513,14 @@ class APICommander:
                     timeout_exc, timeout_context=_timeout_context
                 )
 
+        if self.event_observers:
+            rsp_event = ObservableResponse(body=raw_response.text)
+            for ev_obs in self.event_observers.values():
+                if ev_obs is not None:
+                    ev_obs.receive(
+                        rsp_event,
+                        # TODO: sender/function_name
+                    )
         try:
             raw_response.raise_for_status()
         except httpx.HTTPStatusError as http_exc:

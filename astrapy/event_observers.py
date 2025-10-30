@@ -101,12 +101,12 @@ class ObservableRequest(ObservableEvent):
 
     Attributes:
         event_type: it has value ObservableEventType.REQUEST in this case.
-        payload: a dictionary expressing the payload JSON.
+        payload: the payload as a string.
     """
 
-    payload: dict[str, Any] | None
+    payload: str | None
 
-    def __init__(self, payload: dict[str, Any] | None) -> None:
+    def __init__(self, payload: str | None) -> None:
         self.event_type = ObservableEventType.REQUEST
         self.payload = payload
 
@@ -119,12 +119,12 @@ class ObservableResponse(ObservableEvent):
 
     Attributes:
         event_type: it has value ObservableEventType.RESPONSE in this case.
-        body: a dictionary expressing the response JSON, if applicable.
+        body: a string expressing the response body.
     """
 
-    body: dict[str, Any] | None
+    body: str | None
 
-    def __init__(self, body: dict[str, Any] | None) -> None:
+    def __init__(self, body: str | None) -> None:
         self.event_type = ObservableEventType.RESPONSE
         self.body = body
 
@@ -133,10 +133,12 @@ class Observer(ABC):
     """
     An observer that can be attached to astrapy events through the API options.
 
-    Users can subclass Obsrever and provide their implementation
-    of the `receive` method.
+    Users can subclass Observer and provide their implementation
+    of the `receive` method. Request-issuing classes (such as Database or Table)
+    will dispatch events to the observers registered in their API options.
 
-    Alternatively, the class offers factory static methods for common use-cases.
+    This class offers factory static methods for common use-cases:
+    `from_event_list` and `from_event_dict`.
     """
 
     @abstractmethod
@@ -163,7 +165,15 @@ class Observer(ABC):
         event_types: Iterable[ObservableEventType] | None = None,
     ) -> Observer:
         """
-        TODO
+        Create an Observer object wrapping a caller-provided list.
+
+        The resulting observer will simply append the events it receives into
+        the list.
+
+        Args:
+            event_list: the list where the caller will find the received events.
+            event_types: if provided, it's a list of event types so that only
+                events matching this filter are processed.
         """
 
         class _ObserverFromList(Observer):
@@ -197,7 +207,15 @@ class Observer(ABC):
         event_types: Iterable[ObservableEventType] | None = None,
     ) -> Observer:
         """
-        TODO
+        Create an Observer object wrapping a caller-provided dictionary.
+
+        The resulting observer will simply append the events it receives into
+        the dictionary, grouped by event type. Dict values are lists of events.
+
+        Args:
+            event_dict: the dict where the caller will find the received events.
+            event_types: if provided, it's a list of event types so that only
+                events matching this filter are processed.
         """
 
         class _ObserverFromDict(Observer):

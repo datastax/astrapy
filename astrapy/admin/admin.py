@@ -204,6 +204,7 @@ def fetch_raw_database_info_from_id_token(
         callers=_api_options.callers,
         dev_ops_api=True,
         redacted_header_names=_api_options.redacted_header_names,
+        event_observers=_api_options.event_observers,
     )
 
     gd_response = dev_ops_commander.request(
@@ -299,6 +300,7 @@ async def async_fetch_raw_database_info_from_id_token(
         callers=_api_options.callers,
         dev_ops_api=True,
         redacted_header_names=_api_options.redacted_header_names,
+        event_observers=_api_options.event_observers,
     )
 
     gd_response = await dev_ops_commander.async_request(
@@ -506,6 +508,7 @@ class AstraDBAdmin:
             callers=self.api_options.callers,
             dev_ops_api=True,
             redacted_header_names=self.api_options.redacted_header_names,
+            event_observers=self.api_options.event_observers,
         )
         return dev_ops_commander
 
@@ -534,6 +537,7 @@ class AstraDBAdmin:
             callers=self.api_options.callers,
             dev_ops_api=True,
             redacted_header_names=self.api_options.redacted_header_names,
+            event_observers=self.api_options.event_observers,
         )
         return rl_dev_ops_commander
 
@@ -2643,6 +2647,7 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             headers=self._commander_headers,
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
+            event_observers=self.api_options.event_observers,
         )
         return api_commander
 
@@ -2669,6 +2674,7 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             callers=self.api_options.callers,
             dev_ops_api=True,
             redacted_header_names=self.api_options.redacted_header_names,
+            event_observers=self.api_options.event_observers,
         )
         return dev_ops_commander
 
@@ -3744,6 +3750,7 @@ class DataAPIDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             headers=self._commander_headers,
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
+            event_observers=self.api_options.event_observers,
         )
         return api_commander
 

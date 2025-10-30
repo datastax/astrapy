@@ -50,9 +50,9 @@ OBS_WRN = ObservableWarning(
         }
     ),
 )
-OBS_RSP_1 = ObservableResponse(body={"k": "v1"})
-OBS_RSP_2 = ObservableResponse(body={"k": "v2"})
-OBS_REQ = ObservableRequest(payload={"k": "v"})
+OBS_RSP_1 = ObservableResponse(body='{"k_resp":"v1"}')
+OBS_RSP_2 = ObservableResponse(body='{"k_resp":"v2"}')
+OBS_REQ = ObservableRequest(payload='{"k_req":"v"}')
 
 
 class TestEventObservers:
