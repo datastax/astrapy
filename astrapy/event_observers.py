@@ -18,7 +18,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Iterable
 
-from astrapy.exceptions import DataAPIErrorDescriptor, DataAPIWarningDescriptor
+from astrapy.exceptions.error_descriptors import (
+    DataAPIErrorDescriptor,
+    DataAPIWarningDescriptor,
+)
 from astrapy.utils.str_enum import StrEnum
 
 

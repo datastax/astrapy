@@ -68,5 +68,20 @@ class TestAPIOptions:
                 event_observers={"b": obs_b},
             )
         )
+        opts_3n = opts_d.with_override(
+            APIOptions(
+                event_observers={"a": obs_a, "b": None},
+            )
+        )
+        opts_4n = opts_d.with_override(
+            APIOptions(
+                event_observers={"a": obs_a, "b": obs_b},
+            )
+        ).with_override(
+            APIOptions(
+                event_observers={"b": None},
+            )
+        )
 
         assert opts_1 == opts_2
+        assert opts_3n == opts_4n

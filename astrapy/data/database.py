@@ -35,11 +35,13 @@ from astrapy.exceptions import (
     DevOpsAPIException,
     InvalidEnvironmentException,
     UnexpectedDataAPIResponseException,
+    _TimeoutContext,
+)
+from astrapy.exceptions.utils import (
     _select_singlereq_timeout_ca,
     _select_singlereq_timeout_da,
     _select_singlereq_timeout_gm,
     _select_singlereq_timeout_ta,
-    _TimeoutContext,
 )
 from astrapy.info import (
     AlterTypeOperation,

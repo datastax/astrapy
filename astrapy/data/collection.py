@@ -48,10 +48,12 @@ from astrapy.exceptions import (
     MultiCallTimeoutManager,
     TooManyDocumentsToCountException,
     UnexpectedDataAPIResponseException,
+    _TimeoutContext,
+)
+from astrapy.exceptions.utils import (
     _first_valid_timeout,
     _select_singlereq_timeout_ca,
     _select_singlereq_timeout_gm,
-    _TimeoutContext,
 )
 from astrapy.info import CollectionDefinition, CollectionInfo
 from astrapy.results import (

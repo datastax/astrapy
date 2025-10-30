@@ -35,10 +35,12 @@ from astrapy.exceptions import (
     InvalidEnvironmentException,
     MultiCallTimeoutManager,
     UnexpectedDataAPIResponseException,
+    _TimeoutContext,
+)
+from astrapy.exceptions.utils import (
     _first_valid_timeout,
     _select_singlereq_timeout_da,
     _select_singlereq_timeout_ka,
-    _TimeoutContext,
 )
 from astrapy.info import (
     AstraDBAdminDatabaseInfo,

@@ -43,10 +43,12 @@ from astrapy.exceptions import (
     TableInsertManyException,
     TooManyRowsToCountException,
     UnexpectedDataAPIResponseException,
+    _TimeoutContext,
+)
+from astrapy.exceptions.utils import (
     _first_valid_timeout,
     _select_singlereq_timeout_gm,
     _select_singlereq_timeout_ta,
-    _TimeoutContext,
 )
 from astrapy.info import (
     TableIndexDefinition,
