@@ -280,25 +280,6 @@ class APICommander:
                 },
             )
 
-        if "errors" in raw_response_json:
-            if self.event_observers:
-                err_events = [
-                    ObservableError(error=DataAPIErrorDescriptor(err_dict))
-                    for err_dict in raw_response_json["errors"]
-                ]
-                for ev_obs in self.event_observers.values():
-                    if ev_obs is not None:
-                        for err_event in err_events:
-                            ev_obs.receive(err_event)
-            if raise_api_errors:
-                logger.warning(
-                    f"APICommander about to raise from: {raw_response_json['errors']}"
-                )
-                raise self._response_exc_class.from_response(
-                    command=payload,
-                    raw_response=raw_response_json,
-                )
-
         # no warnings check for DevOps API (there, 'status' may contain a string)
         if not self.dev_ops_api:
             warning_items: list[str | dict[str, Any]] = (
@@ -324,6 +305,25 @@ class APICommander:
                         f"a warning: {warning_descriptor}"
                     )
                     logger.warning(full_warning)
+
+        if "errors" in raw_response_json:
+            if self.event_observers:
+                err_events = [
+                    ObservableError(error=DataAPIErrorDescriptor(err_dict))
+                    for err_dict in raw_response_json["errors"]
+                ]
+                for ev_obs in self.event_observers.values():
+                    if ev_obs is not None:
+                        for err_event in err_events:
+                            ev_obs.receive(err_event)
+            if raise_api_errors:
+                logger.warning(
+                    f"APICommander about to raise from: {raw_response_json['errors']}"
+                )
+                raise self._response_exc_class.from_response(
+                    command=payload,
+                    raw_response=raw_response_json,
+                )
 
         return raw_response_json
 
