@@ -30,7 +30,6 @@ class ObservableEventType(StrEnum):
     Enum for the possible values of the event type for observable events
     """
 
-    LOG = "log"
     WARNING = "warning"
     ERROR = "error"
     REQUEST = "request"
@@ -47,26 +46,6 @@ class ObservableEvent(ABC):
     """
 
     event_type: ObservableEventType
-
-
-@dataclass
-class ObservableLog(ObservableEvent):
-    """
-    A log entry event, with a severity level and a string message.
-
-    Attributes:
-        event_type: it has value ObservableEventType.LOG in this case.
-        level: a number following the scale of `logging.INFO`, `DEBUG`, etc.
-        message: a string containing the full log message.
-    """
-
-    level: int
-    message: str
-
-    def __init__(self, level: int, message: str) -> None:
-        self.event_type = ObservableEventType.LOG
-        self.level = level
-        self.message = message
 
 
 @dataclass
