@@ -24,6 +24,7 @@ from typing import Any, Dict, Iterable, Sequence, cast
 import httpx
 
 from astrapy.constants import CallerType
+from astrapy.event_observers import ObservableRequest, Observer
 from astrapy.exceptions import (
     DataAPIHttpException,
     DataAPIResponseException,
@@ -99,6 +100,7 @@ class APICommander:
         callers: Sequence[CallerType] = [],
         redacted_header_names: Iterable[str] | None = None,
         dev_ops_api: bool = False,
+        event_observers: dict[str, Observer | None] = {},
         handle_decimals_writes: bool = False,
         handle_decimals_reads: bool = False,
     ) -> None:
@@ -115,6 +117,7 @@ class APICommander:
             )
         }
         self.dev_ops_api = dev_ops_api
+        self.event_observers = event_observers
         self.handle_decimals_writes = handle_decimals_writes
         self.handle_decimals_reads = handle_decimals_reads
 
@@ -373,6 +376,15 @@ class APICommander:
             timeout_context=_timeout_context,
         )
         httpx_timeout_s = to_httpx_timeout(_timeout_context)
+        if self.event_observers:
+            # TODO: encoded_payload (is a str), preferrable?
+            req_event = ObservableRequest(payload=payload)
+            for ev_obs in self.event_observers.values():
+                if ev_obs is not None:
+                    ev_obs.receive(
+                        req_event,
+                        # TODO: sender/function_name
+                    )
 
         try:
             raw_response = self.client.request(
@@ -428,6 +440,15 @@ class APICommander:
             timeout_context=_timeout_context,
         )
         httpx_timeout_s = to_httpx_timeout(_timeout_context)
+        if self.event_observers:
+            # TODO: encoded_payload (is a str), preferrable?
+            req_event = ObservableRequest(payload=payload)
+            for ev_obs in self.event_observers.values():
+                if ev_obs is not None:
+                    ev_obs.receive(
+                        req_event,
+                        # TODO: sender/function_name
+                    )
 
         try:
             raw_response = await self.async_client.request(

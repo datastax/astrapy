@@ -125,9 +125,9 @@ class ObservableRequest(ObservableEvent):
         payload: a dictionary expressing the payload JSON.
     """
 
-    payload: dict[str, Any]
+    payload: dict[str, Any] | None
 
-    def __init__(self, payload: dict[str, Any]) -> None:
+    def __init__(self, payload: dict[str, Any] | None) -> None:
         self.event_type = ObservableEventType.REQUEST
         self.payload = payload
 
