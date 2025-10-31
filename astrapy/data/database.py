@@ -209,6 +209,7 @@ class Database:
                 callers=self.api_options.callers,
                 redacted_header_names=self.api_options.redacted_header_names,
                 event_observers=self.api_options.event_observers,
+                spawner=self,
             )
             return api_commander
 
@@ -2201,6 +2202,7 @@ class Database:
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
             event_observers=self.api_options.event_observers,
+            spawner=self,
         )
 
         _cmd_desc = ",".join(sorted(body.keys()))
@@ -2413,6 +2415,7 @@ class AsyncDatabase:
                 callers=self.api_options.callers,
                 redacted_header_names=self.api_options.redacted_header_names,
                 event_observers=self.api_options.event_observers,
+                spawner=self,
             )
             return api_commander
 
@@ -4469,6 +4472,7 @@ class AsyncDatabase:
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
             event_observers=self.api_options.event_observers,
+            spawner=self,
         )
 
         _cmd_desc = ",".join(sorted(body.keys()))

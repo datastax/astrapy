@@ -509,6 +509,7 @@ class AstraDBAdmin:
             dev_ops_api=True,
             redacted_header_names=self.api_options.redacted_header_names,
             event_observers=self.api_options.event_observers,
+            spawner=self,
         )
         return dev_ops_commander
 
@@ -538,6 +539,7 @@ class AstraDBAdmin:
             dev_ops_api=True,
             redacted_header_names=self.api_options.redacted_header_names,
             event_observers=self.api_options.event_observers,
+            spawner=self,
         )
         return rl_dev_ops_commander
 
@@ -2648,6 +2650,7 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
             event_observers=self.api_options.event_observers,
+            spawner=self,
         )
         return api_commander
 
@@ -2675,6 +2678,7 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             dev_ops_api=True,
             redacted_header_names=self.api_options.redacted_header_names,
             event_observers=self.api_options.event_observers,
+            spawner=self,
         )
         return dev_ops_commander
 
@@ -3751,6 +3755,7 @@ class DataAPIDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
             event_observers=self.api_options.event_observers,
+            spawner=self,
         )
         return api_commander
 

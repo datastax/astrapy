@@ -31,6 +31,7 @@ def log_httpx_request(
     redacted_request_headers: dict[str, str],
     encoded_payload: str | None,
     timeout_context: _TimeoutContext,
+    caller_function_name: str | None,
 ) -> None:
     """
     Log the details of an HTTP request for debugging purposes.
@@ -55,6 +56,8 @@ def log_httpx_request(
             f"Timeout (ms): for request {timeout_context.request_ms or '(unset)'} ms"
             f", overall operation {timeout_context.nominal_ms or '(unset)'} ms"
         )
+    if caller_function_name:
+        logger.debug(f"Request invoked by function: '{caller_function_name}'")
 
 
 def log_httpx_response(response: httpx.Response) -> None:

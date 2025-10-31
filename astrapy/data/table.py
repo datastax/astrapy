@@ -382,6 +382,7 @@ class Table(Generic[ROW]):
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
             event_observers=self.api_options.event_observers,
+            spawner=self,
             handle_decimals_writes=True,
             handle_decimals_reads=True,
         )
@@ -3413,6 +3414,7 @@ class AsyncTable(Generic[ROW]):
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
             event_observers=self.api_options.event_observers,
+            spawner=self,
             handle_decimals_writes=True,
             handle_decimals_reads=True,
         )
