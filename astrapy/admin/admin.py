@@ -213,6 +213,7 @@ def fetch_raw_database_info_from_id_token(
             request_ms=_api_options.timeout_options.request_timeout_ms,
             label=_timeout_context_label,
         ),
+        caller_function_name="fetch_raw_database_info_from_id_token",
     )
     return gd_response
 
@@ -309,6 +310,7 @@ async def async_fetch_raw_database_info_from_id_token(
             request_ms=_api_options.timeout_options.request_timeout_ms,
             label=_timeout_context_label,
         ),
+        caller_function_name="async_fetch_raw_database_info_from_id_token",
     )
     return gd_response
 
@@ -648,6 +650,7 @@ class AstraDBAdmin:
             timeout_context=_TimeoutContext(
                 request_ms=_database_admin_timeout_ms, label=_da_label
             ),
+            caller_function_name="list_databases",
         )
 
     def _list_databases_ctx(
@@ -657,6 +660,7 @@ class AstraDBAdmin:
         provider: str | None,
         page_size: int | None,
         timeout_context: _TimeoutContext,
+        caller_function_name: str,
     ) -> list[AstraDBAdminDatabaseInfo]:
         # version of the method, but with timeouts made into a _TimeoutContext
         logger.info("getting databases (DevOps API)")
@@ -675,6 +679,7 @@ class AstraDBAdmin:
             http_method=HttpMethod.GET,
             request_params=request_params_0,
             timeout_context=timeout_context,
+            caller_function_name=caller_function_name,
         )
         if not isinstance(response_0, list):
             raise DevOpsAPIException(
@@ -700,6 +705,7 @@ class AstraDBAdmin:
                 http_method=HttpMethod.GET,
                 request_params=request_params_n,
                 timeout_context=timeout_context,
+                caller_function_name=caller_function_name,
             )
             logger.info(
                 "finished request %s, getting databases (DevOps API)",
@@ -781,6 +787,7 @@ class AstraDBAdmin:
             timeout_context=_TimeoutContext(
                 request_ms=_database_admin_timeout_ms, label=_da_label
             ),
+            caller_function_name="async_list_databases",
         )
 
     async def _async_list_databases_ctx(
@@ -790,6 +797,7 @@ class AstraDBAdmin:
         provider: str | None,
         page_size: int | None,
         timeout_context: _TimeoutContext,
+        caller_function_name: str,
     ) -> list[AstraDBAdminDatabaseInfo]:
         # version of the method, but with timeouts made into a _TimeoutContext
         logger.info("getting databases (DevOps API), async")
@@ -808,6 +816,7 @@ class AstraDBAdmin:
             http_method=HttpMethod.GET,
             request_params=request_params_0,
             timeout_context=timeout_context,
+            caller_function_name=caller_function_name,
         )
         if not isinstance(response_0, list):
             raise DevOpsAPIException(
@@ -833,6 +842,7 @@ class AstraDBAdmin:
                 http_method=HttpMethod.GET,
                 request_params=request_params_n,
                 timeout_context=timeout_context,
+                caller_function_name=caller_function_name,
             )
             logger.info(
                 "finished request %s, getting databases (DevOps API), async",
@@ -900,6 +910,7 @@ class AstraDBAdmin:
             timeout_context=_TimeoutContext(
                 request_ms=_database_admin_timeout_ms, label=_da_label
             ),
+            caller_function_name="database_info",
         )
 
     def _database_info_ctx(
@@ -907,6 +918,7 @@ class AstraDBAdmin:
         id: str,
         *,
         timeout_context: _TimeoutContext,
+        caller_function_name: str,
     ) -> AstraDBAdminDatabaseInfo:
         # version of the method, but with timeouts made into a _TimeoutContext
         logger.info(f"getting database info for '{id}' (DevOps API)")
@@ -914,6 +926,7 @@ class AstraDBAdmin:
             http_method=HttpMethod.GET,
             additional_path=id,
             timeout_context=timeout_context,
+            caller_function_name=caller_function_name,
         )
         logger.info(f"finished getting database info for '{id}' (DevOps API)")
         return _recast_as_admin_database_info(
@@ -967,6 +980,7 @@ class AstraDBAdmin:
             timeout_context=_TimeoutContext(
                 request_ms=_database_admin_timeout_ms, label=_da_label
             ),
+            caller_function_name="async_database_info",
         )
 
     async def _async_database_info_ctx(
@@ -974,6 +988,7 @@ class AstraDBAdmin:
         id: str,
         *,
         timeout_context: _TimeoutContext,
+        caller_function_name: str,
     ) -> AstraDBAdminDatabaseInfo:
         # version of the method, but with timeouts made into a _TimeoutContext
         logger.info(f"getting database info for '{id}' (DevOps API), async")
@@ -981,6 +996,7 @@ class AstraDBAdmin:
             http_method=HttpMethod.GET,
             additional_path=id,
             timeout_context=timeout_context,
+            caller_function_name=caller_function_name,
         )
         logger.info(f"finished getting database info for '{id}' (DevOps API), async")
         return _recast_as_admin_database_info(
@@ -1130,6 +1146,7 @@ class AstraDBAdmin:
                         cap_time_ms=_request_timeout_ms,
                         cap_timeout_label=_rt_label,
                     ),
+                    caller_function_name="create_database",
                 )
                 last_status_seen = last_db_info.status
             if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
@@ -1292,6 +1309,7 @@ class AstraDBAdmin:
                         cap_time_ms=_request_timeout_ms,
                         cap_timeout_label=_rt_label,
                     ),
+                    caller_function_name="async_create_database",
                 )
                 last_status_seen = last_db_info.status
             if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
@@ -1415,6 +1433,7 @@ class AstraDBAdmin:
                             cap_time_ms=_request_timeout_ms,
                             cap_timeout_label=_rt_label,
                         ),
+                        caller_function_name="drop_database",
                     )
                     if a_db_info.id == id
                 ]
@@ -1527,6 +1546,7 @@ class AstraDBAdmin:
                             cap_time_ms=_request_timeout_ms,
                             cap_timeout_label=_rt_label,
                         ),
+                        caller_function_name="async_drop_database",
                     )
                     if a_db_info.id == id
                 ]
@@ -1922,6 +1942,7 @@ class AstraDBAdmin:
                 additional_path="regions/serverless",
                 request_params=req_params,
                 timeout_context=timeout_ctx,
+                caller_function_name="find_available_regions",
             ),
         )
         logger.info("finished getting available regions (DevOps API)")
@@ -2012,6 +2033,7 @@ class AstraDBAdmin:
                 additional_path="regions/serverless",
                 request_params=req_params,
                 timeout_context=timeout_ctx,
+                caller_function_name="async_find_available_regions",
             ),
         )
         logger.info("finished getting available regions (DevOps API), async")
@@ -2219,6 +2241,7 @@ class ProviderQueryingDatabaseAdmin(DatabaseAdmin):
             timeout_context=_TimeoutContext(
                 request_ms=_database_admin_timeout_ms, label=_da_label
             ),
+            caller_function_name="find_embeddnig_providers",
         )
         if "embeddingProviders" not in fe_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -2300,6 +2323,7 @@ class ProviderQueryingDatabaseAdmin(DatabaseAdmin):
             timeout_context=_TimeoutContext(
                 request_ms=_database_admin_timeout_ms, label=_da_label
             ),
+            caller_function_name="async_find_embedding_providers",
         )
         if "embeddingProviders" not in fe_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -2381,6 +2405,7 @@ class ProviderQueryingDatabaseAdmin(DatabaseAdmin):
             timeout_context=_TimeoutContext(
                 request_ms=_database_admin_timeout_ms, label=_da_label
             ),
+            caller_function_name="find_reranking_providers",
         )
         if "rerankingProviders" not in fr_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -2466,6 +2491,7 @@ class ProviderQueryingDatabaseAdmin(DatabaseAdmin):
             timeout_context=_TimeoutContext(
                 request_ms=_database_admin_timeout_ms, label=_da_label
             ),
+            caller_function_name="async_find_reranking_providers",
         )
         if "rerankingProviders" not in fr_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -3072,6 +3098,7 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
                         cap_time_ms=_request_timeout_ms,
                         cap_timeout_label=_rt_label,
                     ),
+                    caller_function_name="create_keyspace",
                 ).status
             if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
                 raise DevOpsAPIException(
@@ -3190,6 +3217,7 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
                         cap_time_ms=_request_timeout_ms,
                         cap_timeout_label=_rt_label,
                     ),
+                    caller_function_name="async_create_keyspace",
                 )
                 last_status_seen = last_db_info.status
             if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
@@ -3300,6 +3328,7 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
                         cap_time_ms=_request_timeout_ms,
                         cap_timeout_label=_rt_label,
                     ),
+                    caller_function_name="drop_keyspace",
                 ).status
             if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
                 raise DevOpsAPIException(
@@ -3410,6 +3439,7 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
                         cap_time_ms=_request_timeout_ms,
                         cap_timeout_label=_rt_label,
                     ),
+                    caller_function_name="async_drop_keyspace",
                 )
                 last_status_seen = last_db_info.status
             if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
@@ -3847,6 +3877,7 @@ class DataAPIDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             timeout_context=_TimeoutContext(
                 request_ms=_keyspace_admin_timeout_ms, label=_ka_label
             ),
+            caller_function_name="list_keyspaces",
         )
         if "keyspaces" not in fn_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -3926,6 +3957,7 @@ class DataAPIDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             timeout_context=_TimeoutContext(
                 request_ms=_keyspace_admin_timeout_ms, label=_ka_label
             ),
+            caller_function_name="create_keyspace",
         )
         if (cn_response.get("status") or {}).get("ok") != 1:
             raise UnexpectedDataAPIResponseException(
@@ -3982,6 +4014,7 @@ class DataAPIDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             timeout_context=_TimeoutContext(
                 request_ms=_keyspace_admin_timeout_ms, label=_ka_label
             ),
+            caller_function_name="drop_keyspace",
         )
         if (dn_response.get("status") or {}).get("ok") != 1:
             raise UnexpectedDataAPIResponseException(
@@ -4031,6 +4064,7 @@ class DataAPIDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             timeout_context=_TimeoutContext(
                 request_ms=_keyspace_admin_timeout_ms, label=_ka_label
             ),
+            caller_function_name="async_list_keyspaces",
         )
         if "keyspaces" not in fn_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -4114,6 +4148,7 @@ class DataAPIDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             timeout_context=_TimeoutContext(
                 request_ms=_keyspace_admin_timeout_ms, label=_ka_label
             ),
+            caller_function_name="async_create_keyspace",
         )
         if (cn_response.get("status") or {}).get("ok") != 1:
             raise UnexpectedDataAPIResponseException(
@@ -4174,6 +4209,7 @@ class DataAPIDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             timeout_context=_TimeoutContext(
                 request_ms=_keyspace_admin_timeout_ms, label=_ka_label
             ),
+            caller_function_name="async_drop_keyspace",
         )
         if (dn_response.get("status") or {}).get("ok") != 1:
             raise UnexpectedDataAPIResponseException(

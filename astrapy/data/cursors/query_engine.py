@@ -143,6 +143,7 @@ class _CollectionFindQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         raw_f_response = self.collection._api_commander.request(
             payload=converted_f_payload,
             timeout_context=timeout_context,
+            caller_function_name="_CollectionFindQueryEngine._fetch_page",
         )
         logger.info(f"cursor finished fetching a page: {_page_str} from {_coll_name}")
 
@@ -187,6 +188,7 @@ class _CollectionFindQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         raw_f_response = await self.async_collection._api_commander.async_request(
             payload=converted_f_payload,
             timeout_context=timeout_context,
+            caller_function_name="_CollectionFindQueryEngine._async_fetch_page",
         )
         logger.info(
             f"cursor finished fetching a page: {_page_str} from {_coll_name}, async"
@@ -290,6 +292,7 @@ class _TableFindQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         f_response = self.table._api_commander.request(
             payload=f_payload,
             timeout_context=timeout_context,
+            caller_function_name="_TableFindQueryEngine._fetch_page",
         )
         logger.info(f"cursor finished fetching a page: {_page_str} from {_table_name}")
 
@@ -340,6 +343,7 @@ class _TableFindQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         f_response = await self.async_table._api_commander.async_request(
             payload=f_payload,
             timeout_context=timeout_context,
+            caller_function_name="_TableFindQueryEngine._async_fetch_page",
         )
         logger.info(f"cursor finished fetching a page: {_page_str} from {_table_name}")
 
@@ -457,6 +461,7 @@ class _CollectionFindAndRerankQueryEngine(
         raw_f_response = self.collection._api_commander.request(
             payload=converted_f_payload,
             timeout_context=timeout_context,
+            caller_function_name="_CollectionFindAndRerankQueryEngine._fetch_page",
         )
         logger.info(f"cursor finished fetching a page: {_page_str} from {_coll_name}")
         f_response: dict[str, Any] = postprocess_collection_response(
@@ -518,6 +523,7 @@ class _CollectionFindAndRerankQueryEngine(
         raw_f_response = await self.async_collection._api_commander.async_request(
             payload=converted_f_payload,
             timeout_context=timeout_context,
+            caller_function_name="_CollectionFindAndRerankQueryEngine._async_fetch_page",
         )
         logger.info(
             f"cursor finished fetching a page: {_page_str} from {_coll_name}, async"
