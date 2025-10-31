@@ -20,11 +20,16 @@ from __future__ import annotations
 
 import json
 
+import httpx
 import pytest
 from pytest_httpserver import HTTPServer
 
 from astrapy import DataAPIClient
-from astrapy.api_options import APIOptions
+from astrapy.admin.admin import (
+    async_fetch_raw_database_info_from_id_token,
+    fetch_raw_database_info_from_id_token,
+)
+from astrapy.api_options import APIOptions, DevOpsAPIURLOptions
 from astrapy.event_observers import (
     ObservableError,
     ObservableEvent,
@@ -39,12 +44,15 @@ from astrapy.exceptions.error_descriptors import (
     DataAPIErrorDescriptor,
     DataAPIWarningDescriptor,
 )
+from astrapy.settings.defaults import DEV_OPS_RESPONSE_HTTP_CREATED
 from astrapy.utils.request_tools import HttpMethod
 
 
 class TestObservingEvents:
-    @pytest.mark.describe("test of attached event observers, sync")
-    def test_attached_eventobservers_sync(self, httpserver: HTTPServer) -> None:
+    @pytest.mark.describe("test of regular class attached event observers, sync")
+    def test_regularclass_attached_eventobservers_sync(
+        self, httpserver: HTTPServer
+    ) -> None:
         """
         Attachment test, i.e. that each of the (sync) requesting classes
         hooks to observers. Admin excluded. Sync classes.
@@ -108,8 +116,10 @@ class TestObservingEvents:
         assert isinstance(ev_list[-1], ObservableRequest)
         assert json.loads(ev_list[-1].payload or "") == {"z": -1}
 
-    @pytest.mark.describe("test of attached event observers, async")
-    async def test_attached_eventobservers_async(self, httpserver: HTTPServer) -> None:
+    @pytest.mark.describe("test of regular class attached event observers, async")
+    async def test_regularclass_attached_eventobservers_async(
+        self, httpserver: HTTPServer
+    ) -> None:
         """
         Attachment test, i.e. that each of the (sync) requesting classes
         hooks to observers. Admin excluded. Async classes.
@@ -174,7 +184,7 @@ class TestObservingEvents:
         assert json.loads(ev_list[-1].payload or "") == {"z": -1}
 
     @pytest.mark.describe("test of event types being emitted, sync")
-    def test_event_types_emitted(self, httpserver: HTTPServer) -> None:
+    def test_eventobservers_event_types_emitted(self, httpserver: HTTPServer) -> None:
         """
         Test about all kinds of events being emitted properly.
         Uses just a collection.
@@ -218,3 +228,177 @@ class TestObservingEvents:
         assert ev_list[2].warning == DataAPIWarningDescriptor({"title": "Warning!"})
         assert isinstance(ev_list[3], ObservableError)
         assert ev_list[3].error == DataAPIErrorDescriptor({"title": "Error!"})
+
+    @pytest.mark.describe("test of admin classes attached event observers, sync")
+    def test_adminclasses_attached_eventobservers_sync(
+        self, httpserver: HTTPServer
+    ) -> None:
+        """
+        Attachment test, i.e. that each of the (sync) requesting classes
+        hooks to observers. Admin classes. Sync calls.
+
+        Note: it's a single class with a single commander: no need to test async calls.
+        """
+        root_endpoint = httpserver.url_for("/")
+        db_id = "00000000-0000-0000-0000-000000000000"
+
+        ev_list: list[ObservableEvent] = []
+        my_obs = Observer.from_event_list(
+            ev_list, event_types=[ObservableEventType.REQUEST]
+        )
+
+        # Astra DB admin classes require tweaking the devops API options
+        dbadmin_apioptions = APIOptions(
+            event_observers={"test": my_obs},
+            dev_ops_api_url_options=DevOpsAPIURLOptions(
+                dev_ops_api_version="v2",
+                dev_ops_url=root_endpoint,
+            ),
+        )
+        astra_client = DataAPIClient(api_options=dbadmin_apioptions)
+        astra_admin = astra_client.get_admin()
+        astra_db_admin = astra_admin.get_database_admin(
+            f"https://{db_id}-reg.apps.astra.datastax.com"
+        )
+
+        # AstraDBAdmin's main commander
+        expected_c_url = "/v2/databases"
+        httpserver.expect_oneshot_request(
+            expected_c_url,
+            method=HttpMethod.GET,
+        ).respond_with_json(
+            [
+                {
+                    "id": "012",
+                    "status": "bla",
+                    "info": {"name": "blo", "datacenters": [], "cloudProvider": "cp"},
+                    "orgId": "234",
+                    "ownerId": "678",
+                }
+            ]
+        )
+        astra_admin.list_databases()
+
+        assert ev_list != []
+        assert isinstance(ev_list[-1], ObservableRequest)
+        assert ev_list[-1].payload is None
+
+        # AstraDBAdmin's region-specific commander
+        # this uses another APICommander --> another test
+        expected_c_url = "/v2/regions/serverless"
+        httpserver.expect_oneshot_request(
+            expected_c_url,
+            method=HttpMethod.GET,
+        ).respond_with_json([])
+        astra_admin.find_available_regions()
+
+        assert len(ev_list) == 2
+        assert isinstance(ev_list[-1], ObservableRequest)
+        assert ev_list[-1].payload is None
+
+        # AstraDBDatabaseAdmin's Data API commander
+        # this will badly fail because the URL must be an Astra URL for this class
+        with pytest.raises(httpx.ConnectError):
+            astra_db_admin.find_embedding_providers()
+
+        assert len(ev_list) == 3
+        assert isinstance(ev_list[-1], ObservableRequest)
+        assert json.loads(ev_list[-1].payload or "") == {"findEmbeddingProviders": {}}
+
+        # AstraDBDatabaseAdmin's DevOps API commander
+        expected_c_url = f"/v2/databases/{db_id}/keyspaces/xnewkeyspace"
+        httpserver.expect_oneshot_request(
+            expected_c_url,
+            method=HttpMethod.POST,
+        ).respond_with_data(status=DEV_OPS_RESPONSE_HTTP_CREATED)
+        astra_db_admin.create_keyspace("xnewkeyspace", wait_until_active=False)
+
+        assert len(ev_list) == 4
+        assert isinstance(ev_list[-1], ObservableRequest)
+        assert ev_list[-1].payload is None
+
+        # DataAPIDatabaseAdmin's (only) commander
+        dapi_client = DataAPIClient(environment="other", api_options=dbadmin_apioptions)
+        dapi_db_admin = dapi_client.get_database(root_endpoint).get_database_admin()
+        expected_c_url = "/v1"
+        httpserver.expect_oneshot_request(
+            expected_c_url,
+            method=HttpMethod.POST,
+        ).respond_with_json({"status": {"keyspaces": []}})
+        dapi_db_admin.list_keyspaces()
+
+        assert len(ev_list) == 5
+        assert isinstance(ev_list[-1], ObservableRequest)
+        assert json.loads(ev_list[-1].payload or "") == {"findKeyspaces": {}}
+
+    @pytest.mark.describe("test of admin functions attached event observers, sync")
+    def test_adminfunctions_attached_eventobservers_sync(
+        self, httpserver: HTTPServer
+    ) -> None:
+        """
+        Attachment test, i.e. that each of the requesting admin functions
+        hook to observers. Sync calls.
+        """
+        root_endpoint = httpserver.url_for("/")
+        db_id = "012"
+
+        ev_list: list[ObservableEvent] = []
+        my_obs = Observer.from_event_list(
+            ev_list, event_types=[ObservableEventType.REQUEST]
+        )
+
+        dbadmin_apioptions = APIOptions(
+            event_observers={"test": my_obs},
+            dev_ops_api_url_options=DevOpsAPIURLOptions(
+                dev_ops_api_version="v2",
+                dev_ops_url=root_endpoint,
+            ),
+        )
+
+        expected_c_url = f"/v2/databases/{db_id}"
+        httpserver.expect_oneshot_request(
+            expected_c_url,
+            method=HttpMethod.GET,
+        ).respond_with_json({})
+        fetch_raw_database_info_from_id_token(db_id, api_options=dbadmin_apioptions)
+
+        assert ev_list != []
+        assert isinstance(ev_list[-1], ObservableRequest)
+        assert ev_list[-1].payload is None
+
+    @pytest.mark.describe("test of admin functions attached event observers, async")
+    async def test_adminfunctions_attached_eventobservers_async(
+        self, httpserver: HTTPServer
+    ) -> None:
+        """
+        Attachment test, i.e. that each of the requesting admin functions
+        hook to observers. Sync calls.
+        """
+        root_endpoint = httpserver.url_for("/")
+        db_id = "012"
+
+        ev_list: list[ObservableEvent] = []
+        my_obs = Observer.from_event_list(
+            ev_list, event_types=[ObservableEventType.REQUEST]
+        )
+
+        dbadmin_apioptions = APIOptions(
+            event_observers={"test": my_obs},
+            dev_ops_api_url_options=DevOpsAPIURLOptions(
+                dev_ops_api_version="v2",
+                dev_ops_url=root_endpoint,
+            ),
+        )
+
+        expected_c_url = f"/v2/databases/{db_id}"
+        httpserver.expect_oneshot_request(
+            expected_c_url,
+            method=HttpMethod.GET,
+        ).respond_with_json({})
+        await async_fetch_raw_database_info_from_id_token(
+            db_id, api_options=dbadmin_apioptions
+        )
+
+        assert ev_list != []
+        assert isinstance(ev_list[-1], ObservableRequest)
+        assert ev_list[-1].payload is None
