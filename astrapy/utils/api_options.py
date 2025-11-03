@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import datetime
 from dataclasses import dataclass
-from typing import Iterable, Sequence
+from typing import TYPE_CHECKING, Iterable, Sequence
 
 from astrapy.authentication import (
     EmbeddingAPIKeyHeaderProvider,
@@ -36,7 +36,6 @@ from astrapy.constants import (
     SerializerFunctionType,
     UDTDeserializerFunctionType,
 )
-from astrapy.event_observers import Observer
 from astrapy.settings.defaults import (
     API_PATH_ENV_MAP,
     API_VERSION_ENV_MAP,
@@ -58,6 +57,9 @@ from astrapy.settings.defaults import (
     FIXED_SECRET_PLACEHOLDER,
 )
 from astrapy.utils.unset import _UNSET, UnsetType
+
+if TYPE_CHECKING:
+    from astrapy.event_observers.observers import Observer
 
 
 @dataclass
