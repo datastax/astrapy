@@ -137,6 +137,16 @@ def test_imports() -> None:
         UnexpectedDataAPIResponseException,
         UnexpectedDevOpsAPIResponseException,
     )
+    from astrapy.event_observers import (
+        event_collector,
+        ObservableEventType,
+        ObservableEvent,
+        ObservableError,
+        ObservableWarning,
+        ObservableRequest,
+        ObservableResponse,
+        Observer,
+    )
     from astrapy.ids import (
         UUID,
         ObjectId,

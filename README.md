@@ -625,8 +625,9 @@ document = my_collection.find_one({"code": 123})
 
 ### Working with ObjectIds and UUIDs in Collections
 
-Astrapy repackages the ObjectId from `bson` and the UUID class and utilities
-from the `uuid` package and its `uuidv6` extension. You can also use them directly.
+Astrapy repackages the ObjectId from PyMongo's `bson` and the UUID class and
+utilities from the `uuid` package and its `uuidv6` extension. You can also
+use them directly.
 
 Even when setting a default ID type for a collection, you still retain the freedom
 to use any ID type for any document:
@@ -685,6 +686,108 @@ print(escape_field_names(["f1", "f2", 12, "g.&3"]))
 # prints: f1.f2.12.g&.&&3
 print(unescape_field_path("a&&&.b.c.d.12"))
 # prints: ['a&.b', 'c', 'd', '12']
+```
+
+### Logging, instrumentation and observability
+
+#### Logging
+
+AstraPy's actions are logged using the standard `logging` facilities.
+To control the verbosity (logging level), a script preamble can have something
+like:
+
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG)
+```
+
+#### Event observers with context manager
+
+When logging does not suffice, you can use the **Event Observer API**, i.e. attach
+an observer (or more) to the hierarchy of objects issuing HTTP requests, such as
+a `DataAPIClient` or a `Collection`.
+
+Events are, for example, errors and warnings, as well as requests sent
+and responses received.
+
+The simplest usage, when one needs to capture events for a limited
+span of statements, uses a context manager:
+
+```python
+from astrapy.event_observers import event_collector, ObservableEvent
+
+# alternatively a `dict[ObservableEventType, list[ObservableEvent]]`:
+ev_lst: list[ObservableEvent] = []
+
+with event_collector(db, destination=event_list) as instrumented_db:
+    # Here use instrumented_db: call its methods, spawn tables and collections:
+    instrumented_table = instrumented_db.get_table("my_table")
+    my_table.insert_one({"id": 123, "name": "Fox"})
+
+for event in event_list:
+    print(event.event_type)
+    # See the classes in astrapy.event_observers.events for attributes.
+```
+
+#### Event observers with utility factories
+
+An event observer can be created explicitly and attached through the API Options.
+
+```python
+from astrapy.api_options import APIOptions
+from astrapy.event_observers import (
+    ObservableEvent,
+    ObservableEventType,
+    Observer,
+)
+
+my_event_dict: dict[ObservableEventType, list[ObservableEvent]] = {}
+my_observer = Observer.from_event_dict(
+    my_event_dict,
+    # optional filtering by event type:
+    event_types=[ObservableEventType.REQUEST, ObservableEventType.RESPONSE],
+)
+
+instrumented_client = my_client.with_options(
+    APIOptions(event_observers={"my_obs001": my_observer})
+)
+
+# any event of the desired type by 'instrumented_client', or by classes
+# it spawns, will be accumulated into 'my_event_dict'.
+```
+
+See also method `Observer.from_event_list` for a similar alternative.
+
+Multiple observers can be also attached.
+
+#### Fully customized event observer
+
+For higher control, one can subclass `Observer` directly:
+
+```python
+from typing import Any
+from astrapy.event_observers import ObservableEvent, Observer
+
+class MyObserver(Observer):
+    def receive(
+        self,
+        event: ObservableEvent,
+        sender: Any = None,
+        function_name: str | None = None,
+        request_id: str | None = None,
+    ) -> None:
+        received_item = {
+            "event_type": event.event_type.value,
+            "sender": sender,
+            "function_name": function_name,
+            "request_id": request_id,
+        }
+        print(f"Just received: {received_item}")
+
+my_observer = MyObserver()
+instrumented_collection = my_collection.with_options(
+    APIOptions(event_observers={"my_custom_obs001": my_observer})
+)
 ```
 
 ## Appendices
@@ -854,6 +957,21 @@ from astrapy.authentication import (
     UsernamePasswordTokenProvider,
     EmbeddingAPIKeyHeaderProvider,
     AWSEmbeddingHeadersProvider,
+)
+```
+
+Event observer API:
+
+```python
+from astrapy.event_observers import (
+    event_collector,
+    ObservableEventType,
+    ObservableEvent,
+    ObservableError,
+    ObservableWarning,
+    ObservableRequest,
+    ObservableResponse,
+    Observer,
 )
 ```
 
