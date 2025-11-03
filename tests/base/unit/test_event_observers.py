@@ -50,9 +50,15 @@ OBS_WRN = ObservableWarning(
         }
     ),
 )
-OBS_RSP_1 = ObservableResponse(body='{"k_resp":"v1"}')
-OBS_RSP_2 = ObservableResponse(body='{"k_resp":"v2"}')
-OBS_REQ = ObservableRequest(payload='{"k_req":"v"}')
+OBS_RSP_1 = ObservableResponse(body='{"k_resp":"v1"}', status_code=123)
+OBS_RSP_2 = ObservableResponse(body='{"k_resp":"v2"}', status_code=123)
+OBS_REQ = ObservableRequest(
+    payload='{"k_req":"v"}',
+    http_method="PUT",
+    url="http://bla.bla",
+    query_parameters={"k": 10},
+    redacted_headers={"x-aaa": "xyz"},
+)
 
 
 class TestEventObservers:

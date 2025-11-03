@@ -19,6 +19,7 @@ Unit tests for the event-observing API
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import httpx
 import pytest
@@ -402,3 +403,75 @@ class TestObservingEvents:
         assert ev_list != []
         assert isinstance(ev_list[-1], ObservableRequest)
         assert ev_list[-1].payload is None
+
+    @pytest.mark.describe(
+        "test of metadata coming with an emitted event, sampled, sync"
+    )
+    def test_eventobservers_eventmetadata_sampled_sync(
+        self, httpserver: HTTPServer
+    ) -> None:
+        """
+        Testing the metadata attached to an emitted event (sender, method name etc).
+        This is just sampled in one case (a method of the sync collection).
+        """
+        root_endpoint = httpserver.url_for("/")
+
+        recv_list: list[dict[str, Any]] = []
+
+        class MyRichObserver(Observer):
+            def __init__(
+                self,
+                rich_list: list[dict[str, Any]],
+            ) -> None:
+                self.evt_list = rich_list
+
+            def receive(
+                self,
+                event: ObservableEvent,
+                sender: Any = None,
+                function_name: str | None = None,
+            ) -> None:
+                if event.event_type in {
+                    ObservableEventType.REQUEST,
+                    ObservableEventType.RESPONSE,
+                }:
+                    self.evt_list += [
+                        {
+                            "event": event,
+                            "sender": sender,
+                            "function_name": function_name,
+                        }
+                    ]
+
+        my_r_obs = MyRichObserver(recv_list)
+        api_options = APIOptions(event_observers={"test": my_r_obs})
+
+        client = DataAPIClient(environment="other", api_options=api_options)
+        database = client.get_database(root_endpoint, keyspace="xkeyspace")
+        collection = database.get_collection("xcollt")
+        expected_url = "/v1/xkeyspace/xcollt"
+
+        httpserver.expect_oneshot_request(
+            expected_url,
+            method=HttpMethod.POST,
+        ).respond_with_json({"data": {"document": None}})
+        collection.find_one()
+
+        assert len(recv_list) == 2
+
+        rq_evt = recv_list[0]
+        assert rq_evt["sender"] == collection
+        assert rq_evt["function_name"] == "find_one"
+        assert isinstance(rq_evt["event"], ObservableRequest)
+        assert rq_evt["event"].http_method == HttpMethod.POST
+        assert rq_evt["event"].url == root_endpoint.rstrip("/") + expected_url
+        assert rq_evt["event"].query_parameters == {}
+        expected_header_keys = {"Content-Type", "Accept", "User-Agent"}
+        found_header_keys = (rq_evt["event"].redacted_headers or {}).keys()
+        assert found_header_keys - expected_header_keys == set()
+
+        rs_evt = recv_list[1]
+        assert rs_evt["sender"] == collection
+        assert rs_evt["function_name"] == "find_one"
+        assert isinstance(rs_evt["event"], ObservableResponse)
+        assert rs_evt["event"].status_code == 200

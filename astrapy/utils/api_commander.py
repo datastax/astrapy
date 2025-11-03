@@ -442,7 +442,13 @@ class APICommander:
         )
         httpx_timeout_s = to_httpx_timeout(_timeout_context)
         if self.event_observers:
-            req_event = ObservableRequest(payload=encoded_payload)
+            req_event = ObservableRequest(
+                payload=encoded_payload,
+                http_method=http_method,
+                url=request_url,
+                query_parameters=request_params,
+                redacted_headers=self._loggable_headers,
+            )
             sender = self._get_spawner()
             for ev_obs in self.event_observers.values():
                 if ev_obs is not None:
@@ -474,7 +480,10 @@ class APICommander:
                 )
 
         if self.event_observers:
-            rsp_event = ObservableResponse(body=raw_response.text)
+            rsp_event = ObservableResponse(
+                body=raw_response.text,
+                status_code=raw_response.status_code,
+            )
             for ev_obs in self.event_observers.values():
                 if ev_obs is not None:
                     ev_obs.receive(
@@ -517,7 +526,13 @@ class APICommander:
         )
         httpx_timeout_s = to_httpx_timeout(_timeout_context)
         if self.event_observers:
-            req_event = ObservableRequest(payload=encoded_payload)
+            req_event = ObservableRequest(
+                payload=encoded_payload,
+                http_method=http_method,
+                url=request_url,
+                query_parameters=request_params,
+                redacted_headers=self._loggable_headers,
+            )
             sender = self._get_spawner()
             for ev_obs in self.event_observers.values():
                 if ev_obs is not None:
@@ -549,7 +564,10 @@ class APICommander:
                 )
 
         if self.event_observers:
-            rsp_event = ObservableResponse(body=raw_response.text)
+            rsp_event = ObservableResponse(
+                body=raw_response.text,
+                status_code=raw_response.status_code,
+            )
             sender = self._get_spawner()
             for ev_obs in self.event_observers.values():
                 if ev_obs is not None:

@@ -102,13 +102,33 @@ class ObservableRequest(ObservableEvent):
     Attributes:
         event_type: it has value ObservableEventType.REQUEST in this case.
         payload: the payload as a string.
+        http_method: one of `astrapy.utils.request_tools.HttpMethod`, e.g. "POST".
+        url: the complete URL the request is targeted at.
+        query_parameters: if present, all query parameters in dict form.
+        redacted_headers: a dictionary of the non-sensitive headers being used
+            for the request. Authentication credentials and API Keys are removed.
     """
 
     payload: str | None
+    http_method: str
+    url: str
+    query_parameters: dict[str, Any] | None
+    redacted_headers: dict[str, Any] | None
 
-    def __init__(self, payload: str | None) -> None:
+    def __init__(
+        self,
+        payload: str | None,
+        http_method: str,
+        url: str,
+        query_parameters: dict[str, Any] | None,
+        redacted_headers: dict[str, Any] | None,
+    ) -> None:
         self.event_type = ObservableEventType.REQUEST
         self.payload = payload
+        self.http_method = http_method
+        self.url = url
+        self.query_parameters = query_parameters
+        self.redacted_headers = redacted_headers
 
 
 @dataclass
@@ -120,13 +140,16 @@ class ObservableResponse(ObservableEvent):
     Attributes:
         event_type: it has value ObservableEventType.RESPONSE in this case.
         body: a string expressing the response body.
+        status_code: the response HTTP status code.
     """
 
     body: str | None
+    status_code: int
 
-    def __init__(self, body: str | None) -> None:
+    def __init__(self, body: str | None, *, status_code: int) -> None:
         self.event_type = ObservableEventType.RESPONSE
         self.body = body
+        self.status_code = status_code
 
 
 class Observer(ABC):
