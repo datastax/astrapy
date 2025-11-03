@@ -28,7 +28,7 @@ class Observer(ABC):
     of the `receive` method. Request-issuing classes (such as Database or Table)
     will dispatch events to the observers registered in their API options.
 
-    This class offers factory static methods for common use-cases:
+    This class offers two static factory methods for common use-cases:
     `from_event_list` and `from_event_dict`.
     """
 
@@ -70,6 +70,19 @@ class Observer(ABC):
             event_list: the list where the caller will find the received events.
             event_types: if provided, it's a list of event types so that only
                 events matching this filter are processed.
+
+        Example:
+            >>> from astrapy.api_options import APIOptions
+            >>> from astrapy.event_observers import ObservableEvent, Observer
+            >>> my_ev_list: list[ObservableEvent] = []
+            >>> my_observer = Observer.from_event_list(my_ev_list)
+            >>> instrumented_table = my_table.with_options(
+            ...     api_options=APIOptions(
+            ...         event_observers={"obs000": my_observer},
+            ...     ),
+            ... )
+            >>> # start using 'instrumented_table' ...
+            >>> # ... and then inspect 'my_ev_list'
         """
 
         class _ObserverFromList(Observer):
@@ -113,6 +126,23 @@ class Observer(ABC):
             event_dict: the dict where the caller will find the received events.
             event_types: if provided, it's a list of event types so that only
                 events matching this filter are processed.
+
+        Example:
+            >>> from astrapy.api_options import APIOptions
+            >>> from astrapy.event_observers import (
+            ...     ObservableEvent,
+            ...     ObservableEventType,
+            ...     Observer,
+            ... )
+            >>> my_ev_map: dict[ObservableEventType, list[ObservableEvent]] = {}
+            >>> my_observer = Observer.from_event_dict(my_ev_map)
+            >>> instrumented_table = my_table.with_options(
+            ...     api_options=APIOptions(
+            ...         event_observers={"obs000": my_observer},
+            ...     ),
+            ... )
+            >>> # start using 'instrumented_table' ...
+            >>> # ... and then inspect 'my_ev_map'
         """
 
         class _ObserverFromDict(Observer):

@@ -704,8 +704,8 @@ logging.basicConfig(level=logging.DEBUG)
 #### Event observers with context manager
 
 When logging does not suffice, you can use the **Event Observer API**, i.e. attach
-an observer to the hierarchy of objects issuing HTTP requests, such as
-a `DataAPIClient` or a `Collection`.
+an observer to the main astrapy class hierarchy (clients, databases,
+tables/collections; plus the admin classes).
 
 Events are, for example, errors and warnings, as well as requests sent
 and responses received.
@@ -750,7 +750,7 @@ my_observer = Observer.from_event_list(
 )
 
 instrumented_client = my_client.with_options(
-    APIOptions(event_observers={"my_obs001": my_observer})
+    api_options=APIOptions(event_observers={"my_obs001": my_observer})
 )
 
 # any event of the desired type emitted by 'instrumented_client',
@@ -767,6 +767,7 @@ For higher control, one can subclass `Observer` directly:
 
 ```python
 from typing import Any
+from astrapy.api_options import APIOptions
 from astrapy.event_observers import ObservableEvent, Observer
 
 class MyObserver(Observer):
@@ -787,7 +788,7 @@ class MyObserver(Observer):
 
 my_observer = MyObserver()
 instrumented_collection = my_collection.with_options(
-    APIOptions(event_observers={"my_custom_obs001": my_observer})
+    api_options=APIOptions(event_observers={"custom_obs001": my_observer})
 )
 ```
 

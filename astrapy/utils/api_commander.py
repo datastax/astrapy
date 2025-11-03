@@ -601,13 +601,13 @@ class APICommander:
     def request(
         self,
         *,
-        caller_function_name: str | None,
         http_method: str = HttpMethod.POST,
         payload: dict[str, Any] | None = None,
         additional_path: str | None = None,
         request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
         timeout_context: _TimeoutContext | None = None,
+        caller_function_name: str | None = None,
     ) -> dict[str, Any]:
         request_id = str(uuid7())
         raw_response = self.raw_request(
@@ -630,13 +630,13 @@ class APICommander:
     async def async_request(
         self,
         *,
-        caller_function_name: str | None,
         http_method: str = HttpMethod.POST,
         payload: dict[str, Any] | None = None,
         additional_path: str | None = None,
         request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
         timeout_context: _TimeoutContext | None = None,
+        caller_function_name: str | None = None,
     ) -> dict[str, Any]:
         request_id = str(uuid7())
         raw_response = await self.async_raw_request(

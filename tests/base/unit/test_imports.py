@@ -115,6 +115,16 @@ def test_imports() -> None:
         DataAPITimestamp,
         DataAPIVector,
     )
+    from astrapy.event_observers import (
+        ObservableError,
+        ObservableEvent,
+        ObservableEventType,
+        ObservableRequest,
+        ObservableResponse,
+        ObservableWarning,
+        Observer,
+        event_collector,
+    )
     from astrapy.exceptions import (
         CollectionDeleteManyException,
         CollectionInsertManyException,
@@ -136,16 +146,6 @@ def test_imports() -> None:
         TooManyRowsToCountException,
         UnexpectedDataAPIResponseException,
         UnexpectedDevOpsAPIResponseException,
-    )
-    from astrapy.event_observers import (
-        event_collector,
-        ObservableEventType,
-        ObservableEvent,
-        ObservableError,
-        ObservableWarning,
-        ObservableRequest,
-        ObservableResponse,
-        Observer,
     )
     from astrapy.ids import (
         UUID,
