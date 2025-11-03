@@ -32,6 +32,7 @@ from astrapy.admin.admin import (
 )
 from astrapy.api_options import APIOptions, DevOpsAPIURLOptions
 from astrapy.event_observers import (
+    event_collector,
     ObservableError,
     ObservableEvent,
     ObservableEventType,
@@ -584,3 +585,52 @@ class TestObservingEvents:
         assert len(set(req_ids[4:6])) == 1
         assert len(set(req_ids[6:8])) == 1
         assert len(set(req_ids)) == 3
+
+
+
+
+    @pytest.mark.describe(
+        "test of event_collector utility, sync"
+    )
+    def test_eventobservers_eventcollector_sync(
+        self, httpserver: HTTPServer
+    ) -> None:
+        """
+        Testing the event_collector context manager utility.
+        """
+        root_endpoint = httpserver.url_for("/")
+
+        client = DataAPIClient(environment="other")
+        database = client.get_database(root_endpoint, keyspace="xkeyspace")
+
+        recv_events: list[ObservableEvent] = []
+        with event_collector(
+            database,
+            destination=recv_events,
+            event_types=[ObservableEventType.REQUEST],
+        ) as inst_database:
+            expected_url = "/v1/xkeyspace"
+            httpserver.expect_oneshot_request(
+                expected_url,
+                method=HttpMethod.POST,
+            ).respond_with_json({"status": {"collections": []}})
+            inst_database.list_collection_names()
+            inst_collection = inst_database.get_collection("xcoll")
+            expected_url = "/v1/xkeyspace/xcoll"
+            httpserver.expect_oneshot_request(
+                expected_url,
+                method=HttpMethod.POST,
+            ).respond_with_json({"data": {"document": None}})
+            inst_collection.find_one()
+
+        assert len(recv_events) == 2
+
+        # test of the collection being turned off later
+        expected_url = "/v1/xkeyspace/xcoll"
+        httpserver.expect_oneshot_request(
+            expected_url,
+            method=HttpMethod.POST,
+        ).respond_with_json({"data": {"document": None}})
+        inst_collection.find_one()
+
+        assert len(recv_events) == 3  # TODO fix me to 2 once impl

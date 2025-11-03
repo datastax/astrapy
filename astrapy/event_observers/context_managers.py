@@ -50,7 +50,7 @@ DB_OBJ = TypeVar("DB_OBJ", bound=OptionAwareDatabaseObject)
 
 
 @contextmanager
-def capture_events(
+def event_collector(
     target: DB_OBJ,
     *,
     destination: list[ObservableEvent]

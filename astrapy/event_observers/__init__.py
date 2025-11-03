@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from astrapy.event_observers.context_managers import capture_events
+from astrapy.event_observers.context_managers import event_collector
 from astrapy.event_observers.events import (
     ObservableError,
     ObservableEvent,
@@ -26,7 +26,7 @@ from astrapy.event_observers.events import (
 from astrapy.event_observers.observers import Observer
 
 __all__ = (
-    "capture_events",
+    "event_collector",
     "ObservableEventType",
     "ObservableEvent",
     "ObservableError",
