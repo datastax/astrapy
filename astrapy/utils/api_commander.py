@@ -23,6 +23,7 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Sequence, cast
 
 import httpx
+from uuid6 import uuid7
 
 from astrapy.constants import CallerType
 from astrapy.event_observers import (
@@ -269,6 +270,7 @@ class APICommander:
         raise_api_errors: bool,
         payload: dict[str, Any] | None,
         caller_function_name: str | None,
+        request_id: str,
     ) -> dict[str, Any]:
         # try to process the httpx raw response into a JSON or throw a failure
         raw_response_json: dict[str, Any]
@@ -321,6 +323,7 @@ class APICommander:
                                     wrn_event,
                                     sender=sender,
                                     function_name=caller_function_name,
+                                    request_id=request_id,
                                 )
                 for warning_descriptor in warning_descriptors:
                     full_warning = (
@@ -343,6 +346,7 @@ class APICommander:
                                 err_event,
                                 sender=sender,
                                 function_name=caller_function_name,
+                                request_id=request_id,
                             )
             if raise_api_errors:
                 logger.warning(
@@ -423,7 +427,10 @@ class APICommander:
         request_params: dict[str, Any] = {},
         timeout_context: _TimeoutContext | None = None,
         caller_function_name: str | None = None,
+        request_id: str | None = None,
     ) -> httpx.Response:
+        if request_id is None:
+            request_id = str(uuid7())
         request_url = self._compose_request_url(additional_path)
         _timeout_context = timeout_context or _TimeoutContext(request_ms=None)
         encoded_payload = (
@@ -456,6 +463,7 @@ class APICommander:
                         req_event,
                         sender=sender,
                         function_name=caller_function_name,
+                        request_id=request_id,
                     )
 
         try:
@@ -490,6 +498,7 @@ class APICommander:
                         rsp_event,
                         sender=self._get_spawner(),
                         function_name=caller_function_name,
+                        request_id=request_id,
                     )
         try:
             raw_response.raise_for_status()
@@ -507,7 +516,10 @@ class APICommander:
         request_params: dict[str, Any] = {},
         timeout_context: _TimeoutContext | None = None,
         caller_function_name: str | None = None,
+        request_id: str | None = None,
     ) -> httpx.Response:
+        if request_id is None:
+            request_id = str(uuid7())
         request_url = self._compose_request_url(additional_path)
         _timeout_context = timeout_context or _TimeoutContext(request_ms=None)
         encoded_payload = (
@@ -540,6 +552,7 @@ class APICommander:
                         req_event,
                         sender=sender,
                         function_name=caller_function_name,
+                        request_id=request_id,
                     )
 
         try:
@@ -575,6 +588,7 @@ class APICommander:
                         rsp_event,
                         sender=sender,
                         function_name=caller_function_name,
+                        request_id=request_id,
                     )
         try:
             raw_response.raise_for_status()
@@ -594,6 +608,7 @@ class APICommander:
         timeout_context: _TimeoutContext | None = None,
         caller_function_name: str | None = None,
     ) -> dict[str, Any]:
+        request_id = str(uuid7())
         raw_response = self.raw_request(
             http_method=http_method,
             payload=payload,
@@ -601,12 +616,14 @@ class APICommander:
             request_params=request_params,
             timeout_context=timeout_context,
             caller_function_name=caller_function_name,
+            request_id=request_id,
         )
         return self._raw_response_to_json(
             raw_response,
             raise_api_errors=raise_api_errors,
             payload=payload,
             caller_function_name=caller_function_name,
+            request_id=request_id,
         )
 
     async def async_request(
@@ -620,6 +637,7 @@ class APICommander:
         timeout_context: _TimeoutContext | None = None,
         caller_function_name: str | None = None,
     ) -> dict[str, Any]:
+        request_id = str(uuid7())
         raw_response = await self.async_raw_request(
             http_method=http_method,
             payload=payload,
@@ -627,10 +645,12 @@ class APICommander:
             request_params=request_params,
             timeout_context=timeout_context,
             caller_function_name=caller_function_name,
+            request_id=request_id,
         )
         return self._raw_response_to_json(
             raw_response,
             raise_api_errors=raise_api_errors,
             payload=payload,
             caller_function_name=caller_function_name,
+            request_id=request_id,
         )

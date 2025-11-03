@@ -430,6 +430,7 @@ class TestObservingEvents:
                 event: ObservableEvent,
                 sender: Any = None,
                 function_name: str | None = None,
+                request_id: str | None = None,
             ) -> None:
                 if event.event_type in {
                     ObservableEventType.REQUEST,
@@ -440,22 +441,37 @@ class TestObservingEvents:
                             "event": event,
                             "sender": sender,
                             "function_name": function_name,
+                            "request_id": request_id,
                         }
                     ]
 
         my_r_obs = MyRichObserver(recv_list)
-        api_options = APIOptions(event_observers={"test": my_r_obs})
+        api_options = APIOptions(
+            event_observers={"test": my_r_obs},
+        )
 
         client = DataAPIClient(environment="other", api_options=api_options)
         database = client.get_database(root_endpoint, keyspace="xkeyspace")
         collection = database.get_collection("xcollt")
         expected_url = "/v1/xkeyspace/xcollt"
+        response_dict = {
+            "data": {"document": None},
+            "status": {
+                "warnings": [
+                    {"title": "Warning!"},
+                ],
+            },
+            "errors": [
+                {"title": "Error!"},
+            ],
+        }
 
         httpserver.expect_oneshot_request(
             expected_url,
             method=HttpMethod.POST,
-        ).respond_with_json({"data": {"document": None}})
-        collection.find_one()
+        ).respond_with_json(response_dict)
+        with pytest.raises(DataAPIResponseException):
+            collection.find_one()
 
         assert len(recv_list) == 2
 
@@ -475,3 +491,96 @@ class TestObservingEvents:
         assert rs_evt["function_name"] == "find_one"
         assert isinstance(rs_evt["event"], ObservableResponse)
         assert rs_evt["event"].status_code == 200
+
+    @pytest.mark.describe("test of request_id for emitted events, sampled, sync")
+    def test_eventobservers_requestid_sampled_sync(
+        self, httpserver: HTTPServer
+    ) -> None:
+        """
+        Testing the request_id attached to emitted events. These must be
+        the same for all events from a request, and differ between requests.
+        This is sampled (a method of the sync collection + one admin "raw-req" call).
+        """
+        root_endpoint = httpserver.url_for("/")
+        db_id = "00000000-0000-0000-0000-000000000000"
+
+        req_ids: list[str | None] = []
+
+        class MyReqIDObserver(Observer):
+            def __init__(
+                self,
+                id_list: list[str | None],
+            ) -> None:
+                self.id_list = id_list
+
+            def receive(
+                self,
+                event: ObservableEvent,
+                sender: Any = None,
+                function_name: str | None = None,
+                request_id: str | None = None,
+            ) -> None:
+                self.id_list += [request_id]
+
+        my_id_obs = MyReqIDObserver(req_ids)
+
+        api_options = APIOptions(
+            event_observers={"test_ids": my_id_obs},
+        )
+        client = DataAPIClient(environment="other", api_options=api_options)
+        database = client.get_database(root_endpoint, keyspace="xkeyspace")
+        collection = database.get_collection("xcollt")
+
+        astra_api_options = APIOptions(
+            event_observers={"test_ids": my_id_obs},
+            dev_ops_api_url_options=DevOpsAPIURLOptions(
+                dev_ops_api_version="v2",
+                dev_ops_url=root_endpoint,
+            ),
+        )
+        astra_client = DataAPIClient(api_options=astra_api_options)
+        astra_admin = astra_client.get_admin()
+        astra_db_admin = astra_admin.get_database_admin(
+            f"https://{db_id}-reg.apps.astra.datastax.com"
+        )
+
+        expected_url = "/v1/xkeyspace/xcollt"
+        response_dict = {
+            "data": {"document": None},
+            "status": {
+                "warnings": [
+                    {"title": "Warning!"},
+                ],
+            },
+            "errors": [
+                {"title": "Error!"},
+            ],
+        }
+        httpserver.expect_oneshot_request(
+            expected_url,
+            method=HttpMethod.POST,
+        ).respond_with_json(response_dict)
+        with pytest.raises(DataAPIResponseException):
+            collection.find_one()
+
+        response_dict = {
+            "data": {"document": None},
+        }
+        httpserver.expect_oneshot_request(
+            expected_url,
+            method=HttpMethod.POST,
+        ).respond_with_json(response_dict)
+        collection.find_one()
+
+        expected_c_url = f"/v2/databases/{db_id}/keyspaces/xnewkeyspace"
+        httpserver.expect_oneshot_request(
+            expected_c_url,
+            method=HttpMethod.POST,
+        ).respond_with_data(status=DEV_OPS_RESPONSE_HTTP_CREATED)
+        astra_db_admin.create_keyspace("xnewkeyspace", wait_until_active=False)
+
+        assert len(req_ids) == 8
+        assert len(set(req_ids[:4])) == 1
+        assert len(set(req_ids[4:6])) == 1
+        assert len(set(req_ids[6:8])) == 1
+        assert len(set(req_ids)) == 3

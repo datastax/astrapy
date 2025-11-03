@@ -170,6 +170,7 @@ class Observer(ABC):
         event: ObservableEvent,
         sender: Any = None,
         function_name: str | None = None,
+        request_id: str | None = None,
     ) -> None:
         """Receive and event.
 
@@ -217,6 +218,7 @@ class Observer(ABC):
                 event: ObservableEvent,
                 sender: Any = None,
                 function_name: str | None = None,
+                request_id: str | None = None,
             ) -> None:
                 if event.event_type in self.event_types:
                     self.event_list.append(event)
@@ -259,6 +261,7 @@ class Observer(ABC):
                 event: ObservableEvent,
                 sender: Any = None,
                 function_name: str | None = None,
+                request_id: str | None = None,
             ) -> None:
                 if event.event_type in self.event_types:
                     self.event_dict[event.event_type] = self.event_dict.get(
