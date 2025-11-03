@@ -200,6 +200,7 @@ def fetch_raw_database_info_from_id_token(
     dev_ops_commander = APICommander(
         api_endpoint=_api_options.dev_ops_api_url_options.dev_ops_url,
         path=dev_ops_base_path,
+        spawner=None,
         headers=_dev_ops_commander_headers,
         callers=_api_options.callers,
         dev_ops_api=True,
@@ -297,6 +298,7 @@ async def async_fetch_raw_database_info_from_id_token(
     dev_ops_commander = APICommander(
         api_endpoint=_api_options.dev_ops_api_url_options.dev_ops_url,
         path=dev_ops_base_path,
+        spawner=None,
         headers=_dev_ops_commander_headers,
         callers=_api_options.callers,
         dev_ops_api=True,
@@ -1114,6 +1116,8 @@ class AstraDBAdmin:
             f"creating database {name}/({cloud_provider}, {region}) (DevOps API)"
         )
         cd_raw_response = self._dev_ops_api_commander.raw_request(
+            caller_function_name="create_database",
+            request_id=None,
             http_method=HttpMethod.POST,
             payload=cd_payload,
             timeout_context=timeout_manager.remaining_timeout(
@@ -1275,6 +1279,8 @@ class AstraDBAdmin:
             f"creating database {name}/({cloud_provider}, {region}) (DevOps API), async"
         )
         cd_raw_response = await self._dev_ops_api_commander.async_raw_request(
+            caller_function_name="async_create_database",
+            request_id=None,
             http_method=HttpMethod.POST,
             payload=cd_payload,
             timeout_context=timeout_manager.remaining_timeout(
@@ -1402,6 +1408,8 @@ class AstraDBAdmin:
         )
         logger.info(f"dropping database '{id}' (DevOps API)")
         te_raw_response = self._dev_ops_api_commander.raw_request(
+            caller_function_name="drop_database",
+            request_id=None,
             http_method=HttpMethod.POST,
             additional_path=f"{id}/terminate",
             timeout_context=timeout_manager.remaining_timeout(
@@ -1515,6 +1523,8 @@ class AstraDBAdmin:
         )
         logger.info(f"dropping database '{id}' (DevOps API), async")
         te_raw_response = await self._dev_ops_api_commander.async_raw_request(
+            caller_function_name="async_drop_database",
+            request_id=None,
             http_method=HttpMethod.POST,
             additional_path=f"{id}/terminate",
             timeout_context=timeout_manager.remaining_timeout(
@@ -3070,6 +3080,8 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
         )
         logger.info(f"creating keyspace '{name}' on '{self._database_id}' (DevOps API)")
         cn_raw_response = self._dev_ops_api_commander.raw_request(
+            caller_function_name="create_keyspace",
+            request_id=None,
             http_method=HttpMethod.POST,
             additional_path=f"keyspaces/{name}",
             timeout_context=timeout_manager.remaining_timeout(
@@ -3187,6 +3199,8 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             f"creating keyspace '{name}' on '{self._database_id}' (DevOps API), async"
         )
         cn_raw_response = await self._dev_ops_api_commander.async_raw_request(
+            caller_function_name="async_create_keyspace",
+            request_id=None,
             http_method=HttpMethod.POST,
             additional_path=f"keyspaces/{name}",
             timeout_context=timeout_manager.remaining_timeout(
@@ -3300,6 +3314,8 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
         )
         logger.info(f"dropping keyspace '{name}' on '{self._database_id}' (DevOps API)")
         dk_raw_response = self._dev_ops_api_commander.raw_request(
+            caller_function_name="drop_keyspace",
+            request_id=None,
             http_method=HttpMethod.DELETE,
             additional_path=f"keyspaces/{name}",
             timeout_context=timeout_manager.remaining_timeout(
@@ -3409,6 +3425,8 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             f"dropping keyspace '{name}' on '{self._database_id}' (DevOps API), async"
         )
         dk_raw_response = await self._dev_ops_api_commander.async_raw_request(
+            caller_function_name="async_drop_keyspace",
+            request_id=None,
             http_method=HttpMethod.DELETE,
             additional_path=f"keyspaces/{name}",
             timeout_context=timeout_manager.remaining_timeout(

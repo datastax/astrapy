@@ -49,6 +49,8 @@ class Observer(ABC):
             sender: the object directly responsible for generating the event.
             function_name: when applicable, the name of the function/method
                 that triggered the event.
+            request_id: an optional ID used to group different received events
+                as occurring within the lifecycle of a single HTTP request.
         """
         ...
 
