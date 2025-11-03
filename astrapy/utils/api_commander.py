@@ -317,7 +317,7 @@ class APICommander:
                     ]
                     sender = self._get_spawner()
                     for ev_obs in self.event_observers.values():
-                        if ev_obs is not None:
+                        if ev_obs is not None and ev_obs.enabled:
                             for wrn_event in wrn_events:
                                 ev_obs.receive(
                                     wrn_event,
@@ -340,7 +340,7 @@ class APICommander:
                 ]
                 sender = self._get_spawner()
                 for ev_obs in self.event_observers.values():
-                    if ev_obs is not None:
+                    if ev_obs is not None and ev_obs.enabled:
                         for err_event in err_events:
                             ev_obs.receive(
                                 err_event,
@@ -458,7 +458,7 @@ class APICommander:
             )
             sender = self._get_spawner()
             for ev_obs in self.event_observers.values():
-                if ev_obs is not None:
+                if ev_obs is not None and ev_obs.enabled:
                     ev_obs.receive(
                         req_event,
                         sender=sender,
@@ -493,7 +493,7 @@ class APICommander:
                 status_code=raw_response.status_code,
             )
             for ev_obs in self.event_observers.values():
-                if ev_obs is not None:
+                if ev_obs is not None and ev_obs.enabled:
                     ev_obs.receive(
                         rsp_event,
                         sender=self._get_spawner(),
@@ -547,7 +547,7 @@ class APICommander:
             )
             sender = self._get_spawner()
             for ev_obs in self.event_observers.values():
-                if ev_obs is not None:
+                if ev_obs is not None and ev_obs.enabled:
                     ev_obs.receive(
                         req_event,
                         sender=sender,
@@ -583,7 +583,7 @@ class APICommander:
             )
             sender = self._get_spawner()
             for ev_obs in self.event_observers.values():
-                if ev_obs is not None:
+                if ev_obs is not None and ev_obs.enabled:
                     ev_obs.receive(
                         rsp_event,
                         sender=sender,

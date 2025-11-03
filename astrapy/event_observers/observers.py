@@ -32,6 +32,8 @@ class Observer(ABC):
     `from_event_list` and `from_event_dict`.
     """
 
+    enabled: bool = True
+
     @abstractmethod
     def receive(
         self,
