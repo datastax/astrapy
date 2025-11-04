@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import datetime
 from dataclasses import dataclass
-from typing import Iterable, Sequence
+from typing import TYPE_CHECKING, Iterable, Sequence
 
 from astrapy.authentication import (
     EmbeddingAPIKeyHeaderProvider,
@@ -57,6 +57,9 @@ from astrapy.settings.defaults import (
     FIXED_SECRET_PLACEHOLDER,
 )
 from astrapy.utils.unset import _UNSET, UnsetType
+
+if TYPE_CHECKING:
+    from astrapy.event_observers.observers import Observer
 
 
 @dataclass
@@ -926,6 +929,10 @@ class APIOptions:
             Passing a string, or None, to this constructor parameter will get it
             automatically converted into the appropriate RerankingHeadersProvider
             object.
+        event_observers: a dictionary describing the event observers (instances of
+            `astrapy.event_observers.Observer`) attached. The keys are the observer
+            names, the values are the observer objects. Interactions with the Data API
+            will dispatch events to all attached observers.
         timeout_options: an instance of `TimeoutOptions` (see) to control the timeout
             behavior for the various kinds of operations involving the Data/DevOps API.
         serdes_options: an instance of `SerdesOptions` (see) to customize the
@@ -1013,6 +1020,7 @@ class APIOptions:
     token: TokenProvider | UnsetType = _UNSET
     embedding_api_key: EmbeddingHeadersProvider | UnsetType = _UNSET
     reranking_api_key: RerankingHeadersProvider | UnsetType = _UNSET
+    event_observers: dict[str, Observer | None] | UnsetType = _UNSET
 
     timeout_options: TimeoutOptions | UnsetType = _UNSET
     serdes_options: SerdesOptions | UnsetType = _UNSET
@@ -1029,6 +1037,7 @@ class APIOptions:
         token: str | TokenProvider | UnsetType = _UNSET,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
+        event_observers: dict[str, Observer | None] | UnsetType = _UNSET,
         timeout_options: TimeoutOptions | UnsetType = _UNSET,
         serdes_options: SerdesOptions | UnsetType = _UNSET,
         data_api_url_options: DataAPIURLOptions | UnsetType = _UNSET,
@@ -1051,6 +1060,7 @@ class APIOptions:
         self.reranking_api_key = coerce_possible_reranking_headers_provider(
             reranking_api_key,
         )
+        self.event_observers = event_observers
         self.timeout_options = timeout_options
         self.serdes_options = serdes_options
         self.data_api_url_options = data_api_url_options
@@ -1107,6 +1117,9 @@ class APIOptions:
                 None
                 if isinstance(self.reranking_api_key, UnsetType)
                 else f"reranking_api_key={self.reranking_api_key}",
+                None
+                if isinstance(self.event_observers, UnsetType)
+                else f"event_observers={','.join(self.event_observers.keys())}",
                 None
                 if isinstance(self.timeout_options, UnsetType)
                 else f"timeout_options={self.timeout_options}",
@@ -1179,6 +1192,10 @@ class FullAPIOptions(APIOptions):
             Passing a string, or None, to this constructor parameter will get it
             automatically converted into the appropriate RerankingHeadersProvider
             object.
+        event_observers: a dictionary describing the event observers (instances of
+            `astrapy.event_observers.Observer`) attached. Keys are the observer names,
+            each associated to the observer object. Interactions with the Data API
+            will dispatch events to all attached observers.
         timeout_options: an instance of `TimeoutOptions` (see) to control the timeout
             behavior for the various kinds of operations involving the Data/DevOps API.
         serdes_options: an instance of `SerdesOptions` (see) to customize the
@@ -1200,6 +1217,7 @@ class FullAPIOptions(APIOptions):
     token: TokenProvider
     embedding_api_key: EmbeddingHeadersProvider
     reranking_api_key: RerankingHeadersProvider
+    event_observers: dict[str, Observer | None]
 
     timeout_options: FullTimeoutOptions
     serdes_options: FullSerdesOptions
@@ -1217,6 +1235,7 @@ class FullAPIOptions(APIOptions):
         token: str | TokenProvider,
         embedding_api_key: str | EmbeddingHeadersProvider,
         reranking_api_key: str | RerankingHeadersProvider,
+        event_observers: dict[str, Observer | None],
         timeout_options: FullTimeoutOptions,
         serdes_options: FullSerdesOptions,
         data_api_url_options: FullDataAPIURLOptions,
@@ -1231,6 +1250,7 @@ class FullAPIOptions(APIOptions):
             token=token,
             embedding_api_key=embedding_api_key,
             reranking_api_key=reranking_api_key,
+            event_observers=event_observers,
             timeout_options=timeout_options,
             serdes_options=serdes_options,
             data_api_url_options=data_api_url_options,
@@ -1316,6 +1336,13 @@ class FullAPIOptions(APIOptions):
             redacted_header_names = (
                 self.redacted_header_names | other.redacted_header_names
             )
+        if isinstance(other.event_observers, UnsetType):
+            event_observers = self.event_observers
+        else:
+            event_observers = {
+                **self.event_observers,
+                **other.event_observers,
+            }
 
         if isinstance(other.timeout_options, TimeoutOptions):
             timeout_options = self.timeout_options.with_override(other.timeout_options)
@@ -1363,6 +1390,7 @@ class FullAPIOptions(APIOptions):
                 if not isinstance(other.reranking_api_key, UnsetType)
                 else self.reranking_api_key
             ),
+            event_observers=event_observers,
             timeout_options=timeout_options,
             serdes_options=serdes_options,
             data_api_url_options=data_api_url_options,
@@ -1421,6 +1449,7 @@ def defaultAPIOptions(environment: str) -> FullAPIOptions:
         token=StaticTokenProvider(None),
         embedding_api_key=EmbeddingAPIKeyHeaderProvider(None),
         reranking_api_key=RerankingAPIKeyHeaderProvider(None),
+        event_observers={},
         timeout_options=defaultTimeoutOptions,
         serdes_options=defaultSerdesOptions,
         data_api_url_options=defaultDataAPIURLOptions,

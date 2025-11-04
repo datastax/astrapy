@@ -115,6 +115,16 @@ def test_imports() -> None:
         DataAPITimestamp,
         DataAPIVector,
     )
+    from astrapy.event_observers import (
+        ObservableError,
+        ObservableEvent,
+        ObservableEventType,
+        ObservableRequest,
+        ObservableResponse,
+        ObservableWarning,
+        Observer,
+        event_collector,
+    )
     from astrapy.exceptions import (
         CollectionDeleteManyException,
         CollectionInsertManyException,

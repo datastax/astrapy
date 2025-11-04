@@ -48,10 +48,12 @@ from astrapy.exceptions import (
     MultiCallTimeoutManager,
     TooManyDocumentsToCountException,
     UnexpectedDataAPIResponseException,
+    _TimeoutContext,
+)
+from astrapy.exceptions.utils import (
     _first_valid_timeout,
     _select_singlereq_timeout_ca,
     _select_singlereq_timeout_gm,
-    _TimeoutContext,
 )
 from astrapy.info import CollectionDefinition, CollectionInfo
 from astrapy.results import (
@@ -333,6 +335,8 @@ class Collection(Generic[DOC]):
             headers=self._commander_headers,
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
+            event_observers=self.api_options.event_observers,
+            spawner=self,
             handle_decimals_writes=(
                 self.api_options.serdes_options.use_decimals_in_collections
             ),
@@ -351,6 +355,7 @@ class Collection(Generic[DOC]):
         request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
         timeout_context: _TimeoutContext,
+        caller_function_name: str,
     ) -> dict[str, Any]:
         converted_payload = preprocess_collection_payload(
             payload, options=self.api_options.serdes_options
@@ -362,6 +367,7 @@ class Collection(Generic[DOC]):
             request_params=request_params,
             raise_api_errors=raise_api_errors,
             timeout_context=timeout_context,
+            caller_function_name=caller_function_name,
         )
         response_json = postprocess_collection_response(
             raw_response_json, options=self.api_options.serdes_options
@@ -718,6 +724,7 @@ class Collection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="insert_one",
         )
         logger.info(f"finished insertOne on '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
@@ -879,6 +886,7 @@ class Collection(Generic[DOC]):
                         cap_time_ms=_request_timeout_ms,
                         cap_timeout_label=_rt_label,
                     ),
+                    caller_function_name="insert_many",
                 )
                 logger.info(f"finished insertMany(chunk) on '{self.name}'")
                 # accumulate the results in this call
@@ -935,6 +943,7 @@ class Collection(Generic[DOC]):
                                 cap_time_ms=_request_timeout_ms,
                                 cap_timeout_label=_rt_label,
                             ),
+                            caller_function_name="insert_many",
                         )
                         logger.info(f"finished insertMany(chunk) on '{self.name}'")
                         return im_payload, im_response
@@ -969,6 +978,7 @@ class Collection(Generic[DOC]):
                             cap_time_ms=_request_timeout_ms,
                             cap_timeout_label=_rt_label,
                         ),
+                        caller_function_name="insert_many",
                     )
                     logger.info(f"finished insertMany(chunk) on '{self.name}'")
                     raw_results.append(im_response)
@@ -1362,6 +1372,7 @@ class Collection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="find_one",
         )
         if "document" not in (fo_response.get("data") or {}):
             raise UnexpectedDataAPIResponseException(
@@ -1925,6 +1936,7 @@ class Collection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="count_documents",
         )
         logger.info(f"finished countDocuments on '{self.name}'")
         if "count" in cd_response.get("status", {}):
@@ -1989,6 +2001,7 @@ class Collection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="estimated_document_count",
         )
         logger.info(f"finished estimatedDocumentCount on '{self.name}'")
         if "count" in ed_response.get("status", {}):
@@ -2130,6 +2143,7 @@ class Collection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="find_one_and_replace",
         )
         logger.info(f"finished findOneAndReplace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -2229,6 +2243,7 @@ class Collection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="replace_one",
         )
         logger.info(f"finished findOneAndReplace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -2380,6 +2395,7 @@ class Collection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="find_one_and_update",
         )
         logger.info(f"finished findOneAndUpdate on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -2483,6 +2499,7 @@ class Collection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="update_one",
         )
         logger.info(f"finished updateOne on '{self.name}'")
         if "status" in uo_response:
@@ -2612,6 +2629,7 @@ class Collection(Generic[DOC]):
                     cap_time_ms=_request_timeout_ms,
                     cap_timeout_label=_rt_label,
                 ),
+                caller_function_name="update_many",
             )
             logger.info(f"finished updateMany on '{self.name}'")
             this_um_status = this_um_response.get("status") or {}
@@ -2748,6 +2766,7 @@ class Collection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="find_one_and_delete",
         )
         logger.info(f"finished findOneAndDelete on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -2840,6 +2859,7 @@ class Collection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="delete_one",
         )
         logger.info(f"finished deleteOne on '{self.name}'")
         if "deletedCount" in do_response.get("status", {}):
@@ -2938,6 +2958,7 @@ class Collection(Generic[DOC]):
                     cap_time_ms=_request_timeout_ms,
                     cap_timeout_label=_rt_label,
                 ),
+                caller_function_name="delete_many",
             )
             logger.info(f"finished deleteMany on '{self.name}'")
             # if errors, quit early
@@ -3070,6 +3091,7 @@ class Collection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="command",
         )
         logger.info(f"finished command={_cmd_desc} on '{self.name}'")
         return command_result
@@ -3285,6 +3307,8 @@ class AsyncCollection(Generic[DOC]):
             headers=self._commander_headers,
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
+            event_observers=self.api_options.event_observers,
+            spawner=self,
             handle_decimals_writes=(
                 self.api_options.serdes_options.use_decimals_in_collections
             ),
@@ -3319,6 +3343,7 @@ class AsyncCollection(Generic[DOC]):
         request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
         timeout_context: _TimeoutContext,
+        caller_function_name: str,
     ) -> dict[str, Any]:
         converted_payload = preprocess_collection_payload(
             payload, options=self.api_options.serdes_options
@@ -3330,6 +3355,7 @@ class AsyncCollection(Generic[DOC]):
             request_params=request_params,
             raise_api_errors=raise_api_errors,
             timeout_context=timeout_context,
+            caller_function_name=caller_function_name,
         )
         response_json = postprocess_collection_response(
             raw_response_json, options=self.api_options.serdes_options
@@ -3698,6 +3724,7 @@ class AsyncCollection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="insert_one",
         )
         logger.info(f"finished insertOne on '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
@@ -3871,6 +3898,7 @@ class AsyncCollection(Generic[DOC]):
                         cap_time_ms=_request_timeout_ms,
                         cap_timeout_label=_rt_label,
                     ),
+                    caller_function_name="insert_many",
                 )
                 logger.info(f"finished insertMany(chunk) on '{self.name}'")
                 # accumulate the results in this call
@@ -3928,6 +3956,7 @@ class AsyncCollection(Generic[DOC]):
                             cap_time_ms=_request_timeout_ms,
                             cap_timeout_label=_rt_label,
                         ),
+                        caller_function_name="insert_many",
                     )
                     logger.info(f"finished insertMany(chunk) on '{self.name}'")
                     return im_payload, im_response
@@ -4369,6 +4398,7 @@ class AsyncCollection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="find_one",
         )
         if "document" not in (fo_response.get("data") or {}):
             raise UnexpectedDataAPIResponseException(
@@ -4784,6 +4814,7 @@ class AsyncCollection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="count_documents",
         )
         logger.info(f"finished countDocuments on '{self.name}'")
         if "count" in cd_response.get("status", {}):
@@ -4850,6 +4881,7 @@ class AsyncCollection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="estimated_document_count",
         )
         logger.info(f"finished estimatedDocumentCount on '{self.name}'")
         if "count" in ed_response.get("status", {}):
@@ -5003,6 +5035,7 @@ class AsyncCollection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="find_one_and_replace",
         )
         logger.info(f"finished findOneAndReplace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -5120,6 +5153,7 @@ class AsyncCollection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="replace_one",
         )
         logger.info(f"finished findOneAndReplace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -5279,6 +5313,7 @@ class AsyncCollection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="find_one_and_update",
         )
         logger.info(f"finished findOneAndUpdate on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -5399,6 +5434,7 @@ class AsyncCollection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="update_one",
         )
         logger.info(f"finished updateOne on '{self.name}'")
         if "status" in uo_response:
@@ -5541,6 +5577,7 @@ class AsyncCollection(Generic[DOC]):
                     cap_time_ms=_request_timeout_ms,
                     cap_timeout_label=_rt_label,
                 ),
+                caller_function_name="update_many",
             )
             logger.info(f"finished updateMany on '{self.name}'")
             this_um_status = this_um_response.get("status") or {}
@@ -5687,6 +5724,7 @@ class AsyncCollection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="find_one_and_delete",
         )
         logger.info(f"finished findOneAndDelete on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -5785,6 +5823,7 @@ class AsyncCollection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="delete_one",
         )
         logger.info(f"finished deleteOne on '{self.name}'")
         if "deletedCount" in do_response.get("status", {}):
@@ -5890,6 +5929,7 @@ class AsyncCollection(Generic[DOC]):
                     cap_time_ms=_request_timeout_ms,
                     cap_timeout_label=_rt_label,
                 ),
+                caller_function_name="delete_many",
             )
             logger.info(f"finished deleteMany on '{self.name}'")
             # if errors, quit early
@@ -6030,6 +6070,7 @@ class AsyncCollection(Generic[DOC]):
             timeout_context=_TimeoutContext(
                 request_ms=_request_timeout_ms, label=_rt_label
             ),
+            caller_function_name="command",
         )
         logger.info(f"finished command={_cmd_desc} on '{self.name}'")
         return command_result

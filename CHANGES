@@ -1,5 +1,10 @@
 main
 ====
+Event Observer API, to listen to events:
+    - this complements the standard logging mechanism;
+    - events are: warnings, payloads/responses, ...
+    - useful for customized logging, observability and instrumentation;
+    - see `astrapy.event_observers` module and docstring of classes therein for more.
 mainteinance: enabled text-index integration tests on Astra
 maintenance: introduced the publish-and-release workflow machinery
 maintenance: split development/maintenance from user README

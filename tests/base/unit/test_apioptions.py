@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import pytest
 
+from astrapy.event_observers import ObservableEvent, Observer
 from astrapy.utils.api_options import APIOptions, defaultAPIOptions
 
 
@@ -45,3 +46,42 @@ class TestAPIOptions:
         )
 
         assert opts_1 == opts_2
+
+    @pytest.mark.describe("test of event observer inheritance in APIOptions")
+    def test_apioptions_eventobservers(self) -> None:
+        lst_a: list[ObservableEvent] = []
+        lst_b: list[ObservableEvent] = []
+        obs_a = Observer.from_event_list(lst_a)
+        obs_b = Observer.from_event_list(lst_b)
+        opts_d = defaultAPIOptions(environment="hcd")
+        opts_1 = opts_d.with_override(
+            APIOptions(
+                event_observers={"a": obs_a, "b": obs_b},
+            )
+        )
+        opts_2 = opts_d.with_override(
+            APIOptions(
+                event_observers={"a": obs_a},
+            )
+        ).with_override(
+            APIOptions(
+                event_observers={"b": obs_b},
+            )
+        )
+        opts_3n = opts_d.with_override(
+            APIOptions(
+                event_observers={"a": obs_a, "b": None},
+            )
+        )
+        opts_4n = opts_d.with_override(
+            APIOptions(
+                event_observers={"a": obs_a, "b": obs_b},
+            )
+        ).with_override(
+            APIOptions(
+                event_observers={"b": None},
+            )
+        )
+
+        assert opts_1 == opts_2
+        assert opts_3n == opts_4n

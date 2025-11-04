@@ -64,6 +64,7 @@ class TestTimeouts:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
+            spawner=None,
         )
 
         httpserver.expect_oneshot_request(
@@ -80,6 +81,7 @@ class TestTimeouts:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
+            spawner=None,
         )
 
         httpserver.expect_oneshot_request(
@@ -98,6 +100,7 @@ class TestTimeouts:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
+            spawner=None,
             dev_ops_api=True,
         )
 
@@ -117,6 +120,7 @@ class TestTimeouts:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
+            spawner=None,
             dev_ops_api=True,
         )
 
