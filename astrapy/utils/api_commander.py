@@ -456,6 +456,7 @@ class APICommander:
                 url=request_url,
                 query_parameters=request_params,
                 redacted_headers=self._loggable_headers,
+                dev_ops_api=self.dev_ops_api,
             )
             sender = self._get_spawner()
             for ev_obs in self.event_observers.values():
@@ -545,6 +546,7 @@ class APICommander:
                 url=request_url,
                 query_parameters=request_params,
                 redacted_headers=self._loggable_headers,
+                dev_ops_api=self.dev_ops_api,
             )
             sender = self._get_spawner()
             for ev_obs in self.event_observers.values():

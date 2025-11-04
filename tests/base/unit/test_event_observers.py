@@ -58,6 +58,7 @@ OBS_REQ = ObservableRequest(
     url="http://bla.bla",
     query_parameters={"k": 10},
     redacted_headers={"x-aaa": "xyz"},
+    dev_ops_api=False,
 )
 
 
@@ -75,6 +76,7 @@ class TestEventObservers:
                 event: ObservableEvent,
                 sender: Any = None,
                 function_name: str | None = None,
+                request_id: str | None = None,
             ) -> None:
                 self.evt_map[event.event_type] = self.evt_map.get(
                     event.event_type, []

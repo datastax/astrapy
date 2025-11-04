@@ -107,6 +107,7 @@ class ObservableRequest(ObservableEvent):
         query_parameters: if present, all query parameters in dict form.
         redacted_headers: a dictionary of the non-sensitive headers being used
             for the request. Authentication credentials and API Keys are removed.
+        dev_ops_api: true if and only if the request is aimed at the DevOps API.
     """
 
     payload: str | None
@@ -114,6 +115,7 @@ class ObservableRequest(ObservableEvent):
     url: str
     query_parameters: dict[str, Any] | None
     redacted_headers: dict[str, Any] | None
+    dev_ops_api: bool
 
     def __init__(
         self,
@@ -122,6 +124,7 @@ class ObservableRequest(ObservableEvent):
         url: str,
         query_parameters: dict[str, Any] | None,
         redacted_headers: dict[str, Any] | None,
+        dev_ops_api: bool,
     ) -> None:
         self.event_type = ObservableEventType.REQUEST
         self.payload = payload
@@ -129,6 +132,7 @@ class ObservableRequest(ObservableEvent):
         self.url = url
         self.query_parameters = query_parameters
         self.redacted_headers = redacted_headers
+        self.dev_ops_api = dev_ops_api
 
 
 @dataclass
