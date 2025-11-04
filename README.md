@@ -710,6 +710,12 @@ tables/collections; plus the admin classes).
 Events are, for example, errors and warnings, as well as requests sent
 and responses received.
 
+Events are generally issued during the lifecycle of a Data API or DevOps API
+HTTP request. Note that events are in correspondence with individual requests,
+and not class methods, some of which in fact involve multiple requests (e.g. the
+chunked `insert_many` or the database admin's `create_database` with
+`wait_until_active=True`).
+
 The simplest usage, when one needs to capture events for a limited
 span of statements, is through a context manager:
 
