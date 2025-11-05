@@ -38,12 +38,16 @@ Repository = "https://github.com/datastax/astrapy"
 Issues = "https://github.com/datastax/astrapy/issues"
 Changelog = "https://github.com/datastax/astrapy/blob/main/CHANGES"
 
+[project.scripts]
+astrapy-repl = "astrapy.repl:main"
+
 [dependency-groups]
 dev = [
     "blockbuster ~= 1.5.5",
     "build >= 1.0.0",
     "cassio ~= 0.1.10; python_version >= '3.9'",
     "faker ~= 23.1.0",
+    "ipython >= 8.0.0",
     "mypy ~= 1.9.0",
     "ruff >= 0.11.9,<0.12",
     "pre-commit ~= 3.5.0",
@@ -70,6 +74,9 @@ include = ["astrapy*"]
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "FA", "I", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"repl.py" = ["F401"]
 
 [tool.mypy]
 disallow_any_generics = true

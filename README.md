@@ -92,6 +92,7 @@ Next steps:
 - [Data API reference](https://docs.datastax.com/en/astra-db-serverless/api-reference/overview.html)
 - [AstraPy reference](https://docs.datastax.com/en/astra-api-docs/_attachments/python-client/astrapy/index.html)
 - Package on [PyPI](https://pypi.org/project/astrapy/)
+- For interactive sessions, check the `astrapy-repl` command [here](DEVELOPING.md#astrapy-repl)
 
 ### Server-side embeddings
 
