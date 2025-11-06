@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import sys
 from code import interact
@@ -195,6 +196,14 @@ PRIVATE_GLOBALS = {
     "sys",
 }
 
+LOGGING_LEVELS = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL,
+}
+
 parser = argparse.ArgumentParser(
     description=(
         "Interactive REPL for astrapy. Supplied parameters take precedence "
@@ -239,6 +248,21 @@ parser.add_argument(
     "--environment",
     choices=Environment.values,
     help="Target environment. Usually auto-detected from endpoint. ",
+)
+# Logger error level
+parser.add_argument(
+    "--log-level",
+    "-l",
+    type=str.upper,
+    dest="loglevel",
+    choices=[
+        "DEBUG",
+        "INFO",
+        "WARNING",
+        "ERROR",
+        "CRITICAL",
+    ],
+    help="Logging level. Use 'DEBUG' for comprehensive inspection of requests and responses.",
 )
 # REPL type
 parser.add_argument(
@@ -331,6 +355,8 @@ def main() -> None:
             "database": database,
         },
     }
+    if args.loglevel:
+        logging.basicConfig(level=LOGGING_LEVELS[args.loglevel])
     if ipython_repl:
         embed(
             banner1=banner,
