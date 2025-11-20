@@ -34,6 +34,8 @@ astrapy-repl
 Try `-h` for more guidance on passing options. In a local development environment, you will
 have to launch it as `uv run astrapy-repl`.
 
+![AstraPy, REPL screenshot](https://raw.githubusercontent.com/datastax/astrapy/main/pictures/astrapy_repl.png)
+
 ## Running tests
 
 ### Typical testing
