@@ -1,5 +1,6 @@
 main
 ====
+Introduced `astrapy-repl` command for a ready-to-use interactive REPL
 Event Observer API, to listen to events:
     - this complements the standard logging mechanism;
     - events are: warnings, payloads/responses, ...

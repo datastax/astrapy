@@ -14,6 +14,7 @@ dependencies = [
     "deprecation ~= 2.1.0",
     "httpx[http2]>=0.25.2,<1",
     "h11 >= 0.16.0",
+    "ipython >= 8.0.0",
     "pymongo >= 3",
     "toml >= 0.10.2,<1.0.0",
     "typing-extensions >= 4.0",
@@ -37,6 +38,9 @@ Documentation = "https://docs.datastax.com/en/astra-db-serverless/api-reference/
 Repository = "https://github.com/datastax/astrapy"
 Issues = "https://github.com/datastax/astrapy/issues"
 Changelog = "https://github.com/datastax/astrapy/blob/main/CHANGES"
+
+[project.scripts]
+astrapy-repl = "astrapy.repl:main"
 
 [dependency-groups]
 dev = [
@@ -70,6 +74,9 @@ include = ["astrapy*"]
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "FA", "I", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"repl.py" = ["F401"]
 
 [tool.mypy]
 disallow_any_generics = true

@@ -1,4 +1,4 @@
-## Development and maintenance
+# Development and maintenance
 
 First install `uv` (e.g. `pipx install uv`), then set up a dev environment with `make venv`, or equivalently:
 
@@ -18,9 +18,27 @@ With `make format-fix` the style and imports are autofixed (by `ruff`)
 Features must be thoroughly covered in tests (have a look at `tests/*` to infer
 naming convention and module structure).
 
-### Running tests
+## astrapy-repl
 
-#### Typical testing
+Astrapy comes with a REPL, a customized Python interactive shell, which pre-loads
+all relevant imports and comes with `client` and `database` objects instantiated and
+ready-to-use.
+
+Just ensure you have defined the environment variable as you would need for testing (see below),
+or set them as command-line parameters. Start the shell with:
+
+```
+astrapy-repl
+```
+
+Try `-h` for more guidance on passing options. In a local development environment, you will
+have to launch it as `uv run astrapy-repl`.
+
+![AstraPy, REPL screenshot](https://raw.githubusercontent.com/datastax/astrapy/main/pictures/astrapy_repl.png)
+
+## Running tests
+
+### Typical testing
 
 In most cases you want to run the "base" test suite (the one in the CI/CD automation) against either Astra DB or a local Data API + HCD.
 
@@ -30,7 +48,7 @@ Steps:
 - Export variables as in the `tests/env_templates/env.vectorize-minimal.template` example.
 - Run: `uv venv --python ">=3.8<3.13" && uv run pytest tests/base`
 
-#### All available tests/targets
+### All available tests/targets
 
 Tests are grouped in:
 - "base", covering general-purpose astrapy functionality. Divided in unit/integration;
@@ -60,18 +78,18 @@ and comment the environment flag that suppresses them (see the base Astra env te
 For non-Astra, the reranking-related tests run only if one sets
 `HEADER_RERANKING_API_KEY_NVIDIA="AstraCS:<dev token...>` (as shown in the Local/DockerCompose base env templates).
 
-#### Docker vs. Podman
+### Docker vs. Podman
 
 In case you use a different Docker-compatible container runtime (e.g. `podman`) and are running against the
 "DockerCompose" target make sure to export the environment variable such as `DOCKER_COMMAND_NAME="podman"`
 to maek the test startup logic work properly.
 
-#### Keyspaces
+### Keyspaces
 
 You shoud never need to worry about keyspaces. Tests use two keyspaces, which are created if not found, with default names.
 The env templates show how to override those names, if you want to.
 
-#### Multiple Python versions
+### Multiple Python versions
 
 If may be useful to run e.g. unit tests with multiple Python versions. You can have `uv`
 create more than one venv and specify the version, e.g. for each one:
@@ -89,7 +107,7 @@ assuming you activated a certain virtual env, you can run e.g.: `make format VEN
 
 **Warning: Python 3.13+ currently not supported to run integration tests! (but the package itself is all right).**
 
-#### Adding/changing dependencies
+### Adding/changing dependencies
 
 After editing the `pyproject.toml`, make sure you run
 
@@ -100,7 +118,7 @@ uv sync --dev
 
 and then commit the new `uv.lock` to the repo as well.
 
-#### Sample testing commands
+### Sample testing commands
 
 Base:
 
@@ -141,18 +159,18 @@ uv run pytest [...] -o log_cli=0
 uv run pytest [...] -o log_cli=1 --log-cli-level=10
 ```
 
-### Special tests
+## Special tests
 
 The following are special provision to manage features under evolution or not
 entirely deployed to all environments. Typically they require manually passing
 certain environment variables, otherwise the associated tests are excluded from CI.
 
-#### Cutting-edge features on `main`
+### Cutting-edge features on `main`
 
 Prepend tests with a `ASTRAPY_TEST_LATEST_MAIN=y` for features found on `main` that are not released anywhere.
 _(Tip: run a code search first to see what is currently marked as such. Chances are nothing is.)_
 
-### Publish-and-release
+## Publish-and-release
 
 Releasing a new version happens through the Github `release` workflow, which includes all necessary testing
 plus a publish step to the test-PyPI.

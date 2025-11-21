@@ -198,7 +198,7 @@ class TestTableCursorSync:
         cur = filled_composite_atable.find()
         assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
-        assert cur.has_next()
+        assert await cur.has_next()
         assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
         [None async for _ in cur]
