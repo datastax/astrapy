@@ -32,6 +32,7 @@ from astrapy.admin.endpoints import (
 from astrapy.constants import Environment, ModelStatus
 from astrapy.exceptions import (
     DevOpsAPIException,
+    DevOpsAPIHttpException,
     InvalidEnvironmentException,
     MultiCallTimeoutManager,
     UnexpectedDataAPIResponseException,
@@ -63,6 +64,7 @@ from astrapy.settings.defaults import (
     DEV_OPS_KEYSPACE_POLL_INTERVAL_S,
     DEV_OPS_RESPONSE_HTTP_ACCEPTED,
     DEV_OPS_RESPONSE_HTTP_CREATED,
+    DEV_OPS_RESPONSE_HTTP_NOT_FOUND,
 )
 from astrapy.utils.api_commander import APICommander
 from astrapy.utils.api_options import (
@@ -80,6 +82,13 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+POLLING_TEST_DATABASE_ID = "00000000-0000-0000-0000-000000000000"
+CANNOT_POLL_ERROR_MESSAGE = (
+    "This operation, when called with wait_until_active=True, needs "
+    "to poll for the database status, which the provided token "
+    "has no permission to accomplish."
+)
 
 
 def check_id_endpoint_parg_kwargs(
@@ -1006,6 +1015,42 @@ class AstraDBAdmin:
             environment=self.api_options.environment,
         )
 
+    def _can_poll(
+        self,
+        *,
+        timeout_context: _TimeoutContext,
+        caller_function_name: str,
+    ) -> bool:
+        try:
+            self._database_info_ctx(
+                POLLING_TEST_DATABASE_ID,
+                timeout_context=timeout_context,
+                caller_function_name=caller_function_name,
+            )
+        except Exception as e:
+            if isinstance(e, DevOpsAPIHttpException):
+                return e.response.status_code == DEV_OPS_RESPONSE_HTTP_NOT_FOUND
+            return False
+        return True
+
+    async def _async_can_poll(
+        self,
+        *,
+        timeout_context: _TimeoutContext,
+        caller_function_name: str,
+    ) -> bool:
+        try:
+            await self._async_database_info_ctx(
+                POLLING_TEST_DATABASE_ID,
+                timeout_context=timeout_context,
+                caller_function_name=caller_function_name,
+            )
+        except Exception as e:
+            if isinstance(e, DevOpsAPIHttpException):
+                return e.response.status_code == DEV_OPS_RESPONSE_HTTP_NOT_FOUND
+            return False
+        return True
+
     def create_database(
         self,
         name: str,
@@ -1112,6 +1157,17 @@ class AstraDBAdmin:
             dev_ops_api=True,
             timeout_label=_da_label,
         )
+        if wait_until_active:
+            logger.info("pre-check for polling capability of token (DevOps API)")
+            if not self._can_poll(
+                timeout_context=timeout_manager.remaining_timeout(
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
+                ),
+                caller_function_name="create_database",
+            ):
+                logger.info("polling capability check returned negative (DevOps API)")
+                raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(
             f"creating database {name}/({cloud_provider}, {region}) (DevOps API)"
         )
@@ -1275,6 +1331,17 @@ class AstraDBAdmin:
             dev_ops_api=True,
             timeout_label=_da_label,
         )
+        if wait_until_active:
+            logger.info("pre-check for polling capability of token (DevOps API)")
+            if not await self._async_can_poll(
+                timeout_context=timeout_manager.remaining_timeout(
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
+                ),
+                caller_function_name="create_database",
+            ):
+                logger.info("polling capability check returned negative (DevOps API)")
+                raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(
             f"creating database {name}/({cloud_provider}, {region}) (DevOps API), async"
         )
@@ -1406,6 +1473,17 @@ class AstraDBAdmin:
             dev_ops_api=True,
             timeout_label=_da_label,
         )
+        if wait_until_active:
+            logger.info("pre-check for polling capability of token (DevOps API)")
+            if not self._can_poll(
+                timeout_context=timeout_manager.remaining_timeout(
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
+                ),
+                caller_function_name="drop_database",
+            ):
+                logger.info("polling capability check returned negative (DevOps API)")
+                raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(f"dropping database '{id}' (DevOps API)")
         te_raw_response = self._dev_ops_api_commander.raw_request(
             caller_function_name="drop_database",
@@ -1521,6 +1599,17 @@ class AstraDBAdmin:
             dev_ops_api=True,
             timeout_label=_da_label,
         )
+        if wait_until_active:
+            logger.info("pre-check for polling capability of token (DevOps API)")
+            if not await self._async_can_poll(
+                timeout_context=timeout_manager.remaining_timeout(
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
+                ),
+                caller_function_name="drop_database",
+            ):
+                logger.info("polling capability check returned negative (DevOps API)")
+                raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(f"dropping database '{id}' (DevOps API), async")
         te_raw_response = await self._dev_ops_api_commander.async_raw_request(
             caller_function_name="async_drop_database",
@@ -3078,6 +3167,17 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             dev_ops_api=True,
             timeout_label=_ka_label,
         )
+        if wait_until_active:
+            logger.info("pre-check for polling capability of token (DevOps API)")
+            if not self._astra_db_admin._can_poll(
+                timeout_context=timeout_manager.remaining_timeout(
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
+                ),
+                caller_function_name="create_keyspace",
+            ):
+                logger.info("polling capability check returned negative (DevOps API)")
+                raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(f"creating keyspace '{name}' on '{self._database_id}' (DevOps API)")
         cn_raw_response = self._dev_ops_api_commander.raw_request(
             caller_function_name="create_keyspace",
@@ -3195,6 +3295,17 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             dev_ops_api=True,
             timeout_label=_ka_label,
         )
+        if wait_until_active:
+            logger.info("pre-check for polling capability of token (DevOps API)")
+            if not await self._astra_db_admin._async_can_poll(
+                timeout_context=timeout_manager.remaining_timeout(
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
+                ),
+                caller_function_name="create_keyspace",
+            ):
+                logger.info("polling capability check returned negative (DevOps API)")
+                raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(
             f"creating keyspace '{name}' on '{self._database_id}' (DevOps API), async"
         )
@@ -3312,6 +3423,17 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             dev_ops_api=True,
             timeout_label=_ka_label,
         )
+        if wait_until_active:
+            logger.info("pre-check for polling capability of token (DevOps API)")
+            if not self._astra_db_admin._can_poll(
+                timeout_context=timeout_manager.remaining_timeout(
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
+                ),
+                caller_function_name="drop_keyspace",
+            ):
+                logger.info("polling capability check returned negative (DevOps API)")
+                raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(f"dropping keyspace '{name}' on '{self._database_id}' (DevOps API)")
         dk_raw_response = self._dev_ops_api_commander.raw_request(
             caller_function_name="drop_keyspace",
@@ -3421,6 +3543,17 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             dev_ops_api=True,
             timeout_label=_ka_label,
         )
+        if wait_until_active:
+            logger.info("pre-check for polling capability of token (DevOps API)")
+            if not await self._astra_db_admin._async_can_poll(
+                timeout_context=timeout_manager.remaining_timeout(
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
+                ),
+                caller_function_name="create_keyspace",
+            ):
+                logger.info("polling capability check returned negative (DevOps API)")
+                raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(
             f"dropping keyspace '{name}' on '{self._database_id}' (DevOps API), async"
         )
