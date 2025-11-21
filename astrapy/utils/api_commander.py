@@ -281,18 +281,12 @@ class APICommander:
                 # are made into Decimal.
                 # (for collections, this will be it. for Tables, schema-aware
                 # proper post-processing will refine types, e.g. back to int, ...)
-                raw_response_json = (
-                    self._decimal_aware_parse_json_response(
-                        raw_response.text,
-                    )
-                    or {}
+                raw_response_json = self._decimal_aware_parse_json_response(
+                    raw_response.text,
                 )
             else:
-                raw_response_json = (
-                    self._decimal_unaware_parse_json_response(
-                        raw_response.text,
-                    )
-                    or {}
+                raw_response_json = self._decimal_unaware_parse_json_response(
+                    raw_response.text,
                 )
         except ValueError:
             # json() parsing has failed (e.g., empty body)
@@ -308,9 +302,12 @@ class APICommander:
             )
 
         # no warnings check for DevOps API (there, 'status' may contain a string)
+        dictforced_response: dict[str, Any] = (
+            raw_response_json if isinstance(raw_response_json, dict) else {}
+        )
         if not self.dev_ops_api:
             warning_items: list[str | dict[str, Any]] = (
-                raw_response_json.get("status") or {}
+                dictforced_response.get("status") or {}
             ).get("warnings") or []
             if warning_items:
                 warning_descriptors = [
@@ -339,11 +336,11 @@ class APICommander:
                     )
                     logger.warning(full_warning)
 
-        if "errors" in raw_response_json:
+        if "errors" in dictforced_response:
             if self.event_observers:
                 err_events = [
                     ObservableError(error=DataAPIErrorDescriptor(err_dict))
-                    for err_dict in raw_response_json["errors"]
+                    for err_dict in dictforced_response["errors"]
                 ]
                 sender = self._get_spawner()
                 for ev_obs in self.event_observers.values():
@@ -357,11 +354,11 @@ class APICommander:
                             )
             if raise_api_errors:
                 logger.warning(
-                    f"APICommander about to raise from: {raw_response_json['errors']}"
+                    f"APICommander about to raise from: {dictforced_response['errors']}"
                 )
                 raise self._response_exc_class.from_response(
                     command=payload,
-                    raw_response=raw_response_json,
+                    raw_response=dictforced_response,
                 )
 
         return raw_response_json
