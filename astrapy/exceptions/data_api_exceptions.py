@@ -87,11 +87,11 @@ class DataAPIResponseException(DataAPIException):
 
         error_descriptors = [
             DataAPIErrorDescriptor(error_dict)
-            for error_dict in raw_response.get("errors") or []
+            for error_dict in (raw_response or {}).get("errors") or []
         ]
         warning_descriptors = [
             DataAPIWarningDescriptor(error_dict)
-            for error_dict in raw_response.get("warnings") or []
+            for error_dict in (raw_response or {}).get("warnings") or []
         ]
 
         if error_descriptors:
@@ -168,7 +168,7 @@ class DataAPIHttpException(DataAPIException, httpx.HTTPStatusError):
         raw_response: dict[str, Any]
         # the attempt to extract a response structure cannot afford failure.
         try:
-            raw_response = httpx_error.response.json()
+            raw_response = httpx_error.response.json() or {}
         except Exception:
             raw_response = {}
         error_descriptors = [

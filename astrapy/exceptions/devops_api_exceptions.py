@@ -105,7 +105,7 @@ class DevOpsAPIHttpException(DevOpsAPIException, httpx.HTTPStatusError):
         raw_response: dict[str, Any]
         # the attempt to extract a response structure cannot afford failure.
         try:
-            raw_response = httpx_error.response.json()
+            raw_response = httpx_error.response.json() or {}
         except Exception:
             raw_response = {}
         error_descriptors = [
@@ -222,7 +222,7 @@ class DevOpsAPIResponseException(DevOpsAPIException):
 
         error_descriptors = [
             DevOpsAPIErrorDescriptor(error_dict)
-            for error_dict in raw_response.get("errors") or []
+            for error_dict in (raw_response or {}).get("errors") or []
         ]
         if error_descriptors:
             _text = error_descriptors[0].message

@@ -281,12 +281,18 @@ class APICommander:
                 # are made into Decimal.
                 # (for collections, this will be it. for Tables, schema-aware
                 # proper post-processing will refine types, e.g. back to int, ...)
-                raw_response_json = self._decimal_aware_parse_json_response(
-                    raw_response.text,
+                raw_response_json = (
+                    self._decimal_aware_parse_json_response(
+                        raw_response.text,
+                    )
+                    or {}
                 )
             else:
-                raw_response_json = self._decimal_unaware_parse_json_response(
-                    raw_response.text,
+                raw_response_json = (
+                    self._decimal_unaware_parse_json_response(
+                        raw_response.text,
+                    )
+                    or {}
                 )
         except ValueError:
             # json() parsing has failed (e.g., empty body)
