@@ -32,6 +32,7 @@ from astrapy.admin.endpoints import (
 from astrapy.constants import Environment, ModelStatus
 from astrapy.exceptions import (
     DevOpsAPIException,
+    DevOpsAPIHttpException,
     InvalidEnvironmentException,
     MultiCallTimeoutManager,
     UnexpectedDataAPIResponseException,
@@ -42,6 +43,7 @@ from astrapy.exceptions.utils import (
     _select_singlereq_timeout_da,
     _select_singlereq_timeout_ka,
 )
+from astrapy.ids import uuid7
 from astrapy.info import (
     AstraDBAdminDatabaseInfo,
     AstraDBAvailableRegionInfo,
@@ -58,11 +60,13 @@ from astrapy.settings.defaults import (
     DEV_OPS_DATABASE_STATUS_INITIALIZING,
     DEV_OPS_DATABASE_STATUS_MAINTENANCE,
     DEV_OPS_DATABASE_STATUS_PENDING,
+    DEV_OPS_DATABASE_STATUS_TERMINATED,
     DEV_OPS_DATABASE_STATUS_TERMINATING,
     DEV_OPS_DEFAULT_DATABASES_PAGE_SIZE,
     DEV_OPS_KEYSPACE_POLL_INTERVAL_S,
     DEV_OPS_RESPONSE_HTTP_ACCEPTED,
     DEV_OPS_RESPONSE_HTTP_CREATED,
+    DEV_OPS_RESPONSE_HTTP_NOT_FOUND,
 )
 from astrapy.utils.api_commander import APICommander
 from astrapy.utils.api_options import (
@@ -80,6 +84,12 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+CANNOT_POLL_ERROR_MESSAGE = (
+    "This operation, when called with wait_until_active=True, needs "
+    "to poll for the database status, which the provided token "
+    "has no permission to accomplish."
+)
 
 
 def check_id_endpoint_parg_kwargs(
@@ -593,6 +603,50 @@ class AstraDBAdmin:
             api_options=api_options,
         )
 
+    def _can_poll(
+        self,
+        *,
+        test_db_id: str | None = None,
+        timeout_context: _TimeoutContext,
+        caller_function_name: str,
+    ) -> bool:
+        if test_db_id is None:
+            # a random 'db id' to avoid issues with the devops api cache
+            test_db_id = str(uuid7())
+        try:
+            self._database_info_ctx(
+                test_db_id,
+                timeout_context=timeout_context,
+                caller_function_name=caller_function_name,
+            )
+        except Exception as e:
+            if isinstance(e, DevOpsAPIHttpException):
+                return e.response.status_code == DEV_OPS_RESPONSE_HTTP_NOT_FOUND
+            return False
+        return True
+
+    async def _async_can_poll(
+        self,
+        *,
+        test_db_id: str | None = None,
+        timeout_context: _TimeoutContext,
+        caller_function_name: str,
+    ) -> bool:
+        if test_db_id is None:
+            # a random 'db id' to avoid issues with the devops api cache
+            test_db_id = str(uuid7())
+        try:
+            await self._async_database_info_ctx(
+                test_db_id,
+                timeout_context=timeout_context,
+                caller_function_name=caller_function_name,
+            )
+        except Exception as e:
+            if isinstance(e, DevOpsAPIHttpException):
+                return e.response.status_code == DEV_OPS_RESPONSE_HTTP_NOT_FOUND
+            return False
+        return True
+
     def list_databases(
         self,
         *,
@@ -923,6 +977,8 @@ class AstraDBAdmin:
         caller_function_name: str,
     ) -> AstraDBAdminDatabaseInfo:
         # version of the method, but with timeouts made into a _TimeoutContext
+        if id == "":
+            raise ValueError("Database ID cannot be empty.")
         logger.info(f"getting database info for '{id}' (DevOps API)")
         gd_response = self._dev_ops_api_commander.request(
             http_method=HttpMethod.GET,
@@ -993,6 +1049,8 @@ class AstraDBAdmin:
         caller_function_name: str,
     ) -> AstraDBAdminDatabaseInfo:
         # version of the method, but with timeouts made into a _TimeoutContext
+        if id == "":
+            raise ValueError("Database ID cannot be empty.")
         logger.info(f"getting database info for '{id}' (DevOps API), async")
         gd_response = await self._dev_ops_api_commander.async_request(
             http_method=HttpMethod.GET,
@@ -1112,6 +1170,17 @@ class AstraDBAdmin:
             dev_ops_api=True,
             timeout_label=_da_label,
         )
+        if wait_until_active:
+            logger.info("pre-check for polling capability of token (DevOps API)")
+            if not self._can_poll(
+                timeout_context=timeout_manager.remaining_timeout(
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
+                ),
+                caller_function_name="create_database",
+            ):
+                logger.info("polling capability check returned negative (DevOps API)")
+                raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(
             f"creating database {name}/({cloud_provider}, {region}) (DevOps API)"
         )
@@ -1155,7 +1224,9 @@ class AstraDBAdmin:
                 last_status_seen = last_db_info.status
             if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
                 raise DevOpsAPIException(
-                    f"Database {name} entered unexpected status {last_status_seen} after PENDING"
+                    f"Database {name} entered unexpected status "
+                    f"{last_status_seen} after {DEV_OPS_DATABASE_STATUS_PENDING}"
+                    f"/{DEV_OPS_DATABASE_STATUS_INITIALIZING}"
                 )
         # return the database instance
         logger.info(
@@ -1275,6 +1346,17 @@ class AstraDBAdmin:
             dev_ops_api=True,
             timeout_label=_da_label,
         )
+        if wait_until_active:
+            logger.info("pre-check for polling capability of token (DevOps API)")
+            if not await self._async_can_poll(
+                timeout_context=timeout_manager.remaining_timeout(
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
+                ),
+                caller_function_name="async_create_database",
+            ):
+                logger.info("polling capability check returned negative (DevOps API)")
+                raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(
             f"creating database {name}/({cloud_provider}, {region}) (DevOps API), async"
         )
@@ -1321,7 +1403,8 @@ class AstraDBAdmin:
             if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
                 raise DevOpsAPIException(
                     f"Database {name} entered unexpected status "
-                    f"{last_status_seen} after PENDING"
+                    f"{last_status_seen} after {DEV_OPS_DATABASE_STATUS_PENDING}"
+                    f"/{DEV_OPS_DATABASE_STATUS_INITIALIZING}"
                 )
         # return the database instance
         logger.info(
@@ -1357,7 +1440,7 @@ class AstraDBAdmin:
             id: The ID of the database to drop, e. g.
                 "01234567-89ab-cdef-0123-456789abcdef".
             wait_until_active: if True (default), the method returns only after
-                the database has actually been deleted (generally a few minutes).
+                the database has actually been deleted (generally less than a minute).
                 If False, it will return right after issuing the
                 drop request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/availability
@@ -1406,6 +1489,18 @@ class AstraDBAdmin:
             dev_ops_api=True,
             timeout_label=_da_label,
         )
+        if wait_until_active:
+            logger.info("pre-check for polling capability of token (DevOps API)")
+            if not self._can_poll(
+                test_db_id=id,
+                timeout_context=timeout_manager.remaining_timeout(
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
+                ),
+                caller_function_name="drop_database",
+            ):
+                logger.info("polling capability check returned negative (DevOps API)")
+                raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(f"dropping database '{id}' (DevOps API)")
         te_raw_response = self._dev_ops_api_commander.raw_request(
             caller_function_name="drop_database",
@@ -1425,36 +1520,26 @@ class AstraDBAdmin:
             )
         logger.info(f"DevOps API returned from dropping database '{id}'")
         if wait_until_active:
-            last_status_seen: str | None = DEV_OPS_DATABASE_STATUS_TERMINATING
+            last_status_seen: str = DEV_OPS_DATABASE_STATUS_TERMINATING
             _db_name: str | None = None
             while last_status_seen == DEV_OPS_DATABASE_STATUS_TERMINATING:
                 logger.info(f"sleeping to poll for status of '{id}'")
                 time.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
-                #
-                detected_databases = [
-                    a_db_info
-                    for a_db_info in self._list_databases_ctx(
-                        include=None,
-                        provider=None,
-                        page_size=None,
-                        timeout_context=timeout_manager.remaining_timeout(
-                            cap_time_ms=_request_timeout_ms,
-                            cap_timeout_label=_rt_label,
-                        ),
-                        caller_function_name="drop_database",
-                    )
-                    if a_db_info.id == id
-                ]
-                if detected_databases:
-                    last_status_seen = detected_databases[0].status
-                    _db_name = detected_databases[0].name
-                else:
-                    last_status_seen = None
-            if last_status_seen is not None:
+                # poll for status
+                last_db_info = self._database_info_ctx(
+                    id=id,
+                    timeout_context=timeout_manager.remaining_timeout(
+                        cap_time_ms=_request_timeout_ms,
+                        cap_timeout_label=_rt_label,
+                    ),
+                    caller_function_name="drop_database",
+                )
+                last_status_seen = last_db_info.status
+            if last_status_seen != DEV_OPS_DATABASE_STATUS_TERMINATED:
                 _name_desc = f" ({_db_name})" if _db_name else ""
                 raise DevOpsAPIException(
                     f"Database {id}{_name_desc} entered unexpected status "
-                    f"{last_status_seen} after PENDING"
+                    f"{last_status_seen} after {DEV_OPS_DATABASE_STATUS_TERMINATING}"
                 )
         logger.info(f"finished dropping database '{id}' (DevOps API)")
 
@@ -1476,7 +1561,7 @@ class AstraDBAdmin:
             id: The ID of the database to drop, e. g.
                 "01234567-89ab-cdef-0123-456789abcdef".
             wait_until_active: if True (default), the method returns only after
-                the database has actually been deleted (generally a few minutes).
+                the database has actually been deleted (generally less than a minute).
                 If False, it will return right after issuing the
                 drop request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/availability
@@ -1521,6 +1606,18 @@ class AstraDBAdmin:
             dev_ops_api=True,
             timeout_label=_da_label,
         )
+        if wait_until_active:
+            logger.info("pre-check for polling capability of token (DevOps API)")
+            if not await self._async_can_poll(
+                test_db_id=id,
+                timeout_context=timeout_manager.remaining_timeout(
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
+                ),
+                caller_function_name="async_drop_database",
+            ):
+                logger.info("polling capability check returned negative (DevOps API)")
+                raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(f"dropping database '{id}' (DevOps API), async")
         te_raw_response = await self._dev_ops_api_commander.async_raw_request(
             caller_function_name="async_drop_database",
@@ -1540,36 +1637,26 @@ class AstraDBAdmin:
             )
         logger.info(f"DevOps API returned from dropping database '{id}', async")
         if wait_until_active:
-            last_status_seen: str | None = DEV_OPS_DATABASE_STATUS_TERMINATING
+            last_status_seen: str = DEV_OPS_DATABASE_STATUS_TERMINATING
             _db_name: str | None = None
             while last_status_seen == DEV_OPS_DATABASE_STATUS_TERMINATING:
                 logger.info(f"sleeping to poll for status of '{id}', async")
                 await asyncio.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
-                #
-                detected_databases = [
-                    a_db_info
-                    for a_db_info in await self._async_list_databases_ctx(
-                        include=None,
-                        provider=None,
-                        page_size=None,
-                        timeout_context=timeout_manager.remaining_timeout(
-                            cap_time_ms=_request_timeout_ms,
-                            cap_timeout_label=_rt_label,
-                        ),
-                        caller_function_name="async_drop_database",
-                    )
-                    if a_db_info.id == id
-                ]
-                if detected_databases:
-                    last_status_seen = detected_databases[0].status
-                    _db_name = detected_databases[0].name
-                else:
-                    last_status_seen = None
-            if last_status_seen is not None:
+                # poll for status
+                last_db_info = await self._async_database_info_ctx(
+                    id=id,
+                    timeout_context=timeout_manager.remaining_timeout(
+                        cap_time_ms=_request_timeout_ms,
+                        cap_timeout_label=_rt_label,
+                    ),
+                    caller_function_name="async_drop_database",
+                )
+                last_status_seen = last_db_info.status
+            if last_status_seen != DEV_OPS_DATABASE_STATUS_TERMINATED:
                 _name_desc = f" ({_db_name})" if _db_name else ""
                 raise DevOpsAPIException(
                     f"Database {id}{_name_desc} entered unexpected status "
-                    f"{last_status_seen} after PENDING"
+                    f"{last_status_seen} after {DEV_OPS_DATABASE_STATUS_TERMINATING}"
                 )
         logger.info(f"finished dropping database '{id}' (DevOps API), async")
 
@@ -2251,7 +2338,7 @@ class ProviderQueryingDatabaseAdmin(DatabaseAdmin):
             timeout_context=_TimeoutContext(
                 request_ms=_database_admin_timeout_ms, label=_da_label
             ),
-            caller_function_name="find_embeddnig_providers",
+            caller_function_name="find_embedding_providers",
         )
         if "embeddingProviders" not in fe_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -2769,6 +2856,34 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             api_options=api_options,
         )
 
+    def _can_poll(
+        self,
+        *,
+        timeout_context: _TimeoutContext,
+        caller_function_name: str,
+    ) -> bool:
+        return self._astra_db_admin.with_options(
+            api_options=self.api_options,
+        )._can_poll(
+            test_db_id=self._database_id,
+            timeout_context=timeout_context,
+            caller_function_name=caller_function_name,
+        )
+
+    async def _async_can_poll(
+        self,
+        *,
+        timeout_context: _TimeoutContext,
+        caller_function_name: str,
+    ) -> bool:
+        return await self._astra_db_admin.with_options(
+            api_options=self.api_options,
+        )._async_can_poll(
+            test_db_id=self._database_id,
+            timeout_context=timeout_context,
+            caller_function_name=caller_function_name,
+        )
+
     @property
     def id(self) -> str:
         """
@@ -2870,7 +2985,9 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
         """
 
         logger.info(f"getting info ('{self._database_id}')")
-        req_response = self._astra_db_admin.database_info(
+        req_response = self._astra_db_admin.with_options(
+            api_options=self.api_options,
+        ).database_info(
             id=self._database_id,
             database_admin_timeout_ms=database_admin_timeout_ms,
             request_timeout_ms=request_timeout_ms,
@@ -2913,7 +3030,9 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
         """
 
         logger.info(f"getting info ('{self._database_id}'), async")
-        req_response = await self._astra_db_admin.async_database_info(
+        req_response = await self._astra_db_admin.with_options(
+            api_options=self.api_options,
+        ).async_database_info(
             id=self._database_id,
             database_admin_timeout_ms=database_admin_timeout_ms,
             request_timeout_ms=request_timeout_ms,
@@ -3078,6 +3197,17 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             dev_ops_api=True,
             timeout_label=_ka_label,
         )
+        if wait_until_active:
+            logger.info("pre-check for polling capability of token (DevOps API)")
+            if not self._can_poll(
+                timeout_context=timeout_manager.remaining_timeout(
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
+                ),
+                caller_function_name="create_keyspace",
+            ):
+                logger.info("polling capability check returned negative (DevOps API)")
+                raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(f"creating keyspace '{name}' on '{self._database_id}' (DevOps API)")
         cn_raw_response = self._dev_ops_api_commander.raw_request(
             caller_function_name="create_keyspace",
@@ -3104,14 +3234,20 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             while last_status_seen == DEV_OPS_DATABASE_STATUS_MAINTENANCE:
                 logger.info(f"sleeping to poll for status of '{self._database_id}'")
                 time.sleep(DEV_OPS_KEYSPACE_POLL_INTERVAL_S)
-                last_status_seen = self._astra_db_admin._database_info_ctx(
-                    id=self._database_id,
-                    timeout_context=timeout_manager.remaining_timeout(
-                        cap_time_ms=_request_timeout_ms,
-                        cap_timeout_label=_rt_label,
-                    ),
-                    caller_function_name="create_keyspace",
-                ).status
+                last_status_seen = (
+                    self._astra_db_admin.with_options(
+                        api_options=self.api_options,
+                    )
+                    ._database_info_ctx(
+                        id=self._database_id,
+                        timeout_context=timeout_manager.remaining_timeout(
+                            cap_time_ms=_request_timeout_ms,
+                            cap_timeout_label=_rt_label,
+                        ),
+                        caller_function_name="create_keyspace",
+                    )
+                    .status
+                )
             if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
                 raise DevOpsAPIException(
                     f"Database entered unexpected status {last_status_seen} after MAINTENANCE."
@@ -3195,6 +3331,17 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             dev_ops_api=True,
             timeout_label=_ka_label,
         )
+        if wait_until_active:
+            logger.info("pre-check for polling capability of token (DevOps API)")
+            if not await self._async_can_poll(
+                timeout_context=timeout_manager.remaining_timeout(
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
+                ),
+                caller_function_name="async_create_keyspace",
+            ):
+                logger.info("polling capability check returned negative (DevOps API)")
+                raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(
             f"creating keyspace '{name}' on '{self._database_id}' (DevOps API), async"
         )
@@ -3225,7 +3372,9 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
                     f"sleeping to poll for status of '{self._database_id}', async"
                 )
                 await asyncio.sleep(DEV_OPS_KEYSPACE_POLL_INTERVAL_S)
-                last_db_info = await self._astra_db_admin._async_database_info_ctx(
+                last_db_info = await self._astra_db_admin.with_options(
+                    api_options=self.api_options,
+                )._async_database_info_ctx(
                     id=self._database_id,
                     timeout_context=timeout_manager.remaining_timeout(
                         cap_time_ms=_request_timeout_ms,
@@ -3312,6 +3461,17 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             dev_ops_api=True,
             timeout_label=_ka_label,
         )
+        if wait_until_active:
+            logger.info("pre-check for polling capability of token (DevOps API)")
+            if not self._can_poll(
+                timeout_context=timeout_manager.remaining_timeout(
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
+                ),
+                caller_function_name="drop_keyspace",
+            ):
+                logger.info("polling capability check returned negative (DevOps API)")
+                raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(f"dropping keyspace '{name}' on '{self._database_id}' (DevOps API)")
         dk_raw_response = self._dev_ops_api_commander.raw_request(
             caller_function_name="drop_keyspace",
@@ -3338,14 +3498,20 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             while last_status_seen == DEV_OPS_DATABASE_STATUS_MAINTENANCE:
                 logger.info(f"sleeping to poll for status of '{self._database_id}'")
                 time.sleep(DEV_OPS_KEYSPACE_POLL_INTERVAL_S)
-                last_status_seen = self._astra_db_admin._database_info_ctx(
-                    id=self._database_id,
-                    timeout_context=timeout_manager.remaining_timeout(
-                        cap_time_ms=_request_timeout_ms,
-                        cap_timeout_label=_rt_label,
-                    ),
-                    caller_function_name="drop_keyspace",
-                ).status
+                last_status_seen = (
+                    self._astra_db_admin.with_options(
+                        api_options=self.api_options,
+                    )
+                    ._database_info_ctx(
+                        id=self._database_id,
+                        timeout_context=timeout_manager.remaining_timeout(
+                            cap_time_ms=_request_timeout_ms,
+                            cap_timeout_label=_rt_label,
+                        ),
+                        caller_function_name="drop_keyspace",
+                    )
+                    .status
+                )
             if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
                 raise DevOpsAPIException(
                     f"Database entered unexpected status {last_status_seen} after MAINTENANCE."
@@ -3421,6 +3587,17 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             dev_ops_api=True,
             timeout_label=_ka_label,
         )
+        if wait_until_active:
+            logger.info("pre-check for polling capability of token (DevOps API)")
+            if not await self._async_can_poll(
+                timeout_context=timeout_manager.remaining_timeout(
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
+                ),
+                caller_function_name="async_drop_keyspace",
+            ):
+                logger.info("polling capability check returned negative (DevOps API)")
+                raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(
             f"dropping keyspace '{name}' on '{self._database_id}' (DevOps API), async"
         )
@@ -3451,7 +3628,9 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
                     f"sleeping to poll for status of '{self._database_id}', async"
                 )
                 await asyncio.sleep(DEV_OPS_KEYSPACE_POLL_INTERVAL_S)
-                last_db_info = await self._astra_db_admin._async_database_info_ctx(
+                last_db_info = await self._astra_db_admin.with_options(
+                    api_options=self.api_options,
+                )._async_database_info_ctx(
                     id=self._database_id,
                     timeout_context=timeout_manager.remaining_timeout(
                         cap_time_ms=_request_timeout_ms,
@@ -3524,7 +3703,9 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
         """
 
         logger.info(f"dropping this database ('{self._database_id}')")
-        return self._astra_db_admin.drop_database(
+        self._astra_db_admin.with_options(
+            api_options=self.api_options,
+        ).drop_database(
             id=self._database_id,
             wait_until_active=wait_until_active,
             database_admin_timeout_ms=database_admin_timeout_ms,
@@ -3584,7 +3765,9 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
         """
 
         logger.info(f"dropping this database ('{self._database_id}'), async")
-        return await self._astra_db_admin.async_drop_database(
+        await self._astra_db_admin.with_options(
+            api_options=self.api_options,
+        ).async_drop_database(
             id=self._database_id,
             wait_until_active=wait_until_active,
             database_admin_timeout_ms=database_admin_timeout_ms,
@@ -3632,7 +3815,9 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             see the AstraDBAdmin class.
         """
 
-        return self._astra_db_admin.get_database(
+        return self._astra_db_admin.with_options(
+            api_options=self.api_options,
+        ).get_database(
             api_endpoint=self.api_endpoint,
             keyspace=keyspace,
             token=token,

@@ -86,7 +86,7 @@ def extended_booleanize_env(env_var_name: str, default: bool = False) -> bool:
 
 
 # basic settings about which DB/API to use
-if "LOCAL_DATA_API_ENDPOINT" in os.environ:
+if "LOCAL_DATA_API_ENDPOINT" in os.environ and os.environ["LOCAL_DATA_API_ENDPOINT"]:
     IS_ASTRA_DB = False
     DOCKER_COMPOSE_LOCAL_DATA_API = False
     LOCAL_DATA_API_USERNAME = os.environ.get("LOCAL_DATA_API_USERNAME")
@@ -115,7 +115,7 @@ elif "DOCKER_COMPOSE_LOCAL_DATA_API" in os.environ:
     SECONDARY_KEYSPACE = os.environ.get(
         "LOCAL_DATA_API_SECONDARY_KEYSPACE", DEFAULT_SECONDARY_KEYSPACE
     )
-elif "ASTRA_DB_API_ENDPOINT" in os.environ:
+elif "ASTRA_DB_API_ENDPOINT" in os.environ and os.environ["ASTRA_DB_API_ENDPOINT"]:
     IS_ASTRA_DB = True
     DOCKER_COMPOSE_LOCAL_DATA_API = False
     SECONDARY_KEYSPACE = os.environ.get(

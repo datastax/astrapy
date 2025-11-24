@@ -102,15 +102,19 @@ class DevOpsAPIHttpException(DevOpsAPIException, httpx.HTTPStatusError):
     ) -> DevOpsAPIHttpException:
         """Parse a httpx status error into this exception."""
 
-        raw_response: dict[str, Any]
+        dictforced_response: dict[str, Any]
         # the attempt to extract a response structure cannot afford failure.
         try:
             raw_response = httpx_error.response.json()
+            if isinstance(raw_response, dict):
+                dictforced_response = raw_response
+            else:
+                dictforced_response = {}
         except Exception:
-            raw_response = {}
+            dictforced_response = {}
         error_descriptors = [
             DevOpsAPIErrorDescriptor(error_dict)
-            for error_dict in raw_response.get("errors") or []
+            for error_dict in dictforced_response.get("errors") or []
         ]
         if error_descriptors:
             text = f"{error_descriptors[0].message}. {str(httpx_error)}"
@@ -220,9 +224,10 @@ class DevOpsAPIResponseException(DevOpsAPIException):
     ) -> DevOpsAPIResponseException:
         """Parse a raw response from the API into this exception."""
 
+        dictforced_response = raw_response if isinstance(raw_response, dict) else {}
         error_descriptors = [
             DevOpsAPIErrorDescriptor(error_dict)
-            for error_dict in raw_response.get("errors") or []
+            for error_dict in dictforced_response.get("errors") or []
         ]
         if error_descriptors:
             _text = error_descriptors[0].message
