@@ -1,5 +1,8 @@
 main
 ====
+Astra DB admin classes:
+    - reworked polling logic: optimized and enriched with pollability pre-checks;
+    - improvements in DevOps API response error handling.
 Introduced `astrapy-repl` command for a ready-to-use interactive REPL
 Event Observer API, to listen to events:
     - this complements the standard logging mechanism;
