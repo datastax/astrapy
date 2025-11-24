@@ -318,10 +318,13 @@ def main() -> None:
             _environment = parsed_endpoint.environment
         else:
             _environment = Environment.HCD
-    client = DataAPIClient(environment=_environment)
+    # inject the token at client-level for repl users to easily spawn admins and such
+    client = DataAPIClient(
+        environment=_environment,
+        token=_token_provider,
+    )
     database = client.get_database(  # noqa: F841
         _endpoint,
-        token=_token_provider,
         keyspace=_keyspace,
     )
 
