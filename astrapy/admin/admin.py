@@ -43,6 +43,7 @@ from astrapy.exceptions.utils import (
     _select_singlereq_timeout_da,
     _select_singlereq_timeout_ka,
 )
+from astrapy.ids import uuid7
 from astrapy.info import (
     AstraDBAdminDatabaseInfo,
     AstraDBAvailableRegionInfo,
@@ -65,6 +66,7 @@ from astrapy.settings.defaults import (
     DEV_OPS_RESPONSE_HTTP_ACCEPTED,
     DEV_OPS_RESPONSE_HTTP_CREATED,
     DEV_OPS_RESPONSE_HTTP_NOT_FOUND,
+    DEV_OPS_RESPONSE_HTTP_UNAUTHORIZED,
 )
 from astrapy.utils.api_commander import APICommander
 from astrapy.utils.api_options import (
@@ -83,7 +85,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-POLLING_TEST_DATABASE_ID = "00000000-0000-0000-0000-000000000000"
 CANNOT_POLL_ERROR_MESSAGE = (
     "This operation, when called with wait_until_active=True, needs "
     "to poll for the database status, which the provided token "
@@ -605,10 +606,13 @@ class AstraDBAdmin:
     def _can_poll(
         self,
         *,
-        test_db_id: str = POLLING_TEST_DATABASE_ID,
+        test_db_id: str | None = None,
         timeout_context: _TimeoutContext,
         caller_function_name: str,
     ) -> bool:
+        if test_db_id is None:
+            # a random 'db id' to avoid issues with the devops api cache
+            test_db_id = str(uuid7())
         try:
             self._database_info_ctx(
                 test_db_id,
@@ -624,10 +628,13 @@ class AstraDBAdmin:
     async def _async_can_poll(
         self,
         *,
-        test_db_id: str = POLLING_TEST_DATABASE_ID,
+        test_db_id: str | None = None,
         timeout_context: _TimeoutContext,
         caller_function_name: str,
     ) -> bool:
+        if test_db_id is None:
+            # a random 'db id' to avoid issues with the devops api cache
+            test_db_id = str(uuid7())
         try:
             await self._async_database_info_ctx(
                 test_db_id,
@@ -1346,7 +1353,7 @@ class AstraDBAdmin:
                     cap_time_ms=_request_timeout_ms,
                     cap_timeout_label=_rt_label,
                 ),
-                caller_function_name="create_database",
+                caller_function_name="async_create_database",
             ):
                 logger.info("polling capability check returned negative (DevOps API)")
                 raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
@@ -1433,7 +1440,7 @@ class AstraDBAdmin:
             id: The ID of the database to drop, e. g.
                 "01234567-89ab-cdef-0123-456789abcdef".
             wait_until_active: if True (default), the method returns only after
-                the database has actually been deleted (generally a few minutes).
+                the database has actually been deleted (generally less than a minute).
                 If False, it will return right after issuing the
                 drop request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/availability
@@ -1518,26 +1525,25 @@ class AstraDBAdmin:
             while last_status_seen == DEV_OPS_DATABASE_STATUS_TERMINATING:
                 logger.info(f"sleeping to poll for status of '{id}'")
                 time.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
-                #
-                detected_databases = [  # TODO
-                    a_db_info
-                    for a_db_info in self._list_databases_ctx(
-                        include=None,
-                        provider=None,
-                        page_size=None,
+                # poll for status
+                try:
+                    last_db_info = self._database_info_ctx(
+                        id=id,
                         timeout_context=timeout_manager.remaining_timeout(
                             cap_time_ms=_request_timeout_ms,
                             cap_timeout_label=_rt_label,
                         ),
                         caller_function_name="drop_database",
                     )
-                    if a_db_info.id == id
-                ]
-                if detected_databases:
-                    last_status_seen = detected_databases[0].status
-                    _db_name = detected_databases[0].name
-                else:
-                    last_status_seen = None
+                    last_status_seen = last_db_info.status
+                except DevOpsAPIHttpException as exc:
+                    if exc.response.status_code in {
+                        DEV_OPS_RESPONSE_HTTP_NOT_FOUND,
+                        DEV_OPS_RESPONSE_HTTP_UNAUTHORIZED,
+                    }:
+                        last_status_seen = None
+                    else:
+                        raise
             if last_status_seen is not None:
                 _name_desc = f" ({_db_name})" if _db_name else ""
                 raise DevOpsAPIException(
@@ -1564,7 +1570,7 @@ class AstraDBAdmin:
             id: The ID of the database to drop, e. g.
                 "01234567-89ab-cdef-0123-456789abcdef".
             wait_until_active: if True (default), the method returns only after
-                the database has actually been deleted (generally a few minutes).
+                the database has actually been deleted (generally less than a minute).
                 If False, it will return right after issuing the
                 drop request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/availability
@@ -1617,7 +1623,7 @@ class AstraDBAdmin:
                     cap_time_ms=_request_timeout_ms,
                     cap_timeout_label=_rt_label,
                 ),
-                caller_function_name="drop_database",
+                caller_function_name="async_drop_database",
             ):
                 logger.info("polling capability check returned negative (DevOps API)")
                 raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
@@ -1645,26 +1651,25 @@ class AstraDBAdmin:
             while last_status_seen == DEV_OPS_DATABASE_STATUS_TERMINATING:
                 logger.info(f"sleeping to poll for status of '{id}', async")
                 await asyncio.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
-                #
-                detected_databases = [  # TODO
-                    a_db_info
-                    for a_db_info in await self._async_list_databases_ctx(
-                        include=None,
-                        provider=None,
-                        page_size=None,
+                # poll for status
+                try:
+                    last_db_info = await self._async_database_info_ctx(
+                        id=id,
                         timeout_context=timeout_manager.remaining_timeout(
                             cap_time_ms=_request_timeout_ms,
                             cap_timeout_label=_rt_label,
                         ),
                         caller_function_name="async_drop_database",
                     )
-                    if a_db_info.id == id
-                ]
-                if detected_databases:
-                    last_status_seen = detected_databases[0].status
-                    _db_name = detected_databases[0].name
-                else:
-                    last_status_seen = None
+                    last_status_seen = last_db_info.status
+                except DevOpsAPIHttpException as exc:
+                    if exc.response.status_code in {
+                        DEV_OPS_RESPONSE_HTTP_NOT_FOUND,
+                        DEV_OPS_RESPONSE_HTTP_UNAUTHORIZED,
+                    }:
+                        last_status_seen = None
+                    else:
+                        raise
             if last_status_seen is not None:
                 _name_desc = f" ({_db_name})" if _db_name else ""
                 raise DevOpsAPIException(
@@ -2351,7 +2356,7 @@ class ProviderQueryingDatabaseAdmin(DatabaseAdmin):
             timeout_context=_TimeoutContext(
                 request_ms=_database_admin_timeout_ms, label=_da_label
             ),
-            caller_function_name="find_embeddnig_providers",
+            caller_function_name="find_embedding_providers",
         )
         if "embeddingProviders" not in fe_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -3351,7 +3356,7 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
                     cap_time_ms=_request_timeout_ms,
                     cap_timeout_label=_rt_label,
                 ),
-                caller_function_name="create_keyspace",
+                caller_function_name="async_create_keyspace",
             ):
                 logger.info("polling capability check returned negative (DevOps API)")
                 raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
@@ -3607,7 +3612,7 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
                     cap_time_ms=_request_timeout_ms,
                     cap_timeout_label=_rt_label,
                 ),
-                caller_function_name="drop_keyspace",
+                caller_function_name="async_drop_keyspace",
             ):
                 logger.info("polling capability check returned negative (DevOps API)")
                 raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
