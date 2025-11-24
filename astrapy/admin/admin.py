@@ -60,13 +60,13 @@ from astrapy.settings.defaults import (
     DEV_OPS_DATABASE_STATUS_INITIALIZING,
     DEV_OPS_DATABASE_STATUS_MAINTENANCE,
     DEV_OPS_DATABASE_STATUS_PENDING,
+    DEV_OPS_DATABASE_STATUS_TERMINATED,
     DEV_OPS_DATABASE_STATUS_TERMINATING,
     DEV_OPS_DEFAULT_DATABASES_PAGE_SIZE,
     DEV_OPS_KEYSPACE_POLL_INTERVAL_S,
     DEV_OPS_RESPONSE_HTTP_ACCEPTED,
     DEV_OPS_RESPONSE_HTTP_CREATED,
     DEV_OPS_RESPONSE_HTTP_NOT_FOUND,
-    DEV_OPS_RESPONSE_HTTP_UNAUTHORIZED,
 )
 from astrapy.utils.api_commander import APICommander
 from astrapy.utils.api_options import (
@@ -1520,31 +1520,22 @@ class AstraDBAdmin:
             )
         logger.info(f"DevOps API returned from dropping database '{id}'")
         if wait_until_active:
-            last_status_seen: str | None = DEV_OPS_DATABASE_STATUS_TERMINATING
+            last_status_seen: str = DEV_OPS_DATABASE_STATUS_TERMINATING
             _db_name: str | None = None
             while last_status_seen == DEV_OPS_DATABASE_STATUS_TERMINATING:
                 logger.info(f"sleeping to poll for status of '{id}'")
                 time.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
                 # poll for status
-                try:
-                    last_db_info = self._database_info_ctx(
-                        id=id,
-                        timeout_context=timeout_manager.remaining_timeout(
-                            cap_time_ms=_request_timeout_ms,
-                            cap_timeout_label=_rt_label,
-                        ),
-                        caller_function_name="drop_database",
-                    )
-                    last_status_seen = last_db_info.status
-                except DevOpsAPIHttpException as exc:
-                    if exc.response.status_code in {
-                        DEV_OPS_RESPONSE_HTTP_NOT_FOUND,
-                        DEV_OPS_RESPONSE_HTTP_UNAUTHORIZED,
-                    }:
-                        last_status_seen = None
-                    else:
-                        raise
-            if last_status_seen is not None:
+                last_db_info = self._database_info_ctx(
+                    id=id,
+                    timeout_context=timeout_manager.remaining_timeout(
+                        cap_time_ms=_request_timeout_ms,
+                        cap_timeout_label=_rt_label,
+                    ),
+                    caller_function_name="drop_database",
+                )
+                last_status_seen = last_db_info.status
+            if last_status_seen != DEV_OPS_DATABASE_STATUS_TERMINATED:
                 _name_desc = f" ({_db_name})" if _db_name else ""
                 raise DevOpsAPIException(
                     f"Database {id}{_name_desc} entered unexpected status "
@@ -1646,31 +1637,22 @@ class AstraDBAdmin:
             )
         logger.info(f"DevOps API returned from dropping database '{id}', async")
         if wait_until_active:
-            last_status_seen: str | None = DEV_OPS_DATABASE_STATUS_TERMINATING
+            last_status_seen: str = DEV_OPS_DATABASE_STATUS_TERMINATING
             _db_name: str | None = None
             while last_status_seen == DEV_OPS_DATABASE_STATUS_TERMINATING:
                 logger.info(f"sleeping to poll for status of '{id}', async")
                 await asyncio.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
                 # poll for status
-                try:
-                    last_db_info = await self._async_database_info_ctx(
-                        id=id,
-                        timeout_context=timeout_manager.remaining_timeout(
-                            cap_time_ms=_request_timeout_ms,
-                            cap_timeout_label=_rt_label,
-                        ),
-                        caller_function_name="async_drop_database",
-                    )
-                    last_status_seen = last_db_info.status
-                except DevOpsAPIHttpException as exc:
-                    if exc.response.status_code in {
-                        DEV_OPS_RESPONSE_HTTP_NOT_FOUND,
-                        DEV_OPS_RESPONSE_HTTP_UNAUTHORIZED,
-                    }:
-                        last_status_seen = None
-                    else:
-                        raise
-            if last_status_seen is not None:
+                last_db_info = await self._async_database_info_ctx(
+                    id=id,
+                    timeout_context=timeout_manager.remaining_timeout(
+                        cap_time_ms=_request_timeout_ms,
+                        cap_timeout_label=_rt_label,
+                    ),
+                    caller_function_name="async_drop_database",
+                )
+                last_status_seen = last_db_info.status
+            if last_status_seen != DEV_OPS_DATABASE_STATUS_TERMINATED:
                 _name_desc = f" ({_db_name})" if _db_name else ""
                 raise DevOpsAPIException(
                     f"Database {id}{_name_desc} entered unexpected status "
