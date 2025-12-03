@@ -170,6 +170,10 @@ certain environment variables, otherwise the associated tests are excluded from 
 Prepend tests with a `ASTRAPY_TEST_LATEST_MAIN=y` for features found on `main` that are not released anywhere.
 _(Tip: run a code search first to see what is currently marked as such. Chances are nothing is.)_
 
+### Legacy ordered-insert-many behaviour
+
+Generally, [PR 2193](https://github.com/stargate/data-api/pull/2193) is included in modern Data API versions. In case tests are run to Data API 1.0.32 or lower, run the tests with the following additional environment variable to adjust the test expectations: `LEGACY_INSERTMANY_BEHAVIOUR_PRE2193="yes"`.
+
 ## Publish-and-release
 
 Releasing a new version happens through the Github `release` workflow, which includes all necessary testing

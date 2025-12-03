@@ -18,7 +18,6 @@ env:
   AWS_ECR_ROLE_NAME: ${{ secrets.AWS_ECR_ROLE_NAME }}
   AWS_ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPOSITORY }}
   AWS_ECR_REGISTRY: ${{ secrets.AWS_ECR_REGISTRY }}
-  AWS_ECR_HCD_IMAGE_TAG: "1.2.1-early-preview"
 
 jobs:
   test:
@@ -53,10 +52,6 @@ jobs:
 
     - name: Login to Amazon ECR
       uses: aws-actions/amazon-ecr-login@v2
-
-    - name: Pull the image
-      run: |
-        docker pull $AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:$AWS_ECR_HCD_IMAGE_TAG
 
     - name: Run pytest
       run: |

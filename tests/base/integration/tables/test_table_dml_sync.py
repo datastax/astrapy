@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any, Iterable, Sequence, cast
 
 import pytest
@@ -381,7 +382,10 @@ class TestTableDMLSync:
             sync_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F2, ordered=True, chunk_size=2
             )
-        _assert_consistency([], exc.value)
+        if "LEGACY_INSERTMANY_BEHAVIOUR_PRE2193" not in os.environ:
+            _assert_consistency(["p1"], exc.value)
+        else:
+            _assert_consistency([], exc.value)
         _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # ordered, failing later batch
@@ -390,7 +394,10 @@ class TestTableDMLSync:
             sync_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F4, ordered=True, chunk_size=2
             )
-        _assert_consistency(["p1", "p2"], exc.value)
+        if "LEGACY_INSERTMANY_BEHAVIOUR_PRE2193" not in os.environ:
+            _assert_consistency(["p1", "p2", "p3"], exc.value)
+        else:
+            _assert_consistency(["p1", "p2"], exc.value)
         _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # unordered/concurrency=1, good rows
@@ -517,7 +524,6 @@ class TestTableDMLSync:
         assert err3.inserted_id_tuples == []
 
         # ordered insertion [good, bad, good_skipped]
-        # Tables do not insert anything in this case! (as opposed to Collections)
         err4: TableInsertManyException | None = None
         try:
             sync_table_simple.insert_many(
@@ -530,7 +536,10 @@ class TestTableDMLSync:
         assert len(err4.exceptions) == 1
         assert isinstance(err4.exceptions[0], DataAPIResponseException)
         assert len(err4.exceptions[0].error_descriptors) == 1
-        assert err4.inserted_id_tuples == []
+        if "LEGACY_INSERTMANY_BEHAVIOUR_PRE2193" not in os.environ:
+            assert err4.inserted_id_tuples == [("n0",)]
+        else:
+            assert err4.inserted_id_tuples == []
 
     @pytest.mark.describe("test of table update_one, sync")
     def test_table_update_one_sync(
