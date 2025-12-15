@@ -31,6 +31,7 @@ from live_provider_info import live_provider_info
 
 alphanum = set("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890")
 
+TEST_EXTENDED_VECTORIZE = bool(os.environ.get("TEST_EXTENDED_VECTORIZE"))
 
 DEFAULT_TEST_ASSETS = {
     "samples": [
@@ -114,70 +115,86 @@ EXCLUDED_MODEL_QUADRUPLES = {
 # in a test model is PARAM_SKIP_MARKER, the combination is not emitted at all.
 PARAM_SKIP_MARKER = "__SKIP_ME__"
 
-PARAMETER_VALUE_MAP = {
-    ("azureOpenAI", "text-embedding-3-large", "deploymentId"): os.environ[
-        "AZURE_OPENAI_DEPLOY_ID_EMB3LARGE"
-    ],
-    ("azureOpenAI", "text-embedding-3-large", "resourceName"): os.environ[
-        "AZURE_OPENAI_RESNAME_EMB3LARGE"
-    ],
-    ("azureOpenAI", "text-embedding-3-small", "deploymentId"): os.environ[
-        "AZURE_OPENAI_DEPLOY_ID_EMB3SMALL"
-    ],
-    ("azureOpenAI", "text-embedding-3-small", "resourceName"): os.environ[
-        "AZURE_OPENAI_RESNAME_EMB3SMALL"
-    ],
-    ("azureOpenAI", "text-embedding-ada-002", "deploymentId"): os.environ[
-        "AZURE_OPENAI_DEPLOY_ID_ADA2"
-    ],
-    ("azureOpenAI", "text-embedding-ada-002", "resourceName"): os.environ[
-        "AZURE_OPENAI_RESNAME_ADA2"
-    ],
-    ("jinaAI", "jina-embeddings-v3", "late_chunking"): True,
-    ("jinaAI", "jina-embeddings-v3", "task"): "text-matching",
-    ("voyageAI", "voyage-2", "autoTruncate"): True,
-    ("voyageAI", "voyage-code-2", "autoTruncate"): True,
-    ("voyageAI", "voyage-finance-2", "autoTruncate"): True,
-    ("voyageAI", "voyage-large-2", "autoTruncate"): True,
-    ("voyageAI", "voyage-large-2-instruct", "autoTruncate"): True,
-    ("voyageAI", "voyage-law-2", "autoTruncate"): True,
-    ("voyageAI", "voyage-multilingual-2", "autoTruncate"): True,
-    #
-    ("huggingfaceDedicated", "endpoint-defined-model", "endpointName"): os.environ[
-        "HUGGINGFACEDED_ENDPOINTNAME"
-    ],
-    ("huggingfaceDedicated", "endpoint-defined-model", "regionName"): os.environ[
-        "HUGGINGFACEDED_REGIONNAME"
-    ],
-    ("huggingfaceDedicated", "endpoint-defined-model", "cloudName"): os.environ[
-        "HUGGINGFACEDED_CLOUDNAME"
-    ],
-    #
-    ("openai", "text-embedding-3-large", "organizationId"): os.environ[
-        "OPENAI_ORGANIZATION_ID"
-    ],
-    ("openai", "text-embedding-3-large", "projectId"): os.environ["OPENAI_PROJECT_ID"],
-    ("openai", "text-embedding-3-small", "organizationId"): os.environ[
-        "OPENAI_ORGANIZATION_ID"
-    ],
-    ("openai", "text-embedding-3-small", "projectId"): os.environ["OPENAI_PROJECT_ID"],
-    ("openai", "text-embedding-ada-002", "organizationId"): os.environ[
-        "OPENAI_ORGANIZATION_ID"
-    ],
-    ("openai", "text-embedding-ada-002", "projectId"): os.environ["OPENAI_PROJECT_ID"],
-    #
-    ("bedrock", "amazon.titan-embed-text-v1", "region"): os.environ["BEDROCK_REGION"],
-    ("bedrock", "amazon.titan-embed-text-v2:0", "region"): os.environ["BEDROCK_REGION"],
-}
+PARAMETER_VALUE_MAP: dict[tuple[str, str, str], Any]
+FORCE_DIMENSION_MAP: dict[tuple[str, str], Any]
+if TEST_EXTENDED_VECTORIZE:
+    PARAMETER_VALUE_MAP = {
+        ("azureOpenAI", "text-embedding-3-large", "deploymentId"): os.environ[
+            "AZURE_OPENAI_DEPLOY_ID_EMB3LARGE"
+        ],
+        ("azureOpenAI", "text-embedding-3-large", "resourceName"): os.environ[
+            "AZURE_OPENAI_RESNAME_EMB3LARGE"
+        ],
+        ("azureOpenAI", "text-embedding-3-small", "deploymentId"): os.environ[
+            "AZURE_OPENAI_DEPLOY_ID_EMB3SMALL"
+        ],
+        ("azureOpenAI", "text-embedding-3-small", "resourceName"): os.environ[
+            "AZURE_OPENAI_RESNAME_EMB3SMALL"
+        ],
+        ("azureOpenAI", "text-embedding-ada-002", "deploymentId"): os.environ[
+            "AZURE_OPENAI_DEPLOY_ID_ADA2"
+        ],
+        ("azureOpenAI", "text-embedding-ada-002", "resourceName"): os.environ[
+            "AZURE_OPENAI_RESNAME_ADA2"
+        ],
+        ("jinaAI", "jina-embeddings-v3", "late_chunking"): True,
+        ("jinaAI", "jina-embeddings-v3", "task"): "text-matching",
+        ("voyageAI", "voyage-2", "autoTruncate"): True,
+        ("voyageAI", "voyage-code-2", "autoTruncate"): True,
+        ("voyageAI", "voyage-finance-2", "autoTruncate"): True,
+        ("voyageAI", "voyage-large-2", "autoTruncate"): True,
+        ("voyageAI", "voyage-large-2-instruct", "autoTruncate"): True,
+        ("voyageAI", "voyage-law-2", "autoTruncate"): True,
+        ("voyageAI", "voyage-multilingual-2", "autoTruncate"): True,
+        #
+        ("huggingfaceDedicated", "endpoint-defined-model", "endpointName"): os.environ[
+            "HUGGINGFACEDED_ENDPOINTNAME"
+        ],
+        ("huggingfaceDedicated", "endpoint-defined-model", "regionName"): os.environ[
+            "HUGGINGFACEDED_REGIONNAME"
+        ],
+        ("huggingfaceDedicated", "endpoint-defined-model", "cloudName"): os.environ[
+            "HUGGINGFACEDED_CLOUDNAME"
+        ],
+        #
+        ("openai", "text-embedding-3-large", "organizationId"): os.environ[
+            "OPENAI_ORGANIZATION_ID"
+        ],
+        ("openai", "text-embedding-3-large", "projectId"): os.environ[
+            "OPENAI_PROJECT_ID"
+        ],
+        ("openai", "text-embedding-3-small", "organizationId"): os.environ[
+            "OPENAI_ORGANIZATION_ID"
+        ],
+        ("openai", "text-embedding-3-small", "projectId"): os.environ[
+            "OPENAI_PROJECT_ID"
+        ],
+        ("openai", "text-embedding-ada-002", "organizationId"): os.environ[
+            "OPENAI_ORGANIZATION_ID"
+        ],
+        ("openai", "text-embedding-ada-002", "projectId"): os.environ[
+            "OPENAI_PROJECT_ID"
+        ],
+        #
+        ("bedrock", "amazon.titan-embed-text-v1", "region"): os.environ[
+            "BEDROCK_REGION"
+        ],
+        ("bedrock", "amazon.titan-embed-text-v2:0", "region"): os.environ[
+            "BEDROCK_REGION"
+        ],
+    }
 
-# this is ad-hoc for HF dedicated. Models here, though "optional" dimension,
-# do not undergo the f/0 optional dimension because of that, rather have
-# a forced fixed, provided dimension.
-FORCE_DIMENSION_MAP = {
-    ("huggingfaceDedicated", "endpoint-defined-model"): int(
-        os.environ["HUGGINGFACEDED_DIMENSION"]
-    ),
-}
+    # this is ad-hoc for HF dedicated. Models here, though "optional" dimension,
+    # do not undergo the f/0 optional dimension because of that, rather have
+    # a forced fixed, provided dimension.
+    FORCE_DIMENSION_MAP = {
+        ("huggingfaceDedicated", "endpoint-defined-model"): int(
+            os.environ["HUGGINGFACEDED_DIMENSION"]
+        ),
+    }
+else:
+    PARAMETER_VALUE_MAP = {}
+    FORCE_DIMENSION_MAP = {}
 
 
 def live_test_models() -> Iterable[dict[str, Any]]:
@@ -202,111 +219,143 @@ def live_test_models() -> Iterable[dict[str, Any]]:
         else:
             return f"{longt[:30]}_{longt[-5:]}"
 
-    # generate the full list of models based on the live provider endpoint
-    provider_info = live_provider_info()
-    for provider_name, provider_desc in sorted(
-        provider_info.embedding_providers.items()
-    ):
-        for model in provider_desc.models:
-            for auth_type_name, auth_type_desc in sorted(
-                provider_desc.supported_authentication.items()
-            ):
-                if auth_type_desc.enabled:
-                    # test assumptions on auth type
-                    if auth_type_name == "NONE":
-                        assert auth_type_desc.tokens == []
-                    elif auth_type_name == "HEADER":
-                        header_names_lower = tuple(
-                            sorted(t.accepted.lower() for t in auth_type_desc.tokens)
-                        )
-                        assert header_names_lower in {
-                            (EMBEDDING_HEADER_API_KEY.lower(),),
-                            (
-                                EMBEDDING_HEADER_AWS_ACCESS_ID.lower(),
-                                EMBEDDING_HEADER_AWS_SECRET_ID.lower(),
-                            ),
-                        }
-                    elif auth_type_name == "SHARED_SECRET":
-                        authkey_names = tuple(
-                            sorted(t.accepted for t in auth_type_desc.tokens)
-                        )
-                        assert authkey_names in {
-                            ("providerKey",),
-                            ("accessId", "secretKey"),
-                        }
-                    else:
-                        raise ValueError("Unknown auth type")
+    if TEST_EXTENDED_VECTORIZE:
+        # generate the full list of models based on the live provider endpoint
+        provider_info = live_provider_info()
+        for provider_name, provider_desc in sorted(
+            provider_info.embedding_providers.items()
+        ):
+            for model in provider_desc.models:
+                for auth_type_name, auth_type_desc in sorted(
+                    provider_desc.supported_authentication.items()
+                ):
+                    if auth_type_desc.enabled:
+                        # test assumptions on auth type
+                        if auth_type_name == "NONE":
+                            assert auth_type_desc.tokens == []
+                        elif auth_type_name == "HEADER":
+                            header_names_lower = tuple(
+                                sorted(
+                                    t.accepted.lower() for t in auth_type_desc.tokens
+                                )
+                            )
+                            assert header_names_lower in {
+                                (EMBEDDING_HEADER_API_KEY.lower(),),
+                                (
+                                    EMBEDDING_HEADER_AWS_ACCESS_ID.lower(),
+                                    EMBEDDING_HEADER_AWS_SECRET_ID.lower(),
+                                ),
+                            }
+                        elif auth_type_name == "SHARED_SECRET":
+                            authkey_names = tuple(
+                                sorted(t.accepted for t in auth_type_desc.tokens)
+                            )
+                            assert authkey_names in {
+                                ("providerKey",),
+                                ("accessId", "secretKey"),
+                            }
+                        else:
+                            raise ValueError("Unknown auth type")
 
-                    # params
-                    collated_params = provider_desc.parameters + model.parameters
-                    all_nond_params = [
-                        param
-                        for param in collated_params
-                        if param.name != "vectorDimension"
-                    ]
-                    required_nond_params = {
-                        param.name for param in all_nond_params if param.required
-                    }
-                    optional_nond_params = {
-                        param.name for param in all_nond_params if not param.required
-                    }
-                    #
-                    d_params = [
-                        param
-                        for param in collated_params
-                        if param.name == "vectorDimension"
-                    ]
-                    if d_params:
-                        d_param = d_params[0]
-                        if (provider_name, model.name) in FORCE_DIMENSION_MAP:
-                            optional_dimension = False
-                            dimension = FORCE_DIMENSION_MAP[(provider_name, model.name)]
-                        elif d_param.default_value is not None:
-                            optional_dimension = True
-                            assert model.vector_dimension is None
-                            dimension = _from_validation(d_param)
+                        # params
+                        collated_params = provider_desc.parameters + model.parameters
+                        all_nond_params = [
+                            param
+                            for param in collated_params
+                            if param.name != "vectorDimension"
+                        ]
+                        required_nond_params = {
+                            param.name for param in all_nond_params if param.required
+                        }
+                        optional_nond_params = {
+                            param.name
+                            for param in all_nond_params
+                            if not param.required
+                        }
+                        #
+                        d_params = [
+                            param
+                            for param in collated_params
+                            if param.name == "vectorDimension"
+                        ]
+                        if d_params:
+                            d_param = d_params[0]
+                            if (provider_name, model.name) in FORCE_DIMENSION_MAP:
+                                optional_dimension = False
+                                dimension = FORCE_DIMENSION_MAP[
+                                    (provider_name, model.name)
+                                ]
+                            elif d_param.default_value is not None:
+                                optional_dimension = True
+                                assert model.vector_dimension is None
+                                dimension = _from_validation(d_param)
+                            else:
+                                optional_dimension = False
+                                assert model.vector_dimension is None
+                                dimension = _from_validation(d_param)
                         else:
                             optional_dimension = False
-                            assert model.vector_dimension is None
-                            dimension = _from_validation(d_param)
-                    else:
-                        optional_dimension = False
-                        assert model.vector_dimension is not None
-                        assert model.vector_dimension > 0
-                        dimension = model.vector_dimension
+                            assert model.vector_dimension is not None
+                            assert model.vector_dimension > 0
+                            dimension = model.vector_dimension
 
-                    model_parameters = {
-                        param_name: PARAMETER_VALUE_MAP[
-                            (provider_name, model.name, param_name)
-                        ]
-                        for param_name in required_nond_params
-                    }
-                    optional_model_parameters = {
-                        param_name: PARAMETER_VALUE_MAP[
-                            (provider_name, model.name, param_name)
-                        ]
-                        for param_name in optional_nond_params
-                    }
+                        model_parameters = {
+                            param_name: PARAMETER_VALUE_MAP[
+                                (provider_name, model.name, param_name)
+                            ]
+                            for param_name in required_nond_params
+                        }
+                        optional_model_parameters = {
+                            param_name: PARAMETER_VALUE_MAP[
+                                (provider_name, model.name, param_name)
+                            ]
+                            for param_name in optional_nond_params
+                        }
 
-                    minimal_model_quadruple = (
-                        provider_name,
-                        model.name,
-                        auth_type_name,
-                        "0",
-                    )
-                    if minimal_model_quadruple not in EXCLUDED_MODEL_QUADRUPLES:
-                        if optional_dimension or optional_nond_params != set():
-                            # we issue a minimal-params version
-                            model_tag_0 = (
-                                f"{provider_name}/{model.name}/{auth_type_name}/0"
-                            )
-                            this_minimal_model = {
-                                "model_tag": model_tag_0,
-                                "simple_tag": _collapse(
-                                    "".join(c for c in model_tag_0 if c in alphanum)
-                                ),
+                        minimal_model_quadruple = (
+                            provider_name,
+                            model.name,
+                            auth_type_name,
+                            "0",
+                        )
+                        if minimal_model_quadruple not in EXCLUDED_MODEL_QUADRUPLES:
+                            if optional_dimension or optional_nond_params != set():
+                                # we issue a minimal-params version
+                                model_tag_0 = (
+                                    f"{provider_name}/{model.name}/{auth_type_name}/0"
+                                )
+                                this_minimal_model = {
+                                    "model_tag": model_tag_0,
+                                    "simple_tag": _collapse(
+                                        "".join(c for c in model_tag_0 if c in alphanum)
+                                    ),
+                                    "auth_type_name": auth_type_name,
+                                    "auth_type_tokens": auth_type_desc.tokens,
+                                    "secret_tag": SECRET_NAME_ROOT_MAP[provider_name],
+                                    "test_assets": TEST_ASSETS_MAP.get(
+                                        (provider_name, model.name), DEFAULT_TEST_ASSETS
+                                    ),
+                                    "use_insert_one": USE_INSERT_ONE_MAP.get(
+                                        (provider_name, model.name), False
+                                    ),
+                                    "service_options": VectorServiceOptions(
+                                        provider=provider_name,
+                                        model_name=model.name,
+                                        parameters=model_parameters,
+                                    ),
+                                }
+                                yield this_minimal_model
+
+                        # and in any case we issue a 'full-spec' one ...
+                        # ... unless explicitly marked as skipped
+                        if all(
+                            v != PARAM_SKIP_MARKER
+                            for v in optional_model_parameters.values()
+                        ):
+                            root_model = {
                                 "auth_type_name": auth_type_name,
                                 "auth_type_tokens": auth_type_desc.tokens,
+                                "dimension": dimension,
                                 "secret_tag": SECRET_NAME_ROOT_MAP[provider_name],
                                 "test_assets": TEST_ASSETS_MAP.get(
                                     (provider_name, model.name), DEFAULT_TEST_ASSETS
@@ -314,54 +363,31 @@ def live_test_models() -> Iterable[dict[str, Any]]:
                                 "use_insert_one": USE_INSERT_ONE_MAP.get(
                                     (provider_name, model.name), False
                                 ),
-                                "service_options": VectorServiceOptions(
-                                    provider=provider_name,
-                                    model_name=model.name,
-                                    parameters=model_parameters,
-                                ),
                             }
-                            yield this_minimal_model
 
-                    # and in any case we issue a 'full-spec' one ...
-                    # ... unless explicitly marked as skipped
-                    if all(
-                        v != PARAM_SKIP_MARKER
-                        for v in optional_model_parameters.values()
-                    ):
-                        root_model = {
-                            "auth_type_name": auth_type_name,
-                            "auth_type_tokens": auth_type_desc.tokens,
-                            "dimension": dimension,
-                            "secret_tag": SECRET_NAME_ROOT_MAP[provider_name],
-                            "test_assets": TEST_ASSETS_MAP.get(
-                                (provider_name, model.name), DEFAULT_TEST_ASSETS
-                            ),
-                            "use_insert_one": USE_INSERT_ONE_MAP.get(
-                                (provider_name, model.name), False
-                            ),
-                        }
-
-                        model_tag_f = f"{provider_name}/{model.name}/{auth_type_name}/f"
-                        full_model_quadruple = (
-                            provider_name,
-                            model.name,
-                            auth_type_name,
-                            "f",
-                        )
-                        if full_model_quadruple not in EXCLUDED_MODEL_QUADRUPLES:
-                            this_model = {
-                                "model_tag": model_tag_f,
-                                "simple_tag": _collapse(
-                                    "".join(c for c in model_tag_f if c in alphanum)
-                                ),
-                                "service_options": VectorServiceOptions(
-                                    provider=provider_name,
-                                    model_name=model.name,
-                                    parameters={
-                                        **model_parameters,
-                                        **optional_model_parameters,
-                                    },
-                                ),
-                                **root_model,
-                            }
-                            yield this_model
+                            model_tag_f = (
+                                f"{provider_name}/{model.name}/{auth_type_name}/f"
+                            )
+                            full_model_quadruple = (
+                                provider_name,
+                                model.name,
+                                auth_type_name,
+                                "f",
+                            )
+                            if full_model_quadruple not in EXCLUDED_MODEL_QUADRUPLES:
+                                this_model = {
+                                    "model_tag": model_tag_f,
+                                    "simple_tag": _collapse(
+                                        "".join(c for c in model_tag_f if c in alphanum)
+                                    ),
+                                    "service_options": VectorServiceOptions(
+                                        provider=provider_name,
+                                        model_name=model.name,
+                                        parameters={
+                                            **model_parameters,
+                                            **optional_model_parameters,
+                                        },
+                                    ),
+                                    **root_model,
+                                }
+                                yield this_model
