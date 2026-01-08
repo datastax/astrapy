@@ -1,5 +1,6 @@
 main
 ====
+Add flag `TEST_EXTENDED_VECTORIZE` for explicit control
 Astra DB admin classes:
     - reworked polling logic: optimized and enriched with pollability pre-checks;
     - improvements in DevOps API response error handling.

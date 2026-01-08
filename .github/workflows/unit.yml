@@ -1,4 +1,4 @@
-name: Run base integration tests on Astra DB
+name: Run unit tests
 
 on:
   workflow_call:
@@ -11,14 +11,14 @@ on:
         description: "Commit SHA of the code being tested"
         type: string
         required: true
+      coverage_python_version:
+        description: "Python version for collecting code coverage data"
+        type: string
+        required: true
     secrets:
       ASTRA_DB_APPLICATION_TOKEN:
         required: true
       ASTRA_DB_API_ENDPOINT:
-        required: true
-      HEADER_EMBEDDING_API_KEY_OPENAI:
-        required: true
-      LEGACY_INSERTMANY_BEHAVIOUR_PRE2193:
         required: true
 
 jobs:
@@ -26,10 +26,16 @@ jobs:
     env:
       ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
       ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
-      HEADER_EMBEDDING_API_KEY_OPENAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_OPENAI }}
-      LEGACY_INSERTMANY_BEHAVIOUR_PRE2193: ${{ secrets.LEGACY_INSERTMANY_BEHAVIOUR_PRE2193 }}
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        python-version:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
+    name: "unit test on Python ${{ matrix.python-version }}"
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -37,7 +43,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: 3.11
+        python-version: ${{ matrix.python-version }}
 
     - name: Install dependencies
       run: |
@@ -47,12 +53,13 @@ jobs:
 
     - name: Run pytest
       run: |
-        uv run pytest --cov=astrapy/ tests/base/integration -vv
+        uv run pytest --cov=astrapy/ tests/base/unit -vv
 
     - name: Upload coverage data (unique per commit)
+      if: matrix['python-version'] == inputs.coverage_python_version
       uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.coverage_prefix }}-${{ inputs.sha }}
-        path: .coverage
+        path: ./.coverage
         retention-days: 1
         include-hidden-files: true

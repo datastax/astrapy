@@ -1,0 +1,182 @@
+name: CI codecov aggregator
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches: [main]
+
+permissions:
+  # required to post on the PR
+  pull-requests: write
+  # required for the local IT (which pulls HCD from ECR)
+  id-token: write
+  contents: write
+  # required to publish GH pages
+  pages: write
+
+concurrency:
+  group: preview-pages-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  main_it:
+    uses: ./.github/workflows/main.yml
+    if: ${{ github.event.action != 'closed' }}
+    with:
+      coverage_prefix: main_it
+      sha: ${{ github.sha }}
+    secrets:
+      ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
+      ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
+      HEADER_EMBEDDING_API_KEY_OPENAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_OPENAI }}
+      LEGACY_INSERTMANY_BEHAVIOUR_PRE2193: "yes"
+
+  local_it:
+    uses: ./.github/workflows/local.yml
+    if: ${{ github.event.action != 'closed' }}
+    with:
+      coverage_prefix: local_it
+      sha: ${{ github.sha }}
+    secrets:
+      AWS_ECR_REGION: ${{ secrets.AWS_ECR_REGION }}
+      AWS_ECR_ACCOUNT_ID: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
+      AWS_ECR_ROLE_NAME: ${{ secrets.AWS_ECR_ROLE_NAME }}
+      AWS_ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPOSITORY }}
+      AWS_ECR_REGISTRY: ${{ secrets.AWS_ECR_REGISTRY }}
+      HEADER_EMBEDDING_API_KEY_OPENAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_OPENAI }}
+      # hardcoding the target DB
+      DOCKER_COMPOSE_LOCAL_DATA_API: "yes"
+      # turn on header-based reranker auth
+      HEADER_RERANKING_API_KEY_NVIDIA: ${{ secrets.HEADER_RERANKING_API_KEY_NVIDIA }}
+
+  ut:
+    uses: ./.github/workflows/unit.yml
+    if: ${{ github.event.action != 'closed' }}
+    with:
+      coverage_prefix: ut
+      sha: ${{ github.sha }}
+      coverage_python_version: "3.11"
+    secrets:
+      # basic secrets
+      ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
+      ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
+
+  aggregate:
+    runs-on: ubuntu-latest
+    needs: [main_it, local_it, ut]
+    steps:
+      - name: Checkout code
+        if: ${{ github.event.action != 'closed' }}
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        if: ${{ github.event.action != 'closed' }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        if: ${{ github.event.action != 'closed' }}
+        run: |
+          python -m pip install --upgrade pip
+          pipx install uv
+          make venv
+
+      - name: Download all coverage artifacts from this run
+        if: ${{ github.event.action != 'closed' }}
+        uses: actions/download-artifact@v4
+        with:
+          path: ./all_coverage
+
+      - name: Combine coverage data
+        if: ${{ github.event.action != 'closed' }}
+        run: uv run coverage combine $(find all_coverage/ -name ".coverage" 2>/dev/null)
+
+      - name: produce coverage JSON report
+        if: ${{ github.event.action != 'closed' }}
+        run: uv run coverage json
+        
+      - name: verify JSON report output
+        if: ${{ github.event.action != 'closed' }}
+        run: cut -c -200 coverage.json
+
+      - name: Upload coverage JSON report for mid-term storage
+        if: ${{ github.event_name == 'push' }}
+        uses: actions/upload-artifact@v4
+        id: upload_json
+        with:
+          name: coverage-json-push-${{ github.sha }}
+          path: coverage.json
+          retention-days: 30
+
+      - name: produce coverage HTML report
+        if: ${{ github.event.action != 'closed' }}
+        run: |
+          uv run coverage html
+          test -f htmlcov/index.html
+          echo "commit=${GITHUB_SHA}" > htmlcov/_preview_build.txt
+
+      # This uploads the coverage html report to make it available for offline inspection
+      - name: Upload coverage HTML report for reference
+        uses: actions/upload-artifact@v4
+        id: upload_html
+        with:
+          name: coverage-html-report-${{ inputs.sha }}
+          path: htmlcov
+          retention-days: 7
+          include-hidden-files: true
+
+      # Note: the following would be to publish a PR-preview of the code coverage
+      # HTML report. Not completely set up, something does not work with publishing
+      # to GH Pages. Postponed.
+
+      # - name: Sanity check coverage output (WIP)
+      #   run: |
+      #     echo "PWD=$PWD"
+      #     ls -la
+      #     ls -la htmlcov || true
+      #     test -f htmlcov/index.html || (echo "ERROR: htmlcov/index.html not found." && exit 1)
+      #     echo "Files in htmlcov:"
+      #     find htmlcov -type f | head -100
+      
+      # - name: Deploy PR preview to Pages (WIP)
+      #   if: ${{ github.event.action != 'closed' }}
+      #   uses: rossjrw/pr-preview-action@v1
+      #   with:
+      #     source-dir: htmlcov
+
+      # - name: Remove PR preview (WIP)
+      #   if: ${{ github.event.action == 'closed' }}
+      #   uses: rossjrw/pr-preview-action@v1
+      #   with:
+      #     action: remove
+
+      - name: generate code coverage short report
+        if: ${{ github.event.action != 'closed' }}
+        id: generate_coverage_report
+        shell: bash
+        run: |
+          set -o pipefail
+          OUTPUT=$(uv run coverage report)
+          # Multi-line safe write to $GITHUB_OUTPUT
+          echo "text<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$OUTPUT" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Comment on PR
+        if: ${{ github.event.action != 'closed' && github.event_name == 'pull_request' }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const body = `### Coverage report\nfor commit: \`${{ github.sha }}\`.\ndownload detailed report [here](${{ steps.upload_html.outputs.artifact-url }}).\n\`\`\`\n${{ steps.generate_coverage_report.outputs.text }}\n\`\`\``;
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: prNumber,
+              body
+            });
