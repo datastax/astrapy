@@ -172,7 +172,6 @@ jobs:
         with:
           name: coverage-json-push-${{ steps.base_sha.outputs.sha }}
           path: coverage-old.json
-        echo "Base parent: $(git rev-parse $GITHUB_SHA^1)"
 
       - name: generate code coverage short report
         if: ${{ github.event.action != 'closed' && github.event_name == 'pull_request' }}
