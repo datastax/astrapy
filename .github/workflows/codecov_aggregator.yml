@@ -168,7 +168,7 @@ jobs:
 
       - name: download coverage JSON from target commit on main
         if: ${{ github.event.action != 'closed' && github.event_name == 'pull_request' }}
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v4
         with:
           name: coverage-json-push-${{ steps.base_sha.outputs.sha }}
           path: coverage-old.json
