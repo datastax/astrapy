@@ -72,6 +72,9 @@ jobs:
       - name: Checkout code
         if: ${{ github.event.action != 'closed' }}
         uses: actions/checkout@v2
+        with:
+          # needed to retrieve the parents of the merge commit (hence the base commit on main)
+          fetch-depth: 2
 
       - name: Set up Python
         if: ${{ github.event.action != 'closed' }}
@@ -155,13 +158,30 @@ jobs:
       #   with:
       #     action: remove
 
+      - name: Compute base parent SHA of the merge commit
+        id: base_sha
+        shell: bash
+        run: |
+          BASE_SHA=$(git rev-parse "${GITHUB_SHA}^1")
+          echo "Base parent is $BASE_SHA"
+          echo "sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: download coverage JSON from target commit on main
+        if: ${{ github.event.action != 'closed' && github.event_name == 'pull_request' }}
+        uses: actions/download-artifact@v5
+        with:
+          name: coverage-json-push-${{ steps.base_sha.outputs.sha }}
+          path: coverage-old.json
+        echo "Base parent: $(git rev-parse $GITHUB_SHA^1)"
+
       - name: generate code coverage short report
-        if: ${{ github.event.action != 'closed' }}
+        if: ${{ github.event.action != 'closed' && github.event_name == 'pull_request' }}
         id: generate_coverage_report
         shell: bash
         run: |
           set -o pipefail
-          OUTPUT=$(uv run coverage report)
+          # was: OUTPUT=$(uv run coverage report)
+          OUTPUT=$(uv run python tests/coverage_utils/calc_delta.py coverage-old.json coverage-json)
           # Multi-line safe write to $GITHUB_OUTPUT
           echo "text<<EOF" >> "$GITHUB_OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_OUTPUT"
