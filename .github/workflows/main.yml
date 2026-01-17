@@ -47,7 +47,7 @@ jobs:
 
     - name: Run pytest
       run: |
-        uv run pytest --cov=astrapy/ tests/base/integration -k test_collection_farrcursors_idle_properties_async -vv
+        uv run pytest --cov=astrapy/ tests/base/integration -vv
 
     - name: Upload coverage data (unique per commit)
       uses: actions/upload-artifact@v4
