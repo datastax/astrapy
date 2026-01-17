@@ -199,7 +199,7 @@ jobs:
           name: coverage-json-push-${{ steps.base_sha.outputs.sha }}
           run-id: ${{ steps.resolve_main_run_id.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: coverage-old.json
+          path: coverage_main
 
       - name: generate code coverage short report
         if: ${{ github.event.action != 'closed' && github.event_name == 'pull_request' }}
@@ -208,7 +208,7 @@ jobs:
         run: |
           set -o pipefail
           # was: OUTPUT=$(uv run coverage report)
-          OUTPUT=$(uv run python tests/coverage_utils/calc_delta.py coverage-old.json coverage-json)
+          OUTPUT=$(uv run python tests/coverage_utils/calc_delta.py coverage_main/coverage.json coverage.json)
           # Multi-line safe write to $GITHUB_OUTPUT
           echo "text<<EOF" >> "$GITHUB_OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_OUTPUT"
