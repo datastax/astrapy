@@ -50,11 +50,21 @@ build:
 	rm -f dist/astrapy*
 	uv build
 
-coverage:
+coverage_html:
 	rm htmlcov -rf
 	uv run coverage combine $(ls .coverage.unit .coverage.integration 2>/dev/null)
 	uv run coverage html
 	echo "OPEN file://${PWD}/htmlcov/index.html"
+
+coverage_json:
+	rm jsoncov -rf
+	uv run coverage combine $(ls .coverage.unit .coverage.integration 2>/dev/null)
+	mkdir jsoncov
+	uv run coverage json -o jsoncov/coverage.json
+	echo "Created `ls jsoncov/coverage.json`"
+
+query_providers:
+	uv run python tests/vectorize/query_providers.py 
 
 help:
 	@echo "======================================================================"
@@ -70,6 +80,8 @@ help:
 	@echo "test                                     run unit tests"
 	@echo "test-integration                     run integration tests"
 	@echo "docker-test-integration              run int.tests on dockerized local"
-	@echo "coverage                         HTML coverage map from last test"
+	@echo "coverage_html                    HTML coverage map from last test"
+	@echo "coverage_json                    JSON coverage map from last test"
+	@echo "query_providers                  Refresh _providers.json"
 	@echo "build                            build package ready for PyPI"
 	@echo "======================================================================"
