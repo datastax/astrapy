@@ -15,7 +15,8 @@
 from __future__ import annotations
 
 import math
-from typing import Generic, Iterable, Iterator, Mapping, TypeVar
+from collections.abc import Iterable, Iterator, Mapping
+from typing import Generic, TypeVar
 
 T = TypeVar("T")
 U = TypeVar("U")

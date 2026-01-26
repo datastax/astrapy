@@ -14,9 +14,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator
 from typing import (
-    Iterable,
-    Iterator,
     Protocol,  # always use stdlib for Protocol on 3.8+
     TypeVar,
 )

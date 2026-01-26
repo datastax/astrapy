@@ -18,9 +18,10 @@ import json
 import logging
 import re
 import weakref
+from collections.abc import Iterable, Sequence
 from decimal import Decimal
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Sequence, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import httpx
 from uuid6 import uuid7
@@ -366,14 +367,14 @@ class APICommander:
     @staticmethod
     def _decimal_unaware_parse_json_response(response_text: str) -> dict[str, Any]:
         return cast(
-            Dict[str, Any],
+            dict[str, Any],
             json.loads(response_text),
         )
 
     @staticmethod
     def _decimal_aware_parse_json_response(response_text: str) -> dict[str, Any]:
         return cast(
-            Dict[str, Any],
+            dict[str, Any],
             json.loads(
                 response_text,
                 parse_float=Decimal,

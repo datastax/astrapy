@@ -14,15 +14,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
-    Iterable,
-    List,
     Optional,
-    Tuple,
     TypeVar,
     Union,
 )
@@ -42,20 +39,20 @@ from astrapy.settings.defaults import (
 )
 from astrapy.utils.str_enum import StrEnum
 
-DefaultDocumentType = Dict[str, Any]
-DefaultRowType = Dict[str, Any]
+DefaultDocumentType = dict[str, Any]
+DefaultRowType = dict[str, Any]
 ProjectionType = Union[
-    Iterable[str], Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]
+    Iterable[str], dict[str, Union[bool, dict[str, Union[int, Iterable[int]]]]]
 ]
-SortType = Dict[str, Any]
-HybridSortType = Dict[
-    str, Union[str, Dict[str, Union[str, List[float], DataAPIVector]]]
+SortType = dict[str, Any]
+HybridSortType = dict[
+    str, Union[str, dict[str, Union[str, list[float], DataAPIVector]]]
 ]
-FilterType = Dict[str, Any]
-CallerType = Tuple[Optional[str], Optional[str]]
-SerializerFunctionType = Callable[[Any], Dict[str, Any]]
+FilterType = dict[str, Any]
+CallerType = tuple[Optional[str], Optional[str]]
+SerializerFunctionType = Callable[[Any], dict[str, Any]]
 UDTDeserializerFunctionType = Callable[
-    [Dict[str, Any], Optional["CreateTypeDefinition"]], Any
+    [dict[str, Any], Optional["CreateTypeDefinition"]], Any
 ]
 
 
