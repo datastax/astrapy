@@ -22,7 +22,7 @@ import weakref
 from collections.abc import Iterable, Sequence
 from decimal import Decimal
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 import certifi
 import httpx
@@ -70,12 +70,6 @@ from astrapy.utils.user_agents import (
 user_agent_astrapy = detect_astrapy_user_agent()
 
 logger = logging.getLogger(__name__)
-
-if TYPE_CHECKING:
-    WeakRefAny = weakref.ReferenceType[object]
-else:
-    # Runtime-safe on 3.8
-    WeakRefAny = weakref.ReferenceType
 
 # these are a mixture from disparate alphabet, to minimize the chance
 # of a collision with user-provided actual content:
@@ -140,7 +134,7 @@ class APICommander:
         }
         self.dev_ops_api = dev_ops_api
         self.event_observers = event_observers
-        self.spawner_ref: WeakRefAny | None
+        self.spawner_ref: weakref.ReferenceType[object] | None
         if spawner:
             self.spawner_ref = weakref.ref(spawner)
         else:
