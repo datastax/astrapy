@@ -17,12 +17,14 @@ from __future__ import annotations
 import json
 import logging
 import re
+import ssl
 import weakref
 from collections.abc import Iterable, Sequence
 from decimal import Decimal
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, cast
 
+import certifi
 import httpx
 from uuid6 import uuid7
 
@@ -121,7 +123,9 @@ class APICommander:
         handle_decimals_writes: bool = False,
         handle_decimals_reads: bool = False,
     ) -> None:
-        self.client = httpx.Client()
+        ctx = ssl.create_default_context(cafile=certifi.where())  # portable CA roots
+        self.client = httpx.Client(verify=ctx)
+        #
         self.async_client = httpx.AsyncClient()
         self.api_endpoint = api_endpoint.rstrip("/")
         self.path = path.lstrip("/")

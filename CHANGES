@@ -1,7 +1,9 @@
 main
 ====
 Removal of Python 3.8 support [Breaking change]
-httpx `Client` made per-instance for sync clients (fixes corner cases with certain SSL setups)
+httpx `Client`:
+    - it is now per-instance for sync clients (fixes corner cases with certain SSL setups)
+    - defines SSL certificates in a portable, explicit way
 Astra DB admin classes:
     - reworked polling logic: optimized and enriched with pollability pre-checks;
     - improvements in DevOps API response error handling.
