@@ -14,7 +14,8 @@
 
 from __future__ import annotations
 
-from typing import Iterable, overload
+from collections.abc import Iterable
+from typing import overload
 
 FIELD_NAME_ESCAPE_CHAR = "&"
 FIELD_NAME_SEGMENT_SEPARATOR = "."

@@ -16,7 +16,8 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from astrapy.info import EmbeddingProviderParameter, VectorServiceOptions
 from astrapy.settings.defaults import (

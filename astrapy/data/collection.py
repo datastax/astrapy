@@ -16,9 +16,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Generic, Iterable, overload
+from typing import TYPE_CHECKING, Any, Generic, overload
 
 from astrapy.constants import (
     DOC,

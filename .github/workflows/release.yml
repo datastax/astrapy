@@ -11,7 +11,7 @@ on:
 
 env:
   PYTHON_VERSION: "3.12"
-  LEAST_PYTHON_VERSION: "3.8"
+  LEAST_PYTHON_VERSION: "3.9"
   UV_FROZEN: "true"
   UV_NO_SYNC: "true"
 

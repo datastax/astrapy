@@ -22,7 +22,7 @@ import ipaddress
 import json
 import logging
 import math
-from typing import Any, Callable, Dict, Generic, cast
+from typing import Any, Callable, Generic, cast
 
 from astrapy.constants import ROW, MapEncodingMode
 from astrapy.data.info.table_descriptor.table_columns import (
@@ -863,7 +863,7 @@ def preprocess_table_payload(
 
     if payload:
         return cast(
-            Dict[str, Any],
+            dict[str, Any],
             preprocess_table_payload_value(
                 [],
                 payload,

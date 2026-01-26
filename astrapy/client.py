@@ -15,7 +15,8 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any
 
 from astrapy.admin.endpoints import (
     api_endpoint_parsing_cdinfo_message,

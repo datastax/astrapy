@@ -46,7 +46,7 @@ Steps:
 
 - Export variables as in one of the `tests/env_templates/*.base.template` examples.
 - Export variables as in the `tests/env_templates/env.vectorize-minimal.template` example.
-- Run: `uv venv --python ">=3.8<3.13" && uv run pytest tests/base`
+- Run: `uv venv --python ">=3.9,<3.13" && uv run pytest tests/base`
 
 ### All available tests/targets
 
@@ -95,8 +95,8 @@ If may be useful to run e.g. unit tests with multiple Python versions. You can h
 create more than one venv and specify the version, e.g. for each one:
 
 ```
-uv venv --python 3.8 .venv-3.8
-. .venv-3.8/bin/activate
+uv venv --python 3.9 .venv-3.9
+. .venv-3.9/bin/activate
 uv sync --dev --active
 ```
 

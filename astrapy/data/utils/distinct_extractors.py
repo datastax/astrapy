@@ -16,12 +16,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable
 from typing import (
     Any,
     Callable,
-    Iterable,
     Optional,
-    Tuple,
 )
 
 from astrapy.data.utils.collection_converters import preprocess_collection_payload_value
@@ -30,7 +29,7 @@ from astrapy.data_types import DataAPIMap, DataAPISet
 from astrapy.utils.api_options import FullSerdesOptions
 from astrapy.utils.document_paths import unescape_field_path
 
-IndexPairType = Tuple[Optional[str], Optional[int]]
+IndexPairType = tuple[Optional[str], Optional[int]]
 
 ERROR_NO_EMPTY_SAFE_KEYSTART = (
     "The 'key' parameter for distinct cannot be empty or start with a list index."

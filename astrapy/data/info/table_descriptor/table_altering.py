@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, TypeVar, Union, cast
+from typing import Any, TypeVar, Union, cast
 
 from astrapy.data.info.table_descriptor.table_columns import (
     TableColumnTypeDescriptor,
@@ -239,7 +239,7 @@ class AlterTableAddVectorize(AlterTableOperation):
             raise ValueError(
                 "Vector service definition cannot be None for AlterTableAddVectorize"
             )
-        self.columns = cast(Dict[str, VectorServiceOptions], columns_)
+        self.columns = cast(dict[str, VectorServiceOptions], columns_)
 
     def __repr__(self) -> str:
         _cols_desc = [
@@ -273,7 +273,7 @@ class AlterTableAddVectorize(AlterTableOperation):
             )
         return AlterTableAddVectorize(
             columns=cast(
-                Dict[str, Union[VectorServiceOptions, Dict[str, Any]]],
+                dict[str, Union[VectorServiceOptions, dict[str, Any]]],
                 _columns,
             )
         )
