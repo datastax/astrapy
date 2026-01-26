@@ -107,8 +107,6 @@ class _MarkedDecimalEncoder(json.JSONEncoder):
 
 
 class APICommander:
-    client = httpx.Client()
-
     def __init__(
         self,
         *,
@@ -123,6 +121,7 @@ class APICommander:
         handle_decimals_writes: bool = False,
         handle_decimals_reads: bool = False,
     ) -> None:
+        self.client = httpx.Client()
         self.async_client = httpx.AsyncClient()
         self.api_endpoint = api_endpoint.rstrip("/")
         self.path = path.lstrip("/")
@@ -191,14 +190,10 @@ class APICommander:
 
     def __repr__(self) -> str:
         pieces = [
-            pc
-            for pc in (
-                f"api_endpoint={self.api_endpoint}",
-                f"path={self.path}",
-                f"callers={self.callers}",
-                f"dev_ops_api={self.dev_ops_api}",
-            )
-            if pc is not None
+            f"api_endpoint={self.api_endpoint}",
+            f"path={self.path}",
+            f"callers={self.callers}",
+            f"dev_ops_api={self.dev_ops_api}",
         ]
         inner_desc = ", ".join(pieces)
         return f"{self.__class__.__name__}({inner_desc})"

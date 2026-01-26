@@ -1,6 +1,7 @@
 main
 ====
 Removal of Python 3.8 support [Breaking change]
+httpx `Client` made per-instance for sync clients (fixes corner cases with certain SSL setups)
 Astra DB admin classes:
     - reworked polling logic: optimized and enriched with pollability pre-checks;
     - improvements in DevOps API response error handling.
