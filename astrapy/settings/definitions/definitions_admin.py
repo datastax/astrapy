@@ -48,9 +48,40 @@ class Environment:
 
 
 class ModelStatus(StrEnum):
-    """ """
+    """
+    Admitted values for the status of a (reranking/embedding) model,
+    as returned by the corresponding Data API query.
+    """
 
     ALL = ""
     SUPPORTED = "SUPPORTED"
     DEPRECATED = "DEPRECATED"
     END_OF_LIFE = "END_OF_LIFE"
+
+
+class DatabaseStatus(StrEnum):
+    """
+    Admitted values for the status of a database as returned by Astra DB.
+    """
+
+    ACTIVE = "ACTIVE"
+    ASSOCIATING = "ASSOCIATING"
+    DECOMMISSIONING = "DECOMMISSIONING"
+    DEGRADED = "DEGRADED"
+    ERROR = "ERROR"
+    HIBERNATED = "HIBERNATED"
+    HIBERNATING = "HIBERNATING"
+    INITIALIZING = "INITIALIZING"
+    MAINTENANCE = "MAINTENANCE"
+    PARKED = "PARKED"
+    PARKING = "PARKING"
+    PENDING = "PENDING"
+    PREPARED = "PREPARED"
+    PREPARING = "PREPARING"
+    RESIZING = "RESIZING"
+    RESUMING = "RESUMING"
+    SYNCHRONIZING = "SYNCHRONIZING"
+    TERMINATED = "TERMINATED"
+    TERMINATING = "TERMINATING"
+    UNKNOWN = "UNKNOWN"
+    UNPARKING = "UNPARKING"

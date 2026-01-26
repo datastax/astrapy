@@ -14,7 +14,11 @@
 
 from __future__ import annotations
 
-from astrapy.settings.definitions.definitions_admin import Environment, ModelStatus
+from astrapy.settings.definitions.definitions_admin import (
+    DatabaseStatus,
+    Environment,
+    ModelStatus,
+)
 from astrapy.settings.definitions.definitions_data import (
     DefaultIdType,
     MapEncodingMode,
@@ -40,6 +44,7 @@ from astrapy.settings.definitions.definitions_types import (
 )
 
 __all__ = [
+    "DatabaseStatus",
     "DefaultIdType",
     "Environment",
     "MapEncodingMode",

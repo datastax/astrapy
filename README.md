@@ -826,6 +826,7 @@ Constants for data-related use:
 
 ```python
 from astrapy.constants import (
+    DatabaseStatus,
     DefaultIdType,
     Environment,
     MapEncodingMode,
