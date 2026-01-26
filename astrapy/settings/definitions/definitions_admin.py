@@ -14,15 +14,6 @@
 
 from __future__ import annotations
 
-from astrapy.settings.defaults import (
-    DATA_API_ENVIRONMENT_CASSANDRA,
-    DATA_API_ENVIRONMENT_DEV,
-    DATA_API_ENVIRONMENT_DSE,
-    DATA_API_ENVIRONMENT_HCD,
-    DATA_API_ENVIRONMENT_OTHER,
-    DATA_API_ENVIRONMENT_PROD,
-    DATA_API_ENVIRONMENT_TEST,
-)
 from astrapy.utils.str_enum import StrEnum
 
 
@@ -35,13 +26,13 @@ class Environment:
     def __init__(self) -> None:
         raise NotImplementedError
 
-    PROD = DATA_API_ENVIRONMENT_PROD
-    DEV = DATA_API_ENVIRONMENT_DEV
-    TEST = DATA_API_ENVIRONMENT_TEST
-    DSE = DATA_API_ENVIRONMENT_DSE
-    HCD = DATA_API_ENVIRONMENT_HCD
-    CASSANDRA = DATA_API_ENVIRONMENT_CASSANDRA
-    OTHER = DATA_API_ENVIRONMENT_OTHER
+    PROD = "prod"
+    DEV = "dev"
+    TEST = "test"
+    DSE = "dse"
+    HCD = "hcd"
+    CASSANDRA = "cassandra"
+    OTHER = "other"
 
     values = {PROD, DEV, TEST, DSE, HCD, CASSANDRA, OTHER}
     astra_db_values = {PROD, DEV, TEST}
