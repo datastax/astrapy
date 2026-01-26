@@ -1,7 +1,6 @@
 main
 ====
 Removal of Python 3.8 support [Breaking change]
-Add flag `TEST_EXTENDED_VECTORIZE` for explicit control
 Astra DB admin classes:
     - reworked polling logic: optimized and enriched with pollability pre-checks;
     - improvements in DevOps API response error handling.
@@ -11,7 +10,9 @@ Event Observer API, to listen to events:
     - events are: warnings, payloads/responses, ...
     - useful for customized logging, observability and instrumentation;
     - see `astrapy.event_observers` module and docstring of classes therein for more.
+maintenance: measure test coverage for PRs and merges to main; calculate delta for PRs
 maintenance: bump urllib3 to >= 2.6.3 to avoid CVE-2026-21441
+maintenance: add flag `TEST_EXTENDED_VECTORIZE` for test runnability in all cases
 maintenance: introduce `LEGACY_INSERTMANY_BEHAVIOUR_PRE2193` flag to control related tests
 maintenance: enabled text-index integration tests on Astra
 maintenance: introduced the publish-and-release workflow machinery

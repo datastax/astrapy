@@ -72,6 +72,9 @@ jobs:
       - name: Checkout code
         if: ${{ github.event.action != 'closed' }}
         uses: actions/checkout@v2
+        with:
+          # needed to retrieve the parents of the merge commit (hence the base commit on main)
+          fetch-depth: 2
 
       - name: Set up Python
         if: ${{ github.event.action != 'closed' }}
@@ -155,13 +158,57 @@ jobs:
       #   with:
       #     action: remove
 
+      - name: Compute base parent SHA of the merge commit
+        id: base_sha
+        shell: bash
+        run: |
+          BASE_SHA=$(git rev-parse "${GITHUB_SHA}^1")
+          echo "Base parent is $BASE_SHA"
+          echo "sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+
+      # some more logic to download main's coverage json as it is from another run ID
+      - name: Resolve run-id for main's coverage json
+        id: resolve_main_run_id
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const name = `coverage-json-push-${process.env.ART_SHA}`;
+
+            // find artifacts with that name (in practice, we expect 0 or 1)
+            const res = await github.rest.actions.listArtifactsForRepo({
+              owner, repo, name, per_page: 100
+            });
+            if (!res.data.artifacts?.length) {
+              core.setFailed(`No artifact found named ${name}`);
+              return;
+            }
+            // pick newest
+            const art = res.data.artifacts.sort((a,b) =>
+              new Date(b.created_at) - new Date(a.created_at))[0];
+            core.info(`Artifact ${art.id} from run ${art.workflow_run.id}`);
+            core.setOutput('run_id', art.workflow_run.id);
+        env:
+          ART_SHA: ${{ steps.base_sha.outputs.sha }}
+
+      - name: download coverage JSON from target commit on main
+        if: ${{ github.event.action != 'closed' && github.event_name == 'pull_request' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-json-push-${{ steps.base_sha.outputs.sha }}
+          run-id: ${{ steps.resolve_main_run_id.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: coverage_main
+
       - name: generate code coverage short report
-        if: ${{ github.event.action != 'closed' }}
+        if: ${{ github.event.action != 'closed' && github.event_name == 'pull_request' }}
         id: generate_coverage_report
         shell: bash
         run: |
           set -o pipefail
-          OUTPUT=$(uv run coverage report)
+          # was: OUTPUT=$(uv run coverage report)
+          OUTPUT=$(uv run python tests/coverage_utils/calc_delta.py coverage_main/coverage.json coverage.json -f table)
           # Multi-line safe write to $GITHUB_OUTPUT
           echo "text<<EOF" >> "$GITHUB_OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_OUTPUT"
