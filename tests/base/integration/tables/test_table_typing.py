@@ -14,7 +14,8 @@
 
 from __future__ import annotations
 
-from typing import Iterable, TypedDict
+from collections.abc import Iterable
+from typing import TypedDict
 
 import pytest
 

@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import datetime
-from typing import Any, Dict, cast
+from typing import Any, cast
 
 from astrapy.constants import DefaultDocumentType
 from astrapy.data.utils.extended_json_converters import (
@@ -133,7 +133,7 @@ def preprocess_collection_payload(
 
     if payload:
         return cast(
-            Dict[str, Any],
+            dict[str, Any],
             preprocess_collection_payload_value([], payload, options=options),
         )
     else:

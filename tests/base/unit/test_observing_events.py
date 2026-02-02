@@ -483,7 +483,7 @@ class TestObservingEvents:
         assert rq_evt["event"].http_method == HttpMethod.POST
         assert rq_evt["event"].url == root_endpoint.rstrip("/") + expected_url
         assert rq_evt["event"].query_parameters == {}
-        expected_header_keys = {"Content-Type", "Accept", "User-Agent"}
+        expected_header_keys = {"Content-Type", "Accept", "User-Agent", "Connection"}
         found_header_keys = (rq_evt["event"].redacted_headers or {}).keys()
         assert found_header_keys - expected_header_keys == set()
 

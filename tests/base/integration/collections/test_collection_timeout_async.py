@@ -65,7 +65,7 @@ class TestCollectionTimeoutAsync:
                 async_database.api_endpoint,
                 token=async_database.api_options.token,
                 keyspace=async_database.keyspace,
-                request_timeout_ms=1,
+                request_timeout_ms=10,
             )
             assert info is not None
         assert exc.value.timeout_type in {"connect", "read"}

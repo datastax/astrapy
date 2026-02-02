@@ -1,5 +1,5 @@
 [project]
-requires-python = ">=3.8,<4.0"
+requires-python = ">=3.9,<4.0"
 name = "astrapy"
 version = "2.1.0"
 description = "A Python client for the Data API on DataStax Astra DB"
@@ -24,7 +24,6 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -60,7 +59,8 @@ dev = [
     "pytest-httpserver ~= 1.0.8",
     "setuptools >= 61.0",
     "testcontainers ~= 3.7.1",
-    "types-toml >= 0.10.8.7,<1.0.0"
+    "types-toml >= 0.10.8.7,<1.0.0",
+    "urllib3 >= 2.6.3"
 ]
 
 [tool.hatch.build.targets.wheel]

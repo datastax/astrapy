@@ -20,8 +20,8 @@ from __future__ import annotations
 
 import functools
 import warnings
-from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Iterable, TypedDict
+from collections.abc import Awaitable, Iterable, Iterator
+from typing import TYPE_CHECKING, Any, Callable, TypedDict
 
 import pytest
 from blockbuster import BlockBuster, blockbuster_ctx
@@ -34,6 +34,7 @@ if TYPE_CHECKING:
 import astrapy
 from astrapy import AsyncDatabase, DataAPIClient, Database
 from astrapy.admin import parse_api_endpoint
+from astrapy.api_options import APIOptions, TimeoutOptions
 from astrapy.authentication import TokenProvider
 from astrapy.constants import Environment
 from astrapy.settings.defaults import DEFAULT_ASTRA_DB_KEYSPACE, DEV_OPS_URL_ENV_MAP
@@ -263,6 +264,14 @@ def sync_database(
         data_api_credentials_kwargs["api_endpoint"],
         token=data_api_credentials_kwargs["token"],
         keyspace=data_api_credentials_kwargs["keyspace"],
+        spawn_api_options=APIOptions(
+            timeout_options=TimeoutOptions(
+                request_timeout_ms=20000,
+                general_method_timeout_ms=60000,
+                collection_admin_timeout_ms=90000,
+                table_admin_timeout_ms=45000,
+            ),
+        ),
     )
 
     yield database

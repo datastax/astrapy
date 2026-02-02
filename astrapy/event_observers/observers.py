@@ -15,7 +15,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from astrapy.event_observers.events import ObservableEvent, ObservableEventType
 
