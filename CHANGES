@@ -13,6 +13,8 @@ Event Observer API, to listen to events:
     - events are: warnings, payloads/responses, ...
     - useful for customized logging, observability and instrumentation;
     - see `astrapy.event_observers` module and docstring of classes therein for more.
+SSL bugfix due to older patches of Python 3.12:
+    Introduced a fix to the httpx.ReadError `[SSL] passed invalid argument (_ssl.c:2570)` observed on Python 3.12.0-3.12.11
 maintenance: measure test coverage for PRs and merges to main; calculate delta for PRs
 maintenance: bump urllib3 to >= 2.6.3 to avoid CVE-2026-21441
 maintenance: add flag `TEST_EXTENDED_VECTORIZE` for test runnability in all cases

@@ -56,6 +56,8 @@ from astrapy.settings.defaults import (
     DEFAULT_REDACTED_HEADER_NAMES,
     FIXED_SECRET_PLACEHOLDER,
 )
+from astrapy.utils.meta import issue_plain_warning
+from astrapy.utils.python_version import get_python_version
 from astrapy.utils.request_tools import (
     HttpMethod,
     log_httpx_request,
@@ -69,7 +71,29 @@ from astrapy.utils.user_agents import (
 
 user_agent_astrapy = detect_astrapy_user_agent()
 
+PYTHON_VERSION_SSL_ISSUES_WARNING = (
+    "SSL connection reuse disabled due to a Python 3.12.[0-11] bug. "
+    "This may reduce performance under certain workloads. "
+    "Please upgrade to Python 3.12.12 or newer if possible."
+)
+CLIENT_SSL_CONTEXT = ssl.create_default_context(
+    cafile=certifi.where()
+)  # portable CA roots
+
 logger = logging.getLogger(__name__)
+
+# Used only for a range of Python versions where a SSL bug is detected.
+no_pooling_limits = httpx.Limits(max_keepalive_connections=0, keepalive_expiry=0)
+disable_ssl_reuse: bool
+python_version = get_python_version()
+if python_version >= (3, 12, 0) and python_version < (3, 12, 12):
+    issue_plain_warning(
+        PYTHON_VERSION_SSL_ISSUES_WARNING,
+        stacklevel=3,
+    )
+    disable_ssl_reuse = True
+else:
+    disable_ssl_reuse = False
 
 # these are a mixture from disparate alphabet, to minimize the chance
 # of a collision with user-provided actual content:
@@ -103,6 +127,9 @@ class _MarkedDecimalEncoder(json.JSONEncoder):
 
 
 class APICommander:
+    client: httpx.Client
+    async_client: httpx.AsyncClient
+
     def __init__(
         self,
         *,
@@ -117,13 +144,25 @@ class APICommander:
         handle_decimals_writes: bool = False,
         handle_decimals_reads: bool = False,
     ) -> None:
-        ctx = ssl.create_default_context(cafile=certifi.where())  # portable CA roots
-        self.client = httpx.Client(verify=ctx)
-        #
-        self.async_client = httpx.AsyncClient()
+        ssl_control_headers: dict[str, str | None]
+        if disable_ssl_reuse:
+            self.client = httpx.Client(
+                limits=no_pooling_limits,
+                verify=CLIENT_SSL_CONTEXT,
+            )
+            self.async_client = httpx.AsyncClient(
+                limits=no_pooling_limits,
+                verify=CLIENT_SSL_CONTEXT,
+            )
+            ssl_control_headers = {"Connection": "close"}
+        else:
+            self.client = httpx.Client(verify=CLIENT_SSL_CONTEXT)
+            self.async_client = httpx.AsyncClient(verify=CLIENT_SSL_CONTEXT)
+            ssl_control_headers = {}
+
         self.api_endpoint = api_endpoint.rstrip("/")
         self.path = path.lstrip("/")
-        self.headers = headers
+        self.headers: dict[str, str | None] = {**ssl_control_headers, **headers}
         self.callers = callers
         self.redacted_header_names = set(redacted_header_names or [])
         self.upper_full_redacted_header_names = {

@@ -59,7 +59,7 @@ jobs:
     with:
       coverage_prefix: ut
       sha: ${{ github.sha }}
-      coverage_python_version: "3.11"
+      coverage_python_version: "3.12"
     secrets:
       # basic secrets
       ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
