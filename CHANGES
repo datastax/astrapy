@@ -1,6 +1,8 @@
 main
 ====
-Removal of Python 3.8 support [Breaking change]
+Supported Python versions are now 3.9 to 3.14:
+    - extend to 3.13 and 3.14
+    - removal of Python 3.8 [Breaking change w.r.t. 2.1]
 httpx `Client`:
     - it is now per-instance for sync clients (fixes corner cases with certain SSL setups)
     - defines SSL certificates in a portable, explicit way

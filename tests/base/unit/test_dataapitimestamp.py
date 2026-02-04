@@ -61,9 +61,9 @@ class TestDataAPITimestamp:
         # out-of-ranges
         ts_y00009_bc = DataAPITimestamp(Y1_1_1_MILLIS - TEN_YEARS_MILLIS)
         ts_y10010_ad = DataAPITimestamp(Y10K_12_31_MILLIS + TEN_YEARS_MILLIS)
-        with pytest.raises(ValueError, match="is out of range"):
+        with pytest.raises(ValueError, match=r"(is out of range|year must be in)"):
             ts_y00009_bc.to_datetime(tz=None)
-        with pytest.raises(ValueError, match="is out of range"):
+        with pytest.raises(ValueError, match=r"(is out of range|year must be in)"):
             ts_y10010_ad.to_datetime(tz=None)
 
         # algebra

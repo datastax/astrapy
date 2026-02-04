@@ -71,6 +71,14 @@ try:
     CQL_AVAILABLE = True
 except ImportError:
     pass
+except Exception as exception:
+    if exception.__class__.__name__ == "DependencyException":
+        # this occurs on Python 3.13+ (as of Feb 2026) for libev/asyncore
+        # TODO revise once newer cassandra-driver (>3.29) is out
+        pass
+    else:
+        raise
+    pass
 
 
 @pytest.fixture(autouse=True)
