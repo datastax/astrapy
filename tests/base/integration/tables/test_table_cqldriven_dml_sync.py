@@ -48,11 +48,6 @@ from .table_cql_assets import (
 if TYPE_CHECKING:
     from cassandra.cluster import Session
 
-try:
-    from cassandra.cluster import Session
-except ImportError:
-    pass
-
 
 @pytest.mark.skipif(not CQL_AVAILABLE, reason="No CQL session available")
 class TestTableCQLDrivenDMLSync:
