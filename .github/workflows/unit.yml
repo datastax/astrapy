@@ -35,6 +35,8 @@ jobs:
           - "3.11"
           - "3.12.7"  # to ensure the 'no ssl reuse' route is tested
           - "3.12"
+          - "3.13"
+          - "3.14"
     name: "unit test on Python ${{ matrix.python-version }}"
     steps:
     - name: Checkout code
