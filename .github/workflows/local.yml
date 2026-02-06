@@ -43,8 +43,7 @@ jobs:
       AWS_ECR_REGISTRY: ${{ secrets.AWS_ECR_REGISTRY }}
       HEADER_EMBEDDING_API_KEY_OPENAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_OPENAI }}
       DOCKER_COMPOSE_LOCAL_DATA_API: ${{ secrets.DOCKER_COMPOSE_LOCAL_DATA_API }}
-      # TODO restore once DEV reranker is back in action
-      # HEADER_RERANKING_API_KEY_NVIDIA: ${{ secrets.HEADER_RERANKING_API_KEY_NVIDIA }}
+      HEADER_RERANKING_API_KEY_NVIDIA: ${{ secrets.HEADER_RERANKING_API_KEY_NVIDIA }}
     runs-on: ubuntu-latest
 
     steps:
