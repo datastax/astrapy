@@ -43,7 +43,8 @@ dependencies = [
 dev = [
     { name = "blockbuster" },
     { name = "build" },
-    { name = "cassio" },
+    { name = "cassandra-driver", marker = "python_full_version < '3.13'" },
+    { name = "cassio", marker = "python_full_version < '3.13'" },
     { name = "coverage" },
     { name = "faker" },
     { name = "mypy" },
@@ -77,7 +78,8 @@ requires-dist = [
 dev = [
     { name = "blockbuster", specifier = "~=1.5.5" },
     { name = "build", specifier = ">=1.0.0" },
-    { name = "cassio", marker = "python_full_version >= '3.9'", specifier = "~=0.1.10" },
+    { name = "cassandra-driver", marker = "python_full_version < '3.13'", specifier = ">=3.29.2" },
+    { name = "cassio", marker = "python_full_version < '3.13'", specifier = "~=0.1.10" },
     { name = "coverage", specifier = "~=7.0.0" },
     { name = "faker", specifier = "~=23.1.0" },
     { name = "mypy", specifier = "~=1.9.0" },
