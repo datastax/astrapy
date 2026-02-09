@@ -84,6 +84,11 @@ CANNOT_POLL_ERROR_MESSAGE = (
     "to poll for the database status, which the provided token "
     "has no permission to accomplish."
 )
+CREATEE_DATABASE_VALID_STATUSES = {
+    DatabaseStatus.ASSOCIATING.value,
+    DatabaseStatus.INITIALIZING.value,
+    DatabaseStatus.PENDING.value,
+}
 
 
 def check_id_endpoint_parg_kwargs(
@@ -1201,10 +1206,7 @@ class AstraDBAdmin:
         )
         if wait_until_active:
             last_status_seen = DatabaseStatus.PENDING.value
-            while last_status_seen in {
-                DatabaseStatus.PENDING.value,
-                DatabaseStatus.INITIALIZING.value,
-            }:
+            while last_status_seen in CREATEE_DATABASE_VALID_STATUSES:
                 logger.info(f"sleeping to poll for status of '{new_database_id}'")
                 time.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
                 last_db_info = self._database_info_ctx(
@@ -1377,10 +1379,7 @@ class AstraDBAdmin:
         )
         if wait_until_active:
             last_status_seen = DatabaseStatus.PENDING.value
-            while last_status_seen in {
-                DatabaseStatus.PENDING.value,
-                DatabaseStatus.INITIALIZING.value,
-            }:
+            while last_status_seen in CREATEE_DATABASE_VALID_STATUSES:
                 logger.info(
                     f"sleeping to poll for status of '{new_database_id}', async"
                 )

@@ -53,6 +53,10 @@ class ModelStatus(StrEnum):
 class DatabaseStatus(StrEnum):
     """
     Admitted values for the status of a database as returned by Astra DB.
+
+    To avoid the risk of a newly-introduced status (by the DevOps API)
+    breaking the clients, this enum is used only for reference and no coercion
+    from server-received status strings is enforced.
     """
 
     ACTIVE = "ACTIVE"
