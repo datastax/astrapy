@@ -19,7 +19,7 @@ import logging
 import re
 import time
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, List, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from astrapy.admin.endpoints import (
     ParsedAPIEndpoint,
@@ -2027,7 +2027,7 @@ class AstraDBAdmin:
         logger.info("getting available regions (DevOps API)")
         # this cast is required by this DevOps API response being in fact a JSON list:
         fr_response = cast(
-            List[Dict[str, Any]],
+            list[dict[str, Any]],
             self._regionlist_dev_ops_api_commander.request(
                 http_method=HttpMethod.GET,
                 additional_path="regions/serverless",
@@ -2118,7 +2118,7 @@ class AstraDBAdmin:
         logger.info("getting available regions (DevOps API), async")
         # this cast is required by this DevOps API response being in fact a JSON list:
         fr_response = cast(
-            List[Dict[str, Any]],
+            list[dict[str, Any]],
             await self._regionlist_dev_ops_api_commander.async_request(
                 http_method=HttpMethod.GET,
                 additional_path="regions/serverless",

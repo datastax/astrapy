@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from astrapy.settings.definitions.definitions_types import ProjectionType
 from astrapy.utils.str_enum import StrEnum

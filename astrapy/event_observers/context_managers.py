@@ -14,18 +14,18 @@
 
 from __future__ import annotations
 
-from typing import (
-    Iterable,
-    Iterator,
-    Protocol,  # always use stdlib for Protocol on 3.8+
-    TypeVar,
-)
+from collections.abc import Iterable, Iterator
+from typing import Protocol, TypeVar
 
-try:  # TODO: check python version removal from project
-    # Python 3.11 upward
-    from typing import Self
+# TODO: once supporting 3.11+, this can be simplified.
+# 'Self' is imported differently below 3.11, cf. below. Then:
+# 1. To appease typecheckers on e.g. 3.9, we need the `attr-defined` exception
+# 2. To appease typecheckers on 3.11+, we need the `unused-ignore` exception.
+try:
+    # Python 3.11 upward:
+    from typing import Self  # type:ignore[attr-defined,unused-ignore]
 except ImportError:
-    # 3.10 and below need this:
+    # 3.10 and below:
     from typing_extensions import Self
 
 from contextlib import contextmanager

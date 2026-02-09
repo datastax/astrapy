@@ -15,8 +15,9 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from decimal import Decimal
-from typing import Any, Dict, Iterable
+from typing import Any
 
 import pytest
 
@@ -112,10 +113,10 @@ from .table_udt_assets import (
     TEST_UDTCOLLINDEXED_TABLE_NAME,
 )
 
-DefaultCollection = Collection[Dict[str, Any]]
-DefaultAsyncCollection = AsyncCollection[Dict[str, Any]]
-DefaultTable = Table[Dict[str, Any]]
-DefaultAsyncTable = AsyncTable[Dict[str, Any]]
+DefaultCollection = Collection[dict[str, Any]]
+DefaultAsyncCollection = AsyncCollection[dict[str, Any]]
+DefaultTable = Table[dict[str, Any]]
+DefaultAsyncTable = AsyncTable[dict[str, Any]]
 
 TEST_COLLECTION_INSTANCE_NAME = "test_coll_instance"
 TEST_COLLECTION_NAME = "id_test_collection"

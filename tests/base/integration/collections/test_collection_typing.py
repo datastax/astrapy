@@ -24,10 +24,13 @@ from astrapy.info import CollectionDefinition
 from astrapy.utils.unset import _UNSET
 
 from ..conftest import (
+    IS_ASTRA_DB,
     USE_RERANKER_API_KEY_HEADER,
     DefaultAsyncCollection,
     DefaultCollection,
 )
+
+RUN_RERANKER_TESTS = IS_ASTRA_DB or USE_RERANKER_API_KEY_HEADER
 
 
 class MyTestDoc(TypedDict):
@@ -320,6 +323,10 @@ class TestCollectionTyping:
 
         g_co_typed.delete_many({})
 
+    @pytest.mark.skipif(
+        not RUN_RERANKER_TESTS,
+        reason="Reranker-related tests skipped (no Astra and no header reranker key provided)",
+    )
     @pytest.mark.describe("test of typing find_and_rerank, sync")
     def test_collection_find_and_rerank_typing_sync(
         self,
@@ -669,6 +676,10 @@ class TestCollectionTyping:
 
         await ag_co_typed.delete_many({})
 
+    @pytest.mark.skipif(
+        not RUN_RERANKER_TESTS,
+        reason="Reranker-related tests skipped (no Astra and no header reranker key provided)",
+    )
     @pytest.mark.describe("test of typing find_and_rerank, async")
     async def test_collection_find_and_rerank_typing_async(
         self,

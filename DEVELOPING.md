@@ -46,7 +46,7 @@ Steps:
 
 - Export variables as in one of the `tests/env_templates/*.base.template` examples.
 - Export variables as in the `tests/env_templates/env.vectorize-minimal.template` example.
-- Run: `uv venv --python ">=3.8<3.13" && uv run pytest tests/base`
+- Run: `uv venv --python ">=3.9,<3.15" && uv run pytest tests/base`
 
 ### All available tests/targets
 
@@ -95,8 +95,8 @@ If may be useful to run e.g. unit tests with multiple Python versions. You can h
 create more than one venv and specify the version, e.g. for each one:
 
 ```
-uv venv --python 3.8 .venv-3.8
-. .venv-3.8/bin/activate
+uv venv --python 3.11 .venv-3.11
+. .venv-3.11/bin/activate
 uv sync --dev --active
 ```
 
@@ -104,8 +104,6 @@ Then, with the desired virtual env active, you will run e.g. `uv run --active py
 
 Most make targets will also support running in the named virtual env:
 assuming you activated a certain virtual env, you can run e.g.: `make format VENV=true`.
-
-**Warning: Python 3.13+ currently not supported to run integration tests! (but the package itself is all right).**
 
 ### Adding/changing dependencies
 

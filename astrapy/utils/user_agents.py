@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from astrapy import __version__
 from astrapy.constants import CallerType

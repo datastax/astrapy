@@ -112,3 +112,10 @@ def beta_method(method: Callable[P, R]) -> Callable[P, R]:
         return method(*args, **kwargs)
 
     return wrapper
+
+
+def issue_plain_warning(message: str, stacklevel: int = 2) -> None:
+    warnings.warn(
+        message,
+        stacklevel=stacklevel,
+    )
