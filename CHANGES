@@ -22,6 +22,7 @@ maintenance: bump urllib3 to >= 2.6.3 to avoid CVE-2026-21441
 maintenance: add flag `TEST_EXTENDED_VECTORIZE` for test runnability in all cases
 maintenance: introduce `LEGACY_INSERTMANY_BEHAVIOUR_PRE2193` flag to control related tests
 maintenance: enabled text-index integration tests on Astra
+maintenance: refactor `constants.py` for better management; add `DatabaseStatus` enum
 maintenance: introduced the publish-and-release workflow machinery
 maintenance: split development/maintenance from user README
 maintenance. Improvement in testing machinery:
