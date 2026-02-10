@@ -729,33 +729,21 @@ class TableIndexDescriptor:
         _warn_residual_keys(cls, raw_dict, {"name", "definition", "indexType"})
 
         index_definition: TableBaseIndexDefinition
-        # index type determination:
-        if "indexType" in raw_dict:
-            idx_type = raw_dict["indexType"]
-            idx_def = raw_dict["definition"]
-            if idx_type == TableIndexType.REGULAR.value:
-                index_definition = TableIndexDefinition._from_dict(idx_def)
-            elif idx_type == TableIndexType.VECTOR.value:
-                index_definition = TableVectorIndexDefinition._from_dict(idx_def)
-            elif idx_type == TableIndexType.TEXT.value:
-                index_definition = TableTextIndexDefinition._from_dict(idx_def)
-            elif idx_type == TableIndexType.UNKNOWN.value:
-                index_definition = TableUnsupportedIndexDefinition._from_dict(idx_def)
-            else:
-                # not throwing here. Log a warning and try the inspection path
-                logger.warning(
-                    f"Found an unexpected indexType when parsing a {cls.__name__} "
-                    f"dictionary: {idx_type}. Falling back to inspecting the "
-                    f"index definition."
-                )
-                index_definition = TableBaseIndexDefinition._from_dict(
-                    raw_dict["definition"]
-                )
+        idx_type = raw_dict.get("indexType")
+        idx_def = raw_dict["definition"]
+        if idx_type == TableIndexType.REGULAR.value:
+            index_definition = TableIndexDefinition._from_dict(idx_def)
+        elif idx_type == TableIndexType.VECTOR.value:
+            index_definition = TableVectorIndexDefinition._from_dict(idx_def)
+        elif idx_type == TableIndexType.TEXT.value:
+            index_definition = TableTextIndexDefinition._from_dict(idx_def)
+        elif idx_type == TableIndexType.UNKNOWN.value:
+            index_definition = TableUnsupportedIndexDefinition._from_dict(idx_def)
         else:
-            # fall back to the 'inspection' path
-            logger.info(
-                f"Field 'indexType' missing when parsing a {cls.__name__} "
-                f"dictionary. Falling back to inspecting the "
+            # not throwing here. Log a warning and try the inspection path
+            logger.warning(
+                f"Found an unexpected indexType when parsing a {cls.__name__} "
+                f"dictionary: {idx_type}. Falling back to inspecting the "
                 f"index definition."
             )
             index_definition = TableBaseIndexDefinition._from_dict(

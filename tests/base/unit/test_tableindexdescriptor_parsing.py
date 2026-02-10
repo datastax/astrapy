@@ -209,21 +209,19 @@ class TestTableIndexDescriptionParsing:
         it_resp: dict[str, Any],
         faulty_it_resp: dict[str, Any],
     ) -> None:
-        descriptors = [
-            TableIndexDescriptor.coerce(response["status"]["indexes"][0])
-            for response in [
-                PROD_U_RESPONSE,
-                LOCAL_U_RESPONSE,
-            ]
-        ]
+        descriptors = [TableIndexDescriptor.coerce(it_resp["status"]["indexes"][0])]
         with caplog.at_level(logging.WARNING):
             descriptors.append(
-                TableIndexDescriptor.coerce(LOCAL_U_RESPONSE_W["status"]["indexes"][0])
+                TableIndexDescriptor.coerce(no_it_resp["status"]["indexes"][0])
+            )
+            descriptors.append(
+                TableIndexDescriptor.coerce(faulty_it_resp["status"]["indexes"][0])
             )
 
         warnings = [rec for rec in caplog.records if rec.levelname == "WARNING"]
-        assert len(warnings) == 1
-        assert "WRONG_INDEX_TYPE" in warnings[0].message
+        assert len(warnings) == 2
+        assert "None" in warnings[0].message
+        assert "WRONG_INDEX_TYPE" in warnings[1].message
         assert descriptors[0] == descriptors[1]
         assert descriptors[0] == descriptors[2]
 
