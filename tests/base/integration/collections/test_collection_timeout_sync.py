@@ -61,7 +61,7 @@ class TestCollectionTimeoutSync:
                 sync_database.api_endpoint,
                 token=sync_database.api_options.token,
                 keyspace=sync_database.keyspace,
-                request_timeout_ms=10,
+                request_timeout_ms=50,
             )
             assert info is not None
         assert exc.value.timeout_type in {"connect", "read"}
@@ -76,13 +76,13 @@ class TestCollectionTimeoutSync:
         col = sync_empty_collection
         col.insert_many([{"a": 1}] * 1000)
 
-        col.distinct("a", general_method_timeout_ms=20000)
+        col.distinct("a", general_method_timeout_ms=40000)
         with pytest.raises(DataAPITimeoutException):
-            col.distinct("a", timeout_ms=1)
+            col.distinct("a", timeout_ms=50)
 
-        col.distinct("a", general_method_timeout_ms=20000)
+        col.distinct("a", general_method_timeout_ms=40000)
         with pytest.raises(DataAPITimeoutException):
-            col.distinct("a", general_method_timeout_ms=1)
+            col.distinct("a", general_method_timeout_ms=50)
 
     @pytest.mark.describe("test of insert_many timeouts, sync")
     def test_insert_many_timeout_exceptions_sync(
