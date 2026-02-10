@@ -410,7 +410,6 @@ class Database:
         logger.info("getting database info")
         database_info = fetch_database_info(
             self.api_endpoint,
-            keyspace=self.keyspace,
             request_timeout_ms=_database_admin_timeout_ms,
             api_options=self.api_options,
         )
@@ -2653,7 +2652,6 @@ class AsyncDatabase:
         logger.info("getting database info")
         database_info = await async_fetch_database_info(
             self.api_endpoint,
-            keyspace=self.keyspace,
             request_timeout_ms=_database_admin_timeout_ms,
             api_options=self.api_options,
         )

@@ -330,7 +330,6 @@ async def async_fetch_raw_database_info_from_id_token(
 def fetch_database_info(
     api_endpoint: str,
     token: str | TokenProvider | UnsetType = _UNSET,
-    keyspace: str | None = None,
     request_timeout_ms: int | None = None,
     timeout_ms: int | None = None,
     api_options: APIOptions | None = None,
@@ -342,8 +341,6 @@ def fetch_database_info(
         api_endpoint: a full API endpoint for the Data API.
         token: a valid token to access the database information.
             If provided, overrides any token info found in api_options.
-        keyspace: the desired keyspace that will be used in the result.
-            If not specified, the resulting database info will show it as None.
         request_timeout_ms: a timeout, in milliseconds, for waiting on a response.
         timeout_ms: an alias for `request_timeout_ms`.
         api_options: a (possibly partial) specification of the API Options to use.
@@ -377,7 +374,6 @@ def fetch_database_info(
 async def async_fetch_database_info(
     api_endpoint: str,
     token: str | TokenProvider | UnsetType = _UNSET,
-    keyspace: str | None = None,
     request_timeout_ms: int | None = None,
     timeout_ms: int | None = None,
     api_options: APIOptions | None = None,
@@ -390,8 +386,6 @@ async def async_fetch_database_info(
         api_endpoint: a full API endpoint for the Data API.
         token: a valid token to access the database information.
             If provided, overrides any token info found in api_options.
-        keyspace: the desired keyspace that will be used in the result.
-            If not specified, the resulting database info will show it as None.
         request_timeout_ms: a timeout, in milliseconds, for waiting on a response.
         timeout_ms: an alias for `request_timeout_ms`.
         api_options: a (possibly partial) specification of the API Options to use.
