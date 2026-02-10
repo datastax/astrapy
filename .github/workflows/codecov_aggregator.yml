@@ -183,7 +183,7 @@ jobs:
             });
             if (!res.data.artifacts?.length) {
               core.warning(`No artifact found named ${name}. Coverage delta will not be available`);
-              core.setOutput('run_id', '');
+              core.setOutput('run_id', '__NOT_SET__');
               return;
             }
             // pick newest
@@ -195,7 +195,7 @@ jobs:
           ART_SHA: ${{ steps.base_sha.outputs.sha }}
 
       - name: download coverage JSON from target commit on main
-        if: ${{ github.event.action != 'closed' && github.event_name == 'pull_request' && steps.resolve_main_run_id.outputs.run_id != '' }}
+        if: ${{ github.event.action != 'closed' && github.event_name == 'pull_request' && steps.resolve_main_run_id.outputs.run_id != '__NOT_SET__' }}
         uses: actions/download-artifact@v4
         with:
           name: coverage-json-push-${{ steps.base_sha.outputs.sha }}
@@ -224,7 +224,7 @@ jobs:
           script: |
             const prNumber = context.payload.pull_request.number;
             var missing_delta_notice = '';
-            if (${{ steps.resolve_main_run_id.outputs.run_id }} === ''){
+            if ('${{ steps.resolve_main_run_id.outputs.run_id }}' === '__NOT_SET__'){
               missing_delta_notice = '\n*WARNING*: Unable to compute coverage delta information.\n';
             }
             const body = `### Coverage report\nfor commit: \`${{ github.sha }}\`.\ndownload detailed report [here](${{ steps.upload_html.outputs['artifact-url'] }}).\n${missing_delta_notice}\`\`\`\n${{ steps.generate_coverage_report.outputs.text }}\n\`\`\``;

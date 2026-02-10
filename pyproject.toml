@@ -47,7 +47,8 @@ astrapy-repl = "astrapy.repl:main"
 dev = [
     "blockbuster ~= 1.5.5",
     "build >= 1.0.0",
-    "cassio ~= 0.1.10; python_version >= '3.9'",
+    "cassandra-driver>=3.29.2; python_version < '3.13'",
+    "cassio ~= 0.1.10; python_version < '3.13'",
     "coverage ~= 7.0.0",
     "faker ~= 23.1.0",
     "mypy ~= 1.9.0",

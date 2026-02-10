@@ -87,6 +87,7 @@ def test_imports() -> None:
         UsernamePasswordTokenProvider,
     )
     from astrapy.constants import (
+        DatabaseStatus,
         DefaultIdType,
         Environment,
         MapEncodingMode,

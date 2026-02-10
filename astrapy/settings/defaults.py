@@ -16,46 +16,39 @@ from __future__ import annotations
 
 import datetime
 
+from astrapy.settings.definitions.definitions_admin import Environment
+
 # whether to go the extra mile and ensure the "decimal escape trick" is
 # not colliding with legitimate user-provided (extremely rare) strings.
 # A system setting, off at this time
 CHECK_DECIMAL_ESCAPING_CONSISTENCY = False
 
-# Environment names for management internal to astrapy
-DATA_API_ENVIRONMENT_PROD = "prod"
-DATA_API_ENVIRONMENT_DEV = "dev"
-DATA_API_ENVIRONMENT_TEST = "test"
-DATA_API_ENVIRONMENT_DSE = "dse"
-DATA_API_ENVIRONMENT_HCD = "hcd"
-DATA_API_ENVIRONMENT_CASSANDRA = "cassandra"
-DATA_API_ENVIRONMENT_OTHER = "other"
-
 # Defaults/settings for Database management
 DEFAULT_ASTRA_DB_KEYSPACE = "default_keyspace"
 API_ENDPOINT_TEMPLATE_ENV_MAP = {
-    DATA_API_ENVIRONMENT_PROD: "https://{database_id}-{region}.apps.astra.datastax.com",
-    DATA_API_ENVIRONMENT_DEV: "https://{database_id}-{region}.apps.astra-dev.datastax.com",
-    DATA_API_ENVIRONMENT_TEST: "https://{database_id}-{region}.apps.astra-test.datastax.com",
+    Environment.PROD: "https://{database_id}-{region}.apps.astra.datastax.com",
+    Environment.DEV: "https://{database_id}-{region}.apps.astra-dev.datastax.com",
+    Environment.TEST: "https://{database_id}-{region}.apps.astra-test.datastax.com",
 }
 API_PATH_ENV_MAP = {
-    DATA_API_ENVIRONMENT_PROD: "/api/json",
-    DATA_API_ENVIRONMENT_DEV: "/api/json",
-    DATA_API_ENVIRONMENT_TEST: "/api/json",
+    Environment.PROD: "/api/json",
+    Environment.DEV: "/api/json",
+    Environment.TEST: "/api/json",
     #
-    DATA_API_ENVIRONMENT_DSE: "",
-    DATA_API_ENVIRONMENT_HCD: "",
-    DATA_API_ENVIRONMENT_CASSANDRA: "",
-    DATA_API_ENVIRONMENT_OTHER: "",
+    Environment.DSE: "",
+    Environment.HCD: "",
+    Environment.CASSANDRA: "",
+    Environment.OTHER: "",
 }
 API_VERSION_ENV_MAP = {
-    DATA_API_ENVIRONMENT_PROD: "/v1",
-    DATA_API_ENVIRONMENT_DEV: "/v1",
-    DATA_API_ENVIRONMENT_TEST: "/v1",
+    Environment.PROD: "/v1",
+    Environment.DEV: "/v1",
+    Environment.TEST: "/v1",
     #
-    DATA_API_ENVIRONMENT_DSE: "v1",
-    DATA_API_ENVIRONMENT_HCD: "v1",
-    DATA_API_ENVIRONMENT_CASSANDRA: "v1",
-    DATA_API_ENVIRONMENT_OTHER: "v1",
+    Environment.DSE: "v1",
+    Environment.HCD: "v1",
+    Environment.CASSANDRA: "v1",
+    Environment.OTHER: "v1",
 }
 
 # Defaults/settings for Data API requests
@@ -87,22 +80,16 @@ DEV_OPS_KEYSPACE_POLL_INTERVAL_S = 2
 DEV_OPS_DATABASE_POLL_INTERVAL_S = 15
 DEFAULT_DATABASE_ADMIN_TIMEOUT_MS = 600000
 DEFAULT_KEYSPACE_ADMIN_TIMEOUT_MS = 30000
-DEV_OPS_DATABASE_STATUS_MAINTENANCE = "MAINTENANCE"
-DEV_OPS_DATABASE_STATUS_ACTIVE = "ACTIVE"
-DEV_OPS_DATABASE_STATUS_PENDING = "PENDING"
-DEV_OPS_DATABASE_STATUS_INITIALIZING = "INITIALIZING"
-DEV_OPS_DATABASE_STATUS_ERROR = "ERROR"
-DEV_OPS_DATABASE_STATUS_TERMINATED = "TERMINATED"
-DEV_OPS_DATABASE_STATUS_TERMINATING = "TERMINATING"
+
 DEV_OPS_URL_ENV_MAP = {
-    DATA_API_ENVIRONMENT_PROD: "https://api.astra.datastax.com",
-    DATA_API_ENVIRONMENT_DEV: "https://api.dev.cloud.datastax.com",
-    DATA_API_ENVIRONMENT_TEST: "https://api.test.cloud.datastax.com",
+    Environment.PROD: "https://api.astra.datastax.com",
+    Environment.DEV: "https://api.dev.cloud.datastax.com",
+    Environment.TEST: "https://api.test.cloud.datastax.com",
 }
 DEV_OPS_VERSION_ENV_MAP = {
-    DATA_API_ENVIRONMENT_PROD: "v2",
-    DATA_API_ENVIRONMENT_DEV: "v2",
-    DATA_API_ENVIRONMENT_TEST: "v2",
+    Environment.PROD: "v2",
+    Environment.DEV: "v2",
+    Environment.TEST: "v2",
 }
 DEV_OPS_RESPONSE_HTTP_ACCEPTED = 202
 DEV_OPS_RESPONSE_HTTP_CREATED = 201
