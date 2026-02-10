@@ -195,7 +195,7 @@ jobs:
           ART_SHA: ${{ steps.base_sha.outputs.sha }}
 
       - name: download coverage JSON from target commit on main
-        if: ${{ github.event.action != 'closed' && github.event_name == 'pull_request' && steps.resolve_main_run_id.outputs.run_id != '' }}
+        if: ${{ github.event.action != 'closed' && github.event_name == 'pull_request' && steps.resolve_main_run_id.outputs.run_id != '__NOT_SET__' }}
         uses: actions/download-artifact@v4
         with:
           name: coverage-json-push-${{ steps.base_sha.outputs.sha }}
