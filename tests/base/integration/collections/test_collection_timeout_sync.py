@@ -52,7 +52,6 @@ class TestCollectionTimeoutSync:
         info = fetch_database_info(
             sync_database.api_endpoint,
             token=sync_database.api_options.token,
-            keyspace=sync_database.keyspace,
         )
         assert info is not None
 
@@ -60,7 +59,6 @@ class TestCollectionTimeoutSync:
             info = fetch_database_info(
                 sync_database.api_endpoint,
                 token=sync_database.api_options.token,
-                keyspace=sync_database.keyspace,
                 request_timeout_ms=50,
             )
             assert info is not None
