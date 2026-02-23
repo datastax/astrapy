@@ -327,7 +327,7 @@ class EmbeddingAPIKeyHeaderProvider(EmbeddingHeadersProvider):
         ...     "vectorize_aws_collection",
         ...     definition=(
         ...         CollectionDefinition.builder()
-        ...         .set_vector_service(service_options)
+        ...         .with_vector_service(service_options)
         ...         .build()
         ...     ),
         ...     embedding_api_key=my_emb_api_key,
@@ -393,7 +393,7 @@ class AWSEmbeddingHeadersProvider(EmbeddingHeadersProvider):
         ...     "vectorize_aws_collection",
         ...     definition=(
         ...         CollectionDefinition.builder()
-        ...         .set_vector_service(service_options)
+        ...         .with_vector_service(service_options)
         ...         .build()
         ...     ),
         ...     embedding_api_key=my_aws_emb_api_key,
@@ -465,7 +465,7 @@ class RerankingAPIKeyHeaderProvider(RerankingHeadersProvider):
         ...     "my_reranking_collection",
         ...     definition=(
         ...         CollectionDefinition.builder()
-        ...         .set_rerank(CollectionRerankOptions(service=service_options))
+        ...         .with_rerank(CollectionRerankOptions(service=service_options))
         ...         .build()
         ...     ),
         ...     reranking_api_key=my_rrk_api_key,
