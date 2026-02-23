@@ -20,6 +20,7 @@ from typing import Any
 from astrapy.data.info.database_info import AstraDBDatabaseInfo
 from astrapy.data.info.reranking import RerankServiceOptions
 from astrapy.data.info.vectorize import VectorServiceOptions
+from astrapy.utils.meta import deprecated_method
 from astrapy.utils.parsing import _warn_residual_keys
 from astrapy.utils.unset import _UNSET, UnsetType
 
@@ -277,9 +278,9 @@ class CollectionDefinition:
         >>> # Create a collection definition with the fluent interface:
         >>> collection_definition = (
         ...     CollectionDefinition.builder()
-        ...     .set_vector_dimension(3)
-        ...     .set_vector_metric(VectorMetric.DOT_PRODUCT)
-        ...     .set_indexing("deny", ["annotations", "logs"])
+        ...     .with_vector_dimension(3)
+        ...     .with_vector_metric(VectorMetric.DOT_PRODUCT)
+        ...     .with_indexing("deny", ["annotations", "logs"])
         ...     .build()
         ... )
         >>>
@@ -404,7 +405,7 @@ class CollectionDefinition:
 
         return CollectionDefinition()
 
-    def set_indexing(
+    def with_indexing(
         self, indexing_mode: str | None, indexing_target: list[str] | None = None
     ) -> CollectionDefinition:
         """
@@ -453,7 +454,14 @@ class CollectionDefinition:
             default_id=self.default_id,
         )
 
-    def set_default_id(self, default_id_type: str | None) -> CollectionDefinition:
+    @deprecated_method(new_name="with_indexing", deprecated_in="2.1.0", removed_in="3.0.0")
+    def set_indexing(
+        self, indexing_mode: str | None, indexing_target: list[str] | None = None
+    ) -> CollectionDefinition:
+        """Deprecated alias for with_indexing. Use with_indexing instead."""
+        return self.with_indexing(indexing_mode, indexing_target)
+
+    def with_default_id(self, default_id_type: str | None) -> CollectionDefinition:
         """
         Return a new collection definition object with a new setting for the
         collection 'default ID type'. This method is for use within the
@@ -490,7 +498,12 @@ class CollectionDefinition:
             ),
         )
 
-    def set_vector_dimension(self, dimension: int | None) -> CollectionDefinition:
+    @deprecated_method(new_name="with_default_id", deprecated_in="2.1.0", removed_in="3.0.0")
+    def set_default_id(self, default_id_type: str | None) -> CollectionDefinition:
+        """Deprecated alias for with_default_id. Use with_default_id instead."""
+        return self.with_default_id(default_id_type)
+
+    def with_vector_dimension(self, dimension: int | None) -> CollectionDefinition:
         """
         Return a new collection definition object with a new setting for the
         collection's vector dimension. This method is for use within the
@@ -523,7 +536,12 @@ class CollectionDefinition:
             default_id=self.default_id,
         )
 
-    def set_vector_metric(self, metric: str | None) -> CollectionDefinition:
+    @deprecated_method(new_name="with_vector_dimension", deprecated_in="2.1.0", removed_in="3.0.0")
+    def set_vector_dimension(self, dimension: int | None) -> CollectionDefinition:
+        """Deprecated alias for with_vector_dimension. Use with_vector_dimension instead."""
+        return self.with_vector_dimension(dimension)
+
+    def with_vector_metric(self, metric: str | None) -> CollectionDefinition:
         """
         Return a new collection definition object with a new setting for the
         collection's vector similarity metric. This method is for use within the
@@ -557,7 +575,12 @@ class CollectionDefinition:
             default_id=self.default_id,
         )
 
-    def set_vector_source_model(self, source_model: str | None) -> CollectionDefinition:
+    @deprecated_method(new_name="with_vector_metric", deprecated_in="2.1.0", removed_in="3.0.0")
+    def set_vector_metric(self, metric: str | None) -> CollectionDefinition:
+        """Deprecated alias for with_vector_metric. Use with_vector_metric instead."""
+        return self.with_vector_metric(metric)
+
+    def with_vector_source_model(self, source_model: str | None) -> CollectionDefinition:
         """
         Return a new collection definition object with a new setting for the
         collection's vector 'source model' parameter. This method is for use within the
@@ -592,7 +615,12 @@ class CollectionDefinition:
             default_id=self.default_id,
         )
 
-    def set_vector_service(
+    @deprecated_method(new_name="with_vector_source_model", deprecated_in="2.1.0", removed_in="3.0.0")
+    def set_vector_source_model(self, source_model: str | None) -> CollectionDefinition:
+        """Deprecated alias for with_vector_source_model. Use with_vector_source_model instead."""
+        return self.with_vector_source_model(source_model)
+
+    def with_vector_service(
         self,
         provider: str | VectorServiceOptions | None,
         model_name: str | None = None,
@@ -636,7 +664,7 @@ class CollectionDefinition:
             >>>
             >>> zero = CollectionDefinition.builder()
             >>>
-            >>> svc1 = zero.set_vector_service(
+            >>> svc1 = zero.with_vector_service(
             ...     "myProvider",
             ...     "myModelName",
             ...     parameters={"p": "z"},
@@ -649,11 +677,11 @@ class CollectionDefinition:
             ...     model_name="myModelName",
             ...     parameters={"p": "z"},
             ... )
-            >>> svc2 = zero.set_vector_service(myVecSvcOpt).build()
+            >>> svc2 = zero.with_vector_service(myVecSvcOpt).build()
             >>> print(svc2.as_dict())
             {'vector': {'service': {'provider': 'myProvider', 'modelName': 'myModelName', 'parameters': {'p': 'z'}}}}
             >>>
-            >>> reset = svc1.set_vector_service(None).build()
+            >>> reset = svc1.with_vector_service(None).build()
             >>> print(reset.as_dict())
             {}
         """
@@ -716,7 +744,19 @@ class CollectionDefinition:
                 default_id=self.default_id,
             )
 
-    def set_rerank(
+    @deprecated_method(new_name="with_vector_service", deprecated_in="2.1.0", removed_in="3.0.0")
+    def set_vector_service(
+        self,
+        provider: str | VectorServiceOptions | None,
+        model_name: str | None = None,
+        *,
+        authentication: dict[str, Any] | None = None,
+        parameters: dict[str, Any] | None = None,
+    ) -> CollectionDefinition:
+        """Deprecated alias for with_vector_service. Use with_vector_service instead."""
+        return self.with_vector_service(provider, model_name, authentication=authentication, parameters=parameters)
+
+    def with_rerank(
         self,
         provider: str
         | CollectionRerankOptions
@@ -775,7 +815,7 @@ class CollectionDefinition:
             >>>
             >>> zero = CollectionDefinition.builder()
             >>>
-            >>> rrk1 = zero.set_rerank(
+            >>> rrk1 = zero.with_rerank(
             ...     "myProvider",
             ...     "myModelName",
             ...     parameters={"p": "z"},
@@ -788,7 +828,7 @@ class CollectionDefinition:
             ...     model_name="myModelName",
             ...     parameters={"p": "z"},
             ... )
-            >>> rrk2 = zero.set_rerank(myRrkSvcOpt).build()
+            >>> rrk2 = zero.with_rerank(myRrkSvcOpt).build()
             >>> print(rrk2.as_dict())
             {'rerank': {'enabled': True, 'service': {'provider': 'myProvider', 'modelName': 'myModelName', 'parameters': {'p': 'z'}}}}
             >>>
@@ -796,15 +836,15 @@ class CollectionDefinition:
             ...     enabled=True,
             ...     service=myRrkSvcOpt,
             ... )
-            >>> rrk3 = zero.set_rerank(myColRrkOpt).build()
+            >>> rrk3 = zero.with_rerank(myColRrkOpt).build()
             >>> print(rrk3.as_dict())
             {'rerank': {'enabled': True, 'service': {'provider': 'myProvider', 'modelName': 'myModelName', 'parameters': {'p': 'z'}}}}
             >>>
-            >>> rrk4 = rrk1.set_rerank(enabled=False).build()
+            >>> rrk4 = rrk1.with_rerank(enabled=False).build()
             >>> print(rrk4.as_dict())
             {'rerank': {'enabled': False}}
             >>>
-            >>> reset = rrk1.set_rerank(None).build()
+            >>> reset = rrk1.with_rerank(None).build()
             >>> print(reset.as_dict())
             {}
         """
@@ -883,7 +923,7 @@ class CollectionDefinition:
             if enabled is None:
                 msg = (
                     "At least one of 'provider' and 'enabled' must be passed "
-                    "to `set_rerank`."
+                    "to `with_rerank`."
                 )
                 raise ValueError(msg)
             return CollectionDefinition(
@@ -911,7 +951,24 @@ class CollectionDefinition:
                 default_id=self.default_id,
             )
 
-    def set_lexical(
+    @deprecated_method(new_name="with_rerank", deprecated_in="2.1.0", removed_in="3.0.0")
+    def set_rerank(
+        self,
+        provider: str
+        | CollectionRerankOptions
+        | RerankServiceOptions
+        | None
+        | UnsetType = _UNSET,
+        model_name: str | None = None,
+        *,
+        authentication: dict[str, Any] | None = None,
+        parameters: dict[str, Any] | None = None,
+        enabled: bool | None = None,
+    ) -> CollectionDefinition:
+        """Deprecated alias for with_rerank. Use with_rerank instead."""
+        return self.with_rerank(provider, model_name, authentication=authentication, parameters=parameters, enabled=enabled)
+
+    def with_lexical(
         self,
         analyzer: str
         | dict[str, Any]
@@ -949,19 +1006,19 @@ class CollectionDefinition:
             >>>
             >>> zero = CollectionDefinition.builder()
             >>>
-            >>> anz1 = zero.set_lexical(
+            >>> anz1 = zero.with_lexical(
             ...     "analyzer_setting",
             ... )
             >>> print(anz1.build().as_dict())
             {'lexical': {'enabled': True, 'analyzer': 'analyzer_setting'}}
             >>> myLexOpt = CollectionLexicalOptions(analyzer="analyzer_setting")
-            >>> anz2 = zero.set_lexical(myLexOpt).build()
+            >>> anz2 = zero.with_lexical(myLexOpt).build()
             >>> print(anz2.as_dict())
             {'lexical': {'enabled': True, 'analyzer': 'analyzer_setting'}}
-            >>> reset = anz1.set_lexical(None).build()
+            >>> reset = anz1.with_lexical(None).build()
             >>> print(reset.as_dict())
             {}
-            >>> anz3 = zero.set_lexical(enabled=False).build()
+            >>> anz3 = zero.with_lexical(enabled=False).build()
             >>> print(anz3.as_dict())
             {'lexical': {'enabled': False}}
         """
@@ -995,7 +1052,7 @@ class CollectionDefinition:
             if enabled is None:
                 msg = (
                     "At least one of 'enabled' and 'analyzer' must be passed "
-                    "to set_lexical."
+                    "to with_lexical."
                 )
                 raise ValueError(msg)
             return CollectionDefinition(
@@ -1017,6 +1074,20 @@ class CollectionDefinition:
                 indexing=self.indexing,
                 default_id=self.default_id,
             )
+
+    @deprecated_method(new_name="with_lexical", deprecated_in="2.1.0", removed_in="3.0.0")
+    def set_lexical(
+        self,
+        analyzer: str
+        | dict[str, Any]
+        | CollectionLexicalOptions
+        | None
+        | UnsetType = _UNSET,
+        *,
+        enabled: bool | None = None,
+    ) -> CollectionDefinition:
+        """Deprecated alias for with_lexical. Use with_lexical instead."""
+        return self.with_lexical(analyzer, enabled=enabled)
 
     def build(self) -> CollectionDefinition:
         """

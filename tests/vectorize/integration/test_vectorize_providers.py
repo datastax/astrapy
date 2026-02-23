@@ -127,9 +127,9 @@ class TestVectorizeProviders:
                 collection_name,
                 definition=(
                     CollectionDefinition.builder()
-                    .set_vector_dimension(dimension)
-                    .set_vector_metric("cosine")
-                    .set_vector_service(service_options)
+                    .with_vector_dimension(dimension)
+                    .with_vector_metric("cosine")
+                    .with_vector_service(service_options)
                     .build()
                 ),
                 embedding_api_key=embedding_api_key,
@@ -219,9 +219,9 @@ class TestVectorizeProviders:
                 collection_name,
                 definition=(
                     CollectionDefinition.builder()
-                    .set_vector_dimension(dimension)
-                    .set_vector_metric("cosine")
-                    .set_vector_service(service_options)
+                    .with_vector_dimension(dimension)
+                    .with_vector_metric("cosine")
+                    .with_vector_service(service_options)
                     .build()
                 ),
             )
@@ -323,9 +323,9 @@ class TestVectorizeProviders:
                 collection_name,
                 definition=(
                     CollectionDefinition.builder()
-                    .set_vector_dimension(dimension)
-                    .set_vector_metric("cosine")
-                    .set_vector_service(service_options)
+                    .with_vector_dimension(dimension)
+                    .with_vector_metric("cosine")
+                    .with_vector_service(service_options)
                     .build()
                 ),
             )

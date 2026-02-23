@@ -1125,7 +1125,7 @@ class AstraDBAdmin:
             ...     "movies",
             ...     definition=(
             ...         CollectionDefinition.builder()
-            ...         .set_vector_dimension(2)
+            ...         .with_vector_dimension(2)
             ...         .build()
             ...     )
             ... )
@@ -1794,7 +1794,7 @@ class AstraDBAdmin:
             ...     "movies",
             ...     definition=(
             ...         CollectionDefinition.builder()
-            ...         .set_vector_dimension(2)
+            ...         .with_vector_dimension(2)
             ...         .build()
             ...     )
             ... )
@@ -1920,7 +1920,7 @@ class AstraDBAdmin:
             ...         "movies",
             ...         definition=(
             ...             CollectionDefinition.builder()
-            ...             .set_vector_dimension(2)
+            ...             .with_vector_dimension(2)
             ...             .build()
             ...         )
             ...     )
