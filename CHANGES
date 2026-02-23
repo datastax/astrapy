@@ -33,6 +33,7 @@ maintenance. Improvement in testing machinery:
     - Made keyspace names fully optional in all cases (typically one can forget about them).
     - Adapted/simplified README about testing.
     - KMS-vectorize testing is now optional in the Astra base test suite.
+maintenance: some vuln-related dev-dependency upgrades (requests, virtualenv, werkzeug)
 
 
 v 2.1.0
