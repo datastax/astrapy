@@ -98,6 +98,33 @@ def deprecated_property(
     return _deprecator
 
 
+def deprecated_method(
+    new_name: str, deprecated_in: str, removed_in: str
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    """
+    Decorator for a method that is a deprecated alias for method 'new_name'.
+    """
+
+    def _deprecator(method: Callable[P, R]) -> Callable[P, R]:
+        @wraps(method)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            the_warning = DeprecatedWarning(
+                f"Method '{method.__name__}'",
+                deprecated_in=deprecated_in,
+                removed_in=removed_in,
+                details=f"Please use '{new_name}' instead.",
+            )
+            warnings.warn(
+                the_warning,
+                stacklevel=2,
+            )
+            return method(*args, **kwargs)
+
+        return wrapper
+
+    return _deprecator
+
+
 def beta_method(method: Callable[P, R]) -> Callable[P, R]:
     @wraps(method)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:

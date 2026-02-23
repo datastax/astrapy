@@ -265,11 +265,11 @@ def test_fluent_collection_definition() -> None:
     assert zero.build().as_dict() == {}
 
     rich = (
-        zero.set_indexing("allow", ["a", "b"])
-        .set_default_id("UUID")
-        .set_vector_dimension(123)
-        .set_vector_metric("cosine")
-        .set_vector_service(
+        zero.with_indexing("allow", ["a", "b"])
+        .with_default_id("UUID")
+        .with_vector_dimension(123)
+        .with_vector_metric("cosine")
+        .with_vector_service(
             "prov", "mod", authentication={"a": "u"}, parameters={"p": "a"}
         )
         .build()
@@ -291,12 +291,12 @@ def test_fluent_collection_definition() -> None:
     assert rich.as_dict() == expected_rich_dict
 
     zero_2 = (
-        rich.set_indexing(None)
-        .set_default_id(None)
-        .set_vector_dimension(None)
-        .set_vector_metric(None)
-        .set_vector_source_model(None)
-        .set_vector_service(None)
+        rich.with_indexing(None)
+        .with_default_id(None)
+        .with_vector_dimension(None)
+        .with_vector_metric(None)
+        .with_vector_source_model(None)
+        .with_vector_service(None)
         .build()
     )
     assert zero_2.build().as_dict() == {}

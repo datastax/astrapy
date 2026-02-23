@@ -127,7 +127,7 @@ class TestFindAndRerankCollectionDefinition:
     def test_farr_collectiondefinition_rerank_builders(self) -> None:
         zero = CollectionDefinition.builder()
 
-        rer1 = zero.set_rerank("p", "m", parameters={"p": "q"}).build()
+        rer1 = zero.with_rerank("p", "m", parameters={"p": "q"}).build()
         assert rer1.as_dict() == {
             "rerank": {
                 "enabled": True,
@@ -140,7 +140,7 @@ class TestFindAndRerankCollectionDefinition:
         }
 
         r_svc = RerankServiceOptions("P", "M")
-        rer2 = zero.set_rerank(r_svc).build()
+        rer2 = zero.with_rerank(r_svc).build()
         assert rer2.as_dict() == {
             "rerank": {
                 "enabled": True,
@@ -151,7 +151,7 @@ class TestFindAndRerankCollectionDefinition:
         cr_opt = CollectionRerankOptions(
             service=RerankServiceOptions("pp", "mm"),
         )
-        rer3 = zero.set_rerank(cr_opt).build()
+        rer3 = zero.with_rerank(cr_opt).build()
         assert rer3.as_dict() == {
             "rerank": {
                 "enabled": True,
@@ -159,8 +159,8 @@ class TestFindAndRerankCollectionDefinition:
             }
         }
 
-        rer_z = zero.set_rerank("x", "y")
-        reset = rer_z.set_rerank(None).build()
+        rer_z = zero.with_rerank("x", "y")
+        reset = rer_z.with_rerank(None).build()
         assert reset.as_dict() == {}
 
     @pytest.mark.describe(
@@ -169,7 +169,7 @@ class TestFindAndRerankCollectionDefinition:
     def test_farr_collectiondefinition_lexical_builders(self) -> None:
         zero = CollectionDefinition.builder()
 
-        lex1 = zero.set_lexical("an").build()
+        lex1 = zero.with_lexical("an").build()
         assert lex1.as_dict() == {
             "lexical": {
                 "enabled": True,
@@ -178,7 +178,7 @@ class TestFindAndRerankCollectionDefinition:
         }
 
         lx_opt = CollectionLexicalOptions(enabled=False, analyzer="AN")
-        lex2 = zero.set_lexical(lx_opt).build()
+        lex2 = zero.with_lexical(lx_opt).build()
         assert lex2.as_dict() == {
             "lexical": {
                 "enabled": False,
@@ -186,12 +186,12 @@ class TestFindAndRerankCollectionDefinition:
             }
         }
 
-        lex3 = zero.set_lexical(enabled=False)
+        lex3 = zero.with_lexical(enabled=False)
         assert lex3.as_dict() == {"lexical": {"enabled": False}}
 
-        lex4 = zero.set_lexical(enabled=True)
+        lex4 = zero.with_lexical(enabled=True)
         assert lex4.as_dict() == {"lexical": {"enabled": True}}
 
-        lex_z = zero.set_lexical("aaa")
-        reset = lex_z.set_lexical(None)
+        lex_z = zero.with_lexical("aaa")
+        reset = lex_z.with_lexical(None)
         assert reset.as_dict() == {}
