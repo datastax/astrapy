@@ -20,10 +20,11 @@ SSL bugfix due to older patches of Python 3.12:
 Removed the unused 'keyspace' parameter from `[async_]fetch_database_info` admin utility function
 Removed the beta marker from find_and_rerank methods
 Removed the legacy no-indexType fallback for parsing the response of list_indexes
+Added AGENTS.md (and the .bob per-mode equivalent files)
 maintenance: measure test coverage for PRs and merges to main; calculate delta for PRs
 maintenance: bump urllib3 to >= 2.6.3 to avoid CVE-2026-21441
 maintenance: add flag `TEST_EXTENDED_VECTORIZE` for test runnability in all cases
-maintenance: introduce `LEGACY_INSERTMANY_BEHAVIOUR_PRE2193` flag to control related tests
+maintenance: introduce `LEGACY_INSERTMANY_BEHAVIOUR_PRE2193` flag to control related tests (former ordered-insertion-for-tables behaviour)
 maintenance: enabled text-index integration tests on Astra
 maintenance: refactor `constants.py` for better management; add `DatabaseStatus` enum
 maintenance: introduced the publish-and-release workflow machinery
