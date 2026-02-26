@@ -15,6 +15,9 @@
 from __future__ import annotations
 
 import asyncio
+
+# TODO NOINETINUDT
+# import ipaddress
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -283,6 +286,8 @@ class TestTableUserDefinedTypes:
                 udt_unit = {
                     "name": "John",
                     "age": 90,
+                    # TODO NOINETINUDT
+                    # "inet": ipaddress.ip_address("127.0.0.1"),
                     # TODO NOBLOBINUDT
                     # "blb": THE_BYTES,
                     "ts": THE_TIMESTAMP,
@@ -292,6 +297,8 @@ class TestTableUserDefinedTypes:
                     {
                         "name": "John",
                         "age": 90,
+                        # TODO NOINETINUDT
+                        # "inet": ipaddress.ip_address("127.0.0.1"),
                         # TODO NOBLOBINUDT
                         # "blb": THE_BYTES,
                         "ts": THE_TIMESTAMP,
@@ -301,6 +308,8 @@ class TestTableUserDefinedTypes:
                 udt_unit = ExtendedPlayer(
                     name="John",
                     age=90,
+                    # TODO NOINETINUDT
+                    # inet=ipaddress.ip_address("127.0.0.1"),
                     # TODO NOBLOBINUDT
                     # blb=THE_BYTES,
                     ts=THE_TIMESTAMP,
@@ -371,6 +380,8 @@ class TestTableUserDefinedTypes:
                             expected_udt_unit = ExtendedPlayer(
                                 name="John",
                                 age=90,
+                                # TODO NOINETINUDT
+                                # inet=ipaddress.ip_address("127.0.0.1"),
                                 # TODO NOBLOBINUDT
                                 # blb=THE_BYTES,
                                 ts=THE_TIMESTAMP,
@@ -398,6 +409,8 @@ class TestTableUserDefinedTypes:
                                 {
                                     "name": "John",
                                     "age": 90,
+                                    # TODO NOINETINUDT
+                                    # "inet": ipaddress.ip_address("127.0.0.1"),
                                     # TODO NOBLOBINUDT
                                     # "blb": THE_BYTES,
                                     "ts": THE_TIMESTAMP,
@@ -424,6 +437,8 @@ class TestTableUserDefinedTypes:
                             expected_udt_unit = ExtendedPlayer(
                                 name="John",
                                 age=90,
+                                # TODO NOINETINUDT
+                                # inet=ipaddress.ip_address("127.0.0.1"),
                                 # TODO NOBLOBINUDT
                                 # blb=THE_BYTES,
                                 ts=THE_DATETIME,
@@ -444,6 +459,8 @@ class TestTableUserDefinedTypes:
                             expected_udt_unit = {
                                 "name": "John",
                                 "age": 90,
+                                # TODO NOINETINUDT
+                                # "inet": ipaddress.ip_address("127.0.0.1"),
                                 # TODO NOBLOBINUDT
                                 # "blb": THE_BYTES,
                                 "ts": THE_DATETIME,
