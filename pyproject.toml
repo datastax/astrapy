@@ -1,11 +1,11 @@
 [project]
 requires-python = ">=3.9,<4.0"
 name = "astrapy"
-version = "2.1.0"
+version = "2.2.0"
 description = "A Python client for the Data API on DataStax Astra DB"
 authors = [
-    {"name" = "Stefano Lottini", "email" = "stefano.lottini@datastax.com"},
-    {"name" = "Eric Hare", "email" = "eric.hare@datastax.com"},
+    {"name" = "Stefano Lottini", "email" = "stefano.lottini@ibm.com"},
+    {"name" = "Eric Hare", "email" = "eric.hare@ibm.com"},
 ]
 readme = "README.md"
 
