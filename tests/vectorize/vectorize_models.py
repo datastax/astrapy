@@ -108,7 +108,13 @@ SECRET_NAME_ROOT_MAP = {
 # Any "model tag" listed here is skipped no matter what.
 # (useful for models already from the findEmbProvs but not stable/working yet).
 EXCLUDED_MODEL_QUADRUPLES = {
-    ("jinaAI", "jina-embeddings-v3", "HEADER", "0"),
+    # Cohere provider, while returned by FindEmbProv's, is not in scope for Vectorize and is skipped:
+    ("cohere", "embed-english-v2.0", "HEADER", "f"),
+    ("cohere", "embed-english-v3.0", "HEADER", "f"),
+    ("cohere", "embed-multilingual-v3.0", "HEADER", "f"),
+    # Pending a testable deployment, HuggingFace Dedicated testing is momentarily suspended:
+    ("huggingfaceDedicated", "endpoint-defined-model", "HEADER", "f"),
+    ("huggingfaceDedicated", "endpoint-defined-model", "SHARED_SECRET", "f"),
 }
 
 # this is a way to suppress/limit certain combinations of
