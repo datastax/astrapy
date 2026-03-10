@@ -86,7 +86,7 @@ class TestAPICommander:
             spawner=None,
         )
         assert cmd_default.ca_cert_path is None
-        assert cmd_default.client._transport._pool._ssl_context is CLIENT_SSL_CONTEXT  # type: ignore[union-attr]
+        assert cmd_default.client._transport._pool._ssl_context is CLIENT_SSL_CONTEXT  # type: ignore[attr-defined]
 
         # custom CA: creates a distinct SSL context
         ca_path = certifi.where()  # reuse certifi's bundle as a known-valid path
@@ -97,7 +97,7 @@ class TestAPICommander:
             ca_cert_path=ca_path,
         )
         assert cmd_custom.ca_cert_path == ca_path
-        custom_ctx = cmd_custom.client._transport._pool._ssl_context  # type: ignore[union-attr]
+        custom_ctx = cmd_custom.client._transport._pool._ssl_context  # type: ignore[attr-defined]
         assert isinstance(custom_ctx, ssl.SSLContext)
         assert custom_ctx is not CLIENT_SSL_CONTEXT
 
