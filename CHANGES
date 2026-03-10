@@ -1,9 +1,13 @@
-main
-====
+v 2.3.0rc1
+=======
 CollectionDefinition fluent interface: renamed all `set_*` methods to `with_*` (e.g., `set_vector_dimension` → `with_vector_dimension`):
     - This better conveys the immutable builder pattern (methods return new objects rather than mutating in place)
     - Old `set_*` methods remain as deprecated aliases (deprecated in 2.1.0, will be removed in 3.0.0)
     - Affected methods: `with_indexing`, `with_default_id`, `with_vector_dimension`, `with_vector_metric`, `with_vector_source_model`, `with_vector_service`, `with_rerank`, `with_lexical`
+
+
+v 2.2.0
+=======
 Supported Python versions are now 3.9 to 3.14:
     - extend to 3.13 and 3.14
     - removal of Python 3.8 [Breaking change w.r.t. 2.1]
@@ -24,10 +28,12 @@ SSL bugfix due to older patches of Python 3.12:
 Removed the unused 'keyspace' parameter from `[async_]fetch_database_info` admin utility function
 Removed the beta marker from find_and_rerank methods
 Removed the legacy no-indexType fallback for parsing the response of list_indexes
+Added AGENTS.md (and the .bob per-mode equivalent files)
+maintenance: bump Data API image to 1.0.39 for HCD testing
 maintenance: measure test coverage for PRs and merges to main; calculate delta for PRs
 maintenance: bump urllib3 to >= 2.6.3 to avoid CVE-2026-21441
 maintenance: add flag `TEST_EXTENDED_VECTORIZE` for test runnability in all cases
-maintenance: introduce `LEGACY_INSERTMANY_BEHAVIOUR_PRE2193` flag to control related tests
+maintenance: introduce `LEGACY_INSERTMANY_BEHAVIOUR_PRE2193` flag to control related tests (former ordered-insertion-for-tables behaviour)
 maintenance: enabled text-index integration tests on Astra
 maintenance: refactor `constants.py` for better management; add `DatabaseStatus` enum
 maintenance: introduced the publish-and-release workflow machinery
