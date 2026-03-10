@@ -71,6 +71,40 @@ class TestAPICommander:
         )
         assert cmd1 == cmd1._copy(dev_ops_api=False)._copy(dev_ops_api=True)
 
+    @pytest.mark.describe("test of APICommander ca_cert_path SSL context")
+    def test_apicommander_ca_cert_path(self) -> None:
+        import ssl
+
+        import certifi
+
+        from astrapy.utils.api_commander import CLIENT_SSL_CONTEXT
+
+        # default: uses the shared global SSL context
+        cmd_default = APICommander(
+            api_endpoint="https://example.com",
+            path="/v1",
+            spawner=None,
+        )
+        assert cmd_default.ca_cert_path is None
+        assert cmd_default.client._transport._pool._ssl_context is CLIENT_SSL_CONTEXT  # type: ignore[union-attr]
+
+        # custom CA: creates a distinct SSL context
+        ca_path = certifi.where()  # reuse certifi's bundle as a known-valid path
+        cmd_custom = APICommander(
+            api_endpoint="https://example.com",
+            path="/v1",
+            spawner=None,
+            ca_cert_path=ca_path,
+        )
+        assert cmd_custom.ca_cert_path == ca_path
+        custom_ctx = cmd_custom.client._transport._pool._ssl_context  # type: ignore[union-attr]
+        assert isinstance(custom_ctx, ssl.SSLContext)
+        assert custom_ctx is not CLIENT_SSL_CONTEXT
+
+        # _copy preserves ca_cert_path
+        cmd_copied = cmd_custom._copy(path="/v2")
+        assert cmd_copied.ca_cert_path == ca_path
+
     @pytest.mark.describe("test of APICommander request, sync")
     def test_apicommander_request_sync(self, httpserver: HTTPServer) -> None:
         base_endpoint = httpserver.url_for("/")
