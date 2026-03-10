@@ -455,7 +455,7 @@ class CollectionDefinition:
         )
 
     @deprecated_method(
-        new_name="with_indexing", deprecated_in="2.1.0", removed_in="3.0.0"
+        new_name="with_indexing", deprecated_in="2.3.0", removed_in="3.0.0"
     )
     def set_indexing(
         self, indexing_mode: str | None, indexing_target: list[str] | None = None
@@ -501,7 +501,7 @@ class CollectionDefinition:
         )
 
     @deprecated_method(
-        new_name="with_default_id", deprecated_in="2.1.0", removed_in="3.0.0"
+        new_name="with_default_id", deprecated_in="2.3.0", removed_in="3.0.0"
     )
     def set_default_id(self, default_id_type: str | None) -> CollectionDefinition:
         """Deprecated alias for with_default_id. Use with_default_id instead."""
@@ -541,7 +541,7 @@ class CollectionDefinition:
         )
 
     @deprecated_method(
-        new_name="with_vector_dimension", deprecated_in="2.1.0", removed_in="3.0.0"
+        new_name="with_vector_dimension", deprecated_in="2.3.0", removed_in="3.0.0"
     )
     def set_vector_dimension(self, dimension: int | None) -> CollectionDefinition:
         """Deprecated alias for with_vector_dimension. Use with_vector_dimension instead."""
@@ -582,7 +582,7 @@ class CollectionDefinition:
         )
 
     @deprecated_method(
-        new_name="with_vector_metric", deprecated_in="2.1.0", removed_in="3.0.0"
+        new_name="with_vector_metric", deprecated_in="2.3.0", removed_in="3.0.0"
     )
     def set_vector_metric(self, metric: str | None) -> CollectionDefinition:
         """Deprecated alias for with_vector_metric. Use with_vector_metric instead."""
@@ -626,7 +626,7 @@ class CollectionDefinition:
         )
 
     @deprecated_method(
-        new_name="with_vector_source_model", deprecated_in="2.1.0", removed_in="3.0.0"
+        new_name="with_vector_source_model", deprecated_in="2.3.0", removed_in="3.0.0"
     )
     def set_vector_source_model(self, source_model: str | None) -> CollectionDefinition:
         """Deprecated alias for with_vector_source_model. Use with_vector_source_model instead."""
@@ -757,7 +757,7 @@ class CollectionDefinition:
             )
 
     @deprecated_method(
-        new_name="with_vector_service", deprecated_in="2.1.0", removed_in="3.0.0"
+        new_name="with_vector_service", deprecated_in="2.3.0", removed_in="3.0.0"
     )
     def set_vector_service(
         self,
@@ -968,7 +968,7 @@ class CollectionDefinition:
             )
 
     @deprecated_method(
-        new_name="with_rerank", deprecated_in="2.1.0", removed_in="3.0.0"
+        new_name="with_rerank", deprecated_in="2.3.0", removed_in="3.0.0"
     )
     def set_rerank(
         self,
@@ -1100,7 +1100,7 @@ class CollectionDefinition:
             )
 
     @deprecated_method(
-        new_name="with_lexical", deprecated_in="2.1.0", removed_in="3.0.0"
+        new_name="with_lexical", deprecated_in="2.3.0", removed_in="3.0.0"
     )
     def set_lexical(
         self,
