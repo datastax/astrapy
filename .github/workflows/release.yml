@@ -69,7 +69,6 @@ jobs:
           PKG_NAME: ${{ steps.check-version.outputs.pkg-name }}
           VERSION: ${{ steps.check-version.outputs.version }}
         run: |
-          import json
           import os
           import urllib.request
           import urllib.error
@@ -79,7 +78,7 @@ jobs:
           
           try:
               url = f"https://pypi.org/pypi/{pkg_name}/{version}/json"
-              with urllib.request.urlopen(url) as response:
+              with urllib.request.urlopen(url, timeout=30) as response:
                   # If we get here, the version exists on PyPI
                   print(f"Version {version} already exists on PyPI")
                   version_exists = "true"
@@ -229,7 +228,7 @@ jobs:
           name: dist
           path: dist/
 
-      - name: Publish package distributions to PyPI - TEST FOR NOW
+      - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
