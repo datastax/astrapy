@@ -945,6 +945,12 @@ class APIOptions:
         dev_ops_api_url_options: an instance of `DevOpsAPIURLOptions` (see) to
             customize the URL used to reach the DevOps API (customizing this setting
             is rarely needed; relevant only for Astra DB environments).
+        ca_cert_path: optional path to a custom CA certificate file (PEM format)
+            to use for SSL verification when connecting to the API. This is useful
+            for PrivateLink setups or other environments where a custom CA is needed.
+            When set, a per-instance SSL context is created with the given CA file
+            instead of using the default certifi-based CA bundle. Defaults to None
+            (use the bundled certifi CA roots).
 
     Examples:
             >>> from astrapy import DataAPIClient
@@ -1022,6 +1028,7 @@ class APIOptions:
     embedding_api_key: EmbeddingHeadersProvider | UnsetType = _UNSET
     reranking_api_key: RerankingHeadersProvider | UnsetType = _UNSET
     event_observers: dict[str, Observer | None] | UnsetType = _UNSET
+    ca_cert_path: str | None | UnsetType = _UNSET
 
     timeout_options: TimeoutOptions | UnsetType = _UNSET
     serdes_options: SerdesOptions | UnsetType = _UNSET
@@ -1039,6 +1046,7 @@ class APIOptions:
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         reranking_api_key: str | RerankingHeadersProvider | UnsetType = _UNSET,
         event_observers: dict[str, Observer | None] | UnsetType = _UNSET,
+        ca_cert_path: str | None | UnsetType = _UNSET,
         timeout_options: TimeoutOptions | UnsetType = _UNSET,
         serdes_options: SerdesOptions | UnsetType = _UNSET,
         data_api_url_options: DataAPIURLOptions | UnsetType = _UNSET,
@@ -1062,6 +1070,7 @@ class APIOptions:
             reranking_api_key,
         )
         self.event_observers = event_observers
+        self.ca_cert_path = ca_cert_path
         self.timeout_options = timeout_options
         self.serdes_options = serdes_options
         self.data_api_url_options = data_api_url_options
@@ -1133,6 +1142,9 @@ class APIOptions:
                 None
                 if isinstance(self.dev_ops_api_url_options, UnsetType)
                 else f"dev_ops_api_url_options={self.dev_ops_api_url_options}",
+                None
+                if isinstance(self.ca_cert_path, UnsetType)
+                else f"ca_cert_path={self.ca_cert_path}",
             )
             if pc is not None
         ]
@@ -1219,6 +1231,7 @@ class FullAPIOptions(APIOptions):
     embedding_api_key: EmbeddingHeadersProvider
     reranking_api_key: RerankingHeadersProvider
     event_observers: dict[str, Observer | None]
+    ca_cert_path: str | None
 
     timeout_options: FullTimeoutOptions
     serdes_options: FullSerdesOptions
@@ -1237,6 +1250,7 @@ class FullAPIOptions(APIOptions):
         embedding_api_key: str | EmbeddingHeadersProvider,
         reranking_api_key: str | RerankingHeadersProvider,
         event_observers: dict[str, Observer | None],
+        ca_cert_path: str | None,
         timeout_options: FullTimeoutOptions,
         serdes_options: FullSerdesOptions,
         data_api_url_options: FullDataAPIURLOptions,
@@ -1252,6 +1266,7 @@ class FullAPIOptions(APIOptions):
             embedding_api_key=embedding_api_key,
             reranking_api_key=reranking_api_key,
             event_observers=event_observers,
+            ca_cert_path=ca_cert_path,
             timeout_options=timeout_options,
             serdes_options=serdes_options,
             data_api_url_options=data_api_url_options,
@@ -1392,6 +1407,11 @@ class FullAPIOptions(APIOptions):
                 else self.reranking_api_key
             ),
             event_observers=event_observers,
+            ca_cert_path=(
+                other.ca_cert_path
+                if not isinstance(other.ca_cert_path, UnsetType)
+                else self.ca_cert_path
+            ),
             timeout_options=timeout_options,
             serdes_options=serdes_options,
             data_api_url_options=data_api_url_options,
@@ -1451,6 +1471,7 @@ def defaultAPIOptions(environment: str) -> FullAPIOptions:
         embedding_api_key=EmbeddingAPIKeyHeaderProvider(None),
         reranking_api_key=RerankingAPIKeyHeaderProvider(None),
         event_observers={},
+        ca_cert_path=None,
         timeout_options=defaultTimeoutOptions,
         serdes_options=defaultSerdesOptions,
         data_api_url_options=defaultDataAPIURLOptions,
