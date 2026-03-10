@@ -92,15 +92,11 @@ class TestAPIOptions:
         assert opts_d.ca_cert_path is None
 
         # override with a path
-        opts_1 = opts_d.with_override(
-            APIOptions(ca_cert_path="/some/ca.pem")
-        )
+        opts_1 = opts_d.with_override(APIOptions(ca_cert_path="/some/ca.pem"))
         assert opts_1.ca_cert_path == "/some/ca.pem"
 
         # second override replaces the first
-        opts_2 = opts_1.with_override(
-            APIOptions(ca_cert_path="/other/ca.pem")
-        )
+        opts_2 = opts_1.with_override(APIOptions(ca_cert_path="/other/ca.pem"))
         assert opts_2.ca_cert_path == "/other/ca.pem"
 
         # unset override (None) does not overwrite
