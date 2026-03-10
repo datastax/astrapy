@@ -71,18 +71,24 @@ def check_deprecated_alias(
             raise ValueError(msg)
 
 
-def deprecated_property(
-    new_name: str, deprecated_in: str, removed_in: str
+def _deprecated_callable(
+    kind: str, new_name: str, deprecated_in: str, removed_in: str
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """
-    Decorator for a @property that is a deprecated alias for attribute 'new_name'.
+    Decorator factory for a callable that is a deprecated alias.
+
+    Args:
+        kind: label for the warning message, e.g. "Property" or "Method".
+        new_name: the replacement name to suggest in the warning.
+        deprecated_in: version in which the deprecation was introduced.
+        removed_in: version in which the old name will be removed.
     """
 
     def _deprecator(method: Callable[P, R]) -> Callable[P, R]:
         @wraps(method)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             the_warning = DeprecatedWarning(
-                f"Property '{method.__name__}'",
+                f"{kind} '{method.__name__}'",
                 deprecated_in=deprecated_in,
                 removed_in=removed_in,
                 details=f"Please use '{new_name}' instead.",
@@ -96,6 +102,20 @@ def deprecated_property(
         return wrapper
 
     return _deprecator
+
+
+def deprecated_property(
+    new_name: str, deprecated_in: str, removed_in: str
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    """Decorator for a @property that is a deprecated alias for attribute 'new_name'."""
+    return _deprecated_callable("Property", new_name, deprecated_in, removed_in)
+
+
+def deprecated_method(
+    new_name: str, deprecated_in: str, removed_in: str
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    """Decorator for a method that is a deprecated alias for method 'new_name'."""
+    return _deprecated_callable("Method", new_name, deprecated_in, removed_in)
 
 
 def beta_method(method: Callable[P, R]) -> Callable[P, R]:

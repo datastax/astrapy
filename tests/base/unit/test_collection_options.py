@@ -18,9 +18,11 @@ Unit tests for the validation/parsing of collection options
 
 from __future__ import annotations
 
+import warnings
 from typing import Any
 
 import pytest
+from deprecation import DeprecatedWarning
 
 from astrapy.info import CollectionDefinition, CollectionDescriptor
 
@@ -265,11 +267,11 @@ def test_fluent_collection_definition() -> None:
     assert zero.build().as_dict() == {}
 
     rich = (
-        zero.set_indexing("allow", ["a", "b"])
-        .set_default_id("UUID")
-        .set_vector_dimension(123)
-        .set_vector_metric("cosine")
-        .set_vector_service(
+        zero.with_indexing("allow", ["a", "b"])
+        .with_default_id("UUID")
+        .with_vector_dimension(123)
+        .with_vector_metric("cosine")
+        .with_vector_service(
             "prov", "mod", authentication={"a": "u"}, parameters={"p": "a"}
         )
         .build()
@@ -291,12 +293,77 @@ def test_fluent_collection_definition() -> None:
     assert rich.as_dict() == expected_rich_dict
 
     zero_2 = (
-        rich.set_indexing(None)
-        .set_default_id(None)
-        .set_vector_dimension(None)
-        .set_vector_metric(None)
-        .set_vector_source_model(None)
-        .set_vector_service(None)
+        rich.with_indexing(None)
+        .with_default_id(None)
+        .with_vector_dimension(None)
+        .with_vector_metric(None)
+        .with_vector_source_model(None)
+        .with_vector_service(None)
         .build()
     )
     assert zero_2.build().as_dict() == {}
+
+
+@pytest.mark.describe(
+    "test that deprecated set_* aliases emit DeprecatedWarning and produce correct results"
+)
+def test_deprecated_set_aliases_sync() -> None:
+    zero = CollectionDefinition.builder()
+
+    deprecated_calls: list[tuple[str, CollectionDefinition]] = []
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        deprecated_calls.append(("set_indexing", zero.set_indexing("allow", ["a"])))
+        deprecated_calls.append(("set_default_id", zero.set_default_id("UUID")))
+        deprecated_calls.append(
+            ("set_vector_dimension", zero.set_vector_dimension(123))
+        )
+        deprecated_calls.append(("set_vector_metric", zero.set_vector_metric("cosine")))
+        deprecated_calls.append(
+            ("set_vector_source_model", zero.set_vector_source_model("other"))
+        )
+        deprecated_calls.append(
+            ("set_vector_service", zero.set_vector_service("prov", "mod"))
+        )
+        deprecated_calls.append(("set_rerank", zero.set_rerank("nvidia", "model")))
+        deprecated_calls.append(("set_lexical", zero.set_lexical("STANDARD")))
+
+    # Every call should have emitted exactly one DeprecatedWarning
+    dep_warnings = [w for w in caught if issubclass(w.category, DeprecatedWarning)]
+    assert len(dep_warnings) == len(deprecated_calls)
+    for w, (method_name, _) in zip(dep_warnings, deprecated_calls):
+        assert method_name in str(w.message)
+
+    # Results should be identical to the with_* equivalents
+    assert (
+        deprecated_calls[0][1].build().as_dict()
+        == zero.with_indexing("allow", ["a"]).build().as_dict()
+    )
+    assert (
+        deprecated_calls[1][1].build().as_dict()
+        == zero.with_default_id("UUID").build().as_dict()
+    )
+    assert (
+        deprecated_calls[2][1].build().as_dict()
+        == zero.with_vector_dimension(123).build().as_dict()
+    )
+    assert (
+        deprecated_calls[3][1].build().as_dict()
+        == zero.with_vector_metric("cosine").build().as_dict()
+    )
+    assert (
+        deprecated_calls[4][1].build().as_dict()
+        == zero.with_vector_source_model("other").build().as_dict()
+    )
+    assert (
+        deprecated_calls[5][1].build().as_dict()
+        == zero.with_vector_service("prov", "mod").build().as_dict()
+    )
+    assert (
+        deprecated_calls[6][1].build().as_dict()
+        == zero.with_rerank("nvidia", "model").build().as_dict()
+    )
+    assert (
+        deprecated_calls[7][1].build().as_dict()
+        == zero.with_lexical("STANDARD").build().as_dict()
+    )

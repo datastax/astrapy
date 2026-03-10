@@ -35,8 +35,8 @@ my_collection = my_database.create_collection(
     "dreams_collection",
     definition=(
         CollectionDefinition.builder()
-        .set_vector_dimension(3)
-        .set_vector_metric(VectorMetric.COSINE)
+        .with_vector_dimension(3)
+        .with_vector_metric(VectorMetric.COSINE)
         .build()
     )
 )
@@ -104,7 +104,7 @@ my_collection = database.create_collection(
     "my_vectorize_collection",
     definition=(
         CollectionDefinition.builder()
-        .set_vector_service(
+        .with_vector_service(
             provider="example_vendor",
             model_name="embedding_model_name",
             authentication={"providerKey": "<STORED_API_KEY_NAME>"}  # if needed
@@ -651,7 +651,7 @@ my_database = my_client.get_database(
 
 my_collection = my_database.create_collection(
     "ecommerce",
-    definition=CollectionDefinition.builder().set_default_id(
+    definition=CollectionDefinition.builder().with_default_id(
         DefaultIdType.UUIDV6
     ).build(),
 )

@@ -73,9 +73,9 @@ class TestCollectionDDLAsync:
         assert col1_dict == col1
         fluent_definition1 = (
             CollectionDefinition.builder()
-            .set_vector_dimension(123)
-            .set_vector_metric(VectorMetric.EUCLIDEAN)
-            .set_indexing("deny", ["a", "b", "c"])
+            .with_vector_dimension(123)
+            .with_vector_metric(VectorMetric.EUCLIDEAN)
+            .with_indexing("deny", ["a", "b", "c"])
             .build()
         )
         col1_fluent = await async_database.create_collection(
@@ -518,10 +518,10 @@ class TestCollectionDDLAsync:
             assert col1_dict == col1
             fluent_definition1 = (
                 CollectionDefinition.builder()
-                .set_vector_dimension(10)
-                .set_vector_metric(VectorMetric.EUCLIDEAN)
-                .set_rerank("nvidia", "nvidia/llama-3.2-nv-rerankqa-1b-v2")
-                .set_lexical("STANDARD")
+                .with_vector_dimension(10)
+                .with_vector_metric(VectorMetric.EUCLIDEAN)
+                .with_rerank("nvidia", "nvidia/llama-3.2-nv-rerankqa-1b-v2")
+                .with_lexical("STANDARD")
                 .build()
             )
             col1_fluent = await async_database.create_collection(
@@ -573,7 +573,7 @@ class TestCollectionDDLAsync:
                 TEST_LEXICAL_DETAILEDCONFIG_COLLECTION_NAME,
                 definition=(
                     CollectionDefinition.builder()
-                    .set_lexical(
+                    .with_lexical(
                         {
                             "tokenizer": {"name": "standard", "args": {}},
                             "filters": [
@@ -624,7 +624,7 @@ class TestCollectionDDLAsync:
             await async_database.create_collection(
                 TEST_LEXICAL_OMITTEDSETTINGS_COLLECTION_NAME,
                 definition=(
-                    CollectionDefinition.builder().set_lexical(enabled=True).build()
+                    CollectionDefinition.builder().with_lexical(enabled=True).build()
                 ),
             )
 

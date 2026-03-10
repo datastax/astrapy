@@ -1,3 +1,11 @@
+v 2.3.0rc1
+=======
+CollectionDefinition fluent interface: renamed all `set_*` methods to `with_*` (e.g., `set_vector_dimension` → `with_vector_dimension`):
+    - This better conveys the immutable builder pattern (methods return new objects rather than mutating in place)
+    - Old `set_*` methods remain as deprecated aliases (deprecated in 2.1.0, will be removed in 3.0.0)
+    - Affected methods: `with_indexing`, `with_default_id`, `with_vector_dimension`, `with_vector_metric`, `with_vector_source_model`, `with_vector_service`, `with_rerank`, `with_lexical`
+
+
 v 2.2.0
 =======
 Supported Python versions are now 3.9 to 3.14:

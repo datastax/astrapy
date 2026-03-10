@@ -76,9 +76,9 @@ class TestCollectionTyping:
             sync_empty_collection.name,
             definition=(
                 CollectionDefinition.builder()
-                .set_vector_dimension(2)
-                .set_vector_metric(VectorMetric.COSINE)
-                .set_indexing("deny", ["not_indexed"])
+                .with_vector_dimension(2)
+                .with_vector_metric(VectorMetric.COSINE)
+                .with_indexing("deny", ["not_indexed"])
                 .build()
             ),
         )
@@ -118,9 +118,9 @@ class TestCollectionTyping:
             sync_empty_collection.name,
             definition=(
                 CollectionDefinition.builder()
-                .set_vector_dimension(2)
-                .set_vector_metric(VectorMetric.COSINE)
-                .set_indexing("deny", ["not_indexed"])
+                .with_vector_dimension(2)
+                .with_vector_metric(VectorMetric.COSINE)
+                .with_indexing("deny", ["not_indexed"])
                 .build()
             ),
             document_type=MyTestDoc,
@@ -427,9 +427,9 @@ class TestCollectionTyping:
             async_empty_collection.name,
             definition=(
                 CollectionDefinition.builder()
-                .set_vector_dimension(2)
-                .set_vector_metric(VectorMetric.COSINE)
-                .set_indexing("deny", ["not_indexed"])
+                .with_vector_dimension(2)
+                .with_vector_metric(VectorMetric.COSINE)
+                .with_indexing("deny", ["not_indexed"])
                 .build()
             ),
         )
@@ -471,9 +471,9 @@ class TestCollectionTyping:
             async_empty_collection.name,
             definition=(
                 CollectionDefinition.builder()
-                .set_vector_dimension(2)
-                .set_vector_metric(VectorMetric.COSINE)
-                .set_indexing("deny", ["not_indexed"])
+                .with_vector_dimension(2)
+                .with_vector_metric(VectorMetric.COSINE)
+                .with_indexing("deny", ["not_indexed"])
                 .build()
             ),
             document_type=MyTestDoc,
