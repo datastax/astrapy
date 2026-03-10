@@ -18,8 +18,6 @@ on:
         required: true
       HEADER_EMBEDDING_API_KEY_OPENAI:
         required: true
-      LEGACY_INSERTMANY_BEHAVIOUR_PRE2193:
-        required: true
 
 jobs:
   test:
