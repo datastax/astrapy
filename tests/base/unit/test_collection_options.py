@@ -313,30 +313,20 @@ def test_deprecated_set_aliases_sync() -> None:
     deprecated_calls: list[tuple[str, CollectionDefinition]] = []
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        deprecated_calls.append(
-            ("set_indexing", zero.set_indexing("allow", ["a"]))
-        )
-        deprecated_calls.append(
-            ("set_default_id", zero.set_default_id("UUID"))
-        )
+        deprecated_calls.append(("set_indexing", zero.set_indexing("allow", ["a"])))
+        deprecated_calls.append(("set_default_id", zero.set_default_id("UUID")))
         deprecated_calls.append(
             ("set_vector_dimension", zero.set_vector_dimension(123))
         )
-        deprecated_calls.append(
-            ("set_vector_metric", zero.set_vector_metric("cosine"))
-        )
+        deprecated_calls.append(("set_vector_metric", zero.set_vector_metric("cosine")))
         deprecated_calls.append(
             ("set_vector_source_model", zero.set_vector_source_model("other"))
         )
         deprecated_calls.append(
             ("set_vector_service", zero.set_vector_service("prov", "mod"))
         )
-        deprecated_calls.append(
-            ("set_rerank", zero.set_rerank("nvidia", "model"))
-        )
-        deprecated_calls.append(
-            ("set_lexical", zero.set_lexical("STANDARD"))
-        )
+        deprecated_calls.append(("set_rerank", zero.set_rerank("nvidia", "model")))
+        deprecated_calls.append(("set_lexical", zero.set_lexical("STANDARD")))
 
     # Every call should have emitted exactly one DeprecatedWarning
     dep_warnings = [w for w in caught if issubclass(w.category, DeprecatedWarning)]
@@ -345,11 +335,35 @@ def test_deprecated_set_aliases_sync() -> None:
         assert method_name in str(w.message)
 
     # Results should be identical to the with_* equivalents
-    assert deprecated_calls[0][1].build().as_dict() == zero.with_indexing("allow", ["a"]).build().as_dict()
-    assert deprecated_calls[1][1].build().as_dict() == zero.with_default_id("UUID").build().as_dict()
-    assert deprecated_calls[2][1].build().as_dict() == zero.with_vector_dimension(123).build().as_dict()
-    assert deprecated_calls[3][1].build().as_dict() == zero.with_vector_metric("cosine").build().as_dict()
-    assert deprecated_calls[4][1].build().as_dict() == zero.with_vector_source_model("other").build().as_dict()
-    assert deprecated_calls[5][1].build().as_dict() == zero.with_vector_service("prov", "mod").build().as_dict()
-    assert deprecated_calls[6][1].build().as_dict() == zero.with_rerank("nvidia", "model").build().as_dict()
-    assert deprecated_calls[7][1].build().as_dict() == zero.with_lexical("STANDARD").build().as_dict()
+    assert (
+        deprecated_calls[0][1].build().as_dict()
+        == zero.with_indexing("allow", ["a"]).build().as_dict()
+    )
+    assert (
+        deprecated_calls[1][1].build().as_dict()
+        == zero.with_default_id("UUID").build().as_dict()
+    )
+    assert (
+        deprecated_calls[2][1].build().as_dict()
+        == zero.with_vector_dimension(123).build().as_dict()
+    )
+    assert (
+        deprecated_calls[3][1].build().as_dict()
+        == zero.with_vector_metric("cosine").build().as_dict()
+    )
+    assert (
+        deprecated_calls[4][1].build().as_dict()
+        == zero.with_vector_source_model("other").build().as_dict()
+    )
+    assert (
+        deprecated_calls[5][1].build().as_dict()
+        == zero.with_vector_service("prov", "mod").build().as_dict()
+    )
+    assert (
+        deprecated_calls[6][1].build().as_dict()
+        == zero.with_rerank("nvidia", "model").build().as_dict()
+    )
+    assert (
+        deprecated_calls[7][1].build().as_dict()
+        == zero.with_lexical("STANDARD").build().as_dict()
+    )
