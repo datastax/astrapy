@@ -85,3 +85,20 @@ class TestAPIOptions:
 
         assert opts_1 == opts_2
         assert opts_3n == opts_4n
+
+    @pytest.mark.describe("test of ca_cert_path inheritance in APIOptions")
+    def test_apioptions_ca_cert_path(self) -> None:
+        opts_d = defaultAPIOptions(environment="prod")
+        assert opts_d.ca_cert_path is None
+
+        # override with a path
+        opts_1 = opts_d.with_override(APIOptions(ca_cert_path="/some/ca.pem"))
+        assert opts_1.ca_cert_path == "/some/ca.pem"
+
+        # second override replaces the first
+        opts_2 = opts_1.with_override(APIOptions(ca_cert_path="/other/ca.pem"))
+        assert opts_2.ca_cert_path == "/other/ca.pem"
+
+        # unset override (None) does not overwrite
+        opts_3 = opts_1.with_override(APIOptions())
+        assert opts_3.ca_cert_path == "/some/ca.pem"

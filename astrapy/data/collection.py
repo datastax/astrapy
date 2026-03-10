@@ -343,6 +343,7 @@ class Collection(Generic[DOC]):
             handle_decimals_reads=(
                 self.api_options.serdes_options.use_decimals_in_collections
             ),
+            ca_cert_path=self.api_options.ca_cert_path,
         )
         return api_commander
 
@@ -3314,6 +3315,7 @@ class AsyncCollection(Generic[DOC]):
             handle_decimals_reads=(
                 self.api_options.serdes_options.use_decimals_in_collections
             ),
+            ca_cert_path=self.api_options.ca_cert_path,
         )
         return api_commander
 
