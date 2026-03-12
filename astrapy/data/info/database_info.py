@@ -394,6 +394,8 @@ class AstraDBAvailableRegionInfo:
                 "region_type",
                 "reservedForQualifiedUsers",
                 "zone",
+                # The following intentionally suppresses a warning (until full PCU support)
+                "pcu_types",
             },
         )
         return AstraDBAvailableRegionInfo(
