@@ -1,3 +1,11 @@
+main
+====
+
+Maintenance:
+    - Minor edits to `release.yaml` workflow (secrets; task names/comments).
+
+
+
 v 2.2.0
 =======
 Supported Python versions are now 3.9 to 3.14:
