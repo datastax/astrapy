@@ -1,6 +1,7 @@
-main
-====
+v 2.2.1
+=======
 
+Suppress warning about unexpected 'pcu_types' field in `[async_]find_available_regions`.
 Maintenance:
     - Minor edits to `release.yaml` workflow (secrets; task names/comments).
 
