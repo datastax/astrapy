@@ -1866,7 +1866,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         This operation is allowed only if the cursor state is still IDLE.
 
         Instead of explicitly invoking this method, the typical usage consists
-        in passing arguments to the Collection `find` method.
+        in passing arguments to the Table `find` method.
 
         Args:
             initial_page_state: a new initial_page_state setting to apply to the
@@ -2639,7 +2639,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         This operation is allowed only if the cursor state is still IDLE.
 
         Instead of explicitly invoking this method, the typical usage consists
-        in passing arguments to the Collection `find` method.
+        in passing arguments to the Table `find` method.
 
         Args:
             initial_page_state: a new initial_page_state setting to apply to the
