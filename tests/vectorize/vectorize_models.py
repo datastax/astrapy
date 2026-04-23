@@ -115,6 +115,10 @@ EXCLUDED_MODEL_QUADRUPLES = {
     # Pending a testable deployment, HuggingFace Dedicated testing is momentarily suspended:
     ("huggingfaceDedicated", "endpoint-defined-model", "HEADER", "f"),
     ("huggingfaceDedicated", "endpoint-defined-model", "SHARED_SECRET", "f"),
+    # This appears on some DEV environments (probably will go away soon):
+    ("vertexai", "textembedding-gecko@003", "HEADER", "0"),
+    ("vertexai", "textembedding-gecko@003", "NONE", "0"),
+    ("vertexai", "textembedding-gecko@003", "SHARED_SECRET", "0"),
 }
 
 # this is a way to suppress/limit certain combinations of
@@ -189,6 +193,9 @@ if TEST_EXTENDED_VECTORIZE:
         ("bedrock", "amazon.titan-embed-text-v2:0", "region"): os.environ[
             "BEDROCK_REGION"
         ],
+        # moot
+        ("vertexai", "textembedding-gecko@003", "projectId"): PARAM_SKIP_MARKER,
+        ("vertexai", "textembedding-gecko@003", "autoTruncate"): PARAM_SKIP_MARKER,
     }
 
     # this is ad-hoc for HF dedicated. Models here, though "optional" dimension,

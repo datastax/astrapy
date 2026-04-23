@@ -26,7 +26,7 @@ from astrapy.exceptions import CursorException
 
 from ..conftest import DefaultAsyncCollection
 
-NUM_DOCS = 25  # keep this between 20 and 39
+NUM_DOCS = 25  # keep this between 21 and 39
 NUM_DOCS_PAGINATION = 90  # keep this above 2 * (2 * 20) and below 2 * (3 * 20)
 
 
@@ -151,6 +151,8 @@ class TestCollectionCursorSync:
             cur1.skip(1)
         with pytest.raises(CursorException):
             cur1.map(lambda rw: None)
+        with pytest.raises(CursorException):
+            cur1.initial_page_state("Blaaa")
 
     @pytest.mark.describe("test of a STARTED collection cursors properties, async")
     async def test_collection_cursors_started_properties_async(
@@ -189,6 +191,8 @@ class TestCollectionCursorSync:
             cur.skip(1)
         with pytest.raises(CursorException):
             cur.map(lambda rw: None)
+        with pytest.raises(CursorException):
+            cur.initial_page_state("Blaaa")
 
     @pytest.mark.describe("test of collection cursors has_next, async")
     async def test_collection_cursors_has_next_async(
@@ -201,9 +205,11 @@ class TestCollectionCursorSync:
         assert cur.has_next()
         assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
+        await cur.__anext__()
+        assert cur.state == CursorState.STARTED  # type: ignore[comparison-overlap]
         [doc async for doc in cur]
         assert cur.consumed == NUM_DOCS
-        assert cur.state == CursorState.CLOSED  # type: ignore[comparison-overlap]
+        assert cur.state == CursorState.CLOSED
 
         curmf = async_filled_collection.find()
         await curmf.__anext__()
