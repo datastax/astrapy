@@ -93,23 +93,23 @@ class TestCollectionCursorSync:
         with pytest.raises(CursorException):
             toclose.to_list()
 
-        cur.rewind()
-        assert cur.state == CursorState.IDLE
-        assert cur.consumed == 0
-        assert cur.buffered_count == 0
+        toclose.rewind()
+        assert toclose.state == CursorState.IDLE
+        assert toclose.consumed == 0
+        assert toclose.buffered_count == 0
 
-        cur.filter({"c": True})
-        cur.project({"c": True})
-        cur.sort({"c": SortMode.ASCENDING})
-        cur.limit(1)
-        cur.include_similarity(False)
-        cur.include_sort_vector(False)
-        cur.skip(1)
-        cur.map(lambda rw: None)
+        toclose.filter({"c": True})
+        toclose.project({"c": True})
+        toclose.sort({"c": SortMode.ASCENDING})
+        toclose.limit(1)
+        toclose.include_similarity(False)
+        toclose.include_sort_vector(False)
+        toclose.skip(1)
+        toclose.map(lambda rw: None)
 
-        cur.project({}).map(lambda rw: None)
+        toclose.project({}).map(lambda rw: None)
         with pytest.raises(CursorException):
-            cur.map(lambda rw: None).project({})
+            toclose.map(lambda rw: None).project({})
 
     @pytest.mark.describe("test of a CLOSED collection cursors properties, sync")
     def test_collection_cursors_closed_properties_sync(
