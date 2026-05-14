@@ -18,6 +18,8 @@ import pytest
 
 from astrapy.cursors import RerankedResult
 from astrapy.data_types import DataAPIVector
+from astrapy.exceptions import DataAPIResponseException
+from astrapy.info import CollectionRerankOptions, RerankServiceOptions
 
 from ..conftest import IS_ASTRA_DB, USE_RERANKER_API_KEY_HEADER, DefaultAsyncCollection
 
@@ -127,6 +129,79 @@ class TestCollectionFindAndRerankAsync:
         assert len(await cur_nu_hl.to_list()) == 2
         assert len(await cur_ob_hl.to_list()) == 2
 
+    @pytest.mark.describe(
+        "test of collection find-and-rerank override, vectorize, async"
+    )
+    async def test_collection_farr_override_vectorize_async(
+        self,
+        async_empty_farr_vectorize_collection: DefaultAsyncCollection,
+        rerankservice_collection_parameters: CollectionRerankOptions,
+    ) -> None:
+        acoll = async_empty_farr_vectorize_collection
+        # insertions
+        await acoll.insert_many(
+            [
+                {
+                    "_id": "01",
+                    "$vectorize": "this is a cat",
+                    "$lexical": "a cat",
+                    "tag": "test01",
+                },
+                {
+                    "_id": "01b",
+                    "$vectorize": "this is a lynx",
+                    "$lexical": "a lynx",
+                    "tag": "test01",
+                },
+                {
+                    "_id": "02",
+                    "$hybrid": "this is a dog",
+                    "tag": "test01",
+                },
+                {
+                    "_id": "03",
+                    "$hybrid": {
+                        "$vectorize": "this is a Pucciniomycotina",
+                        "$lexical": "Pucciniomycotina, my dear rust fungus",
+                    },
+                    "tag": "test01",
+                },
+            ]
+        )
+        farr_baseline = await acoll.find_and_rerank(
+            {},
+            sort={"$hybrid": "bla"},
+            projection={"$vectorize": True},
+            include_scores=True,
+            limit=5,
+        ).to_list()
+
+        override_service = rerankservice_collection_parameters.service
+        farr_override = await acoll.find_and_rerank(
+            {},
+            sort={"$hybrid": "bla"},
+            projection={"$vectorize": True},
+            include_scores=True,
+            limit=5,
+            rerank_service=override_service,
+        ).to_list()
+
+        assert len(farr_baseline) == len(farr_override)
+        assert [rres.document["_id"] for rres in farr_baseline] == [
+            rres.document["_id"] for rres in farr_override
+        ]
+
+        with pytest.raises(DataAPIResponseException, match="Invalid reranking service"):
+            wrong_service = RerankServiceOptions("bla", "ble")
+            await acoll.find_and_rerank(
+                {},
+                sort={"$hybrid": "bla"},
+                projection={"$vectorize": True},
+                include_scores=True,
+                limit=5,
+                rerank_service=wrong_service,
+            ).to_list()
+
     @pytest.mark.describe("test of collection find-and-rerank novectorize, async")
     async def test_collection_farr_novectorize_async(
         self,
@@ -221,6 +296,74 @@ class TestCollectionFindAndRerankAsync:
         assert len(await cur_no_hl.to_list()) == 2
         assert len(await cur_nu_hl.to_list()) == 2
         assert len(await cur_ob_hl.to_list()) == 2
+
+    @pytest.mark.describe(
+        "test of collection find-and-rerank rerank override, novectorize, async"
+    )
+    async def test_collection_farr_override_novectorize_async(
+        self,
+        async_empty_farr_vector_collection: DefaultAsyncCollection,
+        rerankservice_collection_parameters: CollectionRerankOptions,
+    ) -> None:
+        acoll = async_empty_farr_vector_collection
+        # insertions
+        await acoll.insert_many(
+            [
+                {
+                    "_id": "01",
+                    "text_content": "this is a cat",
+                    "$vector": [1, 2],
+                    "$lexical": "a cat",
+                    "tag": "test01",
+                },
+                {
+                    "_id": "01b",
+                    "text_content": "this is a lynx",
+                    "$vector": [2, 1],
+                    "$lexical": "a lynx",
+                    "tag": "test01",
+                },
+            ]
+        )
+        farr_baseline = await acoll.find_and_rerank(
+            {},
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            projection={"$vector": True},
+            include_scores=True,
+            limit=5,
+            rerank_on="text_content",
+            rerank_query="blaa",
+        ).to_list()
+
+        override_service = rerankservice_collection_parameters.service
+        farr_override = await acoll.find_and_rerank(
+            {},
+            sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+            projection={"$vector": True},
+            include_scores=True,
+            limit=5,
+            rerank_on="text_content",
+            rerank_query="blaa",
+            rerank_service=override_service,
+        ).to_list()
+
+        assert len(farr_baseline) == len(farr_override)
+        assert [rres.document["_id"] for rres in farr_baseline] == [
+            rres.document["_id"] for rres in farr_override
+        ]
+
+        with pytest.raises(DataAPIResponseException, match="Invalid reranking service"):
+            wrong_service = RerankServiceOptions("bla", "ble")
+            await acoll.find_and_rerank(
+                {},
+                sort={"$hybrid": {"$vector": [0, 1], "$lexical": "bla"}},
+                projection={"$vector": True},
+                include_scores=True,
+                limit=5,
+                rerank_on="text_content",
+                rerank_query="blaa",
+                rerank_service=wrong_service,
+            ).to_list()
 
     @pytest.mark.describe(
         "test of collection find-and-rerank include_scores, vectorize, async"

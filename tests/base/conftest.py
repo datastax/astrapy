@@ -383,7 +383,7 @@ def sync_farr_vector_collection(
     )
     yield collection
 
-    sync_database.drop_collection(TEST_FARR_VECTOR_COLLECTION_NAME)
+    # TODO restore sync_database.drop_collection(TEST_FARR_VECTOR_COLLECTION_NAME)
 
 
 @pytest.fixture(scope="function")

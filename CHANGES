@@ -1,3 +1,8 @@
+main
+====
+
+Added support for overriding reranking options in find_and_rerank method call.
+
 v 2.2.1
 =======
 
