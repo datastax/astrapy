@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from astrapy.cursors import RerankedResult
@@ -129,6 +131,10 @@ class TestCollectionFindAndRerankAsync:
         assert len(await cur_nu_hl.to_list()) == 2
         assert len(await cur_ob_hl.to_list()) == 2
 
+    @pytest.mark.skipif(
+        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
+        reason="Not in latest-main testing mode",
+    )
     @pytest.mark.describe(
         "test of collection find-and-rerank override, vectorize, async"
     )
@@ -297,6 +303,10 @@ class TestCollectionFindAndRerankAsync:
         assert len(await cur_nu_hl.to_list()) == 2
         assert len(await cur_ob_hl.to_list()) == 2
 
+    @pytest.mark.skipif(
+        "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
+        reason="Not in latest-main testing mode",
+    )
     @pytest.mark.describe(
         "test of collection find-and-rerank rerank override, novectorize, async"
     )
