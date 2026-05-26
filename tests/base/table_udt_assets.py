@@ -15,6 +15,9 @@
 from __future__ import annotations
 
 import datetime
+
+# TODO NOINETINUDT
+# import ipaddress
 from dataclasses import dataclass
 from typing import Any
 
@@ -79,6 +82,8 @@ EXTENDED_PLAYER_TYPE_DEFINITION = CreateTypeDefinition(
         "name": "text",
         "age": "int",
         "ts": "timestamp",
+        # TODO NOINETINUDT
+        # "inet": "inet",
     },
 )
 #        TODO NOBLOBINUDT "blb": "blob",
@@ -217,6 +222,7 @@ class ExtendedPlayer:
         xplayer_udt_def = CreateTypeDefinition(fields={
             "name": ColumnType.TEXT,
             "age": ColumnType.INT,
+            "inet": ColumnType.INET,
             "blb": ColumnType.BLOB,
             "ts": ColumnType.TIMESTAMP,
         })
@@ -228,6 +234,8 @@ class ExtendedPlayer:
 
     name: str
     age: int
+    # TODO NOINETINUDT
+    # inet: ipaddress.IPv4Address | ipaddress.IPv6Address
     # TODO NOBLOBINUDT blb: bytes
     ts: DataAPITimestamp | datetime.datetime
 

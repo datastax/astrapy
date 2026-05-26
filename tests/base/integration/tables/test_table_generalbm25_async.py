@@ -19,7 +19,6 @@ import pytest
 from ..conftest import DefaultAsyncTable
 
 
-@pytest.mark.skip("Feature not merged to main yet")
 class TestTableGeneralBM25Async:
     @pytest.mark.describe("test of table bm25 DML, async")
     async def test_table_bm25_dml_async(

@@ -125,6 +125,7 @@ jobs:
           ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
           ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
           HEADER_EMBEDDING_API_KEY_OPENAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_OPENAI }}
+          LEGACY_INSERTMANY_BEHAVIOUR_PRE2193: ${{ secrets.LEGACY_INSERTMANY_BEHAVIOUR_PRE2193 }}
         run: make test-integration
 
   pre-release-unit-lowest-python:
@@ -173,7 +174,7 @@ jobs:
     environment: pypi
     permissions:
       # Needed by trusted publish: https://blog.pypi.org/posts/2023-04-20-introducing-trusted-publishers/
-      # Must be configured on (test) PyPI, see https://docs.pypi.org/trusted-publishers/adding-a-publisher/
+      # Must be configured on PyPI, see https://docs.pypi.org/trusted-publishers/adding-a-publisher/
       id-token: write
 
     steps:
@@ -189,7 +190,7 @@ jobs:
           name: dist
           path: dist/
 
-      - name: Publish package distributions to PyPI - TEST FOR NOW
+      - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/

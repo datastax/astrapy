@@ -19,7 +19,6 @@ import pytest
 from ..conftest import DefaultTable
 
 
-@pytest.mark.skip("Feature not merged to main yet")
 class TestTableGeneralBM25Sync:
     @pytest.mark.describe("test of table bm25 DML, sync")
     def test_table_bm25_dml_sync(
