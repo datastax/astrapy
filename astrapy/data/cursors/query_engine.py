@@ -28,6 +28,7 @@ from astrapy.constants import (
 )
 from astrapy.data.cursors.cursor import TRAW, logger
 from astrapy.data.cursors.reranked_result import RerankedResult
+from astrapy.data.info.reranking import RerankServiceOptions
 from astrapy.data.utils.collection_converters import (
     postprocess_collection_response,
     preprocess_collection_payload,
@@ -381,6 +382,7 @@ class _CollectionFindAndRerankQueryEngine(
     include_sort_vector: bool | None
     rerank_on: str | None
     rerank_query: str | None
+    rerank: RerankServiceOptions | dict[str, Any] | None
     f_r_subpayload: dict[str, Any]
     f_options0: dict[str, Any]
 
@@ -398,6 +400,7 @@ class _CollectionFindAndRerankQueryEngine(
         include_sort_vector: bool | None,
         rerank_on: str | None,
         rerank_query: str | None,
+        rerank: RerankServiceOptions | dict[str, Any] | None,
     ) -> None:
         self.collection = collection
         self.async_collection = async_collection
@@ -410,6 +413,8 @@ class _CollectionFindAndRerankQueryEngine(
         self.include_sort_vector = include_sort_vector
         self.rerank_on = rerank_on
         self.rerank_query = rerank_query
+        self.rerank = rerank
+        rerank_options = RerankServiceOptions.coerce(self.rerank)
         self.f_r_subpayload = {
             k: v
             for k, v in {
@@ -428,6 +433,9 @@ class _CollectionFindAndRerankQueryEngine(
                 "includeSortVector": self.include_sort_vector,
                 "rerankOn": self.rerank_on,
                 "rerankQuery": self.rerank_query,
+                "rerank": rerank_options.as_dict()
+                if rerank_options is not None
+                else None,
             }.items()
             if v is not None
         }

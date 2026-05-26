@@ -37,6 +37,7 @@ from astrapy.data.cursors.cursor import (
 from astrapy.data.cursors.pagination import FindAndRerankPage
 from astrapy.data.cursors.query_engine import _CollectionFindAndRerankQueryEngine
 from astrapy.data.cursors.reranked_result import RerankedResult
+from astrapy.data.info.reranking import RerankServiceOptions
 from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import CursorException, MultiCallTimeoutManager
 from astrapy.utils.unset import _UNSET, UnsetType
@@ -102,6 +103,7 @@ class CollectionFindAndRerankCursor(
     _include_sort_vector: bool | None
     _rerank_on: str | None
     _rerank_query: str | None
+    _rerank: RerankServiceOptions | dict[str, Any] | None
     _mapper: Callable[[RerankedResult[TRAW]], T] | None
 
     def __init__(
@@ -122,6 +124,7 @@ class CollectionFindAndRerankCursor(
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         rerank_query: str | None = None,
+        rerank: RerankServiceOptions | dict[str, Any] | None = None,
         mapper: Callable[[RerankedResult[TRAW]], T] | None = None,
     ) -> None:
         self._filter = deepcopy(filter)
@@ -134,6 +137,7 @@ class CollectionFindAndRerankCursor(
         self._include_sort_vector = include_sort_vector
         self._rerank_on = rerank_on
         self._rerank_query = rerank_query
+        self._rerank = deepcopy(rerank)
         self._mapper = mapper
         self._request_timeout_ms = request_timeout_ms
         self._overall_timeout_ms = overall_timeout_ms
@@ -151,6 +155,7 @@ class CollectionFindAndRerankCursor(
             include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
             rerank_query=self._rerank_query,
+            rerank=self._rerank,
         )
         AbstractCursor.__init__(self, initial_page_state=initial_page_state)
         self._timeout_manager = MultiCallTimeoutManager(
@@ -175,6 +180,7 @@ class CollectionFindAndRerankCursor(
         include_sort_vector: bool | None | UnsetType = _UNSET,
         rerank_on: str | None | UnsetType = _UNSET,
         rerank_query: str | None | UnsetType = _UNSET,
+        rerank: RerankServiceOptions | dict[str, Any] | None | UnsetType = _UNSET,
     ) -> CollectionFindAndRerankCursor[TRAW, T]:
         if self._query_engine.collection is None:
             raise RuntimeError("Query engine has no collection.")
@@ -217,6 +223,7 @@ class CollectionFindAndRerankCursor(
             rerank_query=self._rerank_query
             if isinstance(rerank_query, UnsetType)
             else rerank_query,
+            rerank=self._rerank if isinstance(rerank, UnsetType) else rerank,
             mapper=self._mapper,
         )
 
@@ -338,6 +345,7 @@ class CollectionFindAndRerankCursor(
             include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
             rerank_query=self._rerank_query,
+            rerank=self._rerank,
             mapper=self._mapper,
         )
 
@@ -558,6 +566,29 @@ class CollectionFindAndRerankCursor(
         self._ensure_idle()
         return self._copy(rerank_query=rerank_query)
 
+    def rerank(
+        self,
+        rerank: RerankServiceOptions | dict[str, Any] | None,
+    ) -> CollectionFindAndRerankCursor[TRAW, T]:
+        """
+        Return a copy of this cursor with a new rerank service override.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the Collection `find_and_rerank` method.
+
+        Args:
+            rerank: a new rerank service override to apply to the returned
+                new cursor.
+
+        Returns:
+            a new CollectionFindAndRerankCursor with the same settings as this one,
+                except for `rerank` which is the provided value.
+        """
+
+        self._ensure_idle()
+        return self._copy(rerank=rerank)
+
     def map(
         self, mapper: Callable[[T], TNEW]
     ) -> CollectionFindAndRerankCursor[TRAW, TNEW]:
@@ -639,6 +670,7 @@ class CollectionFindAndRerankCursor(
             include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
             rerank_query=self._rerank_query,
+            rerank=self._rerank,
             mapper=composite_mapper,
         )
 
@@ -951,6 +983,7 @@ class AsyncCollectionFindAndRerankCursor(
     _include_sort_vector: bool | None
     _rerank_on: str | None
     _rerank_query: str | None
+    _rerank: RerankServiceOptions | dict[str, Any] | None
     _mapper: Callable[[RerankedResult[TRAW]], T] | None
 
     def __init__(
@@ -971,6 +1004,7 @@ class AsyncCollectionFindAndRerankCursor(
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         rerank_query: str | None = None,
+        rerank: RerankServiceOptions | dict[str, Any] | None = None,
         mapper: Callable[[RerankedResult[TRAW]], T] | None = None,
     ) -> None:
         self._filter = deepcopy(filter)
@@ -983,6 +1017,7 @@ class AsyncCollectionFindAndRerankCursor(
         self._include_sort_vector = include_sort_vector
         self._rerank_on = rerank_on
         self._rerank_query = rerank_query
+        self._rerank = deepcopy(rerank)
         self._mapper = mapper
         self._request_timeout_ms = request_timeout_ms
         self._overall_timeout_ms = overall_timeout_ms
@@ -1000,6 +1035,7 @@ class AsyncCollectionFindAndRerankCursor(
             include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
             rerank_query=self._rerank_query,
+            rerank=self._rerank,
         )
         AbstractCursor.__init__(self, initial_page_state=initial_page_state)
         self._timeout_manager = MultiCallTimeoutManager(
@@ -1024,6 +1060,7 @@ class AsyncCollectionFindAndRerankCursor(
         include_sort_vector: bool | None | UnsetType = _UNSET,
         rerank_on: str | None | UnsetType = _UNSET,
         rerank_query: str | None | UnsetType = _UNSET,
+        rerank: RerankServiceOptions | dict[str, Any] | None | UnsetType = _UNSET,
     ) -> AsyncCollectionFindAndRerankCursor[TRAW, T]:
         if self._query_engine.async_collection is None:
             raise RuntimeError("Query engine has no async collection.")
@@ -1066,6 +1103,7 @@ class AsyncCollectionFindAndRerankCursor(
             rerank_query=self._rerank_query
             if isinstance(rerank_query, UnsetType)
             else rerank_query,
+            rerank=self._rerank if isinstance(rerank, UnsetType) else rerank,
             mapper=self._mapper,
         )
 
@@ -1170,6 +1208,7 @@ class AsyncCollectionFindAndRerankCursor(
             include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
             rerank_query=self._rerank_query,
+            rerank=self._rerank,
             mapper=self._mapper,
         )
 
@@ -1390,6 +1429,29 @@ class AsyncCollectionFindAndRerankCursor(
         self._ensure_idle()
         return self._copy(rerank_query=rerank_query)
 
+    def rerank(
+        self,
+        rerank: RerankServiceOptions | dict[str, Any] | None,
+    ) -> AsyncCollectionFindAndRerankCursor[TRAW, T]:
+        """
+        Return a copy of this cursor with a new rerank service override.
+        This operation is allowed only if the cursor state is still IDLE.
+
+        Instead of explicitly invoking this method, the typical usage consists
+        in passing arguments to the AsyncCollection `find_and_rerank` method.
+
+        Args:
+            rerank: a new rerank service override to apply to the returned
+                new cursor.
+
+        Returns:
+            a new AsyncCollectionFindAndRerankCursor with the same settings as this one,
+                except for `rerank` which is the provided value.
+        """
+
+        self._ensure_idle()
+        return self._copy(rerank=rerank)
+
     def map(
         self, mapper: Callable[[T], TNEW]
     ) -> AsyncCollectionFindAndRerankCursor[TRAW, TNEW]:
@@ -1443,6 +1505,7 @@ class AsyncCollectionFindAndRerankCursor(
             include_sort_vector=self._include_sort_vector,
             rerank_on=self._rerank_on,
             rerank_query=self._rerank_query,
+            rerank=self._rerank,
             mapper=composite_mapper,
         )
 

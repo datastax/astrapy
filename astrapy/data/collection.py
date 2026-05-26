@@ -56,7 +56,7 @@ from astrapy.exceptions.utils import (
     _select_singlereq_timeout_ca,
     _select_singlereq_timeout_gm,
 )
-from astrapy.info import CollectionDefinition, CollectionInfo
+from astrapy.info import CollectionDefinition, CollectionInfo, RerankServiceOptions
 from astrapy.results import (
     CollectionDeleteResult,
     CollectionInsertManyResult,
@@ -1521,6 +1521,7 @@ class Collection(Generic[DOC]):
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         rerank_query: str | None = None,
+        rerank: RerankServiceOptions | dict[str, Any] | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> CollectionFindAndRerankCursor[DOC, RerankedResult[DOC]]: ...
@@ -1540,6 +1541,7 @@ class Collection(Generic[DOC]):
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         rerank_query: str | None = None,
+        rerank: RerankServiceOptions | dict[str, Any] | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> CollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]: ...
@@ -1558,6 +1560,7 @@ class Collection(Generic[DOC]):
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         rerank_query: str | None = None,
+        rerank: RerankServiceOptions | dict[str, Any] | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> CollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]:
@@ -1634,6 +1637,10 @@ class Collection(Generic[DOC]):
                 during reranking.
             rerank_query: for collections without a vectorize (server-side embeddings)
                 service, this is used to specify the query text for the reranker.
+            rerank: an optional per-call reranking service override. When supplied,
+                it is sent as the `rerank` option for the find-and-rerank operation
+                and can be expressed as either a `RerankServiceOptions` object or
+                the equivalent dictionary.
             request_timeout_ms: a timeout, in milliseconds, for each single one
                 of the underlying HTTP requests used to fetch documents as the
                 cursor is iterated over.
@@ -1859,6 +1866,7 @@ class Collection(Generic[DOC]):
             .initial_page_state(initial_page_state)
             .rerank_on(rerank_on)
             .rerank_query(rerank_query)
+            .rerank(rerank)
             .include_scores(include_scores)
             .include_sort_vector(include_sort_vector)
         )
@@ -4556,6 +4564,7 @@ class AsyncCollection(Generic[DOC]):
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         rerank_query: str | None = None,
+        rerank: RerankServiceOptions | dict[str, Any] | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> AsyncCollectionFindAndRerankCursor[DOC, RerankedResult[DOC]]: ...
@@ -4575,6 +4584,7 @@ class AsyncCollection(Generic[DOC]):
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         rerank_query: str | None = None,
+        rerank: RerankServiceOptions | dict[str, Any] | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> AsyncCollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]: ...
@@ -4593,6 +4603,7 @@ class AsyncCollection(Generic[DOC]):
         include_sort_vector: bool | None = None,
         rerank_on: str | None = None,
         rerank_query: str | None = None,
+        rerank: RerankServiceOptions | dict[str, Any] | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> AsyncCollectionFindAndRerankCursor[DOC, RerankedResult[DOC2]]:
@@ -4669,6 +4680,10 @@ class AsyncCollection(Generic[DOC]):
                 during reranking.
             rerank_query: for collections without a vectorize (server-side embeddings)
                 service, this is used to specify the query text for the reranker.
+            rerank: an optional per-call reranking service override. When supplied,
+                it is sent as the `rerank` option for the find-and-rerank operation
+                and can be expressed as either a `RerankServiceOptions` object or
+                the equivalent dictionary.
             request_timeout_ms: a timeout, in milliseconds, for each single one
                 of the underlying HTTP requests used to fetch documents as the
                 cursor is iterated over.
@@ -4729,6 +4744,7 @@ class AsyncCollection(Generic[DOC]):
             .initial_page_state(initial_page_state)
             .rerank_on(rerank_on)
             .rerank_query(rerank_query)
+            .rerank(rerank)
             .include_scores(include_scores)
             .include_sort_vector(include_sort_vector)
         )
