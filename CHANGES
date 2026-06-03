@@ -1,3 +1,12 @@
+main
+====
+
+Astra DB admin, richer database creation through `[async_]create_database`:
+    - `database_type` parameter to choose the database flavor (default "vector"; pass None to omit and let the DevOps API default apply);
+    - `pcu_group_id` parameter to assign the new database to a PCU group (`pcuGroupUUID`) at creation time.
+
+
+
 v 2.2.1
 =======
 

@@ -1064,6 +1064,8 @@ class AstraDBAdmin:
         cloud_provider: str,
         region: str,
         keyspace: str | None = None,
+        database_type: str | None = "vector",
+        pcu_group_id: str | None = None,
         wait_until_active: bool = True,
         database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
@@ -1080,6 +1082,16 @@ class AstraDBAdmin:
             region: any of the available cloud regions.
             keyspace: name for the one keyspace the database starts with.
                 If omitted, DevOps API will use its default.
+            database_type: the kind ("flavor") of database to create. The default
+                is "vector", which provisions a vector-enabled database. Passing
+                a different value selects another database flavor, while passing
+                None omits the setting altogether and lets the DevOps API apply
+                its own default. No coercion or validation is enforced on this
+                value, so that newly-introduced database types can be requested
+                without requiring an astrapy upgrade.
+            pcu_group_id: if provided, the UUID of the PCU (Provisioned Capacity
+                Unit) group the new database should be assigned to at creation
+                time. If omitted, the database is not associated to any PCU group.
             wait_until_active: if True (default), the method returns only after
                 the newly-created database is in ACTIVE state (a few minutes,
                 usually). If False, it will return right after issuing the
@@ -1153,8 +1165,9 @@ class AstraDBAdmin:
                 "cloudProvider": cloud_provider,
                 "region": region,
                 "capacityUnits": 1,
-                "dbType": "vector",
+                "dbType": database_type,
                 "keyspace": keyspace,
+                "pcuGroupUUID": pcu_group_id,
             }.items()
             if v is not None
         }
@@ -1243,6 +1256,8 @@ class AstraDBAdmin:
         cloud_provider: str,
         region: str,
         keyspace: str | None = None,
+        database_type: str | None = "vector",
+        pcu_group_id: str | None = None,
         wait_until_active: bool = True,
         database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
@@ -1260,6 +1275,16 @@ class AstraDBAdmin:
             region: any of the available cloud regions.
             keyspace: name for the one keyspace the database starts with.
                 If omitted, DevOps API will use its default.
+            database_type: the kind ("flavor") of database to create. The default
+                is "vector", which provisions a vector-enabled database. Passing
+                a different value selects another database flavor, while passing
+                None omits the setting altogether and lets the DevOps API apply
+                its own default. No coercion or validation is enforced on this
+                value, so that newly-introduced database types can be requested
+                without requiring an astrapy upgrade.
+            pcu_group_id: if provided, the UUID of the PCU (Provisioned Capacity
+                Unit) group the new database should be assigned to at creation
+                time. If omitted, the database is not associated to any PCU group.
             wait_until_active: if True (default), the method returns only after
                 the newly-created database is in ACTIVE state (a few minutes,
                 usually). If False, it will return right after issuing the
@@ -1326,8 +1351,9 @@ class AstraDBAdmin:
                 "cloudProvider": cloud_provider,
                 "region": region,
                 "capacityUnits": 1,
-                "dbType": "vector",
+                "dbType": database_type,
                 "keyspace": keyspace,
+                "pcuGroupUUID": pcu_group_id,
             }.items()
             if v is not None
         }
