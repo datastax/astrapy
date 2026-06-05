@@ -101,6 +101,10 @@ class TestAPICommander:
         assert isinstance(custom_ctx, ssl.SSLContext)
         assert custom_ctx is not CLIENT_SSL_CONTEXT
 
+        # the async client shares the same custom SSL context
+        async_ctx = cmd_custom.async_client._transport._pool._ssl_context  # type: ignore[attr-defined]
+        assert async_ctx is custom_ctx
+
         # _copy preserves ca_cert_path
         cmd_copied = cmd_custom._copy(path="/v2")
         assert cmd_copied.ca_cert_path == ca_path

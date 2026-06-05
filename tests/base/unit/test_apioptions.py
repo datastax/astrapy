@@ -99,6 +99,10 @@ class TestAPIOptions:
         opts_2 = opts_1.with_override(APIOptions(ca_cert_path="/other/ca.pem"))
         assert opts_2.ca_cert_path == "/other/ca.pem"
 
-        # unset override (None) does not overwrite
+        # an omitted (UNSET) field does not overwrite
         opts_3 = opts_1.with_override(APIOptions())
         assert opts_3.ca_cert_path == "/some/ca.pem"
+
+        # an explicit None resets to the default (certifi bundle)
+        opts_4 = opts_1.with_override(APIOptions(ca_cert_path=None))
+        assert opts_4.ca_cert_path is None
