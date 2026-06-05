@@ -300,3 +300,21 @@ def test_fluent_collection_definition() -> None:
         .build()
     )
     assert zero_2.build().as_dict() == {}
+
+
+@pytest.mark.describe(
+    "test of set_indexing normalizing a missing target to an empty list"
+)
+def test_set_indexing_empty_target_normalization() -> None:
+    # With no indexing target, the value must normalize to an empty list ([]),
+    # not None: the Data API expects a list of paths, and as_dict() forwards
+    # this value verbatim into the wire payload.
+    for mode in ["deny", "allow"]:
+        definition = CollectionDefinition().set_indexing(mode)
+        assert definition.indexing == {mode: []}
+        assert definition.as_dict() == {"indexing": {mode: []}}
+
+    # An explicitly-provided target is preserved unchanged.
+    explicit = CollectionDefinition().set_indexing("deny", ["a", "b"])
+    assert explicit.indexing == {"deny": ["a", "b"]}
+    assert explicit.as_dict() == {"indexing": {"deny": ["a", "b"]}}
