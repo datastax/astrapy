@@ -449,7 +449,7 @@ class CollectionDefinition:
             vector=self.vector,
             lexical=self.lexical,
             rerank=self.rerank,
-            indexing={indexing_mode: _i_target},
+            indexing={_i_mode: _i_target},
             default_id=self.default_id,
         )
 
