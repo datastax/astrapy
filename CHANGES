@@ -1,3 +1,11 @@
+main
+====
+
+Fixed `CollectionDefinition.set_indexing`: when called without an indexing target, the
+setting now normalizes to an empty list (e.g. `{"deny": []}`) instead of `{"deny": None}`,
+matching the expected Data API payload shape.
+
+
 v 2.2.1
 =======
 
