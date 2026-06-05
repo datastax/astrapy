@@ -318,3 +318,19 @@ def test_set_indexing_empty_target_normalization() -> None:
     explicit = CollectionDefinition().set_indexing("deny", ["a", "b"])
     assert explicit.indexing == {"deny": ["a", "b"]}
     assert explicit.as_dict() == {"indexing": {"deny": ["a", "b"]}}
+
+
+@pytest.mark.describe("test of set_indexing normalizing the mode to a lowercase key")
+def test_set_indexing_mode_case_normalization() -> None:
+    # The indexing mode is validated case-insensitively (e.g. "DENY" is accepted),
+    # so the stored key must also be normalized to lowercase: the Data API expects
+    # "allow"/"deny", and as_dict() forwards the key verbatim into the wire payload.
+    for raw_mode, normalized in [("DENY", "deny"), ("Allow", "allow")]:
+        definition = CollectionDefinition().set_indexing(raw_mode)
+        assert definition.indexing == {normalized: []}
+        assert definition.as_dict() == {"indexing": {normalized: []}}
+
+    # Case normalization also applies when an explicit target is provided.
+    explicit = CollectionDefinition().set_indexing("DENY", ["a", "b"])
+    assert explicit.indexing == {"deny": ["a", "b"]}
+    assert explicit.as_dict() == {"indexing": {"deny": ["a", "b"]}}

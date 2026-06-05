@@ -1,9 +1,11 @@
 main
 ====
 
-Fixed `CollectionDefinition.set_indexing`: when called without an indexing target, the
-setting now normalizes to an empty list (e.g. `{"deny": []}`) instead of `{"deny": None}`,
-matching the expected Data API payload shape.
+Fixed `CollectionDefinition.set_indexing` so the resulting setting always matches the
+expected Data API payload shape: the indexing mode is now stored as a lowercase key
+(e.g. `set_indexing("DENY")` yields `{"deny": ...}`, consistent with the case-insensitive
+validation), and a missing indexing target normalizes to an empty list (`{"deny": []}`)
+instead of `{"deny": None}`.
 
 
 v 2.2.1
