@@ -15,7 +15,7 @@
 """
 Bottleneck entrypoint for reading os.environ and exposing its contents as
 (normalized) regular variables.
-Except for the vectorize information, which for the time being passes as os.environ.
+Except for most vectorize information, handled by the embedding_provider_switcher.
 """
 
 from __future__ import annotations
@@ -204,5 +204,4 @@ ADMIN_ENV_VARIABLE_MAP = {
 }
 
 # misc variables
-HEADER_EMBEDDING_API_KEY_OPENAI = os.environ.get("HEADER_EMBEDDING_API_KEY_OPENAI")
 HEADER_RERANKING_API_KEY_NVIDIA = os.environ.get("HEADER_RERANKING_API_KEY_NVIDIA")
