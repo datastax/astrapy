@@ -132,8 +132,6 @@ EXCLUDED_MODEL_QUADRUPLES = {
 }
 
 
-
-
 # this is a way to suppress/limit certain combinations of
 # "full param" testing from the start. If even one of the optional params
 # in a test model is PARAM_SKIP_MARKER, the combination is not emitted at all.
