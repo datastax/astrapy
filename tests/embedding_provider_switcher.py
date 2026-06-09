@@ -25,15 +25,21 @@ import os
 
 HEADER_EMBEDDING_API_KEY_VOYAGEAI = os.environ.get("HEADER_EMBEDDING_API_KEY_VOYAGEAI")
 
-# This controls the actual (auth-requiring) provider being used
+# VECTORIZE PROVIDER SWITCHER FOR base TESTS - HARDCODED IN THIS MODULE:
+# This controls the actual (auth-requiring) provider being used for the 'base' vectorize tests.
+# Provider, model name, dimension and API Key (from env. variable) must match.
 EMBEDDING_PROVIDER_NAME = "voyageAI"
 EMBEDDING_PROVIDER_MODEL_NAME = "voyage-2"
 EMBEDDING_PROVIDER_API_KEY = HEADER_EMBEDDING_API_KEY_VOYAGEAI
 EMBEDDING_PROVIDER_DIMENSION = 1024
+# Moreover, for Astra DB KSM testing (if enabled), the database must be scoped
+# a matching secret with this name:
+EMBEDDING_PROVIDER_SHARED_SECRET_KEY_NAME = "SHARED_SECRET_EMBEDDING_API_KEY_VOYAGEAI"
 
 __all__ = [
     "EMBEDDING_PROVIDER_NAME",
     "EMBEDDING_PROVIDER_MODEL_NAME",
     "EMBEDDING_PROVIDER_API_KEY",
     "EMBEDDING_PROVIDER_DIMENSION",
+    "EMBEDDING_PROVIDER_SHARED_SECRET_KEY_NAME",
 ]

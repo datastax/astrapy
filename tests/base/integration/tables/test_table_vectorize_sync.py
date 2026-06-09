@@ -22,6 +22,7 @@ from astrapy.exceptions import TableInsertManyException
 
 from ..conftest import (
     EMBEDDING_PROVIDER_API_KEY,
+    EMBEDDING_PROVIDER_DIMENSION,
     IS_ASTRA_DB,
     RUN_SHARED_SECRET_VECTORIZE_TESTS,
     VECTORIZE_TEXTS,
@@ -44,7 +45,7 @@ class TestTableVectorizeSync:
                 embedding_api_key=EMBEDDING_PROVIDER_API_KEY or "",
             ),
         )
-        i_vector = DataAPIVector([0.01] * 64)
+        i_vector = DataAPIVector([0.01] * EMBEDDING_PROVIDER_DIMENSION)
         authenticated_table.insert_one(
             {"p_text": "v", "p_vector": i_vector},
         )
@@ -145,7 +146,7 @@ class TestTableVectorizeSync:
         self,
         sync_empty_table_kms_vectorize: DefaultTable,
     ) -> None:
-        i_vector = DataAPIVector([0.01] * 64)
+        i_vector = DataAPIVector([0.01] * EMBEDDING_PROVIDER_DIMENSION)
         sync_empty_table_kms_vectorize.insert_one(
             {"p_text": "v", "p_vector": i_vector},
         )

@@ -69,10 +69,13 @@ Note that the variables defined in the desired "base" template **must** be set t
 
 Additionally, you will need to define the environment variables in `tests/env_templates/env.vectorize-minimal.template`,
 which are needed by the minimal set of "vectorize" testing belonging to the "base" test group.
+These rely on a single embedding provider and model
+(the one configured in `embedding_provider_switcher.py`, to match variables in the env template).
 
 For Astra DB, you can include "shared secret" vectorize tests (i.e. KMS-based authentication).
-To run those tests, you must scope an OpenAI API key
-to the target Astra DB with secret name `"SHARED_SECRET_EMBEDDING_API_KEY_OPENAI"`
+To run those tests, you must scope an embedding provider API key
+to the target Astra DB with secret name matching the name set in
+the provider-switcher (e.g. `"SHARED_SECRET_EMBEDDING_API_KEY_VOYAGEAI"`).
 and comment the environment flag that suppresses them (see the base Astra env template).
 
 For non-Astra, the reranking-related tests run only if one sets
