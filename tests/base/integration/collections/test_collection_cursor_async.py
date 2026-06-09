@@ -26,7 +26,7 @@ from astrapy.exceptions import CursorException
 
 from ..conftest import DefaultAsyncCollection
 
-PAGE_SIZE = 50  # default as per Data API config after PR 2461
+PAGE_SIZE = 20  # TODO: set to 50, default as per Data API config after PR 2461
 NUM_DOCS = 2 * PAGE_SIZE + 5
 NUM_DOCS_PAGINATION = 2 * (2 * PAGE_SIZE) + 5
 
@@ -214,12 +214,12 @@ class TestCollectionCursorSync:
         assert curmf.has_next()
         assert curmf.consumed == 2
         assert curmf.state == CursorState.STARTED
-        for _ in range(18):
+        for _ in range(PAGE_SIZE - 2):
             await curmf.__anext__()
         assert await curmf.has_next()
-        assert curmf.consumed == 20
+        assert curmf.consumed == PAGE_SIZE
         assert curmf.state == CursorState.STARTED
-        assert curmf.buffered_count == NUM_DOCS - 20
+        assert curmf.buffered_count == PAGE_SIZE
 
         cur0 = async_filled_collection.find()
         cur0.close()
