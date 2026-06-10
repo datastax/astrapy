@@ -1,3 +1,11 @@
+main
+====
+
+APIOptions: new `ca_cert_path` parameter to supply a custom CA certificate (PEM)
+for TLS verification, useful for PrivateLink / private-CA environments
+(default: None, i.e. the certifi CA bundle).
+
+
 v 2.2.1
 =======
 
