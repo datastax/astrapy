@@ -26,8 +26,9 @@ from astrapy.exceptions import CursorException
 
 from ..conftest import DefaultAsyncCollection
 
-NUM_DOCS = 25  # keep this between 20 and 39
-NUM_DOCS_PAGINATION = 90  # keep this above 2 * (2 * 20) and below 2 * (3 * 20)
+PAGE_SIZE = 20  # TODO: set to 50, default as per Data API config after PR 2461
+NUM_DOCS = 2 * PAGE_SIZE + 5
+NUM_DOCS_PAGINATION = 2 * (2 * PAGE_SIZE) + 5
 
 
 @pytest.fixture
@@ -161,16 +162,16 @@ class TestCollectionCursorSync:
         await cur.__anext__()
         # now this has 19 items in buffer, one is consumed
         assert cur.consumed == 1
-        assert cur.buffered_count == 19
+        assert cur.buffered_count == PAGE_SIZE - 1
         assert len(cur.consume_buffer(3)) == 3
         assert cur.consumed == 4
-        assert cur.buffered_count == 16
+        assert cur.buffered_count == PAGE_SIZE - 4
         # from time to time the buffer is empty:
-        for _ in range(16):
+        for _ in range(PAGE_SIZE - 4):
             await cur.__anext__()
         assert cur.buffered_count == 0
         assert cur.consume_buffer(3) == []
-        assert cur.consumed == 20
+        assert cur.consumed == PAGE_SIZE
         assert cur.buffered_count == 0
 
         with pytest.raises(CursorException):
@@ -213,12 +214,12 @@ class TestCollectionCursorSync:
         assert curmf.has_next()
         assert curmf.consumed == 2
         assert curmf.state == CursorState.STARTED
-        for _ in range(18):
+        for _ in range(PAGE_SIZE - 2):
             await curmf.__anext__()
         assert await curmf.has_next()
-        assert curmf.consumed == 20
+        assert curmf.consumed == PAGE_SIZE
         assert curmf.state == CursorState.STARTED
-        assert curmf.buffered_count == NUM_DOCS - 20
+        assert curmf.buffered_count == PAGE_SIZE
 
         cur0 = async_filled_collection.find()
         cur0.close()
@@ -494,11 +495,9 @@ class TestCollectionCursorSync:
         self,
         async_filled_pagination_collection: DefaultAsyncCollection,
     ) -> None:
-        page_size = 20
-
         cur0 = async_filled_pagination_collection.find(filter={"even": True})
         ids0: list[int] = []
-        for _ in range(page_size):
+        for _ in range(PAGE_SIZE):
             doc = await cur0.__anext__()
             ids0.append(doc["_id"])
         nps0 = cur0._next_page_state
@@ -509,7 +508,7 @@ class TestCollectionCursorSync:
             initial_page_state=nps0,
         )
         ids1: list[int] = []
-        for _ in range(page_size):
+        for _ in range(PAGE_SIZE):
             doc = await cur1.__anext__()
             ids1.append(doc["_id"])
         nps1 = cur1._next_page_state
