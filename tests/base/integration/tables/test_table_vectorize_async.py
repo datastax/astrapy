@@ -14,8 +14,6 @@
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from astrapy.api_options import APIOptions
@@ -23,19 +21,19 @@ from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import TableInsertManyException
 
 from ..conftest import (
+    EMBEDDING_PROVIDER_API_KEY,
+    EMBEDDING_PROVIDER_DIMENSION,
     IS_ASTRA_DB,
     RUN_SHARED_SECRET_VECTORIZE_TESTS,
     VECTORIZE_TEXTS,
     DefaultAsyncTable,
 )
 
-HEADER_EMBEDDING_API_KEY_OPENAI = os.environ.get("HEADER_EMBEDDING_API_KEY_OPENAI")
-
 
 class TestTableVectorizeAsync:
     @pytest.mark.skipif(
-        HEADER_EMBEDDING_API_KEY_OPENAI is None,
-        reason="No HEADER_EMBEDDING_API_KEY_OPENAI detected",
+        EMBEDDING_PROVIDER_API_KEY is None,
+        reason="No embedding API Key credential",
     )
     @pytest.mark.describe("test of basic table vectorize with key via header, async")
     async def test_table_vectorize_header_async(
@@ -44,10 +42,10 @@ class TestTableVectorizeAsync:
     ) -> None:
         aauthenticated_table = async_empty_table_vectorize.with_options(
             api_options=APIOptions(
-                embedding_api_key=HEADER_EMBEDDING_API_KEY_OPENAI or "",
+                embedding_api_key=EMBEDDING_PROVIDER_API_KEY or "",
             ),
         )
-        i_vector = DataAPIVector([0.01] * 64)
+        i_vector = DataAPIVector([0.01] * EMBEDDING_PROVIDER_DIMENSION)
         await aauthenticated_table.insert_one(
             {"p_text": "v", "p_vector": i_vector},
         )
@@ -104,8 +102,8 @@ class TestTableVectorizeAsync:
         # assert isinstance(match0["$similarity"], float)
 
     @pytest.mark.skipif(
-        HEADER_EMBEDDING_API_KEY_OPENAI is None,
-        reason="No HEADER_EMBEDDING_API_KEY_OPENAI detected",
+        EMBEDDING_PROVIDER_API_KEY is None,
+        reason="No embedding API Key credential",
     )
     @pytest.mark.describe(
         "test of vectorize-based table insert many grand failures, async"
@@ -116,7 +114,7 @@ class TestTableVectorizeAsync:
     ) -> None:
         authenticated_atable = async_empty_table_vectorize.with_options(
             api_options=APIOptions(
-                embedding_api_key=HEADER_EMBEDDING_API_KEY_OPENAI or "",
+                embedding_api_key=EMBEDDING_PROVIDER_API_KEY or "",
             ),
         )
         await authenticated_atable.insert_many([{"p_text": "0", "p_vector": "Text."}])
@@ -148,7 +146,7 @@ class TestTableVectorizeAsync:
         self,
         async_empty_table_kms_vectorize: DefaultAsyncTable,
     ) -> None:
-        i_vector = DataAPIVector([0.01] * 64)
+        i_vector = DataAPIVector([0.01] * EMBEDDING_PROVIDER_DIMENSION)
         await async_empty_table_kms_vectorize.insert_one(
             {"p_text": "v", "p_vector": i_vector},
         )
@@ -206,8 +204,8 @@ class TestTableVectorizeAsync:
         # assert isinstance(match0["$similarity"], float)
 
     @pytest.mark.skipif(
-        HEADER_EMBEDDING_API_KEY_OPENAI is None,
-        reason="No HEADER_EMBEDDING_API_KEY_OPENAI detected",
+        EMBEDDING_PROVIDER_API_KEY is None,
+        reason="No embedding API Key credential",
     )
     @pytest.mark.describe("test of multiple-vectorize table usage via header, async")
     async def test_table_multiplevectorize_header_async(
