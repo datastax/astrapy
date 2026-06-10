@@ -22,7 +22,7 @@ on:
         required: true
       AWS_ECR_REGISTRY:
         required: true
-      HEADER_EMBEDDING_API_KEY_OPENAI:
+      HEADER_EMBEDDING_API_KEY_VOYAGEAI:
         required: true
       DOCKER_COMPOSE_LOCAL_DATA_API:
         required: true
@@ -41,7 +41,7 @@ jobs:
       AWS_ECR_ROLE_NAME: ${{ secrets.AWS_ECR_ROLE_NAME }}
       AWS_ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPOSITORY }}
       AWS_ECR_REGISTRY: ${{ secrets.AWS_ECR_REGISTRY }}
-      HEADER_EMBEDDING_API_KEY_OPENAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_OPENAI }}
+      HEADER_EMBEDDING_API_KEY_VOYAGEAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_VOYAGEAI }}
       DOCKER_COMPOSE_LOCAL_DATA_API: ${{ secrets.DOCKER_COMPOSE_LOCAL_DATA_API }}
       HEADER_RERANKING_API_KEY_NVIDIA: ${{ secrets.HEADER_RERANKING_API_KEY_NVIDIA }}
     runs-on: ubuntu-latest
