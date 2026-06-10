@@ -26,8 +26,9 @@ from astrapy.exceptions import CursorException
 
 from ..conftest import DefaultCollection
 
-NUM_DOCS = 25  # keep this between 20 and 39
-NUM_DOCS_PAGINATION = 90  # keep this above 2 * (2 * 20) and below 2 * (3 * 20)
+PAGE_SIZE = 20  # TODO: set to 50, default as per Data API config after PR 2461
+NUM_DOCS = 2 * PAGE_SIZE + 5
+NUM_DOCS_PAGINATION = 2 * (2 * PAGE_SIZE) + 5
 
 
 @pytest.fixture
@@ -159,16 +160,16 @@ class TestCollectionCursorSync:
         next(cur)
         # now this has 19 items in buffer, one is consumed
         assert cur.consumed == 1
-        assert cur.buffered_count == 19
+        assert cur.buffered_count == PAGE_SIZE - 1
         assert len(cur.consume_buffer(3)) == 3
         assert cur.consumed == 4
-        assert cur.buffered_count == 16
+        assert cur.buffered_count == PAGE_SIZE - 4
         # from time to time the buffer is empty:
-        for _ in range(16):
+        for _ in range(PAGE_SIZE - 4):
             next(cur)
         assert cur.buffered_count == 0
         assert cur.consume_buffer(3) == []
-        assert cur.consumed == 20
+        assert cur.consumed == PAGE_SIZE
         assert cur.buffered_count == 0
 
         with pytest.raises(CursorException):
@@ -211,12 +212,12 @@ class TestCollectionCursorSync:
         assert curmf.has_next()
         assert curmf.consumed == 2
         assert curmf.state == CursorState.STARTED
-        for _ in range(18):
+        for _ in range(PAGE_SIZE - 2):
             next(curmf)
         assert curmf.has_next()
-        assert curmf.consumed == 20
+        assert curmf.consumed == PAGE_SIZE
         assert curmf.state == CursorState.STARTED
-        assert curmf.buffered_count == NUM_DOCS - 20
+        assert curmf.buffered_count == PAGE_SIZE
 
         cur0 = filled_collection.find()
         cur0.close()
@@ -417,10 +418,8 @@ class TestCollectionCursorSync:
         self,
         filled_pagination_collection: DefaultCollection,
     ) -> None:
-        page_size = 20
-
         cur0 = filled_pagination_collection.find(filter={"even": True})
-        ids0 = [doc["_id"] for _, doc in zip(range(page_size), cur0)]
+        ids0 = [doc["_id"] for _, doc in zip(range(PAGE_SIZE), cur0)]
         nps0 = cur0._next_page_state
         assert isinstance(nps0, str)
 
@@ -428,7 +427,7 @@ class TestCollectionCursorSync:
             filter={"even": True},
             initial_page_state=nps0,
         )
-        ids1 = [doc["_id"] for _, doc in zip(range(page_size), cur1)]
+        ids1 = [doc["_id"] for _, doc in zip(range(PAGE_SIZE), cur1)]
         nps1 = cur1._next_page_state
         assert isinstance(nps1, str)
 
@@ -436,7 +435,7 @@ class TestCollectionCursorSync:
             filter={"even": True},
             initial_page_state=nps1,
         )
-        ids2 = [doc["_id"] for _, doc in zip(range(page_size), cur2)]
+        ids2 = [doc["_id"] for doc in cur2]
         assert cur2._next_page_state is None
 
         expected_ids = [i for i in range(NUM_DOCS_PAGINATION) if i % 2 == 0]
