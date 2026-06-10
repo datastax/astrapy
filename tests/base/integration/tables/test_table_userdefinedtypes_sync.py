@@ -562,6 +562,7 @@ class TestTableUserDefinedTypes:
         try:
             for cql_statement in WEIRD_UDT_BASE_INITIALIZE_STATEMENTS:
                 cql_session.execute(cql_statement)
+            time.sleep(1.5)  # udt propagation requires some time, it seems
 
             # test a read and a write for 'base weird'
             table_weird_base = sync_database.get_table(WEIRD_UDT_BASE_TABLE_NAME)

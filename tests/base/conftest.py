@@ -44,7 +44,11 @@ from ..conftest import (
     ADMIN_ENV_LIST,
     ADMIN_ENV_VARIABLE_MAP,
     CQL_AVAILABLE,
-    HEADER_EMBEDDING_API_KEY_OPENAI,
+    EMBEDDING_PROVIDER_API_KEY,
+    EMBEDDING_PROVIDER_DIMENSION,
+    EMBEDDING_PROVIDER_MODEL_NAME,
+    EMBEDDING_PROVIDER_NAME,
+    EMBEDDING_PROVIDER_SHARED_SECRET_KEY_NAME,
     HEADER_RERANKING_API_KEY_NVIDIA,
     IS_ASTRA_DB,
     RUN_SHARED_SECRET_VECTORIZE_TESTS,
@@ -227,10 +231,10 @@ def async_empty_collection(
 @pytest.fixture(scope="session")
 def service_collection_parameters() -> Iterable[dict[str, Any]]:
     yield {
-        "dimension": 1536,
-        "provider": "openai",
-        "modelName": "text-embedding-ada-002",
-        "api_key": HEADER_EMBEDDING_API_KEY_OPENAI,
+        "dimension": EMBEDDING_PROVIDER_DIMENSION,
+        "provider": EMBEDDING_PROVIDER_NAME,
+        "modelName": EMBEDDING_PROVIDER_MODEL_NAME,
+        "api_key": EMBEDDING_PROVIDER_API_KEY,
         "reranking_api_key": HEADER_RERANKING_API_KEY_NVIDIA,
     }
 
@@ -996,7 +1000,11 @@ __all__ = [
     "clean_nulls_from_dict",
     "is_future_version",
     "sync_fail_if_not_removed",
-    "HEADER_EMBEDDING_API_KEY_OPENAI",
+    "EMBEDDING_PROVIDER_NAME",
+    "EMBEDDING_PROVIDER_MODEL_NAME",
+    "EMBEDDING_PROVIDER_API_KEY",
+    "EMBEDDING_PROVIDER_DIMENSION",
+    "EMBEDDING_PROVIDER_SHARED_SECRET_KEY_NAME",
     "IS_ASTRA_DB",
     "ADMIN_ENV_LIST",
     "ADMIN_ENV_VARIABLE_MAP",

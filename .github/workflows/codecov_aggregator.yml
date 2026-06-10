@@ -32,7 +32,7 @@ jobs:
     secrets:
       ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
       ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
-      HEADER_EMBEDDING_API_KEY_OPENAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_OPENAI }}
+      HEADER_EMBEDDING_API_KEY_VOYAGEAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_VOYAGEAI }}
 
   local_it:
     uses: ./.github/workflows/local.yml
@@ -46,7 +46,7 @@ jobs:
       AWS_ECR_ROLE_NAME: ${{ secrets.AWS_ECR_ROLE_NAME }}
       AWS_ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPOSITORY }}
       AWS_ECR_REGISTRY: ${{ secrets.AWS_ECR_REGISTRY }}
-      HEADER_EMBEDDING_API_KEY_OPENAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_OPENAI }}
+      HEADER_EMBEDDING_API_KEY_VOYAGEAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_VOYAGEAI }}
       # hardcoding the target DB
       DOCKER_COMPOSE_LOCAL_DATA_API: "yes"
       # turn on header-based reranker auth

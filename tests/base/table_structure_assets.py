@@ -30,6 +30,13 @@ from astrapy.info import (
     VectorServiceOptions,
 )
 
+from ..conftest import (
+    EMBEDDING_PROVIDER_DIMENSION,
+    EMBEDDING_PROVIDER_MODEL_NAME,
+    EMBEDDING_PROVIDER_NAME,
+    EMBEDDING_PROVIDER_SHARED_SECRET_KEY_NAME,
+)
+
 TEST_ALL_RETURNS_TABLE_NAME = "test_table_all_returns"
 TEST_ALL_RETURNS_TABLE_DEFINITION = CreateTableDefinition(
     columns={
@@ -160,10 +167,10 @@ TEST_VECTORIZE_TABLE_DEFINITION = CreateTableDefinition(
         "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
         "p_vector": TableVectorColumnTypeDescriptor(
             column_type="vector",
-            dimension=64,
+            dimension=EMBEDDING_PROVIDER_DIMENSION,
             service=VectorServiceOptions(
-                provider="openai",
-                model_name="text-embedding-3-small",
+                provider=EMBEDDING_PROVIDER_NAME,
+                model_name=EMBEDDING_PROVIDER_MODEL_NAME,
             ),
         ),
     },
@@ -182,12 +189,12 @@ TEST_KMS_VECTORIZE_TABLE_DEFINITION = CreateTableDefinition(
         "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
         "p_vector": TableVectorColumnTypeDescriptor(
             column_type="vector",
-            dimension=64,
+            dimension=EMBEDDING_PROVIDER_DIMENSION,
             service=VectorServiceOptions(
-                provider="openai",
-                model_name="text-embedding-3-small",
+                provider=EMBEDDING_PROVIDER_NAME,
+                model_name=EMBEDDING_PROVIDER_MODEL_NAME,
                 authentication={
-                    "providerKey": "SHARED_SECRET_EMBEDDING_API_KEY_OPENAI"
+                    "providerKey": EMBEDDING_PROVIDER_SHARED_SECRET_KEY_NAME
                 },
             ),
         ),
@@ -210,18 +217,18 @@ TEST_MULTIPLEVECTORIZE_TABLE_DEFINITION = CreateTableDefinition(
         "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
         "p_vector_small": TableVectorColumnTypeDescriptor(
             column_type="vector",
-            dimension=1024,
+            dimension=EMBEDDING_PROVIDER_DIMENSION,
             service=VectorServiceOptions(
-                provider="openai",
-                model_name="text-embedding-3-small",
+                provider=EMBEDDING_PROVIDER_NAME,
+                model_name=EMBEDDING_PROVIDER_MODEL_NAME,
             ),
         ),
         "p_vector_large": TableVectorColumnTypeDescriptor(
             column_type="vector",
-            dimension=1024,
+            dimension=EMBEDDING_PROVIDER_DIMENSION,
             service=VectorServiceOptions(
-                provider="openai",
-                model_name="text-embedding-3-large",
+                provider=EMBEDDING_PROVIDER_NAME,
+                model_name=EMBEDDING_PROVIDER_MODEL_NAME,
             ),
         ),
     },
