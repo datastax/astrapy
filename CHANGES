@@ -2,6 +2,9 @@ main
 ====
 
 Added support for overriding reranking options in find_and_rerank method call.
+maintenance: integration testing gets an embedding provider switcher logic
+maintenance: integration tests use the latest HCD (2.0.6) and a recent Data API build (1.0.46)
+maintenance: integration tests have configurable page size for find pagination
 
 v 2.2.1
 =======
