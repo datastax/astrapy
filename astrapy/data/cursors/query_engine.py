@@ -36,6 +36,7 @@ from astrapy.exceptions import (
     UnexpectedDataAPIResponseException,
     _TimeoutContext,
 )
+from astrapy.info import RerankServiceOptions
 
 
 class _QueryEngine(ABC, Generic[TRAW]):
@@ -381,6 +382,7 @@ class _CollectionFindAndRerankQueryEngine(
     include_sort_vector: bool | None
     rerank_on: str | None
     rerank_query: str | None
+    rerank_service: RerankServiceOptions | None
     f_r_subpayload: dict[str, Any]
     f_options0: dict[str, Any]
 
@@ -398,6 +400,7 @@ class _CollectionFindAndRerankQueryEngine(
         include_sort_vector: bool | None,
         rerank_on: str | None,
         rerank_query: str | None,
+        rerank_service: RerankServiceOptions | None,
     ) -> None:
         self.collection = collection
         self.async_collection = async_collection
@@ -410,6 +413,7 @@ class _CollectionFindAndRerankQueryEngine(
         self.include_sort_vector = include_sort_vector
         self.rerank_on = rerank_on
         self.rerank_query = rerank_query
+        self.rerank_service = rerank_service
         self.f_r_subpayload = {
             k: v
             for k, v in {
@@ -428,6 +432,9 @@ class _CollectionFindAndRerankQueryEngine(
                 "includeSortVector": self.include_sort_vector,
                 "rerankOn": self.rerank_on,
                 "rerankQuery": self.rerank_query,
+                "rerank": None
+                if self.rerank_service is None
+                else self.rerank_service.as_dict(),
             }.items()
             if v is not None
         }
