@@ -377,12 +377,12 @@ def test_set_indexing_empty_target_normalization() -> None:
     # not None: the Data API expects a list of paths, and as_dict() forwards
     # this value verbatim into the wire payload.
     for mode in ["deny", "allow"]:
-        definition = CollectionDefinition().set_indexing(mode)
+        definition = CollectionDefinition().with_indexing(mode)
         assert definition.indexing == {mode: []}
         assert definition.as_dict() == {"indexing": {mode: []}}
 
     # An explicitly-provided target is preserved unchanged.
-    explicit = CollectionDefinition().set_indexing("deny", ["a", "b"])
+    explicit = CollectionDefinition().with_indexing("deny", ["a", "b"])
     assert explicit.indexing == {"deny": ["a", "b"]}
     assert explicit.as_dict() == {"indexing": {"deny": ["a", "b"]}}
 
@@ -393,11 +393,11 @@ def test_set_indexing_mode_case_normalization() -> None:
     # so the stored key must also be normalized to lowercase: the Data API expects
     # "allow"/"deny", and as_dict() forwards the key verbatim into the wire payload.
     for raw_mode, normalized in [("DENY", "deny"), ("Allow", "allow")]:
-        definition = CollectionDefinition().set_indexing(raw_mode)
+        definition = CollectionDefinition().with_indexing(raw_mode)
         assert definition.indexing == {normalized: []}
         assert definition.as_dict() == {"indexing": {normalized: []}}
 
     # Case normalization also applies when an explicit target is provided.
-    explicit = CollectionDefinition().set_indexing("DENY", ["a", "b"])
+    explicit = CollectionDefinition().with_indexing("DENY", ["a", "b"])
     assert explicit.indexing == {"deny": ["a", "b"]}
     assert explicit.as_dict() == {"indexing": {"deny": ["a", "b"]}}
