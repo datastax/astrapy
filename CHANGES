@@ -6,6 +6,7 @@ CollectionDefinition fluent interface: renamed all `set_*` methods to `with_*` (
     - Affected methods: `with_indexing`, `with_default_id`, `with_vector_dimension`, `with_vector_metric`, `with_vector_source_model`, `with_vector_service`, `with_rerank`, `with_lexical`
 Added support for overriding reranking options in find_and_rerank method call.
 Added support for custom CA certificates (PEM) in the APIOptions (new `ca_cert_path` parameter)
+Bugfix: faulty normalization of empty/null indexing targets for `CollectionDefinition.set_indexing`
 maintenance: integration testing gets an embedding provider switcher logic
 maintenance: integration tests use the latest HCD (2.0.6) and a recent Data API build (1.0.46)
 maintenance: integration tests have configurable page size for find pagination
