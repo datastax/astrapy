@@ -386,6 +386,7 @@ class Table(Generic[ROW]):
             spawner=self,
             handle_decimals_writes=True,
             handle_decimals_reads=True,
+            ca_cert_path=self.api_options.ca_cert_path,
         )
         return api_commander
 
@@ -3437,6 +3438,7 @@ class AsyncTable(Generic[ROW]):
             spawner=self,
             handle_decimals_writes=True,
             handle_decimals_reads=True,
+            ca_cert_path=self.api_options.ca_cert_path,
         )
         return api_commander
 

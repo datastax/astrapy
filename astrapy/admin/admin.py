@@ -215,6 +215,7 @@ def fetch_raw_database_info_from_id_token(
         dev_ops_api=True,
         redacted_header_names=_api_options.redacted_header_names,
         event_observers=_api_options.event_observers,
+        ca_cert_path=_api_options.ca_cert_path,
     )
 
     gd_response = dev_ops_commander.request(
@@ -313,6 +314,7 @@ async def async_fetch_raw_database_info_from_id_token(
         dev_ops_api=True,
         redacted_header_names=_api_options.redacted_header_names,
         event_observers=_api_options.event_observers,
+        ca_cert_path=_api_options.ca_cert_path,
     )
 
     gd_response = await dev_ops_commander.async_request(
@@ -517,6 +519,7 @@ class AstraDBAdmin:
             redacted_header_names=self.api_options.redacted_header_names,
             event_observers=self.api_options.event_observers,
             spawner=self,
+            ca_cert_path=self.api_options.ca_cert_path,
         )
         return dev_ops_commander
 
@@ -547,6 +550,7 @@ class AstraDBAdmin:
             redacted_header_names=self.api_options.redacted_header_names,
             event_observers=self.api_options.event_observers,
             spawner=self,
+            ca_cert_path=self.api_options.ca_cert_path,
         )
         return rl_dev_ops_commander
 
@@ -2761,6 +2765,7 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             redacted_header_names=self.api_options.redacted_header_names,
             event_observers=self.api_options.event_observers,
             spawner=self,
+            ca_cert_path=self.api_options.ca_cert_path,
         )
         return api_commander
 
@@ -2789,6 +2794,7 @@ class AstraDBDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             redacted_header_names=self.api_options.redacted_header_names,
             event_observers=self.api_options.event_observers,
             spawner=self,
+            ca_cert_path=self.api_options.ca_cert_path,
         )
         return dev_ops_commander
 
@@ -3976,6 +3982,7 @@ class DataAPIDatabaseAdmin(ProviderQueryingDatabaseAdmin):
             redacted_header_names=self.api_options.redacted_header_names,
             event_observers=self.api_options.event_observers,
             spawner=self,
+            ca_cert_path=self.api_options.ca_cert_path,
         )
         return api_commander
 
