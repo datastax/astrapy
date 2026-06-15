@@ -367,6 +367,9 @@ def test_deprecated_set_aliases_sync() -> None:
         deprecated_calls[7][1].build().as_dict()
         == zero.with_lexical("STANDARD").build().as_dict()
     )
+
+
+@pytest.mark.describe(
     "test of set_indexing normalizing a missing target to an empty list"
 )
 def test_set_indexing_empty_target_normalization() -> None:
