@@ -97,7 +97,7 @@ jobs:
   test-pypi-publish:
     needs:
       - build
-    if: needs.build.outputs.version-exists == 'false'
+    if: success() && needs.build.outputs.version-exists == 'false'
     uses:
       ./.github/workflows/_test_release.yml
     permissions: write-all
@@ -109,7 +109,7 @@ jobs:
     needs:
       - build
       - test-pypi-publish
-    if: needs.build.outputs.version-exists == 'false'
+    if: success() && needs.build.outputs.version-exists == 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -167,7 +167,7 @@ jobs:
     needs:
       - build
       - test-pypi-publish
-    if: needs.build.outputs.version-exists == 'false'
+    if: success() && needs.build.outputs.version-exists == 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -205,7 +205,7 @@ jobs:
       - test-pypi-publish
       - pre-release-checks
       - pre-release-unit-lowest-python
-    if: needs.build.outputs.version-exists == 'false'
+    if: success() && needs.build.outputs.version-exists == 'false'
     runs-on: ubuntu-latest
     # This requires an 'environment' with this name on the github repo (and is best practice to restrict permissions)
     # NOTE: Once this trusted publishing workflow is fully verified with actual releases,
@@ -244,7 +244,7 @@ jobs:
       - pre-release-checks
       - pre-release-unit-lowest-python
       - publish
-    if: needs.build.outputs.version-exists == 'false'
+    if: success() && needs.build.outputs.version-exists == 'false'
     runs-on: ubuntu-latest
     permissions:
       # Needed by `ncipollo/release-action` for creating the release
