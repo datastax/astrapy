@@ -934,6 +934,12 @@ class APIOptions:
             `astrapy.event_observers.Observer`) attached. The keys are the observer
             names, the values are the observer objects. Interactions with the Data API
             will dispatch events to all attached observers.
+        ca_cert_path: optional path to a custom CA certificate file (PEM format)
+            to use for SSL verification when connecting to the API. This is useful
+            for PrivateLink setups or other environments where a custom CA is needed.
+            When set, a per-instance SSL context is created with the given CA file
+            instead of using the default certifi-based CA bundle. Defaults to None
+            (use the bundled certifi CA roots).
         timeout_options: an instance of `TimeoutOptions` (see) to control the timeout
             behavior for the various kinds of operations involving the Data/DevOps API.
         serdes_options: an instance of `SerdesOptions` (see) to customize the
@@ -945,12 +951,6 @@ class APIOptions:
         dev_ops_api_url_options: an instance of `DevOpsAPIURLOptions` (see) to
             customize the URL used to reach the DevOps API (customizing this setting
             is rarely needed; relevant only for Astra DB environments).
-        ca_cert_path: optional path to a custom CA certificate file (PEM format)
-            to use for SSL verification when connecting to the API. This is useful
-            for PrivateLink setups or other environments where a custom CA is needed.
-            When set, a per-instance SSL context is created with the given CA file
-            instead of using the default certifi-based CA bundle. Defaults to None
-            (use the bundled certifi CA roots).
 
     Examples:
             >>> from astrapy import DataAPIClient
@@ -1029,7 +1029,6 @@ class APIOptions:
     reranking_api_key: RerankingHeadersProvider | UnsetType = _UNSET
     event_observers: dict[str, Observer | None] | UnsetType = _UNSET
     ca_cert_path: str | None | UnsetType = _UNSET
-
     timeout_options: TimeoutOptions | UnsetType = _UNSET
     serdes_options: SerdesOptions | UnsetType = _UNSET
     data_api_url_options: DataAPIURLOptions | UnsetType = _UNSET
@@ -1131,6 +1130,9 @@ class APIOptions:
                 if isinstance(self.event_observers, UnsetType)
                 else f"event_observers={','.join(self.event_observers.keys())}",
                 None
+                if isinstance(self.ca_cert_path, UnsetType)
+                else f"ca_cert_path={self.ca_cert_path}",
+                None
                 if isinstance(self.timeout_options, UnsetType)
                 else f"timeout_options={self.timeout_options}",
                 None
@@ -1142,9 +1144,6 @@ class APIOptions:
                 None
                 if isinstance(self.dev_ops_api_url_options, UnsetType)
                 else f"dev_ops_api_url_options={self.dev_ops_api_url_options}",
-                None
-                if isinstance(self.ca_cert_path, UnsetType)
-                else f"ca_cert_path={self.ca_cert_path}",
             )
             if pc is not None
         ]
@@ -1209,6 +1208,12 @@ class FullAPIOptions(APIOptions):
             `astrapy.event_observers.Observer`) attached. Keys are the observer names,
             each associated to the observer object. Interactions with the Data API
             will dispatch events to all attached observers.
+        ca_cert_path: optional path to a custom CA certificate file (PEM format)
+            to use for SSL verification when connecting to the API. This is useful
+            for PrivateLink setups or other environments where a custom CA is needed.
+            When set, a per-instance SSL context is created with the given CA file
+            instead of using the default certifi-based CA bundle. Defaults to None
+            (use the bundled certifi CA roots).
         timeout_options: an instance of `TimeoutOptions` (see) to control the timeout
             behavior for the various kinds of operations involving the Data/DevOps API.
         serdes_options: an instance of `SerdesOptions` (see) to customize the
@@ -1232,7 +1237,6 @@ class FullAPIOptions(APIOptions):
     reranking_api_key: RerankingHeadersProvider
     event_observers: dict[str, Observer | None]
     ca_cert_path: str | None
-
     timeout_options: FullTimeoutOptions
     serdes_options: FullSerdesOptions
     data_api_url_options: FullDataAPIURLOptions
