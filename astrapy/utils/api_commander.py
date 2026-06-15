@@ -143,21 +143,28 @@ class APICommander:
         event_observers: dict[str, Observer | None] = {},
         handle_decimals_writes: bool = False,
         handle_decimals_reads: bool = False,
+        ca_cert_path: str | None = None,
     ) -> None:
+        self.ca_cert_path = ca_cert_path
+        if ca_cert_path is not None:
+            ssl_context = ssl.create_default_context(cafile=ca_cert_path)
+        else:
+            ssl_context = CLIENT_SSL_CONTEXT
+
         ssl_control_headers: dict[str, str | None]
         if disable_ssl_reuse:
             self.client = httpx.Client(
                 limits=no_pooling_limits,
-                verify=CLIENT_SSL_CONTEXT,
+                verify=ssl_context,
             )
             self.async_client = httpx.AsyncClient(
                 limits=no_pooling_limits,
-                verify=CLIENT_SSL_CONTEXT,
+                verify=ssl_context,
             )
             ssl_control_headers = {"Connection": "close"}
         else:
-            self.client = httpx.Client(verify=CLIENT_SSL_CONTEXT)
-            self.async_client = httpx.AsyncClient(verify=CLIENT_SSL_CONTEXT)
+            self.client = httpx.Client(verify=ssl_context)
+            self.async_client = httpx.AsyncClient(verify=ssl_context)
             ssl_control_headers = {}
 
         self.api_endpoint = api_endpoint.rstrip("/")
@@ -290,6 +297,7 @@ class APICommander:
                 else self.redacted_header_names
             ),
             dev_ops_api=dev_ops_api if dev_ops_api is not None else self.dev_ops_api,
+            ca_cert_path=self.ca_cert_path,
         )
 
     def _compose_request_url(self, additional_path: str | None) -> str:
