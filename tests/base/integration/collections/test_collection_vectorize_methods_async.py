@@ -279,10 +279,10 @@ class TestCollectionVectorizeMethodsAsync:
                 "collection_name",
                 definition=(
                     CollectionDefinition.builder()
-                    .set_vector_dimension(
+                    .with_vector_dimension(
                         service_collection_parameters["dimension"] + 10
                     )
-                    .set_vector_service(
+                    .with_vector_service(
                         provider=service_collection_parameters["provider"],
                         model_name=service_collection_parameters["modelName"],
                     )
