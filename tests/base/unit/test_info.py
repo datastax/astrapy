@@ -129,18 +129,16 @@ def test_parse_databasedefinition() -> None:
         "keyspace": "the_keyspace1",
         "pcuGroupUUID": "the_pcuGroupUUID1",
     }
-    assert db_def0.with_defaults().as_dict() == expected_pload0
-    assert db_def1.with_defaults().as_dict() == expected_pload1
+    assert db_def0.with_defaults().as_dict(name="the_name0") == expected_pload0
+    assert db_def1.with_defaults().as_dict(name="the_name1") == expected_pload1
 
     # instance match test
 
     built_def0 = DatabaseDefinition(
-        name="the_name0",
         cloud_provider="the_cloudProvider0",
         region="the_region0",
     )
     built_def1 = DatabaseDefinition(
-        name="the_name1",
         cloud_provider="the_cloudProvider1",
         region="the_region1",
         tier="the_tier1",

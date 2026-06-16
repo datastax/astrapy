@@ -19,6 +19,7 @@ from pytest_httpserver import HTTPServer
 
 from astrapy import AstraDBAdmin, DataAPIClient
 from astrapy.api_options import APIOptions, DevOpsAPIURLOptions
+from astrapy.info import DatabaseDefinition
 from astrapy.settings.defaults import (
     DEFAULT_CREATE_DB_CAPACITY_UNITS,
     DEFAULT_CREATE_DB_DB_TYPE,
@@ -84,7 +85,6 @@ class TestAdminCreateDatabaseAsync:
         httpserver: HTTPServer,
         mock_astra_admin: AstraDBAdmin,
     ) -> None:
-        # TODO add all of the optional params here
         rich_payload = {
             "name": "the_db_name",
             "cloudProvider": "cp",
@@ -110,6 +110,69 @@ class TestAdminCreateDatabaseAsync:
                 "the_db_name",
                 cloud_provider="cp",
                 region="r",
+                keyspace="ks",
+                wait_until_active=False,
+            )
+
+    @pytest.mark.describe("test of admin create database definition, async")
+    async def test_admin_create_database_definition_async(
+        self,
+        httpserver: HTTPServer,
+        mock_astra_admin: AstraDBAdmin,
+    ) -> None:
+        full_payload = {
+            "name": "the_db_name",
+            "cloudProvider": "cp",
+            "region": "r",
+            "keyspace": "ks",
+            "tier": "tr",
+            "capacityUnits": 5,
+            "dbType": "ty",
+            "pcuGroupUUID": "d",
+        }
+
+        httpserver.expect_oneshot_request(
+            "/vx/databases",
+            method=HttpMethod.POST,
+            json=full_payload,
+        ).respond_with_data(
+            "", headers={"Location": "xyz"}, status=DEV_OPS_RESPONSE_HTTP_CREATED
+        )
+
+        db_definition = DatabaseDefinition(
+            cloud_provider="cp",
+            region="r",
+            keyspace="ks",
+            tier="tr",
+            capacity_units=5,
+            db_type="ty",
+            pcu_group_id="d",
+        )
+
+        # We prepare for failure here, but it's a good failure: we want to ensure the httpserver
+        # gets the right payload and the error is when the client instantiates the db admin all right.
+        with pytest.raises(ValueError, match="Cannot parse the supplied API endpoint"):
+            await mock_astra_admin.async_create_database(
+                "the_db_name",
+                definition=db_definition,
+                wait_until_active=False,
+            )
+
+    @pytest.mark.describe("test of admin create database bad patterns, async")
+    async def test_admin_create_database_badpatterns_async(
+        self,
+        httpserver: HTTPServer,
+        mock_astra_admin: AstraDBAdmin,
+    ) -> None:
+        with pytest.raises(ValueError, match="must be provided"):
+            await mock_astra_admin.async_create_database(
+                "the_db_name", wait_until_active=False
+            )
+
+        with pytest.raises(ValueError, match="Cannot specify both"):
+            await mock_astra_admin.async_create_database(
+                "the_db_name",
+                definition=DatabaseDefinition(cloud_provider="cp", region="r"),
                 keyspace="ks",
                 wait_until_active=False,
             )

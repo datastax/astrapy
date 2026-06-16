@@ -417,10 +417,9 @@ class AstraDBAvailableRegionInfo:
 @dataclass
 class DatabaseDefinition:
     """
-    Represents a database definition for database creation operations.
+    Represents a database definition for database creation operations (excluding the DB name).
 
     Attributes:
-        name: the name of the database to create.
         cloud_provider: the cloud provider hosting the database (e.g. 'aws', 'gcp', 'azure').
         region: the region where the database will be created.
         tier: the database tier (e.g. 'serverless'). Optional, defaults to None.
@@ -430,7 +429,6 @@ class DatabaseDefinition:
         pcu_group_id: the PCU group ID to use for provisioning the database. Optional, defaults to None.
     """
 
-    name: str
     cloud_provider: str
     region: str
     tier: str | None = None
@@ -441,7 +439,6 @@ class DatabaseDefinition:
 
     def __repr__(self) -> str:
         pieces = [
-            f"name={self.name}",
             f"cloud_provider={self.cloud_provider}",
             f"region={self.region}",
         ]
@@ -457,15 +454,23 @@ class DatabaseDefinition:
             pieces.append(f"pcu_group_id={self.pcu_group_id}")
         return f"{self.__class__.__name__}({', '.join(pieces)})"
 
-    def as_dict(self) -> dict[str, Any]:
+    def as_dict(self, *, name: str | None) -> dict[str, Any]:
         """
         Recast this object into a dictionary.
+
+        Args:
+            name: if provided, this is the name of the database and will
+                be used to enrich the result making it a complete payload
+                suitable for a DevOps API create-database invocation.
+
+        Returns:
+            a dictionary expressing the object (plus optionally a DB name).
         """
 
         return {
             k: v
             for k, v in {
-                "name": self.name,
+                "name": name,
                 "cloudProvider": self.cloud_provider,
                 "region": self.region,
                 "tier": self.tier,
@@ -482,6 +487,9 @@ class DatabaseDefinition:
         """
         Create an instance of DatabaseDefinition from a dictionary
         such as one from the Data API.
+
+        This operation, which should never be needed in ordinary client activity,
+        exceptionally ignores any 'name' field it would find.
         """
 
         _warn_residual_keys(
@@ -499,7 +507,6 @@ class DatabaseDefinition:
             },
         )
         return DatabaseDefinition(
-            name=raw_dict["name"],
             cloud_provider=raw_dict["cloudProvider"],
             region=raw_dict["region"],
             tier=raw_dict.get("tier"),
@@ -518,7 +525,6 @@ class DatabaseDefinition:
         This method assumes that non-optional fields are not None.
         """
         return DatabaseDefinition(
-            name=self.name,
             cloud_provider=self.cloud_provider,
             region=self.region,
             tier=self.tier if self.tier is not None else DEFAULT_CREATE_DB_TIER,

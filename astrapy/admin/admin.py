@@ -48,6 +48,7 @@ from astrapy.info import (
     AstraDBAdminDatabaseInfo,
     AstraDBAvailableRegionInfo,
     AstraDBDatabaseInfo,
+    DatabaseDefinition,
     FindEmbeddingProvidersResult,
     FindRerankingProvidersResult,
 )
@@ -1065,8 +1066,9 @@ class AstraDBAdmin:
         self,
         name: str,
         *,
-        cloud_provider: str,
-        region: str,
+        definition: DatabaseDefinition | None = None,
+        cloud_provider: str | None = None,
+        region: str | None = None,
         keyspace: str | None = None,
         wait_until_active: bool = True,
         database_admin_timeout_ms: int | None = None,
@@ -1078,12 +1080,23 @@ class AstraDBAdmin:
         """
         Create a database as requested, optionally waiting for it to be ready.
 
+        The most common database configuration are available as keyword arguments.
+        If more control is needed, a `DatabaseDefinition` object can be provided instead.
+
         Args:
             name: the desired name for the database.
-            cloud_provider: one of 'aws', 'gcp' or 'azure'.
-            region: any of the available cloud regions.
+            definition: a DatabaseDefinition object for the database.
+                If provided, `cloud_provider`, `region`, and `keyspace`
+                must not be specified.
+            cloud_provider: one of 'aws', 'gcp' or 'azure'. Required if
+                `definition` is not provided.
+                Cannot be specified if `definition` is provided.
+            region: any of the available cloud regions. Required if
+                `definition` is not provided.
+                Cannot be specified if `definition` is provided.
             keyspace: name for the one keyspace the database starts with.
                 If omitted, DevOps API will use its default.
+                Cannot be specified if `definition` is provided.
             wait_until_active: if True (default), the method returns only after
                 the newly-created database is in ACTIVE state (a few minutes,
                 usually). If False, it will return right after issuing the
@@ -1118,7 +1131,8 @@ class AstraDBAdmin:
         creation request has not reached the API server and is not going
         to be, in fact, honored.
 
-        Example:
+        Examples:
+            >>> # call pattern using the basic parameters:
             >>> my_new_db_admin = my_astra_db_admin.create_database(
             ...     "new_database",
             ...     cloud_provider="aws",
@@ -1134,7 +1148,46 @@ class AstraDBAdmin:
             ...     )
             ... )
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.2]})
+            >>>
+            >>> # call pattern using the 'definition' parameter:
+            >>> my_custom_db_definition = DatabaseDefinition(
+            ...    cloud_provider="aws",
+            ...    region="ap-south-1",
+            ...    capacity_units=4,
+            ...    keyspace="staging_xyz",
+            ...    pcu_group_id="01234567-89ab-cdef-0123-456789abcdef",
+            ... )
+            >>> my_custom_db_admin = my_astra_db_admin.create_database(
+            ...     "new_customized_database",
+            ...     definition=my_custom_db_definition,
+            ... )
         """
+
+        # Validate parameter combinations
+        definition_fields = [cloud_provider, region, keyspace]
+        definition_fields_provided = any(f is not None for f in definition_fields)
+
+        if definition is not None and definition_fields_provided:
+            raise ValueError(
+                "Cannot specify both 'definition' and any of "
+                "'cloud_provider', 'region', 'keyspace'."
+            )
+
+        if definition is None:
+            if cloud_provider is None or region is None:
+                raise ValueError(
+                    "Either 'definition' or both 'cloud_provider' and 'region' "
+                    "must be provided."
+                )
+            # Build definition from individual parameters
+            _definition = DatabaseDefinition(
+                cloud_provider=cloud_provider,
+                region=region,
+                keyspace=keyspace,
+            ).with_defaults()
+        else:
+            # Use provided definition
+            _definition = definition.with_defaults()
 
         _database_admin_timeout_ms, _da_label = _first_valid_timeout(
             (database_admin_timeout_ms, "database_admin_timeout_ms"),
@@ -1149,19 +1202,7 @@ class AstraDBAdmin:
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
-        cd_payload = {
-            k: v
-            for k, v in {
-                "name": name,
-                "cloudProvider": cloud_provider,
-                "region": region,
-                "tier": "serverless",
-                "capacityUnits": 1,
-                "dbType": "vector",
-                "keyspace": keyspace,
-            }.items()
-            if v is not None
-        }
+        cd_payload = _definition.as_dict(name=name)
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_database_admin_timeout_ms,
             dev_ops_api=True,
@@ -1179,7 +1220,7 @@ class AstraDBAdmin:
                 logger.info("polling capability check returned negative (DevOps API)")
                 raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(
-            f"creating database {name}/({cloud_provider}, {region}) (DevOps API)"
+            f"creating database {name}/({_definition.cloud_provider}, {_definition.region}) (DevOps API)"
         )
         cd_raw_response = self._dev_ops_api_commander.raw_request(
             caller_function_name="create_database",
@@ -1200,7 +1241,7 @@ class AstraDBAdmin:
         new_database_id = cd_raw_response.headers["Location"]
         logger.info(
             "DevOps API returned from creating database "
-            f"{name}/({cloud_provider}, {region})"
+            f"{name}/({_definition.cloud_provider}, {_definition.region})"
         )
         if wait_until_active:
             last_status_seen = DatabaseStatus.PENDING.value
@@ -1225,7 +1266,7 @@ class AstraDBAdmin:
         # return the database instance
         logger.info(
             f"finished creating database '{new_database_id}' = "
-            f"{name}/({cloud_provider}, {region}) (DevOps API)"
+            f"{name}/({_definition.cloud_provider}, {_definition.region}) (DevOps API)"
         )
         _final_api_options = self.api_options.with_override(
             spawn_api_options
@@ -1234,7 +1275,7 @@ class AstraDBAdmin:
             api_endpoint=build_api_endpoint(
                 environment=self.api_options.environment,
                 database_id=new_database_id,
-                region=region,
+                region=_definition.region,
             ),
             astra_db_admin=self,
             spawn_api_options=_final_api_options,
@@ -1244,8 +1285,9 @@ class AstraDBAdmin:
         self,
         name: str,
         *,
-        cloud_provider: str,
-        region: str,
+        definition: DatabaseDefinition | None = None,
+        cloud_provider: str | None = None,
+        region: str | None = None,
         keyspace: str | None = None,
         wait_until_active: bool = True,
         database_admin_timeout_ms: int | None = None,
@@ -1258,12 +1300,23 @@ class AstraDBAdmin:
         Create a database as requested, optionally waiting for it to be ready.
         This is an awaitable method suitable for use within an asyncio event loop.
 
+        The most common database configuration are available as keyword arguments.
+        If more control is needed, a `DatabaseDefinition` object can be provided instead.
+
         Args:
             name: the desired name for the database.
-            cloud_provider: one of 'aws', 'gcp' or 'azure'.
-            region: any of the available cloud regions.
+            definition: a DatabaseDefinition object for the database.
+                If provided, `cloud_provider`, `region`, and `keyspace`
+                must not be specified.
+            cloud_provider: one of 'aws', 'gcp' or 'azure'. Required if
+                `definition` is not provided.
+                Cannot be specified if `definition` is provided.
+            region: any of the available cloud regions. Required if
+                `definition` is not provided.
+                Cannot be specified if `definition` is provided.
             keyspace: name for the one keyspace the database starts with.
                 If omitted, DevOps API will use its default.
+                Cannot be specified if `definition` is provided.
             wait_until_active: if True (default), the method returns only after
                 the newly-created database is in ACTIVE state (a few minutes,
                 usually). If False, it will return right after issuing the
@@ -1298,16 +1351,58 @@ class AstraDBAdmin:
         creation request has not reached the API server and is not going
         to be, in fact, honored.
 
-        Example:
+        Examples:
+            >>> # call pattern using the basic parameters:
             >>> asyncio.run(
             ...     my_astra_db_admin.async_create_database(
             ...         "new_database",
             ...         cloud_provider="aws",
             ...         region="ap-south-1",
-            ....    )
+            ...     )
             ... )
             AstraDBDatabaseAdmin(id=...)
+            >>>
+            >>> # call pattern using the 'definition' parameter:
+            >>> my_custom_db_definition = DatabaseDefinition(
+            ...    cloud_provider="aws",
+            ...    region="ap-south-1",
+            ...    capacity_units=4,
+            ...    keyspace="staging_xyz",
+            ...    pcu_group_id="01234567-89ab-cdef-0123-456789abcdef",
+            ... )
+            >>> asyncio.run(
+            ...     my_astra_db_admin.create_database(
+            ...         "new_customized_database",
+            ...         definition=my_custom_db_definition,
+            ...     )
+            ... )
         """
+
+        # Validate parameter combinations
+        definition_fields = [cloud_provider, region, keyspace]
+        definition_fields_provided = any(f is not None for f in definition_fields)
+
+        if definition is not None and definition_fields_provided:
+            raise ValueError(
+                "Cannot specify both 'definition' and any of "
+                "'cloud_provider', 'region', 'keyspace'."
+            )
+
+        if definition is None:
+            if cloud_provider is None or region is None:
+                raise ValueError(
+                    "Either 'definition' or both 'cloud_provider' and 'region' "
+                    "must be provided."
+                )
+            # Build definition from individual parameters
+            _definition = DatabaseDefinition(
+                cloud_provider=cloud_provider,
+                region=region,
+                keyspace=keyspace,
+            ).with_defaults()
+        else:
+            # Use provided definition
+            _definition = definition.with_defaults()
 
         _database_admin_timeout_ms, _da_label = _first_valid_timeout(
             (database_admin_timeout_ms, "database_admin_timeout_ms"),
@@ -1322,19 +1417,7 @@ class AstraDBAdmin:
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
-        cd_payload = {
-            k: v
-            for k, v in {
-                "name": name,
-                "tier": "serverless",
-                "cloudProvider": cloud_provider,
-                "region": region,
-                "capacityUnits": 1,
-                "dbType": "vector",
-                "keyspace": keyspace,
-            }.items()
-            if v is not None
-        }
+        cd_payload = _definition.as_dict(name=name)
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_database_admin_timeout_ms,
             dev_ops_api=True,
@@ -1352,7 +1435,7 @@ class AstraDBAdmin:
                 logger.info("polling capability check returned negative (DevOps API)")
                 raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(
-            f"creating database {name}/({cloud_provider}, {region}) (DevOps API), async"
+            f"creating database {name}/({_definition.cloud_provider}, {_definition.region}) (DevOps API), async"
         )
         cd_raw_response = await self._dev_ops_api_commander.async_raw_request(
             caller_function_name="async_create_database",
@@ -1373,7 +1456,7 @@ class AstraDBAdmin:
         new_database_id = cd_raw_response.headers["Location"]
         logger.info(
             "DevOps API returned from creating database "
-            f"{name}/({cloud_provider}, {region}), async"
+            f"{name}/({_definition.cloud_provider}, {_definition.region}), async"
         )
         if wait_until_active:
             last_status_seen = DatabaseStatus.PENDING.value
@@ -1400,7 +1483,7 @@ class AstraDBAdmin:
         # return the database instance
         logger.info(
             f"finished creating database '{new_database_id}' = "
-            f"{name}/({cloud_provider}, {region}) (DevOps API), async"
+            f"{name}/({_definition.cloud_provider}, {_definition.region}) (DevOps API), async"
         )
         _final_api_options = self.api_options.with_override(
             spawn_api_options
@@ -1409,7 +1492,7 @@ class AstraDBAdmin:
             api_endpoint=build_api_endpoint(
                 environment=self.api_options.environment,
                 database_id=new_database_id,
-                region=region,
+                region=_definition.region,
             ),
             astra_db_admin=self,
             spawn_api_options=_final_api_options,
