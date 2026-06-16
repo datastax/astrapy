@@ -407,3 +407,120 @@ class AstraDBAvailableRegionInfo:
             reserved_for_qualified_users=raw_dict["reservedForQualifiedUsers"],
             zone=raw_dict["zone"],
         )
+
+
+@dataclass
+class DatabaseDefinition:
+    """
+    Represents a database definition for database creation operations.
+
+    Attributes:
+        name: the name of the database to create.
+        cloud_provider: the cloud provider hosting the database (e.g. 'aws', 'gcp', 'azure').
+        region: the region where the database will be created.
+        tier: the database tier (e.g. 'serverless'). Optional, defaults to None.
+        capacity_units: the number of capacity units for the database. Optional, defaults to None.
+        db_type: the type of database (e.g. 'vector'). Optional, defaults to None.
+        keyspace: the default keyspace for the database. Optional, defaults to None.
+        pcu_group_id: the PCU group ID to use for provisioning the database. Optional, defaults to None.
+    """
+
+    name: str
+    cloud_provider: str
+    region: str
+    tier: str | None = None
+    capacity_units: int | None = None
+    db_type: str | None = None
+    keyspace: str | None = None
+    pcu_group_id: str | None = None
+
+    def __repr__(self) -> str:
+        pieces = [
+            f"name={self.name}",
+            f"cloud_provider={self.cloud_provider}",
+            f"region={self.region}",
+        ]
+        if self.tier is not None:
+            pieces.append(f"tier={self.tier}")
+        if self.capacity_units is not None:
+            pieces.append(f"capacity_units={self.capacity_units}")
+        if self.db_type is not None:
+            pieces.append(f"db_type={self.db_type}")
+        if self.keyspace is not None:
+            pieces.append(f"keyspace={self.keyspace}")
+        if self.pcu_group_id is not None:
+            pieces.append(f"pcu_group_id={self.pcu_group_id}")
+        return f"{self.__class__.__name__}({', '.join(pieces)})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """
+        Recast this object into a dictionary.
+        """
+
+        return {
+            k: v
+            for k, v in {
+                "name": self.name,
+                "cloudProvider": self.cloud_provider,
+                "region": self.region,
+                "tier": self.tier,
+                "capacityUnits": self.capacity_units,
+                "dbType": self.db_type,
+                "keyspace": self.keyspace,
+                "pcuGroupUUID": self.pcu_group_id,
+            }.items()
+            if v is not None
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> DatabaseDefinition:
+        """
+        Create an instance of DatabaseDefinition from a dictionary
+        such as one from the Data API.
+        """
+
+        _warn_residual_keys(
+            cls,
+            raw_dict,
+            {
+                "name",
+                "cloudProvider",
+                "region",
+                "tier",
+                "capacityUnits",
+                "dbType",
+                "keyspace",
+                "pcuGroupUUID",
+            },
+        )
+        return DatabaseDefinition(
+            name=raw_dict["name"],
+            cloud_provider=raw_dict["cloudProvider"],
+            region=raw_dict["region"],
+            tier=raw_dict.get("tier"),
+            capacity_units=raw_dict.get("capacityUnits"),
+            db_type=raw_dict.get("dbType"),
+            keyspace=raw_dict.get("keyspace"),
+            pcu_group_id=raw_dict.get("pcuGroupUUID"),
+        )
+
+    def with_defaults(self) -> DatabaseDefinition:
+        """
+        Return a new DatabaseDefinition with the default values for all
+        fields that are not set, such that the results makes for a valid
+        payload for a create-database DevOps API invocation,
+
+        This method assumes that non-optional fields are not None.
+        """
+        return DatabaseDefinition(
+            name=self.name,
+            cloud_provider=self.cloud_provider,
+            region=self.region,
+            tier=self.tier if self.tier is not None else "serverless",
+            capacity_units=self.capacity_units
+            if self.capacity_units is not None
+            else 1,
+            db_type=self.db_type if self.db_type is not None else "vector",
+            keyspace=self.keyspace,
+            pcu_group_id=self.pcu_group_id,
+        )

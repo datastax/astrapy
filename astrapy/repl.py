@@ -121,6 +121,7 @@ from astrapy.info import (
     ColumnType,
     CreateTableDefinition,
     CreateTypeDefinition,
+    DatabaseDefinition,
     EmbeddingProvider,
     EmbeddingProviderAuthentication,
     EmbeddingProviderModel,

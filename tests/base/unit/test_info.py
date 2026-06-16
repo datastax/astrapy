@@ -21,7 +21,7 @@ from __future__ import annotations
 import pytest
 
 from astrapy.admin import ParsedAPIEndpoint, parse_api_endpoint
-from astrapy.info import AstraDBAvailableRegionInfo
+from astrapy.info import AstraDBAvailableRegionInfo, DatabaseDefinition
 
 
 @pytest.mark.describe("test of parsing API endpoints")
@@ -82,3 +82,67 @@ def test_parse_availableregioninfo() -> None:
         "zone": "na",
     }
     assert AstraDBAvailableRegionInfo._from_dict(region_dict).as_dict() == region_dict
+
+
+@pytest.mark.describe("test of marshaling and unmarshaling of database definition")
+def test_parse_databasedefinition() -> None:
+    def_payload0 = {
+        "name": "the_name0",
+        "cloudProvider": "the_cloudProvider0",
+        "region": "the_region0",
+    }
+    def_payload1 = {
+        "name": "the_name1",
+        "cloudProvider": "the_cloudProvider1",
+        "region": "the_region1",
+        "tier": "the_tier1",
+        "capacityUnits": 9999,
+        "dbType": "the_dbType1",
+        "keyspace": "the_keyspace1",
+        "pcuGroupUUID": "the_pcuGroupUUID1",
+    }
+
+    # _from_dict + default, dict match test
+
+    db_def0 = DatabaseDefinition._from_dict(def_payload0)
+    db_def1 = DatabaseDefinition._from_dict(def_payload1)
+    expected_pload0 = {
+        "name": "the_name0",
+        "cloudProvider": "the_cloudProvider0",
+        "region": "the_region0",
+        "tier": "serverless",
+        "capacityUnits": 1,
+        "dbType": "vector",
+    }
+    expected_pload1 = {
+        "name": "the_name1",
+        "cloudProvider": "the_cloudProvider1",
+        "region": "the_region1",
+        "tier": "the_tier1",
+        "capacityUnits": 9999,
+        "dbType": "the_dbType1",
+        "keyspace": "the_keyspace1",
+        "pcuGroupUUID": "the_pcuGroupUUID1",
+    }
+    assert db_def0.with_defaults().as_dict() == expected_pload0
+    assert db_def1.with_defaults().as_dict() == expected_pload1
+
+    # instance match test
+
+    built_def0 = DatabaseDefinition(
+        name="the_name0",
+        cloud_provider="the_cloudProvider0",
+        region="the_region0",
+    )
+    built_def1 = DatabaseDefinition(
+        name="the_name1",
+        cloud_provider="the_cloudProvider1",
+        region="the_region1",
+        tier="the_tier1",
+        capacity_units=9999,
+        db_type="the_dbType1",
+        keyspace="the_keyspace1",
+        pcu_group_id="the_pcuGroupUUID1",
+    )
+    assert built_def0 == db_def0
+    assert built_def1 == db_def1

@@ -1153,9 +1153,9 @@ class AstraDBAdmin:
             k: v
             for k, v in {
                 "name": name,
-                "tier": "serverless",
                 "cloudProvider": cloud_provider,
                 "region": region,
+                "tier": "serverless",
                 "capacityUnits": 1,
                 "dbType": "vector",
                 "keyspace": keyspace,
