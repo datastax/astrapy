@@ -22,6 +22,11 @@ import pytest
 
 from astrapy.admin import ParsedAPIEndpoint, parse_api_endpoint
 from astrapy.info import AstraDBAvailableRegionInfo, DatabaseDefinition
+from astrapy.settings.defaults import (
+    DEFAULT_CREATE_DB_CAPACITY_UNITS,
+    DEFAULT_CREATE_DB_DB_TYPE,
+    DEFAULT_CREATE_DB_TIER,
+)
 
 
 @pytest.mark.describe("test of parsing API endpoints")
@@ -110,9 +115,9 @@ def test_parse_databasedefinition() -> None:
         "name": "the_name0",
         "cloudProvider": "the_cloudProvider0",
         "region": "the_region0",
-        "tier": "serverless",
-        "capacityUnits": 1,
-        "dbType": "vector",
+        "tier": DEFAULT_CREATE_DB_TIER,
+        "capacityUnits": DEFAULT_CREATE_DB_CAPACITY_UNITS,
+        "dbType": DEFAULT_CREATE_DB_DB_TYPE,
     }
     expected_pload1 = {
         "name": "the_name1",

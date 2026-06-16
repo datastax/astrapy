@@ -20,6 +20,11 @@ from typing import Any
 
 from astrapy.admin.endpoints import build_api_endpoint, parse_api_endpoint
 from astrapy.data_types import DataAPITimestamp
+from astrapy.settings.defaults import (
+    DEFAULT_CREATE_DB_CAPACITY_UNITS,
+    DEFAULT_CREATE_DB_DB_TYPE,
+    DEFAULT_CREATE_DB_TIER,
+)
 from astrapy.utils.meta import deprecated_property
 from astrapy.utils.parsing import _warn_residual_keys
 
@@ -516,11 +521,13 @@ class DatabaseDefinition:
             name=self.name,
             cloud_provider=self.cloud_provider,
             region=self.region,
-            tier=self.tier if self.tier is not None else "serverless",
+            tier=self.tier if self.tier is not None else DEFAULT_CREATE_DB_TIER,
             capacity_units=self.capacity_units
             if self.capacity_units is not None
-            else 1,
-            db_type=self.db_type if self.db_type is not None else "vector",
+            else DEFAULT_CREATE_DB_CAPACITY_UNITS,
+            db_type=self.db_type
+            if self.db_type is not None
+            else DEFAULT_CREATE_DB_DB_TYPE,
             keyspace=self.keyspace,
             pcu_group_id=self.pcu_group_id,
         )
