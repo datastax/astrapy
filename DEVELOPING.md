@@ -65,7 +65,9 @@ Tests can be run on three types of Data API _targets_ (with slight differences i
 
 Depending on the target chosen, different environment variables are needed: refer to
 the `tests/env_templates/*.base.template` examples.
-Note that the variables defined in the desired "base" template **must** be set to run test, even for unit tests.
+Note that the variables defined in the desired "base" template **must** be set to run the integration tests.
+If no target DB is configured at all, the integration tests are automatically skipped, so the pure unit tests
+(those that need no database) can still be run with no environment setup.
 
 Additionally, you will need to define the environment variables in `tests/env_templates/env.vectorize-minimal.template`,
 which are needed by the minimal set of "vectorize" testing belonging to the "base" test group.

@@ -10,6 +10,7 @@ Bugfix: faulty normalization of empty/null indexing targets for `CollectionDefin
 maintenance: integration testing gets an embedding provider switcher logic
 maintenance: integration tests use the latest HCD (2.0.6) and a recent Data API build (1.0.46)
 maintenance: integration tests have configurable page size for find pagination
+maintenance: integration tests are skipped (instead of aborting collection) when no target DB is configured, so the unit-test suite can run without credentials
 
 v 2.2.1
 =======

@@ -42,6 +42,10 @@ docker_compose_filepath = os.path.join(base_dir, "hcd_compose")
 IS_ASTRA_DB: bool
 DOCKER_COMPOSE_LOCAL_DATA_API: bool
 SECONDARY_KEYSPACE: str
+# True when no target Data API/DB is configured at all. In that case the
+# integration tests are skipped (see pytest_collection_modifyitems in
+# tests/conftest.py) so that the unit-test suite can run without credentials.
+TARGET_DB_EMPTY: bool = False
 ASTRA_DB_API_ENDPOINT: str | None = None
 ASTRA_DB_APPLICATION_TOKEN: str | None = None
 ASTRA_DB_KEYSPACE: str | None = None
@@ -125,7 +129,14 @@ elif "ASTRA_DB_API_ENDPOINT" in os.environ and os.environ["ASTRA_DB_API_ENDPOINT
     ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
     ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_ASTRA_DB_KEYSPACE)
 else:
-    raise ValueError("No credentials.")
+    # No target Data API/DB configured: rather than aborting collection of the
+    # whole test suite, flag this so that the integration tests get skipped
+    # (the unit tests, which need no database, still run). Safe defaults are set
+    # for the names imported elsewhere (e.g. by skipif markers using IS_ASTRA_DB).
+    IS_ASTRA_DB = False
+    DOCKER_COMPOSE_LOCAL_DATA_API = False
+    SECONDARY_KEYSPACE = DEFAULT_SECONDARY_KEYSPACE
+    TARGET_DB_EMPTY = True
 
 RUN_SHARED_SECRET_VECTORIZE_TESTS = extended_booleanize_env(
     "RUN_SHARED_SECRET_VECTORIZE_TESTS", default=True
@@ -134,18 +145,19 @@ RUN_SHARED_SECRET_VECTORIZE_TESTS = extended_booleanize_env(
 if os.environ.get("HEADER_RERANKING_API_KEY_NVIDIA") is not None:
     USE_RERANKER_API_KEY_HEADER = True
 
-# token provider setup
-if IS_ASTRA_DB:
-    ASTRA_DB_TOKEN_PROVIDER = StaticTokenProvider(ASTRA_DB_APPLICATION_TOKEN)
-else:
-    # there must be a user/pwd pair
-    if LOCAL_DATA_API_USERNAME and LOCAL_DATA_API_PASSWORD:
-        LOCAL_DATA_API_TOKEN_PROVIDER = UsernamePasswordTokenProvider(
-            username=LOCAL_DATA_API_USERNAME,
-            password=LOCAL_DATA_API_PASSWORD,
-        )
+# token provider setup (skipped entirely when no target DB is configured)
+if not TARGET_DB_EMPTY:
+    if IS_ASTRA_DB:
+        ASTRA_DB_TOKEN_PROVIDER = StaticTokenProvider(ASTRA_DB_APPLICATION_TOKEN)
     else:
-        raise ValueError("No full authentication data for local Data API")
+        # there must be a user/pwd pair
+        if LOCAL_DATA_API_USERNAME and LOCAL_DATA_API_PASSWORD:
+            LOCAL_DATA_API_TOKEN_PROVIDER = UsernamePasswordTokenProvider(
+                username=LOCAL_DATA_API_USERNAME,
+                password=LOCAL_DATA_API_PASSWORD,
+            )
+        else:
+            raise ValueError("No full authentication data for local Data API")
 
 
 # Ensure docker compose, if needed, is started and ready before anything else

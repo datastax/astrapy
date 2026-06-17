@@ -65,6 +65,7 @@ from .preprocess_env import (
     LOCAL_DATA_API_USERNAME,
     RUN_SHARED_SECRET_VECTORIZE_TESTS,
     SECONDARY_KEYSPACE,
+    TARGET_DB_EMPTY,
     USE_RERANKER_API_KEY_HEADER,
 )
 
@@ -198,6 +199,50 @@ def clean_nulls_from_dict(in_dict: dict[str, Any]) -> dict[str, Any]:
             return _in
 
     return _cleand(in_dict)  # type: ignore[no-any-return]
+
+
+# Fixtures (directly or transitively, via the fixture closure) that require a
+# reachable target database. Every integration test ends up depending on
+# `data_api_credentials_kwargs`, which performs network calls during setup.
+_DB_REQUIRING_FIXTURES = frozenset(
+    {
+        "data_api_credentials_kwargs",
+        "data_api_credentials_info",
+        "client",
+        "sync_database",
+        "async_database",
+        "cql_session",
+    }
+)
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """
+    Skip integration tests when no target Data API/DB is configured.
+
+    With no credentials set, `tests/preprocess_env` leaves `TARGET_DB_EMPTY`
+    True. In that case every test located under an `integration` directory, as
+    well as every test whose fixture closure needs a live database, is marked
+    as skipped. This lets `pytest tests/base/unit` (and the whole suite) run
+    without any database credentials instead of aborting collection.
+
+    When a target DB *is* configured (always the case in CI), `TARGET_DB_EMPTY`
+    is False and this hook is a no-op: the full suite runs exactly as before.
+    """
+    if not TARGET_DB_EMPTY:
+        return
+    skip_no_target_db = pytest.mark.skip(
+        reason=(
+            "No target Data API/DB configured: set ASTRA_DB_API_ENDPOINT "
+            "(plus token) or LOCAL_DATA_API_ENDPOINT to run integration tests."
+        )
+    )
+    for item in items:
+        needs_db = "integration" in item.path.parts or bool(
+            _DB_REQUIRING_FIXTURES & set(getattr(item, "fixturenames", ()))
+        )
+        if needs_db:
+            item.add_marker(skip_no_target_db)
 
 
 @pytest.fixture(scope="session")
@@ -373,6 +418,7 @@ __all__ = [
     "LOCAL_DATA_API_ENDPOINT",
     "LOCAL_DATA_API_KEYSPACE",
     "SECONDARY_KEYSPACE",
+    "TARGET_DB_EMPTY",
     "ADMIN_ENV_LIST",
     "ADMIN_ENV_VARIABLE_MAP",
     "ASTRA_DB_TOKEN_PROVIDER",
