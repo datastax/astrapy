@@ -92,6 +92,19 @@ to maek the test startup logic work properly.
 You shoud never need to worry about keyspaces. Tests use two keyspaces, which are created if not found, with default names.
 The env templates show how to override those names, if you want to.
 
+### Empty-database requirement for integration tests
+
+The integration tests create and drop collections, tables and keyspaces on the target database. To avoid
+running them against a database that is already in use, the working keyspace must be empty (no collections
+and no tables). When it is not:
+
+- **locally** the whole integration suite is **skipped** (so a populated database is never touched);
+- **in CI** the run is **failed** instead of skipped — a green-but-skipped check could let an untested PR be
+  merged, so a non-empty CI database is treated as a hard error (and a signal that the test database needs
+  cleaning). CI detection is based on the `CI` environment variable.
+
+Point the tests at a dedicated, empty keyspace/database to run them.
+
 ### Multiple Python versions
 
 If may be useful to run e.g. unit tests with multiple Python versions. You can have `uv`

@@ -14,6 +14,12 @@
 
 from __future__ import annotations
 
+import os
+
+import pytest
+
+from astrapy import Database
+
 from ..conftest import (
     ADMIN_ENV_LIST,
     ADMIN_ENV_VARIABLE_MAP,
@@ -57,6 +63,49 @@ from ..table_udt_assets import (
     _player_from_dict,
     _player_serializer,
 )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def require_empty_target_database(sync_database: Database) -> None:
+    """
+    Refuse to run the integration suite against a populated database.
+
+    The base integration tests freely create and drop collections, tables and
+    keyspaces on the target database. Running them against a database that is
+    already in use risks clobbering its data, so the working keyspace must be
+    empty (no collections and no tables).
+
+    When the keyspace is not empty the behaviour depends on the environment:
+
+    - in CI the run is failed hard (``pytest.exit`` with a non-zero code). A
+      skipped suite would exit 0 and report a green check, which could let an
+      untested PR be merged; failing instead keeps the merge gate honest (and
+      flags that the CI test database needs cleaning).
+    - locally the suite is simply skipped, to protect the developer's data.
+
+    Being an autouse, session-scoped fixture, this check runs once and before
+    any test collection/table is provisioned (autouse session fixtures are set
+    up ahead of the fixtures that create the test data), so a populated database
+    is never mutated either way.
+    """
+    collection_names = sorted(sync_database.list_collection_names())
+    table_names = sorted(sync_database.list_table_names())
+    if not (collection_names or table_names):
+        return
+
+    message = (
+        f"Target database keyspace '{sync_database.keyspace}' is not empty "
+        f"(collections={collection_names}, tables={table_names}). The "
+        "integration tests require an empty database (they create and drop "
+        "collections and tables); clean the target keyspace or point the tests "
+        "at a dedicated, empty one."
+    )
+    # GitHub Actions (and most CI systems) set CI=true.
+    in_ci = os.environ.get("CI", "").lower() in {"true", "1", "yes"}
+    if in_ci:
+        pytest.exit(message, returncode=1)
+    pytest.skip(message)
+
 
 __all__ = [
     "DataAPICredentials",
