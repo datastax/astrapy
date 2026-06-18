@@ -19,7 +19,7 @@ import logging
 import re
 import time
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, cast, overload
 
 from astrapy.admin.endpoints import (
     ParsedAPIEndpoint,
@@ -1062,6 +1062,36 @@ class AstraDBAdmin:
             environment=self.api_options.environment,
         )
 
+    @overload
+    def create_database(
+        self,
+        name: str,
+        *,
+        definition: DatabaseDefinition,
+        wait_until_active: bool = True,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AstraDBDatabaseAdmin: ...
+
+    @overload
+    def create_database(
+        self,
+        name: str,
+        *,
+        cloud_provider: str,
+        region: str,
+        keyspace: str | None = None,
+        wait_until_active: bool = True,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AstraDBDatabaseAdmin: ...
+
     def create_database(
         self,
         name: str,
@@ -1281,6 +1311,36 @@ class AstraDBAdmin:
             spawn_api_options=_final_api_options,
         )
 
+    @overload
+    async def async_create_database(
+        self,
+        name: str,
+        *,
+        definition: DatabaseDefinition,
+        wait_until_active: bool = True,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AstraDBDatabaseAdmin: ...
+
+    @overload
+    async def async_create_database(
+        self,
+        name: str,
+        *,
+        cloud_provider: str,
+        region: str,
+        keyspace: str | None = None,
+        wait_until_active: bool = True,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AstraDBDatabaseAdmin: ...
+
     async def async_create_database(
         self,
         name: str,
@@ -1371,7 +1431,7 @@ class AstraDBAdmin:
             ...    pcu_group_id="01234567-89ab-cdef-0123-456789abcdef",
             ... )
             >>> asyncio.run(
-            ...     my_astra_db_admin.create_database(
+            ...     my_astra_db_admin.async_create_database(
             ...         "new_customized_database",
             ...         definition=my_custom_db_definition,
             ...     )

@@ -165,12 +165,12 @@ class TestAdminCreateDatabaseAsync:
         mock_astra_admin: AstraDBAdmin,
     ) -> None:
         with pytest.raises(ValueError, match="must be provided"):
-            await mock_astra_admin.async_create_database(
+            await mock_astra_admin.async_create_database(  # type: ignore[call-overload]
                 "the_db_name", wait_until_active=False
             )
 
         with pytest.raises(ValueError, match="Cannot specify both"):
-            await mock_astra_admin.async_create_database(
+            await mock_astra_admin.async_create_database(  # type: ignore[call-overload]
                 "the_db_name",
                 definition=DatabaseDefinition(cloud_provider="cp", region="r"),
                 keyspace="ks",
