@@ -40,7 +40,7 @@ from astrapy.utils.api_options import APIOptions, SerdesOptions
 from ..conftest import DefaultCollection
 
 # TODO: once v1.0.48 is in production, hardcode 50 and bump Data API version in docker compose file:
-FIND_PAGE_SIZE = int(os.environ.get("FIND_PAGE_SIZE", "20"))
+FIND_PAGE_SIZE = int(os.environ.get("FIND_PAGE_SIZE") or "20")
 
 
 class TestCollectionDMLSync:

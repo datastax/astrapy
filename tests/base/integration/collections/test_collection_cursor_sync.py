@@ -28,7 +28,7 @@ from astrapy.exceptions import CursorException
 from ..conftest import DefaultCollection
 
 # TODO: once v1.0.48 is in production, hardcode 50 and bump Data API version in docker compose file:
-FIND_PAGE_SIZE = int(os.environ.get("FIND_PAGE_SIZE", "20"))
+FIND_PAGE_SIZE = int(os.environ.get("FIND_PAGE_SIZE") or "20")
 NUM_DOCS = 2 * FIND_PAGE_SIZE + 5
 NUM_DOCS_PAGINATION = 2 * (2 * FIND_PAGE_SIZE) + 5
 
