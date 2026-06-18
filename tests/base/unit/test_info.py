@@ -18,10 +18,18 @@ Unit tests for the parsing of API endpoints and related
 
 from __future__ import annotations
 
+import datetime
+
 import pytest
 
 from astrapy.admin import ParsedAPIEndpoint, parse_api_endpoint
-from astrapy.info import AstraDBAvailableRegionInfo, DatabaseDefinition
+from astrapy.info import (
+    AstraDBAvailableRegionInfo,
+    DatabaseDefinition,
+    PCUGroupDescriptor,
+    PCUGroupTypeDescriptor,
+    PCUGroupTypeDetailsDescriptor,
+)
 from astrapy.settings.defaults import (
     DEFAULT_CREATE_DB_CAPACITY_UNITS,
     DEFAULT_CREATE_DB_DB_TYPE,
@@ -149,3 +157,70 @@ def test_parse_databasedefinition() -> None:
     )
     assert built_def0 == db_def0
     assert built_def1 == db_def1
+
+
+@pytest.mark.describe("test of marshaling and unmarshaling of PCU Group descriptors")
+def test_pcugroupdescriptor() -> None:
+    pcugt_json = {
+        "uuid": "the_id",
+        "orgId": "the_org_id",
+        "title": "the_title",
+        "cloudProvider": "the_cloud_provider",
+        "region": "the_region",
+        "instanceType": "the_instance_type",
+        "pcuType": {
+            "type": "the_type2",
+            "region": "the_region2",
+            "provider": "the_cloud_provider2",
+            "details": {
+                "vCPU": 40,
+                "memory": "the_memory3",
+                "disk_cache": "the_disk_cache3",
+            },
+        },
+        "provisionType": "the_provision_type",
+        "min": 10,
+        "max": 20,
+        "reserved": 15,
+        "description": "the_description",
+        "createdAt": "2021-06-01T12:00:00.000Z",
+        "updatedAt": "2025-06-01T12:00:00.000Z",
+        "createdBy": "the_created_by",
+        "updatedBy": "the_updated_by",
+        "status": "the_status",
+    }
+    gtype_desc = PCUGroupDescriptor(
+        id="the_id",
+        org_id="the_org_id",
+        title="the_title",
+        cloud_provider="the_cloud_provider",
+        region="the_region",
+        instance_type="the_instance_type",
+        pcu_type=PCUGroupTypeDescriptor(
+            type="the_type2",
+            region="the_region2",
+            cloud_provider="the_cloud_provider2",
+            details=PCUGroupTypeDetailsDescriptor(
+                v_cpu=40,
+                memory="the_memory3",
+                disk_cache="the_disk_cache3",
+            ),
+        ),
+        provision_type="the_provision_type",
+        min=10,
+        max=20,
+        reserved=15,
+        description="the_description",
+        created_at=datetime.datetime(
+            2021, 6, 1, 12, 0, 0, tzinfo=datetime.timezone.utc
+        ),
+        updated_at=datetime.datetime(
+            2025, 6, 1, 12, 0, 0, tzinfo=datetime.timezone.utc
+        ),
+        created_by="the_created_by",
+        updated_by="the_updated_by",
+        status="the_status",
+    )
+
+    assert gtype_desc.as_dict() == pcugt_json
+    assert PCUGroupDescriptor._from_dict(pcugt_json) == gtype_desc
