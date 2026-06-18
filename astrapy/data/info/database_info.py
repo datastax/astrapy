@@ -20,6 +20,11 @@ from typing import Any
 
 from astrapy.admin.endpoints import build_api_endpoint, parse_api_endpoint
 from astrapy.data_types import DataAPITimestamp
+from astrapy.settings.defaults import (
+    DEFAULT_CREATE_DB_CAPACITY_UNITS,
+    DEFAULT_CREATE_DB_DB_TYPE,
+    DEFAULT_CREATE_DB_TIER,
+)
 from astrapy.utils.meta import deprecated_property
 from astrapy.utils.parsing import _warn_residual_keys
 
@@ -406,4 +411,129 @@ class AstraDBAvailableRegionInfo:
             name=raw_dict["name"],
             reserved_for_qualified_users=raw_dict["reservedForQualifiedUsers"],
             zone=raw_dict["zone"],
+        )
+
+
+@dataclass
+class DatabaseDefinition:
+    """
+    Represents a database definition for database creation operations (excluding the DB name).
+
+    Attributes:
+        cloud_provider: the cloud provider hosting the database (e.g. 'aws', 'gcp', 'azure').
+        region: the region where the database will be created.
+        tier: the database tier (e.g. 'serverless'). Optional, defaults to None.
+        capacity_units: the number of capacity units for the database. Optional, defaults to None.
+        db_type: the type of database (e.g. 'vector'). Optional, defaults to None.
+        keyspace: the default keyspace for the database. Optional, defaults to None.
+        pcu_group_id: the PCU group ID to use for provisioning the database. Optional, defaults to None.
+    """
+
+    cloud_provider: str
+    region: str
+    tier: str | None = None
+    capacity_units: int | None = None
+    db_type: str | None = None
+    keyspace: str | None = None
+    pcu_group_id: str | None = None
+
+    def __repr__(self) -> str:
+        pieces = [
+            f"cloud_provider={self.cloud_provider}",
+            f"region={self.region}",
+        ]
+        if self.tier is not None:
+            pieces.append(f"tier={self.tier}")
+        if self.capacity_units is not None:
+            pieces.append(f"capacity_units={self.capacity_units}")
+        if self.db_type is not None:
+            pieces.append(f"db_type={self.db_type}")
+        if self.keyspace is not None:
+            pieces.append(f"keyspace={self.keyspace}")
+        if self.pcu_group_id is not None:
+            pieces.append(f"pcu_group_id={self.pcu_group_id}")
+        return f"{self.__class__.__name__}({', '.join(pieces)})"
+
+    def as_dict(self, *, name: str | None) -> dict[str, Any]:
+        """
+        Recast this object into a dictionary.
+
+        Args:
+            name: if provided, this is the name of the database and will
+                be used to enrich the result making it a complete payload
+                suitable for a DevOps API create-database invocation.
+
+        Returns:
+            a dictionary expressing the object (plus optionally a DB name).
+        """
+
+        return {
+            k: v
+            for k, v in {
+                "name": name,
+                "cloudProvider": self.cloud_provider,
+                "region": self.region,
+                "tier": self.tier,
+                "capacityUnits": self.capacity_units,
+                "dbType": self.db_type,
+                "keyspace": self.keyspace,
+                "pcuGroupUUID": self.pcu_group_id,
+            }.items()
+            if v is not None
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> DatabaseDefinition:
+        """
+        Create an instance of DatabaseDefinition from a dictionary
+        such as one from the Data API.
+
+        This operation, which should never be needed in ordinary client activity,
+        exceptionally ignores any 'name' field it would find.
+        """
+
+        _warn_residual_keys(
+            cls,
+            raw_dict,
+            {
+                "name",
+                "cloudProvider",
+                "region",
+                "tier",
+                "capacityUnits",
+                "dbType",
+                "keyspace",
+                "pcuGroupUUID",
+            },
+        )
+        return DatabaseDefinition(
+            cloud_provider=raw_dict["cloudProvider"],
+            region=raw_dict["region"],
+            tier=raw_dict.get("tier"),
+            capacity_units=raw_dict.get("capacityUnits"),
+            db_type=raw_dict.get("dbType"),
+            keyspace=raw_dict.get("keyspace"),
+            pcu_group_id=raw_dict.get("pcuGroupUUID"),
+        )
+
+    def with_defaults(self) -> DatabaseDefinition:
+        """
+        Return a new DatabaseDefinition with the default values for all
+        fields that are not set, such that the results makes for a valid
+        payload for a create-database DevOps API invocation,
+
+        This method assumes that non-optional fields are not None.
+        """
+        return DatabaseDefinition(
+            cloud_provider=self.cloud_provider,
+            region=self.region,
+            tier=self.tier if self.tier is not None else DEFAULT_CREATE_DB_TIER,
+            capacity_units=self.capacity_units
+            if self.capacity_units is not None
+            else DEFAULT_CREATE_DB_CAPACITY_UNITS,
+            db_type=self.db_type
+            if self.db_type is not None
+            else DEFAULT_CREATE_DB_DB_TYPE,
+            keyspace=self.keyspace,
+            pcu_group_id=self.pcu_group_id,
         )
