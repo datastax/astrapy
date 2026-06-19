@@ -179,6 +179,7 @@ def test_imports() -> None:
         ColumnType,
         CreateTableDefinition,
         CreateTypeDefinition,
+        DatabaseDefinition,
         EmbeddingProvider,
         EmbeddingProviderAuthentication,
         EmbeddingProviderModel,

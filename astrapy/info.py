@@ -27,6 +27,7 @@ from astrapy.data.info.database_info import (
     AstraDBAdminDatabaseInfo,
     AstraDBAvailableRegionInfo,
     AstraDBDatabaseInfo,
+    DatabaseDefinition,
 )
 from astrapy.data.info.reranking import (
     FindRerankingProvidersResult,
@@ -120,6 +121,7 @@ __all__ = [
     "ColumnType",
     "CreateTableDefinition",
     "CreateTypeDefinition",
+    "DatabaseDefinition",
     "EmbeddingAPIModelSupport",
     "EmbeddingProvider",
     "EmbeddingProviderAuthentication",
