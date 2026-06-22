@@ -160,7 +160,7 @@ class TestCollectionCursorSync:
     ) -> None:
         cur = filled_collection.find()
         next(cur)
-        # now this has 19 items in buffer, one is consumed
+        # now this has (page - 1) items in buffer, one is consumed
         assert cur.consumed == 1
         assert cur.buffered_count == FIND_PAGE_SIZE - 1
         assert len(cur.consume_buffer(3)) == 3
@@ -216,7 +216,9 @@ class TestCollectionCursorSync:
         assert curmf.state == CursorState.STARTED
         for _ in range(FIND_PAGE_SIZE - 2):
             next(curmf)
+        assert curmf.buffered_count == 0
         assert curmf.has_next()
+        assert curmf.buffered_count == FIND_PAGE_SIZE
         assert curmf.consumed == FIND_PAGE_SIZE
         assert curmf.state == CursorState.STARTED
         assert curmf.buffered_count == FIND_PAGE_SIZE

@@ -162,7 +162,7 @@ class TestCollectionCursorSync:
     ) -> None:
         cur = async_filled_collection.find()
         await cur.__anext__()
-        # now this has 19 items in buffer, one is consumed
+        # now this has (page -1 items in buffer, one is consumed
         assert cur.consumed == 1
         assert cur.buffered_count == FIND_PAGE_SIZE - 1
         assert len(cur.consume_buffer(3)) == 3
@@ -218,7 +218,9 @@ class TestCollectionCursorSync:
         assert curmf.state == CursorState.STARTED
         for _ in range(FIND_PAGE_SIZE - 2):
             await curmf.__anext__()
+        assert curmf.buffered_count == 0
         assert await curmf.has_next()
+        assert curmf.buffered_count == FIND_PAGE_SIZE
         assert curmf.consumed == FIND_PAGE_SIZE
         assert curmf.state == CursorState.STARTED
         assert curmf.buffered_count == FIND_PAGE_SIZE
