@@ -3,6 +3,7 @@ main
 `AstraDatabaseAdmin`: support for listing PCU Groups.
     - Added `PCUGroupDescriptor`/`PCUGroupTypeDescriptor`/`PCUGroupTypeDetailsDescriptor` classes.
     - Added `[async_]list_pcu_groups` method.
+`AstraDatabaseAdmin`: `[async_]find_available_regions` method handles PCU Type info in response.
 `AstraDatabaseAdmin.[async_]create_database`: expose more parameters (pcu group ID, tier, db type, capacity units) with a new DatabaseDefinition method parameter and call pattern.
 CollectionDefinition fluent interface: renamed all `set_*` methods to `with_*` (e.g., `set_vector_dimension` → `with_vector_dimension`):
     - This better conveys the immutable builder pattern (methods return new objects rather than mutating in place)

@@ -350,6 +350,7 @@ class AstraDBAvailableRegionInfo:
     name: str
     reserved_for_qualified_users: bool
     zone: str
+    pcu_types: list[PCUGroupTypeDescriptor] | None
 
     def __repr__(self) -> str:
         body = f'{self.cloud_provider}/{self.name}: "{self.display_name}", ...'
@@ -361,14 +362,21 @@ class AstraDBAvailableRegionInfo:
         """
 
         return {
-            "classification": self.classification,
-            "cloudProvider": self.cloud_provider,
-            "displayName": self.display_name,
-            "enabled": self.enabled,
-            "name": self.name,
-            "region_type": "vector",
-            "reservedForQualifiedUsers": self.reserved_for_qualified_users,
-            "zone": self.zone,
+            k: v
+            for k, v in {
+                "classification": self.classification,
+                "cloudProvider": self.cloud_provider,
+                "displayName": self.display_name,
+                "enabled": self.enabled,
+                "name": self.name,
+                "region_type": "vector",
+                "reservedForQualifiedUsers": self.reserved_for_qualified_users,
+                "zone": self.zone,
+                "pcu_types": [pcu_type.as_dict() for pcu_type in self.pcu_types]
+                if self.pcu_types is not None
+                else None,
+            }.items()
+            if v is not None
         }
 
     @property
@@ -399,7 +407,6 @@ class AstraDBAvailableRegionInfo:
                 "region_type",
                 "reservedForQualifiedUsers",
                 "zone",
-                # The following intentionally suppresses a warning (until full PCU support)
                 "pcu_types",
             },
         )
@@ -411,6 +418,12 @@ class AstraDBAvailableRegionInfo:
             name=raw_dict["name"],
             reserved_for_qualified_users=raw_dict["reservedForQualifiedUsers"],
             zone=raw_dict["zone"],
+            pcu_types=[
+                PCUGroupTypeDescriptor._from_dict(pcu_type_dict)
+                for pcu_type_dict in raw_dict["pcu_types"]
+            ]
+            if "pcu_types" in raw_dict
+            else None,
         )
 
 
@@ -607,12 +620,24 @@ class PCUGroupTypeDescriptor:
     """
 
     type: str
-    region: str
-    cloud_provider: str
+    region: str | None
+    cloud_provider: str | None
     details: PCUGroupTypeDetailsDescriptor
 
     def __repr__(self) -> str:
-        body = f"type={self.type}, region={self.region}, cloud_provider={self.cloud_provider}, details=..."
+        pieces = [
+            pc
+            for pc in (
+                f"type={self.type}",
+                f"region={self.region}" if self.region is not None else None,
+                f"cloud_provider={self.cloud_provider}"
+                if self.cloud_provider is not None
+                else None,
+                "details=...",
+            )
+            if pc is not None
+        ]
+        body = ", ".join(pieces)
         return f"{self.__class__.__name__}({body})"
 
     def as_dict(self) -> dict[str, Any]:
@@ -621,10 +646,14 @@ class PCUGroupTypeDescriptor:
         """
 
         return {
-            "type": self.type,
-            "region": self.region,
-            "provider": self.cloud_provider,
-            "details": self.details.as_dict(),
+            k: v
+            for k, v in {
+                "type": self.type,
+                "region": self.region,
+                "provider": self.cloud_provider,
+                "details": self.details.as_dict(),
+            }.items()
+            if v is not None
         }
 
     @classmethod
@@ -646,8 +675,10 @@ class PCUGroupTypeDescriptor:
         )
         return PCUGroupTypeDescriptor(
             type=raw_dict["type"],
-            region=raw_dict["region"],
-            cloud_provider=raw_dict["provider"].lower(),
+            region=raw_dict.get("region"),
+            cloud_provider=raw_dict["provider"].lower()
+            if "provider" in raw_dict
+            else None,
             details=PCUGroupTypeDetailsDescriptor._from_dict(raw_dict["details"]),
         )
 

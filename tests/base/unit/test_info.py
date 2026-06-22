@@ -96,6 +96,31 @@ def test_parse_availableregioninfo() -> None:
     }
     assert AstraDBAvailableRegionInfo._from_dict(region_dict).as_dict() == region_dict
 
+    rich_region_dict = {
+        "classification": "standard",
+        "cloudProvider": "AWS",
+        "displayName": "US East (Ohio)",
+        "enabled": True,
+        "name": "us-east-2",
+        "region_type": "vector",
+        "reservedForQualifiedUsers": False,
+        "zone": "na",
+        "pcu_types": [
+            {
+                "type": "vector",
+                "details": {
+                    "vCPU": 123,
+                    "memory": "77KB",
+                    "disk_cache": "17PB",
+                },
+            },
+        ],
+    }
+    assert (
+        AstraDBAvailableRegionInfo._from_dict(rich_region_dict).as_dict()
+        == rich_region_dict
+    )
+
 
 @pytest.mark.describe("test of marshaling and unmarshaling of database definition")
 def test_parse_databasedefinition() -> None:
@@ -160,7 +185,7 @@ def test_parse_databasedefinition() -> None:
 
 
 @pytest.mark.describe("test of marshaling and unmarshaling of PCU Group descriptors")
-def test_pcugroupdescriptor() -> None:
+def test_parse_pcugroupdescriptor() -> None:
     pcugt_json = {
         "uuid": "the_id",
         "orgId": "the_org_id",
