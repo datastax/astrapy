@@ -51,6 +51,7 @@ from astrapy.info import (
     DatabaseDefinition,
     FindEmbeddingProvidersResult,
     FindRerankingProvidersResult,
+    PCUGroupDescriptor,
 )
 from astrapy.settings.defaults import (
     DEFAULT_DATA_API_AUTH_HEADER,
@@ -483,9 +484,7 @@ class AstraDBAdmin:
                 **self.api_options.admin_additional_headers,
             }
         self._dev_ops_api_commander = self._get_dev_ops_api_commander()
-        self._regionlist_dev_ops_api_commander = (
-            self._get_dev_ops_regionlist_api_commander()
-        )
+        self._orgwide_dev_ops_api_commander = self._get_dev_ops_orgwide_api_commander()
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.api_options})"
@@ -524,13 +523,14 @@ class AstraDBAdmin:
         )
         return dev_ops_commander
 
-    def _get_dev_ops_regionlist_api_commander(self) -> APICommander:
+    def _get_dev_ops_orgwide_api_commander(self) -> APICommander:
         """
-        Instantiate a new APICommander for querying available regions.
+        Instantiate a new APICommander for org-widre commands, such as querying
+        available regions.
 
         This is a separate commander since the base path is different.
         """
-        rl_base_path_components = [
+        ow_base_path_components = [
             comp
             for comp in (
                 ncomp.strip("/")
@@ -541,10 +541,10 @@ class AstraDBAdmin:
             )
             if comp != ""
         ]
-        rl_dev_ops_base_path = "/".join(rl_base_path_components)
-        rl_dev_ops_commander = APICommander(
+        ow_dev_ops_base_path = "/".join(ow_base_path_components)
+        ow_dev_ops_commander = APICommander(
             api_endpoint=self.api_options.dev_ops_api_url_options.dev_ops_url,
-            path=rl_dev_ops_base_path,
+            path=ow_dev_ops_base_path,
             headers=self._dev_ops_commander_headers,
             callers=self.api_options.callers,
             dev_ops_api=True,
@@ -553,7 +553,7 @@ class AstraDBAdmin:
             spawner=self,
             ca_cert_path=self.api_options.ca_cert_path,
         )
-        return rl_dev_ops_commander
+        return ow_dev_ops_commander
 
     def _copy(
         self,
@@ -2168,7 +2168,7 @@ class AstraDBAdmin:
         # this cast is required by this DevOps API response being in fact a JSON list:
         fr_response = cast(
             list[dict[str, Any]],
-            self._regionlist_dev_ops_api_commander.request(
+            self._orgwide_dev_ops_api_commander.request(
                 http_method=HttpMethod.GET,
                 additional_path="regions/serverless",
                 request_params=req_params,
@@ -2259,7 +2259,7 @@ class AstraDBAdmin:
         # this cast is required by this DevOps API response being in fact a JSON list:
         fr_response = cast(
             list[dict[str, Any]],
-            await self._regionlist_dev_ops_api_commander.async_request(
+            await self._orgwide_dev_ops_api_commander.async_request(
                 http_method=HttpMethod.GET,
                 additional_path="regions/serverless",
                 request_params=req_params,
@@ -2272,6 +2272,39 @@ class AstraDBAdmin:
             AstraDBAvailableRegionInfo._from_dict(region_dict)
             for region_dict in fr_response
         ]
+
+    def list_pcu_groups(
+        self,
+        *,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> list[PCUGroupDescriptor]:
+        """TODO DOCSTRING"""
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+        timeout_ctx = _TimeoutContext(
+            request_ms=_database_admin_timeout_ms, label=_da_label
+        )
+
+        logger.info("getting PCU groups (DevOps API)")
+        # this response can be in fact a JSON list or even a 'null':
+        lp_response = cast(
+            list[dict[str, Any]],
+            self._orgwide_dev_ops_api_commander.request(
+                http_method=HttpMethod.POST,
+                additional_path="regions/serverless",
+                timeout_context=timeout_ctx,
+                caller_function_name="find_available_regions",
+            )
+            or [],
+        )
+        logger.info("finished getting PCU groups (DevOps API)")
+        return [PCUGroupDescriptor._from_dict(pg_dict) for pg_dict in lp_response]
 
 
 class DatabaseAdmin(ABC):
