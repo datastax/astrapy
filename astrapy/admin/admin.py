@@ -2273,14 +2273,65 @@ class AstraDBAdmin:
             for region_dict in fr_response
         ]
 
+    @overload
     def list_pcu_groups(
         self,
         *,
         database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
+    ) -> list[PCUGroupDescriptor]: ...
+
+    @overload
+    def list_pcu_groups(
+        self,
+        *,
+        cloud_provider: str,
+        region: str,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> list[PCUGroupDescriptor]: ...
+
+    def list_pcu_groups(
+        self,
+        *,
+        cloud_provider: str | None = None,
+        region: str | None = None,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> list[PCUGroupDescriptor]:
-        """TODO DOCSTRING"""
+        """
+        Get a list of the PCU Groups pertaining to the current org.
+
+        Query the DevOps API to get a listing of the PCU Groups
+        for subsequent use in database creation. The return value can be limited
+        to a specific combination of cloud provider and region, or include every
+        PCU Group in the org.
+
+        Args:
+            cloud_provider: one of 'aws', 'gcp' or 'azure'. If this is provided,
+                `region` must also be specified.
+            region: any of the available cloud regions. If this is provided,
+                `cloud_provider` must also be specified.
+            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying DevOps API request.
+                If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `database_admin_timeout_ms`.
+            timeout_ms: an alias for `database_admin_timeout_ms`.
+
+        Returns:
+            A list of PCUGroupDescriptor objects, each representing a PCU Group.
+        """
+        # Validate that both cloud_provider and region are provided or neither
+        if (cloud_provider is None) != (region is None):
+            raise ValueError(
+                "Parameters 'cloud_provider' and 'region' must both be provided or both be omitted."
+            )
+
         _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
             timeout_options=self.api_options.timeout_options,
             database_admin_timeout_ms=database_admin_timeout_ms,
@@ -2297,14 +2348,124 @@ class AstraDBAdmin:
             list[dict[str, Any]],
             self._orgwide_dev_ops_api_commander.request(
                 http_method=HttpMethod.POST,
-                additional_path="regions/serverless",
+                payload={"pcuGroupUUIDs": []},
+                additional_path="pcus/actions/get",
                 timeout_context=timeout_ctx,
                 caller_function_name="find_available_regions",
             )
             or [],
         )
         logger.info("finished getting PCU groups (DevOps API)")
-        return [PCUGroupDescriptor._from_dict(pg_dict) for pg_dict in lp_response]
+        all_pcu_groups = [
+            PCUGroupDescriptor._from_dict(pg_dict) for pg_dict in lp_response
+        ]
+
+        # Post-filter if cloud_provider and region are specified
+        if cloud_provider is not None and region is not None:
+            return [
+                pg
+                for pg in all_pcu_groups
+                if pg.cloud_provider == cloud_provider.lower() and pg.region == region
+            ]
+        return all_pcu_groups
+
+    @overload
+    async def async_list_pcu_groups(
+        self,
+        *,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> list[PCUGroupDescriptor]: ...
+
+    @overload
+    async def async_list_pcu_groups(
+        self,
+        *,
+        cloud_provider: str,
+        region: str,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> list[PCUGroupDescriptor]: ...
+
+    async def async_list_pcu_groups(
+        self,
+        *,
+        cloud_provider: str | None = None,
+        region: str | None = None,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> list[PCUGroupDescriptor]:
+        """
+        Get a list of the PCU Groups pertaining to the current org.
+
+        Query the DevOps API to get a listing of the PCU Groups
+        for subsequent use in database creation. The return value can be limited
+        to a specific combination of cloud provider and region, or include every
+        PCU Group in the org.
+
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            cloud_provider: one of 'aws', 'gcp' or 'azure'. If this is provided,
+                `region` must also be specified.
+            region: any of the available cloud regions. If this is provided,
+                `cloud_provider` must also be specified.
+            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying DevOps API request.
+                If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `database_admin_timeout_ms`.
+            timeout_ms: an alias for `database_admin_timeout_ms`.
+
+        Returns:
+            A list of PCUGroupDescriptor objects, each representing a PCU Group.
+        """
+        # Validate that both cloud_provider and region are provided or neither
+        if (cloud_provider is None) != (region is None):
+            raise ValueError(
+                "Parameters 'cloud_provider' and 'region' must both be provided or both be omitted."
+            )
+
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+        timeout_ctx = _TimeoutContext(
+            request_ms=_database_admin_timeout_ms, label=_da_label
+        )
+
+        logger.info("getting PCU groups (DevOps API)")
+        # this response can be in fact a JSON list or even a 'null':
+        lp_response = cast(
+            list[dict[str, Any]],
+            await self._orgwide_dev_ops_api_commander.async_request(
+                http_method=HttpMethod.POST,
+                payload={"pcuGroupUUIDs": []},
+                additional_path="pcus/actions/get",
+                timeout_context=timeout_ctx,
+                caller_function_name="find_available_regions",
+            )
+            or [],
+        )
+        logger.info("finished getting PCU groups (DevOps API)")
+        all_pcu_groups = [
+            PCUGroupDescriptor._from_dict(pg_dict) for pg_dict in lp_response
+        ]
+
+        # Post-filter if cloud_provider and region are specified
+        if cloud_provider is not None and region is not None:
+            return [
+                pg
+                for pg in all_pcu_groups
+                if pg.cloud_provider == cloud_provider.lower() and pg.region == region
+            ]
+        return all_pcu_groups
 
 
 class DatabaseAdmin(ABC):
