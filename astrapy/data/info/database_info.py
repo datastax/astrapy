@@ -350,7 +350,7 @@ class AstraDBAvailableRegionInfo:
     name: str
     reserved_for_qualified_users: bool
     zone: str
-    pcu_types: list[PCUGroupTypeDescriptor] | None
+    pcu_types: list[PCUGroupTypeDescriptor] | None = None
 
     def __repr__(self) -> str:
         body = f'{self.cloud_provider}/{self.name}: "{self.display_name}", ...'

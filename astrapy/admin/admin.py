@@ -2419,7 +2419,7 @@ class AstraDBAdmin:
                 payload={},
                 additional_path="pcus/actions/get",
                 timeout_context=timeout_ctx,
-                caller_function_name="find_available_regions",
+                caller_function_name="list_pcu_groups",
             )
             or [],
         )
@@ -2517,7 +2517,7 @@ class AstraDBAdmin:
                 payload={},
                 additional_path="pcus/actions/get",
                 timeout_context=timeout_ctx,
-                caller_function_name="find_available_regions",
+                caller_function_name="async_list_pcu_groups",
             )
             or [],
         )

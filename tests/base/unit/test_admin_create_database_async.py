@@ -298,6 +298,8 @@ class TestAdminCreateDatabaseAsync:
         httpserver: HTTPServer,
         mock_astra_admin: AstraDBAdmin,
     ) -> None:
+        pcu_group_id = "requested_pcu_g_id"
+
         full_payload = {
             "name": "the_db_name",
             "cloudProvider": "cp",
@@ -306,7 +308,7 @@ class TestAdminCreateDatabaseAsync:
             "tier": "tr",
             "capacityUnits": 5,
             "dbType": "ty",
-            "pcuGroupUUID": "requested_pcu_g_id",
+            "pcuGroupUUID": pcu_group_id,
         }
         # We pass a pcu ID matched in the listing endpoint: DB creation must proceed.
 
@@ -324,8 +326,12 @@ class TestAdminCreateDatabaseAsync:
         ).respond_with_json(
             response_json=[
                 {
-                    "uuid": "requested_pcu_g_id",
+                    "uuid": pcu_group_id,
                     **SOME_PCU_GROUP_DESC_JSON,
+                    **{
+                        "cloudProvider": "cp",
+                        "region": "r",
+                    },
                 },
             ],
         )
@@ -337,11 +343,12 @@ class TestAdminCreateDatabaseAsync:
             tier="tr",
             capacity_units=5,
             db_type="ty",
-            pcu_group_id="d",
+            pcu_group_id=pcu_group_id,
         )
 
-        # Expected: PCU not found in the listing, creation aborted.
-        with pytest.raises(ValueError, match="Requested PCU Group ID 'd' not found"):
+        # We prepare for failure here, but it's a good failure: we want to ensure the httpserver
+        # gets the right payload and the error is when the client instantiates the db admin all right.
+        with pytest.raises(ValueError, match="Cannot parse the supplied API endpoint"):
             await mock_astra_admin.async_create_database(
                 "the_db_name",
                 definition=db_definition,
