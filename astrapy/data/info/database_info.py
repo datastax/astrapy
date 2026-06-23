@@ -676,9 +676,7 @@ class PCUGroupTypeDescriptor:
         return PCUGroupTypeDescriptor(
             type=raw_dict["type"],
             region=raw_dict.get("region"),
-            cloud_provider=raw_dict["provider"].lower()
-            if "provider" in raw_dict
-            else None,
+            cloud_provider=raw_dict["provider"] if "provider" in raw_dict else None,
             details=PCUGroupTypeDetailsDescriptor._from_dict(raw_dict["details"]),
         )
 
@@ -719,13 +717,13 @@ class PCUGroupDescriptor:
     provision_type: str
     min: int
     max: int
-    reserved: int
     description: str
     created_at: datetime.datetime | None
     updated_at: datetime.datetime | None
     created_by: str
     updated_by: str
     status: str
+    reserved: int | None = None
 
     def __repr__(self) -> str:
         body = f"id={self.id}, org_id={self.org_id}, title={self.title}, status={self.status}, ..."
@@ -798,14 +796,14 @@ class PCUGroupDescriptor:
             id=raw_dict["uuid"],
             org_id=raw_dict["orgId"],
             title=raw_dict["title"],
-            cloud_provider=raw_dict["cloudProvider"].lower(),
+            cloud_provider=raw_dict["cloudProvider"],
             region=raw_dict["region"],
             instance_type=raw_dict["instanceType"],
             pcu_type=PCUGroupTypeDescriptor._from_dict(raw_dict["pcuType"]),
             provision_type=raw_dict["provisionType"],
             min=raw_dict["min"],
             max=raw_dict["max"],
-            reserved=raw_dict["reserved"],
+            reserved=raw_dict.get("reserved"),
             description=raw_dict["description"],
             created_at=_failsafe_parse_date(raw_dict.get("createdAt")),
             updated_at=_failsafe_parse_date(raw_dict.get("updatedAt")),

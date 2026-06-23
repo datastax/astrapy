@@ -32,7 +32,12 @@ from astrapy.settings.defaults import (
     DEFAULT_CREATE_DB_TIER,
 )
 
-from ..admin_assets import SOME_PCU_GROUP_DESC_JSON, SOME_PCU_GROUP_DESCRIPTOR_KWARGS
+from ..admin_assets import (
+    SOME_PCU_GROUP_DESC_JSON,
+    SOME_PCU_GROUP_DESC_JSON_NORESERVED,
+    SOME_PCU_GROUP_DESCRIPTOR_KWARGS,
+    SOME_PCU_GROUP_DESCRIPTOR_KWARGS_NORESERVED,
+)
 
 
 @pytest.mark.describe("test of parsing API endpoints")
@@ -182,8 +187,10 @@ def test_parse_databasedefinition() -> None:
     assert built_def1 == db_def1
 
 
-@pytest.mark.describe("test of marshaling and unmarshaling of PCU Group descriptors")
-def test_parse_pcugroupdescriptor() -> None:
+@pytest.mark.describe(
+    "test of marshaling and unmarshaling of full PCU Group descriptors"
+)
+def test_parse_full_pcugroupdescriptor() -> None:
     pcugt_json = {
         "uuid": "the_id",
         **SOME_PCU_GROUP_DESC_JSON,
@@ -191,6 +198,25 @@ def test_parse_pcugroupdescriptor() -> None:
     gtype_desc = PCUGroupDescriptor(
         id="the_id",
         **SOME_PCU_GROUP_DESCRIPTOR_KWARGS,  # type: ignore[arg-type]
+    )
+
+    assert gtype_desc.as_dict() == pcugt_json
+    assert PCUGroupDescriptor._from_dict(pcugt_json) == gtype_desc
+
+
+@pytest.mark.describe(
+    "test of marshaling and unmarshaling of no-reserved PCU Group descriptors"
+)
+def test_parse_noreserved_pcugroupdescriptor() -> None:
+    the_id = "84c06b4a-cb01-4a56-aa81-a158dc946833"
+
+    pcugt_json = {
+        "uuid": the_id,
+        **SOME_PCU_GROUP_DESC_JSON_NORESERVED,
+    }
+    gtype_desc = PCUGroupDescriptor(
+        id=the_id,
+        **SOME_PCU_GROUP_DESCRIPTOR_KWARGS_NORESERVED,  # type: ignore[arg-type]
     )
 
     assert gtype_desc.as_dict() == pcugt_json

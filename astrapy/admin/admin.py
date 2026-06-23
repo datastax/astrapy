@@ -2393,6 +2393,18 @@ class AstraDBAdmin:
 
         Returns:
             A list of PCUGroupDescriptor objects, each representing a PCU Group.
+
+        Example:
+            >>> my_astra_db_admin.list_pcu_groups()
+            [PCUGroupDescriptor(id=01234..., org_id=abcde..., title=test_pcu_group, status=CREATED, ...)]
+            >>>
+            >>> pcu_groups = my_astra_db_admin.list_pcu_groups(cloud_provider="aws", region="us-west-2")
+            >>> len(pcu_groups)
+            1
+            >>> pcu_groups[0].description
+            'A test PCU group for demonstrative purposes'
+            >>> pcu_groups[0].title
+            'test_pcu_group'
         """
         # Validate that both cloud_provider and region are provided or neither
         if (cloud_provider is None) != (region is None):
@@ -2433,7 +2445,8 @@ class AstraDBAdmin:
             return [
                 pg
                 for pg in all_pcu_groups
-                if pg.cloud_provider == cloud_provider.lower() and pg.region == region
+                if pg.cloud_provider.lower() == cloud_provider.lower()
+                and pg.region.lower() == region.lower()
             ]
         return all_pcu_groups
 
@@ -2491,6 +2504,19 @@ class AstraDBAdmin:
 
         Returns:
             A list of PCUGroupDescriptor objects, each representing a PCU Group.
+
+        Example:
+            >>> asyncio.run(my_astra_db_admin.async_list_pcu_groups())
+            [PCUGroupDescriptor(id=01234..., org_id=abcde..., title=test_pcu_group, status=CREATED, ...)]
+            >>>
+            >>> pcu_groups = asyncio.run(my_astra_db_admin.async_list_pcu_groups(cloud_prov
+            ider="aws", region="us-west-2"))
+            >>> len(pcu_groups)
+            1
+            >>> pcu_groups[0].description
+            'A test PCU group for demonstrative purposes'
+            >>> pcu_groups[0].title
+            'test_pcu_group'
         """
         # Validate that both cloud_provider and region are provided or neither
         if (cloud_provider is None) != (region is None):
@@ -2531,7 +2557,8 @@ class AstraDBAdmin:
             return [
                 pg
                 for pg in all_pcu_groups
-                if pg.cloud_provider == cloud_provider.lower() and pg.region == region
+                if pg.cloud_provider.lower() == cloud_provider.lower()
+                and pg.region.lower() == region.lower()
             ]
         return all_pcu_groups
 
