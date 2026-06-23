@@ -2416,7 +2416,7 @@ class AstraDBAdmin:
             list[dict[str, Any]],
             self._orgwide_dev_ops_api_commander.request(
                 http_method=HttpMethod.POST,
-                payload={"pcuGroupUUIDs": []},
+                payload={},
                 additional_path="pcus/actions/get",
                 timeout_context=timeout_ctx,
                 caller_function_name="find_available_regions",
@@ -2514,7 +2514,7 @@ class AstraDBAdmin:
             list[dict[str, Any]],
             await self._orgwide_dev_ops_api_commander.async_request(
                 http_method=HttpMethod.POST,
-                payload={"pcuGroupUUIDs": []},
+                payload={},
                 additional_path="pcus/actions/get",
                 timeout_context=timeout_ctx,
                 caller_function_name="find_available_regions",
