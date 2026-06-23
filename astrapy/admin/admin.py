@@ -1232,6 +1232,38 @@ class AstraDBAdmin:
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
+
+        # If a PCU group ID is provided, try to validate it
+        if _definition.pcu_group_id is not None:
+            logger.info("PCU Group ID pre-check: starting existence check.")
+            pcu_groups: list[PCUGroupDescriptor] | None
+            try:
+                pcu_groups = self.list_pcu_groups(
+                    cloud_provider=_definition.cloud_provider,
+                    region=_definition.region,
+                    database_admin_timeout_ms=database_admin_timeout_ms,
+                    request_timeout_ms=request_timeout_ms,
+                    timeout_ms=timeout_ms,
+                )
+            except Exception as e:
+                pcu_groups = None
+                logger.info(f"PCU Group ID pre-check threw an exception: {str(e)}")
+            if pcu_groups is not None:
+                matching_pcu_groups = [
+                    pg for pg in pcu_groups if pg.id == _definition.pcu_group_id
+                ]
+                logger.info(
+                    "PCU Group ID pre-check failed. Aborting database creation."
+                )
+                if matching_pcu_groups == []:
+                    raise ValueError(
+                        f"Requested PCU Group ID '{_definition.pcu_group_id}' not found for cloud provider "
+                        f"('{_definition.cloud_provider}') and region ('{_definition.region}')."
+                    )
+                logger.info("PCU Group ID pre-check succeeded.")
+            else:
+                logger.info("PCU Group ID pre-check aborted.")
+
         cd_payload = _definition.as_dict(name=name)
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_database_admin_timeout_ms,
@@ -1477,6 +1509,40 @@ class AstraDBAdmin:
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
+
+        # If a PCU group ID is provided, try to validate it
+        if _definition.pcu_group_id is not None:
+            logger.info("PCU Group ID pre-check: starting existence check, async.")
+            pcu_groups: list[PCUGroupDescriptor] | None
+            try:
+                pcu_groups = await self.async_list_pcu_groups(
+                    cloud_provider=_definition.cloud_provider,
+                    region=_definition.region,
+                    database_admin_timeout_ms=database_admin_timeout_ms,
+                    request_timeout_ms=request_timeout_ms,
+                    timeout_ms=timeout_ms,
+                )
+            except Exception as e:
+                pcu_groups = None
+                logger.info(
+                    f"PCU Group ID pre-check threw an exception, async: {str(e)}"
+                )
+            if pcu_groups is not None:
+                matching_pcu_groups = [
+                    pg for pg in pcu_groups if pg.id == _definition.pcu_group_id
+                ]
+                logger.info(
+                    "PCU Group ID pre-check failed. Aborting database creation, async."
+                )
+                if matching_pcu_groups == []:
+                    raise ValueError(
+                        f"Requested PCU Group ID '{_definition.pcu_group_id}' not found for cloud provider "
+                        f"('{_definition.cloud_provider}') and region ('{_definition.region}')."
+                    )
+                logger.info("PCU Group ID pre-check succeeded, async.")
+            else:
+                logger.info("PCU Group ID pre-check aborted, async.")
+
         cd_payload = _definition.as_dict(name=name)
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_database_admin_timeout_ms,
@@ -1484,7 +1550,7 @@ class AstraDBAdmin:
             timeout_label=_da_label,
         )
         if wait_until_active:
-            logger.info("pre-check for polling capability of token (DevOps API)")
+            logger.info("pre-check for polling capability of token (DevOps API), async")
             if not await self._async_can_poll(
                 timeout_context=timeout_manager.remaining_timeout(
                     cap_time_ms=_request_timeout_ms,
@@ -1492,7 +1558,9 @@ class AstraDBAdmin:
                 ),
                 caller_function_name="async_create_database",
             ):
-                logger.info("polling capability check returned negative (DevOps API)")
+                logger.info(
+                    "polling capability check returned negative (DevOps API), async"
+                )
                 raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(
             f"creating database {name}/({_definition.cloud_provider}, {_definition.region}) (DevOps API), async"

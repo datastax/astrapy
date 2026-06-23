@@ -28,6 +28,8 @@ from astrapy.settings.defaults import (
 )
 from astrapy.utils.request_tools import HttpMethod
 
+from ..admin_assets import SOME_PCU_GROUP_DESC_JSON
+
 
 @pytest.fixture
 def mock_astra_admin(httpserver: HTTPServer) -> AstraDBAdmin:
@@ -114,8 +116,72 @@ class TestAdminCreateDatabaseAsync:
                 wait_until_active=False,
             )
 
-    @pytest.mark.describe("test of admin create database definition, async")
-    async def test_admin_create_database_definition_async(
+    @pytest.mark.describe("test of admin create database bad patterns, async")
+    async def test_admin_create_database_badpatterns_async(
+        self,
+        httpserver: HTTPServer,
+        mock_astra_admin: AstraDBAdmin,
+    ) -> None:
+        with pytest.raises(ValueError, match="must be provided"):
+            await mock_astra_admin.async_create_database(  # type: ignore[call-overload]
+                "the_db_name", wait_until_active=False
+            )
+
+        with pytest.raises(ValueError, match="Cannot specify both"):
+            await mock_astra_admin.async_create_database(  # type: ignore[call-overload]
+                "the_db_name",
+                definition=DatabaseDefinition(cloud_provider="cp", region="r"),
+                keyspace="ks",
+                wait_until_active=False,
+            )
+
+    @pytest.mark.describe("test of admin create database definition nopcucheck, async")
+    async def test_admin_create_database_definition_nopcucheck_async(
+        self,
+        httpserver: HTTPServer,
+        mock_astra_admin: AstraDBAdmin,
+    ) -> None:
+        full_payload = {
+            "name": "the_db_name",
+            "cloudProvider": "cp",
+            "region": "r",
+            "keyspace": "ks",
+            "tier": "tr",
+            "capacityUnits": 5,
+            "dbType": "ty",
+        }
+        # No PCU check as we don't provide a pcu id
+
+        httpserver.expect_oneshot_request(
+            "/vx/databases",
+            method=HttpMethod.POST,
+            json=full_payload,
+        ).respond_with_data(
+            "", headers={"Location": "xyz"}, status=DEV_OPS_RESPONSE_HTTP_CREATED
+        )
+
+        db_definition = DatabaseDefinition(
+            cloud_provider="cp",
+            region="r",
+            keyspace="ks",
+            tier="tr",
+            capacity_units=5,
+            db_type="ty",
+        )
+
+        # We prepare for failure here, but it's a good failure: we want to ensure the httpserver
+        # gets the right payload and the error is when the client instantiates the db admin all right.
+        with pytest.raises(ValueError, match="Cannot parse the supplied API endpoint"):
+            await mock_astra_admin.async_create_database(
+                "the_db_name",
+                definition=db_definition,
+                wait_until_active=False,
+            )
+
+    @pytest.mark.describe(
+        "test of admin create database definition failpcucheck, async"
+    )
+    async def test_admin_create_database_definition_failpcucheck_async(
         self,
         httpserver: HTTPServer,
         mock_astra_admin: AstraDBAdmin,
@@ -130,6 +196,7 @@ class TestAdminCreateDatabaseAsync:
             "dbType": "ty",
             "pcuGroupUUID": "d",
         }
+        # We pass a pcu ID but let the httpserver fail the list-pcu-groups request: creation must proceed
 
         httpserver.expect_oneshot_request(
             "/vx/databases",
@@ -137,6 +204,13 @@ class TestAdminCreateDatabaseAsync:
             json=full_payload,
         ).respond_with_data(
             "", headers={"Location": "xyz"}, status=DEV_OPS_RESPONSE_HTTP_CREATED
+        )
+
+        httpserver.expect_oneshot_request(
+            "/vx/pcus/actions/get",
+            method=HttpMethod.POST,
+        ).respond_with_json(
+            response_json={"0123": 321},
         )
 
         db_definition = DatabaseDefinition(
@@ -158,21 +232,118 @@ class TestAdminCreateDatabaseAsync:
                 wait_until_active=False,
             )
 
-    @pytest.mark.describe("test of admin create database bad patterns, async")
-    async def test_admin_create_database_badpatterns_async(
+    @pytest.mark.describe(
+        "test of admin create database definition missedpcucheck, async"
+    )
+    async def test_admin_create_database_definition_missedpcucheck_async(
         self,
         httpserver: HTTPServer,
         mock_astra_admin: AstraDBAdmin,
     ) -> None:
-        with pytest.raises(ValueError, match="must be provided"):
-            await mock_astra_admin.async_create_database(  # type: ignore[call-overload]
-                "the_db_name", wait_until_active=False
+        full_payload = {
+            "name": "the_db_name",
+            "cloudProvider": "cp",
+            "region": "r",
+            "keyspace": "ks",
+            "tier": "tr",
+            "capacityUnits": 5,
+            "dbType": "ty",
+            "pcuGroupUUID": "requested_pcu_g_id",
+        }
+        # We pass a pcu ID which the listing endpoint does not return and expect the createDB to fail pre-check
+
+        httpserver.expect_oneshot_request(
+            "/vx/databases",
+            method=HttpMethod.POST,
+            json=full_payload,
+        ).respond_with_data(
+            "", headers={"Location": "xyz"}, status=DEV_OPS_RESPONSE_HTTP_CREATED
+        )
+
+        httpserver.expect_oneshot_request(
+            "/vx/pcus/actions/get",
+            method=HttpMethod.POST,
+        ).respond_with_json(
+            response_json=[
+                {
+                    "uuid": "another_pcu_group_id",
+                    **SOME_PCU_GROUP_DESC_JSON,
+                },
+            ],
+        )
+
+        db_definition = DatabaseDefinition(
+            cloud_provider="cp",
+            region="r",
+            keyspace="ks",
+            tier="tr",
+            capacity_units=5,
+            db_type="ty",
+            pcu_group_id="d",
+        )
+
+        # Expected: PCU not found in the listing, creation aborted.
+        with pytest.raises(ValueError, match="Requested PCU Group ID 'd' not found"):
+            await mock_astra_admin.async_create_database(
+                "the_db_name",
+                definition=db_definition,
+                wait_until_active=False,
             )
 
-        with pytest.raises(ValueError, match="Cannot specify both"):
-            await mock_astra_admin.async_create_database(  # type: ignore[call-overload]
+    @pytest.mark.describe(
+        "test of admin create database definition matchedpcucheck, async"
+    )
+    async def test_admin_create_database_definition_matchedpcucheck_async(
+        self,
+        httpserver: HTTPServer,
+        mock_astra_admin: AstraDBAdmin,
+    ) -> None:
+        full_payload = {
+            "name": "the_db_name",
+            "cloudProvider": "cp",
+            "region": "r",
+            "keyspace": "ks",
+            "tier": "tr",
+            "capacityUnits": 5,
+            "dbType": "ty",
+            "pcuGroupUUID": "requested_pcu_g_id",
+        }
+        # We pass a pcu ID matched in the listing endpoint: DB creation must proceed.
+
+        httpserver.expect_oneshot_request(
+            "/vx/databases",
+            method=HttpMethod.POST,
+            json=full_payload,
+        ).respond_with_data(
+            "", headers={"Location": "xyz"}, status=DEV_OPS_RESPONSE_HTTP_CREATED
+        )
+
+        httpserver.expect_oneshot_request(
+            "/vx/pcus/actions/get",
+            method=HttpMethod.POST,
+        ).respond_with_json(
+            response_json=[
+                {
+                    "uuid": "requested_pcu_g_id",
+                    **SOME_PCU_GROUP_DESC_JSON,
+                },
+            ],
+        )
+
+        db_definition = DatabaseDefinition(
+            cloud_provider="cp",
+            region="r",
+            keyspace="ks",
+            tier="tr",
+            capacity_units=5,
+            db_type="ty",
+            pcu_group_id="d",
+        )
+
+        # Expected: PCU not found in the listing, creation aborted.
+        with pytest.raises(ValueError, match="Requested PCU Group ID 'd' not found"):
+            await mock_astra_admin.async_create_database(
                 "the_db_name",
-                definition=DatabaseDefinition(cloud_provider="cp", region="r"),
-                keyspace="ks",
+                definition=db_definition,
                 wait_until_active=False,
             )
