@@ -249,6 +249,7 @@ class CollectionFindAndRerankCursor(
                         ),
                     )
                 )
+                self._state = CursorState.STARTED
                 self._next_page_state = next_page_state
                 self._last_response_status = resp_status
                 self._pages_retrieved += 1
@@ -838,8 +839,8 @@ class CollectionFindAndRerankCursor(
         This method can trigger the fetch operation of a new page, if the current
         buffer is empty.
 
-        Calling `has_next` on an IDLE cursor triggers the first page fetch, but the
-        cursor stays in the IDLE state until actual consumption starts.
+        Calling `has_next` on an IDLE cursor triggers the first page fetch, transitioning
+        the cursor into the STARTED state.
 
         Returns:
             a boolean value of True if there is at least one further item
@@ -850,7 +851,11 @@ class CollectionFindAndRerankCursor(
         if self._state == CursorState.CLOSED:
             return False
         self._try_ensure_fill_buffer()
-        return len(self._buffer) > 0
+        if self._buffer != []:
+            return True
+        else:
+            self._state = CursorState.CLOSED
+            return False
 
     def get_sort_vector(self) -> list[float] | DataAPIVector | None:
         """
@@ -1131,6 +1136,7 @@ class AsyncCollectionFindAndRerankCursor(
                         cap_timeout_label=self._request_timeout_label,
                     ),
                 )
+                self._state = CursorState.STARTED
                 self._next_page_state = next_page_state
                 self._last_response_status = resp_status
                 self._pages_retrieved += 1
@@ -1626,8 +1632,8 @@ class AsyncCollectionFindAndRerankCursor(
         This method can trigger the fetch operation of a new page, if the current
         buffer is empty.
 
-        Calling `has_next` on an IDLE cursor triggers the first page fetch, but the
-        cursor stays in the IDLE state until actual consumption starts.
+        Calling `has_next` on an IDLE cursor triggers the first page fetch, transitioning
+        the cursor into the STARTED state.
 
         Returns:
             a boolean value of True if there is at least one further item
@@ -1638,7 +1644,11 @@ class AsyncCollectionFindAndRerankCursor(
         if self._state == CursorState.CLOSED:
             return False
         await self._try_ensure_fill_buffer()
-        return len(self._buffer) > 0
+        if self._buffer != []:
+            return True
+        else:
+            self._state = CursorState.CLOSED
+            return False
 
     async def get_sort_vector(self) -> list[float] | DataAPIVector | None:
         """

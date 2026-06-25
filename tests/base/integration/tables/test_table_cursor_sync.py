@@ -96,23 +96,23 @@ class TestTableCursorSync:
         with pytest.raises(CursorException):
             toclose.to_list()
 
-        cur.rewind()
-        assert cur.state == CursorState.IDLE
-        assert cur.consumed == 0
-        assert cur.buffered_count == 0
+        toclose.rewind()
+        assert toclose.state == CursorState.IDLE  # type: ignore[comparison-overlap]
+        assert toclose.consumed == 0
+        assert toclose.buffered_count == 0
 
-        cur.filter({"c": True})
-        cur.project({"c": True})
-        cur.sort({"c": SortMode.ASCENDING})
-        cur.limit(1)
-        cur.include_similarity(False)
-        cur.include_sort_vector(False)
-        cur.skip(1)
-        cur.map(lambda rw: None)
+        toclose.filter({"c": True})
+        toclose.project({"c": True})
+        toclose.sort({"c": SortMode.ASCENDING})
+        toclose.limit(1)
+        toclose.include_similarity(False)
+        toclose.include_sort_vector(False)
+        toclose.skip(1)
+        toclose.map(lambda rw: None)
 
-        cur.project({}).map(lambda rw: None)
+        toclose.project({}).map(lambda rw: None)
         with pytest.raises(CursorException):
-            cur.map(lambda rw: None).project({})
+            toclose.map(lambda rw: None).project({})
 
     @pytest.mark.describe("test of a CLOSED table cursors properties, sync")
     def test_table_cursors_closed_properties_sync(
@@ -152,6 +152,8 @@ class TestTableCursorSync:
             cur1.skip(1)
         with pytest.raises(CursorException):
             cur1.map(lambda rw: None)
+        with pytest.raises(CursorException):
+            cur1.initial_page_state("Blaaa")
 
     @pytest.mark.describe("test of a STARTED table cursors properties, sync")
     def test_table_cursors_started_properties_sync(
@@ -190,21 +192,31 @@ class TestTableCursorSync:
             cur.skip(1)
         with pytest.raises(CursorException):
             cur.map(lambda rw: None)
+        with pytest.raises(CursorException):
+            cur.initial_page_state("Blaaa")
 
     @pytest.mark.describe("test of table cursors has_next, sync")
     def test_table_cursors_has_next_sync(
         self,
         filled_composite_table: DefaultTable,
     ) -> None:
+        # has_next sets to STARTED
+        cur_hn = filled_composite_table.find()
+        assert cur_hn.state == CursorState.IDLE
+        assert cur_hn.consumed == 0
+        assert cur_hn.has_next()
+        assert cur_hn.state == CursorState.STARTED  # type: ignore[comparison-overlap]
+
+        # next sets to STARTED (and subsequent testing)
         cur = filled_composite_table.find()
         assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
-        assert cur.has_next()
-        assert cur.state == CursorState.IDLE
-        assert cur.consumed == 0
+        cur.__next__()
+        assert cur_hn.consumed == 0
+        assert cur.state == CursorState.STARTED
         list(cur)
         assert cur.consumed == NUM_ROWS
-        assert cur.state == CursorState.CLOSED  # type: ignore[comparison-overlap]
+        assert cur.state == CursorState.CLOSED
 
         curmf = filled_composite_table.find()
         next(curmf)
@@ -234,7 +246,11 @@ class TestTableCursorSync:
     ) -> None:
         cur = filled_composite_table.find({"p_text": "ZZ"})
         assert not cur.has_next()
-        assert list(cur) == []
+        assert cur.state == CursorState.CLOSED
+        with pytest.raises(CursorException):
+            list(cur)
+        with pytest.raises(CursorException):
+            cur.to_list()
 
     @pytest.mark.describe("test of prematurely closing table cursors, sync")
     def test_table_cursors_early_closing_sync(
