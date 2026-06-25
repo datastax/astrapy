@@ -13,6 +13,9 @@ CollectionDefinition fluent interface: renamed all `set_*` methods to `with_*` (
     - This better conveys the immutable builder pattern (methods return new objects rather than mutating in place)
     - Old `set_*` methods remain as deprecated aliases (deprecated in 2.3.0, will be removed in 3.0.0)
     - Affected methods: `with_indexing`, `with_default_id`, `with_vector_dimension`, `with_vector_metric`, `with_vector_source_model`, `with_vector_service`, `with_rerank`, `with_lexical`
+Minor cursor behaviour changes:
+    - has_next called on an IDLE cursor sets it to ACTIVE;
+    - has_next may set the cursor to CLOSED if no next items are detected.
 Added support for overriding reranking options in find_and_rerank method call.
 Added support for custom CA certificates (PEM) in the APIOptions (new `ca_cert_path` parameter)
 Bugfix: faulty normalization of empty/null indexing targets for `CollectionDefinition.set_indexing`
