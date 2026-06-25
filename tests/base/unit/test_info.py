@@ -21,11 +21,22 @@ from __future__ import annotations
 import pytest
 
 from astrapy.admin import ParsedAPIEndpoint, parse_api_endpoint
-from astrapy.info import AstraDBAvailableRegionInfo, DatabaseDefinition
+from astrapy.info import (
+    AstraDBAvailableRegionInfo,
+    DatabaseDefinition,
+    PCUGroupDescriptor,
+)
 from astrapy.settings.defaults import (
     DEFAULT_CREATE_DB_CAPACITY_UNITS,
     DEFAULT_CREATE_DB_DB_TYPE,
     DEFAULT_CREATE_DB_TIER,
+)
+
+from ..admin_assets import (
+    SOME_PCU_GROUP_DESC_JSON,
+    SOME_PCU_GROUP_DESC_JSON_NORESERVED,
+    SOME_PCU_GROUP_DESCRIPTOR_KWARGS,
+    SOME_PCU_GROUP_DESCRIPTOR_KWARGS_NORESERVED,
 )
 
 
@@ -88,6 +99,31 @@ def test_parse_availableregioninfo() -> None:
     }
     assert AstraDBAvailableRegionInfo._from_dict(region_dict).as_dict() == region_dict
 
+    rich_region_dict = {
+        "classification": "standard",
+        "cloudProvider": "AWS",
+        "displayName": "US East (Ohio)",
+        "enabled": True,
+        "name": "us-east-2",
+        "region_type": "vector",
+        "reservedForQualifiedUsers": False,
+        "zone": "na",
+        "pcu_types": [
+            {
+                "type": "vector",
+                "details": {
+                    "vCPU": 123,
+                    "memory": "77KB",
+                    "disk_cache": "17PB",
+                },
+            },
+        ],
+    }
+    assert (
+        AstraDBAvailableRegionInfo._from_dict(rich_region_dict).as_dict()
+        == rich_region_dict
+    )
+
 
 @pytest.mark.describe("test of marshaling and unmarshaling of database definition")
 def test_parse_databasedefinition() -> None:
@@ -149,3 +185,39 @@ def test_parse_databasedefinition() -> None:
     )
     assert built_def0 == db_def0
     assert built_def1 == db_def1
+
+
+@pytest.mark.describe(
+    "test of marshaling and unmarshaling of full PCU Group descriptors"
+)
+def test_parse_full_pcugroupdescriptor() -> None:
+    pcugt_json = {
+        "uuid": "the_id",
+        **SOME_PCU_GROUP_DESC_JSON,
+    }
+    gtype_desc = PCUGroupDescriptor(
+        id="the_id",
+        **SOME_PCU_GROUP_DESCRIPTOR_KWARGS,  # type: ignore[arg-type]
+    )
+
+    assert gtype_desc.as_dict() == pcugt_json
+    assert PCUGroupDescriptor._from_dict(pcugt_json) == gtype_desc
+
+
+@pytest.mark.describe(
+    "test of marshaling and unmarshaling of no-reserved PCU Group descriptors"
+)
+def test_parse_noreserved_pcugroupdescriptor() -> None:
+    the_id = "84c06b4a-cb01-4a56-aa81-a158dc946833"
+
+    pcugt_json = {
+        "uuid": the_id,
+        **SOME_PCU_GROUP_DESC_JSON_NORESERVED,
+    }
+    gtype_desc = PCUGroupDescriptor(
+        id=the_id,
+        **SOME_PCU_GROUP_DESCRIPTOR_KWARGS_NORESERVED,  # type: ignore[arg-type]
+    )
+
+    assert gtype_desc.as_dict() == pcugt_json
+    assert PCUGroupDescriptor._from_dict(pcugt_json) == gtype_desc

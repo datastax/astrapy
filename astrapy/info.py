@@ -28,6 +28,9 @@ from astrapy.data.info.database_info import (
     AstraDBAvailableRegionInfo,
     AstraDBDatabaseInfo,
     DatabaseDefinition,
+    PCUGroupDescriptor,
+    PCUGroupTypeDescriptor,
+    PCUGroupTypeDetailsDescriptor,
 )
 from astrapy.data.info.reranking import (
     FindRerankingProvidersResult,
@@ -133,6 +136,9 @@ __all__ = [
     "ListTableDefinition",
     "ListTableDescriptor",
     "ListTypeDescriptor",
+    "PCUGroupTypeDetailsDescriptor",
+    "PCUGroupTypeDescriptor",
+    "PCUGroupDescriptor",
     "RerankingAPIModelSupport",
     "RerankingProvider",
     "RerankingProviderAuthentication",
