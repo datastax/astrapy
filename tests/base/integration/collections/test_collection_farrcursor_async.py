@@ -263,7 +263,11 @@ class TestCollectionCursorSync:
             limit=NUM_DOCS,
         )
         assert not await cur.has_next()
-        assert [r_res async for r_res in cur] == []
+        assert cur.state == CursorState.CLOSED
+        with pytest.raises(CursorException):
+            [r_res async for r_res in cur]
+        with pytest.raises(CursorException):
+            await cur.to_list()
 
         cur_no_sv = afilled_vectorize_collection.find_and_rerank(
             {"parity": -1},

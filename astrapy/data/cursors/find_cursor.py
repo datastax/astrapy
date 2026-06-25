@@ -732,7 +732,11 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         if self._state == CursorState.CLOSED:
             return False
         self._try_ensure_fill_buffer()
-        return len(self._buffer) > 0
+        if self._buffer != []:
+            return True
+        else:
+            self._state = CursorState.CLOSED
+            return False
 
     def get_sort_vector(self) -> list[float] | DataAPIVector | None:
         """
@@ -1435,7 +1439,11 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         if self._state == CursorState.CLOSED:
             return False
         await self._try_ensure_fill_buffer()
-        return len(self._buffer) > 0
+        if self._buffer != []:
+            return True
+        else:
+            self._state = CursorState.CLOSED
+            return False
 
     async def get_sort_vector(self) -> list[float] | DataAPIVector | None:
         """
@@ -2204,7 +2212,11 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         if self._state == CursorState.CLOSED:
             return False
         self._try_ensure_fill_buffer()
-        return len(self._buffer) > 0
+        if self._buffer != []:
+            return True
+        else:
+            self._state = CursorState.CLOSED
+            return False
 
     def get_sort_vector(self) -> list[float] | DataAPIVector | None:
         """
@@ -2905,7 +2917,11 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         if self._state == CursorState.CLOSED:
             return False
         await self._try_ensure_fill_buffer()
-        return len(self._buffer) > 0
+        if self._buffer != []:
+            return True
+        else:
+            self._state = CursorState.CLOSED
+            return False
 
     async def get_sort_vector(self) -> list[float] | DataAPIVector | None:
         """

@@ -246,7 +246,11 @@ class TestCollectionCursorSync:
     ) -> None:
         cur = filled_collection.find({"p_text": "ZZ"})
         assert not cur.has_next()
-        assert list(cur) == []
+        assert cur.state == CursorState.CLOSED
+        with pytest.raises(CursorException):
+            list(cur)
+        with pytest.raises(CursorException):
+            cur.to_list()
 
     @pytest.mark.describe("test of prematurely closing collection cursors, sync")
     def test_collection_cursors_early_closing_sync(

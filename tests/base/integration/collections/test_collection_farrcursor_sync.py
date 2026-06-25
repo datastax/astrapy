@@ -257,7 +257,11 @@ class TestCollectionCursorSync:
             limit=NUM_DOCS,
         )
         assert not cur.has_next()
-        assert list(cur) == []
+        assert cur.state == CursorState.CLOSED
+        with pytest.raises(CursorException):
+            assert list(cur) == []
+        with pytest.raises(CursorException):
+            cur.to_list()
 
         cur_no_sv = filled_vectorize_collection.find_and_rerank(
             {"parity": -1},

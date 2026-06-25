@@ -248,7 +248,11 @@ class TestCollectionCursorSync:
     ) -> None:
         cur = async_filled_collection.find({"p_text": "ZZ"})
         assert not await cur.has_next()
-        assert [doc async for doc in cur] == []
+        assert cur.state == CursorState.CLOSED
+        with pytest.raises(CursorException):
+            [doc async for doc in cur]
+        with pytest.raises(CursorException):
+            await cur.to_list()
 
     @pytest.mark.describe("test of prematurely closing collection cursors, async")
     async def test_collection_cursors_early_closing_async(

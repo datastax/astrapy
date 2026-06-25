@@ -248,7 +248,11 @@ class TestTableCursorSync:
     ) -> None:
         cur = filled_composite_atable.find({"p_text": "ZZ"})
         assert not await cur.has_next()
-        assert [row async for row in cur] == []
+        assert cur.state == CursorState.CLOSED
+        with pytest.raises(CursorException):
+            [doc async for doc in cur]
+        with pytest.raises(CursorException):
+            await cur.to_list()
 
     @pytest.mark.describe("test of prematurely closing table cursors, async")
     async def test_table_cursors_early_closing_async(

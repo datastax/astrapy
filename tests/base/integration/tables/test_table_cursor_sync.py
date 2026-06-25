@@ -246,7 +246,11 @@ class TestTableCursorSync:
     ) -> None:
         cur = filled_composite_table.find({"p_text": "ZZ"})
         assert not cur.has_next()
-        assert list(cur) == []
+        assert cur.state == CursorState.CLOSED
+        with pytest.raises(CursorException):
+            list(cur)
+        with pytest.raises(CursorException):
+            cur.to_list()
 
     @pytest.mark.describe("test of prematurely closing table cursors, sync")
     def test_table_cursors_early_closing_sync(

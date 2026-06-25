@@ -851,7 +851,11 @@ class CollectionFindAndRerankCursor(
         if self._state == CursorState.CLOSED:
             return False
         self._try_ensure_fill_buffer()
-        return len(self._buffer) > 0
+        if self._buffer != []:
+            return True
+        else:
+            self._state = CursorState.CLOSED
+            return False
 
     def get_sort_vector(self) -> list[float] | DataAPIVector | None:
         """
@@ -1640,7 +1644,11 @@ class AsyncCollectionFindAndRerankCursor(
         if self._state == CursorState.CLOSED:
             return False
         await self._try_ensure_fill_buffer()
-        return len(self._buffer) > 0
+        if self._buffer != []:
+            return True
+        else:
+            self._state = CursorState.CLOSED
+            return False
 
     async def get_sort_vector(self) -> list[float] | DataAPIVector | None:
         """
