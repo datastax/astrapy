@@ -249,6 +249,7 @@ class CollectionFindAndRerankCursor(
                         ),
                     )
                 )
+                self._state = CursorState.STARTED
                 self._next_page_state = next_page_state
                 self._last_response_status = resp_status
                 self._pages_retrieved += 1
@@ -1131,6 +1132,7 @@ class AsyncCollectionFindAndRerankCursor(
                         cap_timeout_label=self._request_timeout_label,
                     ),
                 )
+                self._state = CursorState.STARTED
                 self._next_page_state = next_page_state
                 self._last_response_status = resp_status
                 self._pages_retrieved += 1

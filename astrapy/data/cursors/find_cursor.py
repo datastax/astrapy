@@ -213,6 +213,7 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
                         ),
                     )
                 )
+                self._state = CursorState.STARTED
                 self._next_page_state = next_page_state
                 self._last_response_status = resp_status
                 self._pages_retrieved += 1
@@ -999,6 +1000,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
                         cap_timeout_label=self._request_timeout_label,
                     ),
                 )
+                self._state = CursorState.STARTED
                 self._next_page_state = next_page_state
                 self._last_response_status = resp_status
                 self._pages_retrieved += 1
@@ -1685,6 +1687,7 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
                         ),
                     )
                 )
+                self._state = CursorState.STARTED
                 self._next_page_state = next_page_state
                 self._last_response_status = resp_status
                 self._pages_retrieved += 1
@@ -2468,6 +2471,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
                         cap_timeout_label=self._request_timeout_label,
                     ),
                 )
+                self._state = CursorState.STARTED
                 self._next_page_state = next_page_state
                 self._last_response_status = resp_status
                 self._pages_retrieved += 1

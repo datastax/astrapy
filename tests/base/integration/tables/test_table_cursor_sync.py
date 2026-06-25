@@ -200,14 +200,20 @@ class TestTableCursorSync:
         self,
         filled_composite_table: DefaultTable,
     ) -> None:
+        # has_next sets to STARTED
+        cur_hn = filled_composite_table.find()
+        assert cur_hn.state == CursorState.IDLE
+        assert cur_hn.consumed == 0
+        assert cur_hn.has_next()
+        assert cur_hn.state == CursorState.STARTED  # type: ignore[comparison-overlap]
+
+        # next sets to STARTED (and subsequent testing)
         cur = filled_composite_table.find()
         assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
-        assert cur.has_next()
-        assert cur.state == CursorState.IDLE
-        assert cur.consumed == 0
         cur.__next__()
-        assert cur.state == CursorState.STARTED  # type: ignore[comparison-overlap]
+        assert cur_hn.consumed == 0
+        assert cur.state == CursorState.STARTED
         list(cur)
         assert cur.consumed == NUM_ROWS
         assert cur.state == CursorState.CLOSED

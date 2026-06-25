@@ -198,18 +198,33 @@ class TestCollectionCursorSync:
         self,
         afilled_vectorize_collection: DefaultAsyncCollection,
     ) -> None:
+        # has_next sets to STARTED
+        cur_hn = afilled_vectorize_collection.find_and_rerank(
+            sort={"$hybrid": "a sentence."},
+            limit=NUM_DOCS,
+        )
+        assert cur_hn.state == CursorState.IDLE
+        assert cur_hn.consumed == 0
+        assert await cur_hn.has_next()
+        assert cur_hn.consumed == 0
+        assert cur_hn.state == CursorState.STARTED  # type: ignore[comparison-overlap]
+
+        # next sets to STARTED (and subsequent testing)
         cur = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         )
         assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
-        assert await cur.has_next()
+        cur = afilled_vectorize_collection.find_and_rerank(
+            sort={"$hybrid": "a sentence."},
+            limit=NUM_DOCS,
+        )
         assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
         [r_res async for r_res in cur]
         assert cur.consumed == NUM_DOCS
-        assert cur.state == CursorState.CLOSED  # type: ignore[comparison-overlap]
+        assert cur.state == CursorState.CLOSED
 
         curmf = afilled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},

@@ -202,14 +202,20 @@ class TestCollectionCursorSync:
         self,
         async_filled_collection: DefaultAsyncCollection,
     ) -> None:
+        # has_next sets to STARTED
+        cur_hn = async_filled_collection.find()
+        assert cur_hn.state == CursorState.IDLE
+        assert cur_hn.consumed == 0
+        assert await cur_hn.has_next()
+        assert cur_hn.consumed == 0
+        assert cur_hn.state == CursorState.STARTED  # type: ignore[comparison-overlap]
+
+        # next sets to STARTED (and subsequent testing)
         cur = async_filled_collection.find()
         assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
-        assert await cur.has_next()
-        assert cur.state == CursorState.IDLE
-        assert cur.consumed == 0
         await cur.__anext__()
-        assert cur.state == CursorState.STARTED  # type: ignore[comparison-overlap]
+        assert cur.state == CursorState.STARTED
         [doc async for doc in cur]
         assert cur.consumed == NUM_DOCS
         assert cur.state == CursorState.CLOSED
