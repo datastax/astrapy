@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import date, datetime, timezone
 from typing import Any
 
@@ -37,6 +38,9 @@ from astrapy.results import CollectionDeleteResult, CollectionInsertOneResult
 from astrapy.utils.api_options import APIOptions, SerdesOptions
 
 from ..conftest import DefaultCollection
+
+# TODO: once v1.0.48 is in production, hardcode 50 and bump Data API version in docker compose file:
+FIND_PAGE_SIZE = int(os.environ.get("FIND_PAGE_SIZE") or "20")
 
 
 class TestCollectionDMLSync:
@@ -305,9 +309,11 @@ class TestCollectionDMLSync:
         self,
         sync_empty_collection: DefaultCollection,
     ) -> None:
-        sync_empty_collection.insert_many([{"seq": i} for i in range(30)])
+        number_of_docs = FIND_PAGE_SIZE + 10
+
+        sync_empty_collection.insert_many([{"seq": i} for i in range(number_of_docs)])
         Nski = 1
-        Nlim = 28
+        Nlim = number_of_docs - 2
         Nsor = {"seq": SortMode.DESCENDING}
         Nfil = {"seq": {"$exists": True}}
 
@@ -320,7 +326,7 @@ class TestCollectionDMLSync:
                     )
                 )
             )
-            == 30
+            == number_of_docs
         )
 
         # case 0001
@@ -332,7 +338,7 @@ class TestCollectionDMLSync:
                     )
                 )
             )
-            == 30
+            == number_of_docs
         )
 
         # case 0010
@@ -344,7 +350,7 @@ class TestCollectionDMLSync:
                     )
                 )
             )
-            == 20
+            == FIND_PAGE_SIZE
         )  # NONPAGINATED
 
         # case 0011
@@ -356,7 +362,7 @@ class TestCollectionDMLSync:
                     )
                 )
             )
-            == 20
+            == FIND_PAGE_SIZE
         )  # NONPAGINATED
 
         # case 0100
@@ -368,7 +374,7 @@ class TestCollectionDMLSync:
                     )
                 )
             )
-            == 28
+            == Nlim
         )
 
         # case 0101
@@ -380,7 +386,7 @@ class TestCollectionDMLSync:
                     )
                 )
             )
-            == 28
+            == Nlim
         )
 
         # case 0110
@@ -392,7 +398,7 @@ class TestCollectionDMLSync:
                     )
                 )
             )
-            == 20
+            == FIND_PAGE_SIZE
         )  # NONPAGINATED
 
         # case 0111
@@ -404,7 +410,7 @@ class TestCollectionDMLSync:
                     )
                 )
             )
-            == 20
+            == FIND_PAGE_SIZE
         )  # NONPAGINATED
 
         # case 1000
@@ -436,7 +442,7 @@ class TestCollectionDMLSync:
                     )
                 )
             )
-            == 20
+            == FIND_PAGE_SIZE
         )  # NONPAGINATED
 
         # case 1011
@@ -448,7 +454,7 @@ class TestCollectionDMLSync:
                     )
                 )
             )
-            == 20
+            == FIND_PAGE_SIZE
         )  # NONPAGINATED
 
         # case 1100
@@ -480,7 +486,7 @@ class TestCollectionDMLSync:
                     )
                 )
             )
-            == 20
+            == FIND_PAGE_SIZE
         )  # NONPAGINATED
 
         # case 1111
@@ -492,7 +498,7 @@ class TestCollectionDMLSync:
                     )
                 )
             )
-            == 20
+            == FIND_PAGE_SIZE
         )  # NONPAGINATED
 
     @pytest.mark.describe("test of cursors from collection.find, sync")

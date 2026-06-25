@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import pytest
@@ -26,8 +27,10 @@ from astrapy.exceptions import CursorException
 
 from ..conftest import DefaultTable
 
-NUM_ROWS = 25  # keep this between 20 and 39
-NUM_DOCS_PAGINATION = 90  # keep this above 2 * (2 * 20) and below 2 * (3 * 20)
+# TODO: once v1.0.48 is in production, hardcode 50 and bump Data API version in docker compose file:
+FIND_PAGE_SIZE = int(os.environ.get("FIND_PAGE_SIZE") or "20")
+NUM_ROWS = 2 * FIND_PAGE_SIZE + 5
+NUM_ROWS_PAGINATION = 2 * (2 * FIND_PAGE_SIZE) + 5
 
 
 @pytest.fixture
@@ -57,7 +60,7 @@ def filled_pagination_composite_table(
                 "p_boolean": i % 2 == 0,
                 "p_vector": DataAPIVector([i, 1, 0]),
             }
-            for i in range(NUM_DOCS_PAGINATION)
+            for i in range(NUM_ROWS_PAGINATION)
         ]
     )
     return sync_empty_table_composite
@@ -157,18 +160,18 @@ class TestTableCursorSync:
     ) -> None:
         cur = filled_composite_table.find()
         next(cur)
-        # now this has 19 items in buffer, one is consumed
+        # now this has (page - 1) items in buffer, one is consumed
         assert cur.consumed == 1
-        assert cur.buffered_count == 19
+        assert cur.buffered_count == FIND_PAGE_SIZE - 1
         assert len(cur.consume_buffer(3)) == 3
         assert cur.consumed == 4
-        assert cur.buffered_count == 16
+        assert cur.buffered_count == FIND_PAGE_SIZE - 4
         # from time to time the buffer is empty:
-        for _ in range(16):
+        for _ in range(FIND_PAGE_SIZE - 4):
             next(cur)
         assert cur.buffered_count == 0
         assert cur.consume_buffer(3) == []
-        assert cur.consumed == 20
+        assert cur.consumed == FIND_PAGE_SIZE
         assert cur.buffered_count == 0
 
         with pytest.raises(CursorException):
@@ -211,12 +214,14 @@ class TestTableCursorSync:
         assert curmf.has_next()
         assert curmf.consumed == 2
         assert curmf.state == CursorState.STARTED
-        for _ in range(18):
+        for _ in range(FIND_PAGE_SIZE - 2):
             next(curmf)
+        assert curmf.buffered_count == 0
         assert curmf.has_next()
-        assert curmf.consumed == 20
+        assert curmf.buffered_count == FIND_PAGE_SIZE
+        assert curmf.consumed == FIND_PAGE_SIZE
         assert curmf.state == CursorState.STARTED
-        assert curmf.buffered_count == NUM_ROWS - 20
+        assert curmf.buffered_count == FIND_PAGE_SIZE
 
         cur0 = filled_composite_table.find()
         cur0.close()
@@ -411,10 +416,8 @@ class TestTableCursorSync:
         self,
         filled_pagination_composite_table: DefaultTable,
     ) -> None:
-        page_size = 20
-
         cur0 = filled_pagination_composite_table.find(filter={"p_boolean": True})
-        ids0 = [doc["p_int"] for _, doc in zip(range(page_size), cur0)]
+        ids0 = [doc["p_int"] for _, doc in zip(range(FIND_PAGE_SIZE), cur0)]
         nps0 = cur0._next_page_state
         assert isinstance(nps0, str)
 
@@ -422,7 +425,7 @@ class TestTableCursorSync:
             filter={"p_boolean": True},
             initial_page_state=nps0,
         )
-        ids1 = [doc["p_int"] for _, doc in zip(range(page_size), cur1)]
+        ids1 = [doc["p_int"] for _, doc in zip(range(FIND_PAGE_SIZE), cur1)]
         nps1 = cur1._next_page_state
         assert isinstance(nps1, str)
 
@@ -430,10 +433,10 @@ class TestTableCursorSync:
             filter={"p_boolean": True},
             initial_page_state=nps1,
         )
-        ids2 = [doc["p_int"] for _, doc in zip(range(page_size), cur2)]
+        ids2 = [doc["p_int"] for _, doc in zip(range(FIND_PAGE_SIZE), cur2)]
         assert cur2._next_page_state is None
 
-        expected_ids = [i for i in range(NUM_DOCS_PAGINATION) if i % 2 == 0]
+        expected_ids = [i for i in range(NUM_ROWS_PAGINATION) if i % 2 == 0]
         retrieved_ids = ids0 + ids1 + ids2
         assert len(retrieved_ids) == len(set(retrieved_ids))
         assert sorted(retrieved_ids) == expected_ids
@@ -472,7 +475,7 @@ class TestTableCursorSync:
         ids2 = [doc["p_int"] for doc in page2.results]
         assert page2.next_page_state is None
 
-        expected_ids = [i for i in range(NUM_DOCS_PAGINATION) if i % 2 == 0]
+        expected_ids = [i for i in range(NUM_ROWS_PAGINATION) if i % 2 == 0]
         retrieved_ids = ids0 + ids1 + ids2
         assert len(retrieved_ids) == len(set(retrieved_ids))
         assert sorted(retrieved_ids) == expected_ids

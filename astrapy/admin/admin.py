@@ -19,7 +19,7 @@ import logging
 import re
 import time
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, cast, overload
 
 from astrapy.admin.endpoints import (
     ParsedAPIEndpoint,
@@ -48,8 +48,10 @@ from astrapy.info import (
     AstraDBAdminDatabaseInfo,
     AstraDBAvailableRegionInfo,
     AstraDBDatabaseInfo,
+    DatabaseDefinition,
     FindEmbeddingProvidersResult,
     FindRerankingProvidersResult,
+    PCUGroupDescriptor,
 )
 from astrapy.settings.defaults import (
     DEFAULT_DATA_API_AUTH_HEADER,
@@ -482,9 +484,7 @@ class AstraDBAdmin:
                 **self.api_options.admin_additional_headers,
             }
         self._dev_ops_api_commander = self._get_dev_ops_api_commander()
-        self._regionlist_dev_ops_api_commander = (
-            self._get_dev_ops_regionlist_api_commander()
-        )
+        self._orgwide_dev_ops_api_commander = self._get_dev_ops_orgwide_api_commander()
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.api_options})"
@@ -523,13 +523,14 @@ class AstraDBAdmin:
         )
         return dev_ops_commander
 
-    def _get_dev_ops_regionlist_api_commander(self) -> APICommander:
+    def _get_dev_ops_orgwide_api_commander(self) -> APICommander:
         """
-        Instantiate a new APICommander for querying available regions.
+        Instantiate a new APICommander for org-widre commands, such as querying
+        available regions.
 
         This is a separate commander since the base path is different.
         """
-        rl_base_path_components = [
+        ow_base_path_components = [
             comp
             for comp in (
                 ncomp.strip("/")
@@ -540,10 +541,10 @@ class AstraDBAdmin:
             )
             if comp != ""
         ]
-        rl_dev_ops_base_path = "/".join(rl_base_path_components)
-        rl_dev_ops_commander = APICommander(
+        ow_dev_ops_base_path = "/".join(ow_base_path_components)
+        ow_dev_ops_commander = APICommander(
             api_endpoint=self.api_options.dev_ops_api_url_options.dev_ops_url,
-            path=rl_dev_ops_base_path,
+            path=ow_dev_ops_base_path,
             headers=self._dev_ops_commander_headers,
             callers=self.api_options.callers,
             dev_ops_api=True,
@@ -552,7 +553,7 @@ class AstraDBAdmin:
             spawner=self,
             ca_cert_path=self.api_options.ca_cert_path,
         )
-        return rl_dev_ops_commander
+        return ow_dev_ops_commander
 
     def _copy(
         self,
@@ -1061,6 +1062,21 @@ class AstraDBAdmin:
             environment=self.api_options.environment,
         )
 
+    @overload
+    def create_database(
+        self,
+        name: str,
+        *,
+        definition: DatabaseDefinition,
+        wait_until_active: bool = True,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AstraDBDatabaseAdmin: ...
+
+    @overload
     def create_database(
         self,
         name: str,
@@ -1074,16 +1090,43 @@ class AstraDBAdmin:
         timeout_ms: int | None = None,
         token: str | TokenProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AstraDBDatabaseAdmin: ...
+
+    def create_database(
+        self,
+        name: str,
+        *,
+        definition: DatabaseDefinition | None = None,
+        cloud_provider: str | None = None,
+        region: str | None = None,
+        keyspace: str | None = None,
+        wait_until_active: bool = True,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBDatabaseAdmin:
         """
         Create a database as requested, optionally waiting for it to be ready.
 
+        The most common database configuration are available as keyword arguments.
+        If more control is needed, a `DatabaseDefinition` object can be provided instead.
+
         Args:
             name: the desired name for the database.
-            cloud_provider: one of 'aws', 'gcp' or 'azure'.
-            region: any of the available cloud regions.
+            definition: a DatabaseDefinition object for the database.
+                If provided, `cloud_provider`, `region`, and `keyspace`
+                must not be specified.
+            cloud_provider: one of 'aws', 'gcp' or 'azure'. Required if
+                `definition` is not provided.
+                Cannot be specified if `definition` is provided.
+            region: any of the available cloud regions. Required if
+                `definition` is not provided.
+                Cannot be specified if `definition` is provided.
             keyspace: name for the one keyspace the database starts with.
                 If omitted, DevOps API will use its default.
+                Cannot be specified if `definition` is provided.
             wait_until_active: if True (default), the method returns only after
                 the newly-created database is in ACTIVE state (a few minutes,
                 usually). If False, it will return right after issuing the
@@ -1118,7 +1161,8 @@ class AstraDBAdmin:
         creation request has not reached the API server and is not going
         to be, in fact, honored.
 
-        Example:
+        Examples:
+            >>> # call pattern using the basic parameters:
             >>> my_new_db_admin = my_astra_db_admin.create_database(
             ...     "new_database",
             ...     cloud_provider="aws",
@@ -1134,7 +1178,46 @@ class AstraDBAdmin:
             ...     )
             ... )
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.2]})
+            >>>
+            >>> # call pattern using the 'definition' parameter:
+            >>> my_custom_db_definition = DatabaseDefinition(
+            ...    cloud_provider="aws",
+            ...    region="ap-south-1",
+            ...    capacity_units=4,
+            ...    keyspace="staging_xyz",
+            ...    pcu_group_id="01234567-89ab-cdef-0123-456789abcdef",
+            ... )
+            >>> my_custom_db_admin = my_astra_db_admin.create_database(
+            ...     "new_customized_database",
+            ...     definition=my_custom_db_definition,
+            ... )
         """
+
+        # Validate parameter combinations
+        definition_fields = [cloud_provider, region, keyspace]
+        definition_fields_provided = any(f is not None for f in definition_fields)
+
+        if definition is not None and definition_fields_provided:
+            raise ValueError(
+                "Cannot specify both 'definition' and any of "
+                "'cloud_provider', 'region', 'keyspace'."
+            )
+
+        if definition is None:
+            if cloud_provider is None or region is None:
+                raise ValueError(
+                    "Either 'definition' or both 'cloud_provider' and 'region' "
+                    "must be provided."
+                )
+            # Build definition from individual parameters
+            _definition = DatabaseDefinition(
+                cloud_provider=cloud_provider,
+                region=region,
+                keyspace=keyspace,
+            ).with_defaults()
+        else:
+            # Use provided definition
+            _definition = definition.with_defaults()
 
         _database_admin_timeout_ms, _da_label = _first_valid_timeout(
             (database_admin_timeout_ms, "database_admin_timeout_ms"),
@@ -1149,19 +1232,39 @@ class AstraDBAdmin:
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
-        cd_payload = {
-            k: v
-            for k, v in {
-                "name": name,
-                "tier": "serverless",
-                "cloudProvider": cloud_provider,
-                "region": region,
-                "capacityUnits": 1,
-                "dbType": "vector",
-                "keyspace": keyspace,
-            }.items()
-            if v is not None
-        }
+
+        # If a PCU group ID is provided, try to validate it
+        if _definition.pcu_group_id is not None:
+            logger.info("PCU Group ID pre-check: starting existence check.")
+            pcu_groups: list[PCUGroupDescriptor] | None
+            try:
+                pcu_groups = self.list_pcu_groups(
+                    cloud_provider=_definition.cloud_provider,
+                    region=_definition.region,
+                    database_admin_timeout_ms=database_admin_timeout_ms,
+                    request_timeout_ms=request_timeout_ms,
+                    timeout_ms=timeout_ms,
+                )
+            except Exception as e:
+                pcu_groups = None
+                logger.info(f"PCU Group ID pre-check threw an exception: {str(e)}")
+            if pcu_groups is not None:
+                matching_pcu_groups = [
+                    pg for pg in pcu_groups if pg.id == _definition.pcu_group_id
+                ]
+                logger.info(
+                    "PCU Group ID pre-check failed. Aborting database creation."
+                )
+                if matching_pcu_groups == []:
+                    raise ValueError(
+                        f"Requested PCU Group ID '{_definition.pcu_group_id}' not found for cloud provider "
+                        f"('{_definition.cloud_provider}') and region ('{_definition.region}')."
+                    )
+                logger.info("PCU Group ID pre-check succeeded.")
+            else:
+                logger.info("PCU Group ID pre-check aborted.")
+
+        cd_payload = _definition.as_dict(name=name)
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_database_admin_timeout_ms,
             dev_ops_api=True,
@@ -1179,7 +1282,7 @@ class AstraDBAdmin:
                 logger.info("polling capability check returned negative (DevOps API)")
                 raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(
-            f"creating database {name}/({cloud_provider}, {region}) (DevOps API)"
+            f"creating database {name}/({_definition.cloud_provider}, {_definition.region}) (DevOps API)"
         )
         cd_raw_response = self._dev_ops_api_commander.raw_request(
             caller_function_name="create_database",
@@ -1200,7 +1303,7 @@ class AstraDBAdmin:
         new_database_id = cd_raw_response.headers["Location"]
         logger.info(
             "DevOps API returned from creating database "
-            f"{name}/({cloud_provider}, {region})"
+            f"{name}/({_definition.cloud_provider}, {_definition.region})"
         )
         if wait_until_active:
             last_status_seen = DatabaseStatus.PENDING.value
@@ -1225,7 +1328,7 @@ class AstraDBAdmin:
         # return the database instance
         logger.info(
             f"finished creating database '{new_database_id}' = "
-            f"{name}/({cloud_provider}, {region}) (DevOps API)"
+            f"{name}/({_definition.cloud_provider}, {_definition.region}) (DevOps API)"
         )
         _final_api_options = self.api_options.with_override(
             spawn_api_options
@@ -1234,12 +1337,27 @@ class AstraDBAdmin:
             api_endpoint=build_api_endpoint(
                 environment=self.api_options.environment,
                 database_id=new_database_id,
-                region=region,
+                region=_definition.region,
             ),
             astra_db_admin=self,
             spawn_api_options=_final_api_options,
         )
 
+    @overload
+    async def async_create_database(
+        self,
+        name: str,
+        *,
+        definition: DatabaseDefinition,
+        wait_until_active: bool = True,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AstraDBDatabaseAdmin: ...
+
+    @overload
     async def async_create_database(
         self,
         name: str,
@@ -1253,17 +1371,44 @@ class AstraDBAdmin:
         timeout_ms: int | None = None,
         token: str | TokenProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AstraDBDatabaseAdmin: ...
+
+    async def async_create_database(
+        self,
+        name: str,
+        *,
+        definition: DatabaseDefinition | None = None,
+        cloud_provider: str | None = None,
+        region: str | None = None,
+        keyspace: str | None = None,
+        wait_until_active: bool = True,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBDatabaseAdmin:
         """
         Create a database as requested, optionally waiting for it to be ready.
         This is an awaitable method suitable for use within an asyncio event loop.
 
+        The most common database configuration are available as keyword arguments.
+        If more control is needed, a `DatabaseDefinition` object can be provided instead.
+
         Args:
             name: the desired name for the database.
-            cloud_provider: one of 'aws', 'gcp' or 'azure'.
-            region: any of the available cloud regions.
+            definition: a DatabaseDefinition object for the database.
+                If provided, `cloud_provider`, `region`, and `keyspace`
+                must not be specified.
+            cloud_provider: one of 'aws', 'gcp' or 'azure'. Required if
+                `definition` is not provided.
+                Cannot be specified if `definition` is provided.
+            region: any of the available cloud regions. Required if
+                `definition` is not provided.
+                Cannot be specified if `definition` is provided.
             keyspace: name for the one keyspace the database starts with.
                 If omitted, DevOps API will use its default.
+                Cannot be specified if `definition` is provided.
             wait_until_active: if True (default), the method returns only after
                 the newly-created database is in ACTIVE state (a few minutes,
                 usually). If False, it will return right after issuing the
@@ -1298,16 +1443,58 @@ class AstraDBAdmin:
         creation request has not reached the API server and is not going
         to be, in fact, honored.
 
-        Example:
+        Examples:
+            >>> # call pattern using the basic parameters:
             >>> asyncio.run(
             ...     my_astra_db_admin.async_create_database(
             ...         "new_database",
             ...         cloud_provider="aws",
             ...         region="ap-south-1",
-            ....    )
+            ...     )
             ... )
             AstraDBDatabaseAdmin(id=...)
+            >>>
+            >>> # call pattern using the 'definition' parameter:
+            >>> my_custom_db_definition = DatabaseDefinition(
+            ...    cloud_provider="aws",
+            ...    region="ap-south-1",
+            ...    capacity_units=4,
+            ...    keyspace="staging_xyz",
+            ...    pcu_group_id="01234567-89ab-cdef-0123-456789abcdef",
+            ... )
+            >>> asyncio.run(
+            ...     my_astra_db_admin.async_create_database(
+            ...         "new_customized_database",
+            ...         definition=my_custom_db_definition,
+            ...     )
+            ... )
         """
+
+        # Validate parameter combinations
+        definition_fields = [cloud_provider, region, keyspace]
+        definition_fields_provided = any(f is not None for f in definition_fields)
+
+        if definition is not None and definition_fields_provided:
+            raise ValueError(
+                "Cannot specify both 'definition' and any of "
+                "'cloud_provider', 'region', 'keyspace'."
+            )
+
+        if definition is None:
+            if cloud_provider is None or region is None:
+                raise ValueError(
+                    "Either 'definition' or both 'cloud_provider' and 'region' "
+                    "must be provided."
+                )
+            # Build definition from individual parameters
+            _definition = DatabaseDefinition(
+                cloud_provider=cloud_provider,
+                region=region,
+                keyspace=keyspace,
+            ).with_defaults()
+        else:
+            # Use provided definition
+            _definition = definition.with_defaults()
 
         _database_admin_timeout_ms, _da_label = _first_valid_timeout(
             (database_admin_timeout_ms, "database_admin_timeout_ms"),
@@ -1322,26 +1509,48 @@ class AstraDBAdmin:
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
-        cd_payload = {
-            k: v
-            for k, v in {
-                "name": name,
-                "tier": "serverless",
-                "cloudProvider": cloud_provider,
-                "region": region,
-                "capacityUnits": 1,
-                "dbType": "vector",
-                "keyspace": keyspace,
-            }.items()
-            if v is not None
-        }
+
+        # If a PCU group ID is provided, try to validate it
+        if _definition.pcu_group_id is not None:
+            logger.info("PCU Group ID pre-check: starting existence check, async.")
+            pcu_groups: list[PCUGroupDescriptor] | None
+            try:
+                pcu_groups = await self.async_list_pcu_groups(
+                    cloud_provider=_definition.cloud_provider,
+                    region=_definition.region,
+                    database_admin_timeout_ms=database_admin_timeout_ms,
+                    request_timeout_ms=request_timeout_ms,
+                    timeout_ms=timeout_ms,
+                )
+            except Exception as e:
+                pcu_groups = None
+                logger.info(
+                    f"PCU Group ID pre-check threw an exception, async: {str(e)}"
+                )
+            if pcu_groups is not None:
+                matching_pcu_groups = [
+                    pg for pg in pcu_groups if pg.id == _definition.pcu_group_id
+                ]
+                logger.info(
+                    "PCU Group ID pre-check failed. Aborting database creation, async."
+                )
+                if matching_pcu_groups == []:
+                    raise ValueError(
+                        f"Requested PCU Group ID '{_definition.pcu_group_id}' not found for cloud provider "
+                        f"('{_definition.cloud_provider}') and region ('{_definition.region}')."
+                    )
+                logger.info("PCU Group ID pre-check succeeded, async.")
+            else:
+                logger.info("PCU Group ID pre-check aborted, async.")
+
+        cd_payload = _definition.as_dict(name=name)
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_database_admin_timeout_ms,
             dev_ops_api=True,
             timeout_label=_da_label,
         )
         if wait_until_active:
-            logger.info("pre-check for polling capability of token (DevOps API)")
+            logger.info("pre-check for polling capability of token (DevOps API), async")
             if not await self._async_can_poll(
                 timeout_context=timeout_manager.remaining_timeout(
                     cap_time_ms=_request_timeout_ms,
@@ -1349,10 +1558,12 @@ class AstraDBAdmin:
                 ),
                 caller_function_name="async_create_database",
             ):
-                logger.info("polling capability check returned negative (DevOps API)")
+                logger.info(
+                    "polling capability check returned negative (DevOps API), async"
+                )
                 raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(
-            f"creating database {name}/({cloud_provider}, {region}) (DevOps API), async"
+            f"creating database {name}/({_definition.cloud_provider}, {_definition.region}) (DevOps API), async"
         )
         cd_raw_response = await self._dev_ops_api_commander.async_raw_request(
             caller_function_name="async_create_database",
@@ -1373,7 +1584,7 @@ class AstraDBAdmin:
         new_database_id = cd_raw_response.headers["Location"]
         logger.info(
             "DevOps API returned from creating database "
-            f"{name}/({cloud_provider}, {region}), async"
+            f"{name}/({_definition.cloud_provider}, {_definition.region}), async"
         )
         if wait_until_active:
             last_status_seen = DatabaseStatus.PENDING.value
@@ -1400,7 +1611,7 @@ class AstraDBAdmin:
         # return the database instance
         logger.info(
             f"finished creating database '{new_database_id}' = "
-            f"{name}/({cloud_provider}, {region}) (DevOps API), async"
+            f"{name}/({_definition.cloud_provider}, {_definition.region}) (DevOps API), async"
         )
         _final_api_options = self.api_options.with_override(
             spawn_api_options
@@ -1409,7 +1620,7 @@ class AstraDBAdmin:
             api_endpoint=build_api_endpoint(
                 environment=self.api_options.environment,
                 database_id=new_database_id,
-                region=region,
+                region=_definition.region,
             ),
             astra_db_admin=self,
             spawn_api_options=_final_api_options,
@@ -2025,7 +2236,7 @@ class AstraDBAdmin:
         # this cast is required by this DevOps API response being in fact a JSON list:
         fr_response = cast(
             list[dict[str, Any]],
-            self._regionlist_dev_ops_api_commander.request(
+            self._orgwide_dev_ops_api_commander.request(
                 http_method=HttpMethod.GET,
                 additional_path="regions/serverless",
                 request_params=req_params,
@@ -2116,7 +2327,7 @@ class AstraDBAdmin:
         # this cast is required by this DevOps API response being in fact a JSON list:
         fr_response = cast(
             list[dict[str, Any]],
-            await self._regionlist_dev_ops_api_commander.async_request(
+            await self._orgwide_dev_ops_api_commander.async_request(
                 http_method=HttpMethod.GET,
                 additional_path="regions/serverless",
                 request_params=req_params,
@@ -2129,6 +2340,227 @@ class AstraDBAdmin:
             AstraDBAvailableRegionInfo._from_dict(region_dict)
             for region_dict in fr_response
         ]
+
+    @overload
+    def list_pcu_groups(
+        self,
+        *,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> list[PCUGroupDescriptor]: ...
+
+    @overload
+    def list_pcu_groups(
+        self,
+        *,
+        cloud_provider: str,
+        region: str,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> list[PCUGroupDescriptor]: ...
+
+    def list_pcu_groups(
+        self,
+        *,
+        cloud_provider: str | None = None,
+        region: str | None = None,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> list[PCUGroupDescriptor]:
+        """
+        Get a list of the PCU Groups pertaining to the current org.
+
+        Query the DevOps API to get a listing of the PCU Groups
+        for subsequent use in database creation. The return value can be limited
+        to a specific combination of cloud provider and region, or include every
+        PCU Group in the org.
+
+        Args:
+            cloud_provider: one of 'aws', 'gcp' or 'azure'. If this is provided,
+                `region` must also be specified.
+            region: any of the available cloud regions. If this is provided,
+                `cloud_provider` must also be specified.
+            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying DevOps API request.
+                If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `database_admin_timeout_ms`.
+            timeout_ms: an alias for `database_admin_timeout_ms`.
+
+        Returns:
+            A list of PCUGroupDescriptor objects, each representing a PCU Group.
+
+        Example:
+            >>> my_astra_db_admin.list_pcu_groups()
+            [PCUGroupDescriptor(id=01234..., org_id=abcde..., title=test_pcu_group, status=CREATED, ...)]
+            >>>
+            >>> pcu_groups = my_astra_db_admin.list_pcu_groups(cloud_provider="aws", region="us-west-2")
+            >>> len(pcu_groups)
+            1
+            >>> pcu_groups[0].description
+            'A test PCU group for demonstrative purposes'
+            >>> pcu_groups[0].title
+            'test_pcu_group'
+        """
+        # Validate that both cloud_provider and region are provided or neither
+        if (cloud_provider is None) != (region is None):
+            raise ValueError(
+                "Parameters 'cloud_provider' and 'region' must both be provided or both be omitted."
+            )
+
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+        timeout_ctx = _TimeoutContext(
+            request_ms=_database_admin_timeout_ms, label=_da_label
+        )
+
+        logger.info("getting PCU groups (DevOps API)")
+        # this response can be in fact a JSON list or even a 'null':
+        lp_response = cast(
+            list[dict[str, Any]],
+            self._orgwide_dev_ops_api_commander.request(
+                http_method=HttpMethod.POST,
+                payload={},
+                additional_path="pcus/actions/get",
+                timeout_context=timeout_ctx,
+                caller_function_name="list_pcu_groups",
+            )
+            or [],
+        )
+        logger.info("finished getting PCU groups (DevOps API)")
+        all_pcu_groups = [
+            PCUGroupDescriptor._from_dict(pg_dict) for pg_dict in lp_response
+        ]
+
+        # Post-filter if cloud_provider and region are specified
+        if cloud_provider is not None and region is not None:
+            return [
+                pg
+                for pg in all_pcu_groups
+                if pg.cloud_provider.lower() == cloud_provider.lower()
+                and pg.region.lower() == region.lower()
+            ]
+        return all_pcu_groups
+
+    @overload
+    async def async_list_pcu_groups(
+        self,
+        *,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> list[PCUGroupDescriptor]: ...
+
+    @overload
+    async def async_list_pcu_groups(
+        self,
+        *,
+        cloud_provider: str,
+        region: str,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> list[PCUGroupDescriptor]: ...
+
+    async def async_list_pcu_groups(
+        self,
+        *,
+        cloud_provider: str | None = None,
+        region: str | None = None,
+        database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
+    ) -> list[PCUGroupDescriptor]:
+        """
+        Get a list of the PCU Groups pertaining to the current org.
+
+        Query the DevOps API to get a listing of the PCU Groups
+        for subsequent use in database creation. The return value can be limited
+        to a specific combination of cloud provider and region, or include every
+        PCU Group in the org.
+
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            cloud_provider: one of 'aws', 'gcp' or 'azure'. If this is provided,
+                `region` must also be specified.
+            region: any of the available cloud regions. If this is provided,
+                `cloud_provider` must also be specified.
+            database_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying DevOps API request.
+                If not provided, this object's defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `database_admin_timeout_ms`.
+            timeout_ms: an alias for `database_admin_timeout_ms`.
+
+        Returns:
+            A list of PCUGroupDescriptor objects, each representing a PCU Group.
+
+        Example:
+            >>> asyncio.run(my_astra_db_admin.async_list_pcu_groups())
+            [PCUGroupDescriptor(id=01234..., org_id=abcde..., title=test_pcu_group, status=CREATED, ...)]
+            >>>
+            >>> pcu_groups = asyncio.run(my_astra_db_admin.async_list_pcu_groups(cloud_prov
+            ider="aws", region="us-west-2"))
+            >>> len(pcu_groups)
+            1
+            >>> pcu_groups[0].description
+            'A test PCU group for demonstrative purposes'
+            >>> pcu_groups[0].title
+            'test_pcu_group'
+        """
+        # Validate that both cloud_provider and region are provided or neither
+        if (cloud_provider is None) != (region is None):
+            raise ValueError(
+                "Parameters 'cloud_provider' and 'region' must both be provided or both be omitted."
+            )
+
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
+        timeout_ctx = _TimeoutContext(
+            request_ms=_database_admin_timeout_ms, label=_da_label
+        )
+
+        logger.info("getting PCU groups (DevOps API)")
+        # this response can be in fact a JSON list or even a 'null':
+        lp_response = cast(
+            list[dict[str, Any]],
+            await self._orgwide_dev_ops_api_commander.async_request(
+                http_method=HttpMethod.POST,
+                payload={},
+                additional_path="pcus/actions/get",
+                timeout_context=timeout_ctx,
+                caller_function_name="async_list_pcu_groups",
+            )
+            or [],
+        )
+        logger.info("finished getting PCU groups (DevOps API)")
+        all_pcu_groups = [
+            PCUGroupDescriptor._from_dict(pg_dict) for pg_dict in lp_response
+        ]
+
+        # Post-filter if cloud_provider and region are specified
+        if cloud_provider is not None and region is not None:
+            return [
+                pg
+                for pg in all_pcu_groups
+                if pg.cloud_provider.lower() == cloud_provider.lower()
+                and pg.region.lower() == region.lower()
+            ]
+        return all_pcu_groups
 
 
 class DatabaseAdmin(ABC):

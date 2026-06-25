@@ -126,6 +126,7 @@ jobs:
           ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
           HEADER_EMBEDDING_API_KEY_VOYAGEAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_VOYAGEAI }}
           LEGACY_INSERTMANY_BEHAVIOUR_PRE2193: ${{ secrets.LEGACY_INSERTMANY_BEHAVIOUR_PRE2193 }}
+          FIND_PAGE_SIZE: ${{ secrets.FIND_PAGE_SIZE }}
         run: make test-integration
 
   pre-release-unit-lowest-python:

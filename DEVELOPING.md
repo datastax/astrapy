@@ -184,6 +184,15 @@ certain environment variables, otherwise the associated tests are excluded from 
 Prepend tests with a `ASTRAPY_TEST_LATEST_MAIN=y` for features found on `main` that are not released anywhere.
 _(Tip: run a code search first to see what is currently marked as such. Chances are nothing is.)_
 
+### Page size increase (starting in v1.0.48)
+
+If tests are run against Data API v1.0.48 or higher, you must export the variable `FIND_PAGE_SIZE="50"` to ensure
+the cursor/pagination tests (Data API PR 2461) take the new setting into account (they would fail otherwise).
+
+Removal of this special flag will have to wait until the new version is regularly deployed in production, at which
+point it will make sense to bump the Data API version in the HCD integration test compose file as well and hardcode
+the value of 50.
+
 ### Legacy ordered-insert-many behaviour
 
 Generally, [PR 2193](https://github.com/stargate/data-api/pull/2193) is included in modern Data API versions. In case tests are run to Data API 1.0.32 or lower, run the tests with the following additional environment variable to adjust the test expectations: `LEGACY_INSERTMANY_BEHAVIOUR_PRE2193="yes"`.
