@@ -94,16 +94,15 @@ The env templates show how to override those names, if you want to.
 
 ### Empty-database requirement for integration tests
 
-The integration tests create and drop collections, tables and keyspaces on the target database. To avoid
-running them against a database that is already in use, the working keyspace must be empty (no collections
-and no tables). When it is not:
+The base integration tests create and drop collections, tables, UDTs and keyspaces on the target database.
+To avoid late failures caused by leftover objects, the target database must have no collections, tables or
+UDTs in any non-system keyspace before the suite starts.
 
-- **locally** the whole integration suite is **skipped** (so a populated database is never touched);
-- **in CI** the run is **failed** instead of skipped — a green-but-skipped check could let an untested PR be
-  merged, so a non-empty CI database is treated as a hard error (and a signal that the test database needs
-  cleaning). CI detection is based on the `CI` environment variable.
+If any such object is found, pytest exits with an error before the integration suite runs. Point the tests at
+a dedicated, empty database/keyspace set to run them.
 
-Point the tests at a dedicated, empty keyspace/database to run them.
+For intentional narrow local runs against a database that already contains unrelated objects, set
+`TOLERATE_POPULATED_DATABASE=yes` when invoking pytest.
 
 ### Multiple Python versions
 

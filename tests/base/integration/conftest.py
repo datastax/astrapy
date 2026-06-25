@@ -64,6 +64,84 @@ from ..table_udt_assets import (
     _player_serializer,
 )
 
+TOLERATE_POPULATED_DATABASE_ENV = "TOLERATE_POPULATED_DATABASE"
+
+ASTRA_DB_SYSTEM_KEYSPACES = frozenset(
+    {
+        "data_endpoint_auth",
+        "datastax_sla",
+        "system",
+        "system_auth",
+        "system_schema",
+        "system_traces",
+        "system_views",
+        "system_virtual_schema",
+    }
+)
+HCD_SYSTEM_KEYSPACES = frozenset(
+    {
+        "system",
+        "system_auth",
+        "system_distributed",
+        "system_schema",
+        "system_traces",
+        "system_views",
+        "system_virtual_schema",
+    }
+)
+
+
+def _is_populated_database_tolerated() -> bool:
+    return os.environ.get(TOLERATE_POPULATED_DATABASE_ENV, "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+
+
+def _user_keyspace_names(database: Database) -> list[str]:
+    system_keyspaces = (
+        ASTRA_DB_SYSTEM_KEYSPACES if IS_ASTRA_DB else HCD_SYSTEM_KEYSPACES
+    )
+    return sorted(
+        keyspace
+        for keyspace in database.get_database_admin().list_keyspaces()
+        if keyspace not in system_keyspaces
+    )
+
+
+def _collect_existing_database_items(database: Database) -> dict[str, list[str]]:
+    collected_items: dict[str, list[str]] = {
+        "collections": [],
+        "tables": [],
+        "types": [],
+    }
+
+    for keyspace in _user_keyspace_names(database):
+        keyspace_database = database.with_options(keyspace=keyspace)
+        collected_items["collections"].extend(
+            f"{keyspace}.{name}" for name in keyspace_database.list_collection_names()
+        )
+        collected_items["tables"].extend(
+            f"{keyspace}.{name}" for name in keyspace_database.list_table_names()
+        )
+        collected_items["types"].extend(
+            f"{keyspace}.{name}" for name in keyspace_database.list_type_names()
+        )
+
+    return {
+        item_kind: sorted(item_names)
+        for item_kind, item_names in collected_items.items()
+    }
+
+
+def _existing_items_summary(collected_items: dict[str, list[str]]) -> str:
+    return "; ".join(
+        f"{item_kind}: {', '.join(item_names)}"
+        for item_kind, item_names in collected_items.items()
+        if item_names
+    )
+
 
 @pytest.fixture(scope="session", autouse=True)
 def require_empty_target_database(sync_database: Database) -> None:
@@ -71,40 +149,28 @@ def require_empty_target_database(sync_database: Database) -> None:
     Refuse to run the integration suite against a populated database.
 
     The base integration tests freely create and drop collections, tables and
-    keyspaces on the target database. Running them against a database that is
-    already in use risks clobbering its data, so the working keyspace must be
-    empty (no collections and no tables).
-
-    When the keyspace is not empty the behaviour depends on the environment:
-
-    - in CI the run is failed hard (``pytest.exit`` with a non-zero code). A
-      skipped suite would exit 0 and report a green check, which could let an
-      untested PR be merged; failing instead keeps the merge gate honest (and
-      flags that the CI test database needs cleaning).
-    - locally the suite is simply skipped, to protect the developer's data.
-
-    Being an autouse, session-scoped fixture, this check runs once and before
-    any test collection/table is provisioned (autouse session fixtures are set
-    up ahead of the fixtures that create the test data), so a populated database
-    is never mutated either way.
+    keyspaces on the target database. Starting from a non-empty database can
+    make the suite fail much later with avoidable object-limit or conflict
+    errors, so all non-system keyspaces must be free of collections, tables and
+    user-defined types.
     """
-    collection_names = sorted(sync_database.list_collection_names())
-    table_names = sorted(sync_database.list_table_names())
-    if not (collection_names or table_names):
+    if _is_populated_database_tolerated():
         return
 
-    message = (
-        f"Target database keyspace '{sync_database.keyspace}' is not empty "
-        f"(collections={collection_names}, tables={table_names}). The "
-        "integration tests require an empty database (they create and drop "
-        "collections and tables); clean the target keyspace or point the tests "
-        "at a dedicated, empty one."
+    collected_items = _collect_existing_database_items(sync_database)
+    if not any(collected_items.values()):
+        return
+
+    items_summary = _existing_items_summary(collected_items)
+    pytest.exit(
+        "Non-empty target database detected. "
+        "The base integration tests require no collections, tables or UDTs in "
+        f"any non-system keyspace before they start. Items found: {items_summary}. "
+        "Clean the target database, point the tests at a dedicated empty one, "
+        f"or set {TOLERATE_POPULATED_DATABASE_ENV}=yes for an intentional "
+        "narrow test run.",
+        returncode=1,
     )
-    # GitHub Actions (and most CI systems) set CI=true.
-    in_ci = os.environ.get("CI", "").lower() in {"true", "1", "yes"}
-    if in_ci:
-        pytest.exit(message, returncode=1)
-    pytest.skip(message)
 
 
 __all__ = [
