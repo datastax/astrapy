@@ -205,7 +205,7 @@ class TestCollectionCursorSync:
         cur = async_filled_collection.find()
         assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
-        assert cur.has_next()
+        assert await cur.has_next()
         assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
         await cur.__anext__()
@@ -219,7 +219,7 @@ class TestCollectionCursorSync:
         await curmf.__anext__()
         assert curmf.consumed == 2
         assert curmf.state == CursorState.STARTED
-        assert curmf.has_next()
+        assert await curmf.has_next()
         assert curmf.consumed == 2
         assert curmf.state == CursorState.STARTED
         for _ in range(FIND_PAGE_SIZE - 2):
