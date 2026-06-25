@@ -22,18 +22,6 @@ from astrapy import Database
 
 TOLERATE_POPULATED_DATABASE_ENV = "TOLERATE_POPULATED_DATABASE"
 
-ASTRA_DB_SYSTEM_KEYSPACES = frozenset(
-    {
-        "data_endpoint_auth",
-        "datastax_sla",
-        "system",
-        "system_auth",
-        "system_schema",
-        "system_traces",
-        "system_views",
-        "system_virtual_schema",
-    }
-)
 HCD_SYSTEM_KEYSPACES = frozenset(
     {
         "system",
@@ -56,13 +44,13 @@ def _is_populated_database_tolerated() -> bool:
 
 
 def _user_keyspace_names(database: Database, *, is_astra_db: bool) -> list[str]:
-    system_keyspaces = (
-        ASTRA_DB_SYSTEM_KEYSPACES if is_astra_db else HCD_SYSTEM_KEYSPACES
-    )
+    if is_astra_db:
+        return sorted(database.get_database_admin().list_keyspaces())
+
     return sorted(
         keyspace
         for keyspace in database.get_database_admin().list_keyspaces()
-        if keyspace not in system_keyspaces
+        if keyspace not in HCD_SYSTEM_KEYSPACES
     )
 
 
