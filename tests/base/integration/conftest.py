@@ -14,12 +14,11 @@
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from astrapy import Database
 
+from ...empty_database_guard import ensure_empty_target_database
 from ..conftest import (
     ADMIN_ENV_LIST,
     ADMIN_ENV_VARIABLE_MAP,
@@ -64,84 +63,6 @@ from ..table_udt_assets import (
     _player_serializer,
 )
 
-TOLERATE_POPULATED_DATABASE_ENV = "TOLERATE_POPULATED_DATABASE"
-
-ASTRA_DB_SYSTEM_KEYSPACES = frozenset(
-    {
-        "data_endpoint_auth",
-        "datastax_sla",
-        "system",
-        "system_auth",
-        "system_schema",
-        "system_traces",
-        "system_views",
-        "system_virtual_schema",
-    }
-)
-HCD_SYSTEM_KEYSPACES = frozenset(
-    {
-        "system",
-        "system_auth",
-        "system_distributed",
-        "system_schema",
-        "system_traces",
-        "system_views",
-        "system_virtual_schema",
-    }
-)
-
-
-def _is_populated_database_tolerated() -> bool:
-    return os.environ.get(TOLERATE_POPULATED_DATABASE_ENV, "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-    }
-
-
-def _user_keyspace_names(database: Database) -> list[str]:
-    system_keyspaces = (
-        ASTRA_DB_SYSTEM_KEYSPACES if IS_ASTRA_DB else HCD_SYSTEM_KEYSPACES
-    )
-    return sorted(
-        keyspace
-        for keyspace in database.get_database_admin().list_keyspaces()
-        if keyspace not in system_keyspaces
-    )
-
-
-def _collect_existing_database_items(database: Database) -> dict[str, list[str]]:
-    collected_items: dict[str, list[str]] = {
-        "collections": [],
-        "tables": [],
-        "types": [],
-    }
-
-    for keyspace in _user_keyspace_names(database):
-        keyspace_database = database.with_options(keyspace=keyspace)
-        collected_items["collections"].extend(
-            f"{keyspace}.{name}" for name in keyspace_database.list_collection_names()
-        )
-        collected_items["tables"].extend(
-            f"{keyspace}.{name}" for name in keyspace_database.list_table_names()
-        )
-        collected_items["types"].extend(
-            f"{keyspace}.{name}" for name in keyspace_database.list_type_names()
-        )
-
-    return {
-        item_kind: sorted(item_names)
-        for item_kind, item_names in collected_items.items()
-    }
-
-
-def _existing_items_summary(collected_items: dict[str, list[str]]) -> str:
-    return "; ".join(
-        f"{item_kind}: {', '.join(item_names)}"
-        for item_kind, item_names in collected_items.items()
-        if item_names
-    )
-
 
 @pytest.fixture(scope="session", autouse=True)
 def require_empty_target_database(sync_database: Database) -> None:
@@ -154,22 +75,10 @@ def require_empty_target_database(sync_database: Database) -> None:
     errors, so all non-system keyspaces must be free of collections, tables and
     user-defined types.
     """
-    if _is_populated_database_tolerated():
-        return
-
-    collected_items = _collect_existing_database_items(sync_database)
-    if not any(collected_items.values()):
-        return
-
-    items_summary = _existing_items_summary(collected_items)
-    pytest.exit(
-        "Non-empty target database detected. "
-        "The base integration tests require no collections, tables or UDTs in "
-        f"any non-system keyspace before they start. Items found: {items_summary}. "
-        "Clean the target database, point the tests at a dedicated empty one, "
-        f"or set {TOLERATE_POPULATED_DATABASE_ENV}=yes for an intentional "
-        "narrow test run.",
-        returncode=1,
+    ensure_empty_target_database(
+        sync_database,
+        is_astra_db=IS_ASTRA_DB,
+        test_suite_name="base integration tests",
     )
 
 

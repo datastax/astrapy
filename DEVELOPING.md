@@ -94,9 +94,9 @@ The env templates show how to override those names, if you want to.
 
 ### Empty-database requirement for integration tests
 
-The base integration tests create and drop collections, tables, UDTs and keyspaces on the target database.
-To avoid late failures caused by leftover objects, the target database must have no collections, tables or
-UDTs in any non-system keyspace before the suite starts.
+The base and vectorize integration tests create and drop collections, tables, UDTs and keyspaces on the
+target database. To avoid late failures caused by leftover objects, the target database must have no
+collections, tables or UDTs in any non-system keyspace before either suite starts.
 
 If any such object is found, pytest exits with an error before the integration suite runs. Point the tests at
 a dedicated, empty database/keyspace set to run them.
