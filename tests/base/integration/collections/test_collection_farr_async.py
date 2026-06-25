@@ -87,7 +87,7 @@ class TestCollectionFindAndRerankAsync:
         assert all(len(hit.scores) > 0 for hit in hits)
         # some scores can get back as None or integer
         assert all(
-            all(isinstance(sc, (float, int, type(None))) for sc in hit.scores.values())
+            all(isinstance(sc, float | int | type(None)) for sc in hit.scores.values())
             for hit in hits
         )
         assert all(
@@ -254,7 +254,7 @@ class TestCollectionFindAndRerankAsync:
         assert all(len(hit.scores) > 0 for hit in hits)
         # some scores can get back as None or integer
         assert all(
-            all(isinstance(sc, (float, int, type(None))) for sc in hit.scores.values())
+            all(isinstance(sc, float | int | type(None)) for sc in hit.scores.values())
             for hit in hits
         )
         assert all(
@@ -402,7 +402,7 @@ class TestCollectionFindAndRerankAsync:
         assert itm_f.scores == {}
         assert itm_t.scores != {}
         assert all(
-            isinstance(val, (float, int, type(None))) for val in itm_t.scores.values()
+            isinstance(val, float | int | type(None)) for val in itm_t.scores.values()
         )
 
     @pytest.mark.describe(
@@ -442,7 +442,7 @@ class TestCollectionFindAndRerankAsync:
         assert itm_f.scores == {}
         assert itm_t.scores != {}
         assert all(
-            isinstance(val, (float, int, type(None))) for val in itm_t.scores.values()
+            isinstance(val, float | int | type(None)) for val in itm_t.scores.values()
         )
 
     @pytest.mark.describe(
@@ -468,7 +468,7 @@ class TestCollectionFindAndRerankAsync:
         assert await cur_n0.get_sort_vector() is None
         assert await cur_f0.get_sort_vector() is None
         gsv_t0 = await cur_t0.get_sort_vector()
-        assert isinstance(gsv_t0, (list, DataAPIVector))
+        assert isinstance(gsv_t0, list | DataAPIVector)
         assert isinstance(gsv_t0[0], float)
 
         cur_n1 = acoll.find_and_rerank(sort={"$hybrid": "bla"})
@@ -487,7 +487,7 @@ class TestCollectionFindAndRerankAsync:
         assert await cur_n1.get_sort_vector() is None
         assert await cur_f1.get_sort_vector() is None
         gsv_t1 = await cur_t1.get_sort_vector()
-        assert isinstance(gsv_t1, (list, DataAPIVector))
+        assert isinstance(gsv_t1, list | DataAPIVector)
         assert isinstance(gsv_t1[0], float)
 
         cur_n2 = acoll.find_and_rerank(sort={"$hybrid": "bla"})
@@ -506,7 +506,7 @@ class TestCollectionFindAndRerankAsync:
         assert await cur_n2.get_sort_vector() is None
         assert await cur_f2.get_sort_vector() is None
         gsv_t2 = await cur_t2.get_sort_vector()
-        assert isinstance(gsv_t2, (list, DataAPIVector))
+        assert isinstance(gsv_t2, list | DataAPIVector)
         assert isinstance(gsv_t2[0], float)
 
     @pytest.mark.describe(
@@ -542,7 +542,7 @@ class TestCollectionFindAndRerankAsync:
         assert await cur_n0.get_sort_vector() is None
         assert await cur_f0.get_sort_vector() is None
         gsv_t0 = await cur_t0.get_sort_vector()
-        assert isinstance(gsv_t0, (list, DataAPIVector))
+        assert isinstance(gsv_t0, list | DataAPIVector)
         assert isinstance(gsv_t0[0], float)
 
         cur_n1 = acoll.find_and_rerank(
@@ -569,7 +569,7 @@ class TestCollectionFindAndRerankAsync:
         assert await cur_n1.get_sort_vector() is None
         assert await cur_f1.get_sort_vector() is None
         gsv_t1 = await cur_t1.get_sort_vector()
-        assert isinstance(gsv_t1, (list, DataAPIVector))
+        assert isinstance(gsv_t1, list | DataAPIVector)
         assert isinstance(gsv_t1[0], float)
 
         cur_n2 = acoll.find_and_rerank(
@@ -596,5 +596,5 @@ class TestCollectionFindAndRerankAsync:
         assert await cur_n2.get_sort_vector() is None
         assert await cur_f2.get_sort_vector() is None
         gsv_t2 = await cur_t2.get_sort_vector()
-        assert isinstance(gsv_t2, (list, DataAPIVector))
+        assert isinstance(gsv_t2, list | DataAPIVector)
         assert isinstance(gsv_t2[0], float)

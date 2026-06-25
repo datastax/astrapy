@@ -15,11 +15,11 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable, TypeVar
+from typing import ParamSpec, TypeVar
 
 from deprecation import DeprecatedWarning
-from typing_extensions import ParamSpec  # compatible with pre-3.10 Python
 
 P = ParamSpec("P")
 R = TypeVar("R")

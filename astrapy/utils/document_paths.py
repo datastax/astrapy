@@ -94,7 +94,7 @@ def escape_field_names(*field_names: str | int | Iterable[str | int]) -> str:  #
     """
     _field_names: Iterable[str | int]
     # strings are iterables, so:
-    if len(field_names) == 1 and not isinstance(field_names[0], (str, int)):
+    if len(field_names) == 1 and not isinstance(field_names[0], str | int):
         _field_names = field_names[0]
     else:
         # user passing a list of string-or-ints.
@@ -103,7 +103,7 @@ def escape_field_names(*field_names: str | int | Iterable[str | int]) -> str:  #
             segment
             for field_name in field_names
             for segment in (
-                [field_name] if isinstance(field_name, (str, int)) else field_name
+                [field_name] if isinstance(field_name, str | int) else field_name
             )
         ]
 

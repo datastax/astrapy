@@ -14,10 +14,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Callable
 from copy import deepcopy
 from inspect import iscoroutinefunction
-from typing import Any, Callable, Generic, cast
+from typing import Any, Generic, cast
 
 from astrapy import AsyncCollection, Collection
 from astrapy.constants import (
