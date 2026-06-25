@@ -720,8 +720,8 @@ class CollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         This method can trigger the fetch operation of a new page, if the current
         buffer is empty.
 
-        Calling `has_next` on an IDLE cursor triggers the first page fetch, but the
-        cursor stays in the IDLE state until actual consumption starts.
+        Calling `has_next` on an IDLE cursor triggers the first page fetch, transitioning
+        the cursor into the STARTED state.
 
         Returns:
             a boolean value of True if there is at least one further item
@@ -1427,8 +1427,8 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         This method can trigger the fetch operation of a new page, if the current
         buffer is empty.
 
-        Calling `has_next` on an IDLE cursor triggers the first page fetch, but the
-        cursor stays in the IDLE state until actual consumption starts.
+        Calling `has_next` on an IDLE cursor triggers the first page fetch, transitioning
+        the cursor into the STARTED state.
 
         Returns:
             a boolean value of True if there is at least one further item
@@ -2200,8 +2200,8 @@ class TableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         This method can trigger the fetch operation of a new page, if the current
         buffer is empty.
 
-        Calling `has_next` on an IDLE cursor triggers the first page fetch, but the
-        cursor stays in the IDLE state until actual consumption starts.
+        Calling `has_next` on an IDLE cursor triggers the first page fetch, transitioning
+        the cursor into the STARTED state.
 
         Returns:
             a boolean value of True if there is at least one further item
@@ -2905,8 +2905,8 @@ class AsyncTableFindCursor(Generic[TRAW, T], AbstractCursor[TRAW]):
         This method can trigger the fetch operation of a new page, if the current
         buffer is empty.
 
-        Calling `has_next` on an IDLE cursor triggers the first page fetch, but the
-        cursor stays in the IDLE state until actual consumption starts.
+        Calling `has_next` on an IDLE cursor triggers the first page fetch, transitioning
+        the cursor into the STARTED state.
 
         Returns:
             a boolean value of True if there is at least one further item
