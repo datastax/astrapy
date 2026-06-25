@@ -14,11 +14,11 @@
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from astrapy import Database
+
+from .preprocess_env import extended_booleanize_env
 
 TOLERATE_POPULATED_DATABASE_ENV = "TOLERATE_POPULATED_DATABASE"
 
@@ -36,11 +36,7 @@ HCD_SYSTEM_KEYSPACES = frozenset(
 
 
 def _is_populated_database_tolerated() -> bool:
-    return os.environ.get(TOLERATE_POPULATED_DATABASE_ENV, "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-    }
+    return extended_booleanize_env(TOLERATE_POPULATED_DATABASE_ENV)
 
 
 def _user_keyspace_names(database: Database, *, is_astra_db: bool) -> list[str]:
