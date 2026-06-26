@@ -42,16 +42,14 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
+    - name: Set up Python + uv
+      uses: "./.github/actions/uv_setup"
       with:
         python-version: ${{ matrix.python-version }}
 
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pipx install uv
-        make venv
+      run: uv sync --dev
+      shell: bash
 
     - name: Run pytest
       run: |

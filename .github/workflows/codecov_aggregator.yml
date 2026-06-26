@@ -77,18 +77,16 @@ jobs:
           # needed to retrieve the parents of the merge commit (hence the base commit on main)
           fetch-depth: 2
 
-      - name: Set up Python
+      - name: Set up Python + uv
         if: ${{ github.event.action != 'closed' }}
-        uses: actions/setup-python@v2
+        uses: "./.github/actions/uv_setup"
         with:
-          python-version: 3.11
+          python-version: "3.11"
 
       - name: Install dependencies
         if: ${{ github.event.action != 'closed' }}
-        run: |
-          python -m pip install --upgrade pip
-          pipx install uv
-          make venv
+        run: uv sync --dev
+        shell: bash
 
       - name: Download all coverage artifacts from this run
         if: ${{ github.event.action != 'closed' }}
