@@ -16,6 +16,7 @@ Minor cursor behaviour changes:
     - has_next may set the cursor to CLOSED if no next items are detected.
 Added support for overriding reranking options in find_and_rerank method call.
 Added support for custom CA certificates (PEM) in the APIOptions (new `ca_cert_path` parameter)
+Admin, removed the deprecated 'region_name' alias for `name` from `AstraDBAdminDatabaseRegionInfo` and `AstraDBAvailableRegionInfo`
 Bugfix: faulty normalization of empty/null indexing targets for `CollectionDefinition.set_indexing`
 maintenance: integration testing gets an embedding provider switcher logic
 maintenance: integration tests use the latest HCD (2.0.6) and a recent Data API build (1.0.46)
