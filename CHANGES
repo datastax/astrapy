@@ -20,7 +20,9 @@ Bugfix: faulty normalization of empty/null indexing targets for `CollectionDefin
 maintenance: integration testing gets an embedding provider switcher logic
 maintenance: integration tests use the latest HCD (2.0.6) and a recent Data API build (1.0.46)
 maintenance: integration tests have configurable page size for find pagination
+maintenance: base and vectorize integration tests fail fast unless all non-system keyspaces in the target database are free of collections, tables and UDTs (set `TOLERATE_POPULATED_DATABASE=yes` for intentional narrow local runs)
 maintenance: bump idna (3.10->3.18) and pygments (2.19.2->2.20.0) in uv.lock to clear Dependabot alerts (remaining alerts require dropping Python 3.9)
+
 
 v 2.2.1
 =======
