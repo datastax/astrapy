@@ -84,7 +84,7 @@ def preprocess_collection_payload_value(
 
     if options.unroll_iterables_to_lists:
         _value = ensure_unrolled_if_iterable(_value)
-    if isinstance(_value, (dict, DataAPIMap)):
+    if isinstance(_value, dict | DataAPIMap):
         return {
             k: preprocess_collection_payload_value(path + [k], v, options=options)
             for k, v in _value.items()

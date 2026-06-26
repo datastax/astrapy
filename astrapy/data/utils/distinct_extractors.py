@@ -16,12 +16,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Iterable
-from typing import (
-    Any,
-    Callable,
-    Optional,
-)
+from collections.abc import Callable, Iterable
+from typing import Any
 
 from astrapy.data.utils.collection_converters import preprocess_collection_payload_value
 from astrapy.data.utils.table_converters import preprocess_table_payload_value
@@ -29,7 +25,7 @@ from astrapy.data_types import DataAPIMap, DataAPISet
 from astrapy.utils.api_options import FullSerdesOptions
 from astrapy.utils.document_paths import unescape_field_path
 
-IndexPairType = tuple[Optional[str], Optional[int]]
+IndexPairType = tuple[str | None, int | None]
 
 ERROR_NO_EMPTY_SAFE_KEYSTART = (
     "The 'key' parameter for distinct cannot be empty or start with a list index."
@@ -80,7 +76,7 @@ def _create_document_key_extractor(
         key_blocks: list[IndexPairType], value: Any
     ) -> Iterable[Any]:
         if key_blocks == []:
-            if isinstance(value, (list, set, DataAPISet)):
+            if isinstance(value, list | set | DataAPISet):
                 for item in value:
                     yield item
             else:
@@ -91,13 +87,13 @@ def _create_document_key_extractor(
             rest_key_blocks = key_blocks[1:]
             key_block = key_blocks[0]
             k_str, k_int = key_block
-            if isinstance(value, (dict, DataAPIMap)):
+            if isinstance(value, dict | DataAPIMap):
                 if k_str is not None and k_str in value:
                     new_value = value[k_str]
                     for item in _extract_with_key_blocks(rest_key_blocks, new_value):
                         yield item
                 return
-            elif isinstance(value, (list, set, DataAPISet)):
+            elif isinstance(value, list | set | DataAPISet):
                 _list_value = list(value)
                 if k_int is not None:
                     if len(_list_value) > k_int:

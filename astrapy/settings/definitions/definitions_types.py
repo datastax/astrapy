@@ -14,36 +14,25 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from typing import (
-    TYPE_CHECKING,
     Any,
-    Callable,
-    Optional,
     TypeVar,
-    Union,
 )
 
+from astrapy.data.info.table_descriptor.type_creation import CreateTypeDefinition
 from astrapy.data_types import DataAPIVector
-
-if TYPE_CHECKING:
-    from astrapy.info import CreateTypeDefinition
-
 
 DefaultDocumentType = dict[str, Any]
 DefaultRowType = dict[str, Any]
-ProjectionType = Union[
-    Iterable[str], dict[str, Union[bool, dict[str, Union[int, Iterable[int]]]]]
-]
+ProjectionType = Iterable[str] | dict[str, bool | dict[str, int | Iterable[int]]]
 SortType = dict[str, Any]
-HybridSortType = dict[
-    str, Union[str, dict[str, Union[str, list[float], DataAPIVector]]]
-]
+HybridSortType = dict[str, str | dict[str, str | list[float] | DataAPIVector]]
 FilterType = dict[str, Any]
-CallerType = tuple[Optional[str], Optional[str]]
+CallerType = tuple[str | None, str | None]
 SerializerFunctionType = Callable[[Any], dict[str, Any]]
 UDTDeserializerFunctionType = Callable[
-    [dict[str, Any], Optional["CreateTypeDefinition"]], Any
+    [dict[str, Any], CreateTypeDefinition | None], Any
 ]
 
 ROW = TypeVar("ROW")

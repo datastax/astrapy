@@ -46,7 +46,7 @@ Steps:
 
 - Export variables as in one of the `tests/env_templates/*.base.template` examples.
 - Export variables as in the `tests/env_templates/env.vectorize-minimal.template` example.
-- Run: `uv venv --python ">=3.9,<3.15" && uv run pytest tests/base`
+- Run: `uv venv --python ">=3.10,<3.15" && uv run pytest tests/base`
 
 ### All available tests/targets
 
