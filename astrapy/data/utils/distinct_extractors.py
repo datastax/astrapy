@@ -17,9 +17,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Callable, Iterable
-from typing import (
-    Any,
-)
+from typing import Any
 
 from astrapy.data.utils.collection_converters import preprocess_collection_payload_value
 from astrapy.data.utils.table_converters import preprocess_table_payload_value
