@@ -19,6 +19,7 @@ from pytest_httpserver import HTTPServer
 
 from astrapy import AstraDBAdmin, DataAPIClient
 from astrapy.api_options import APIOptions, DevOpsAPIURLOptions
+from astrapy.exceptions import DevOpsAPIException
 from astrapy.info import DatabaseDefinition
 from astrapy.settings.defaults import (
     DEFAULT_CREATE_DB_CAPACITY_UNITS,
@@ -279,7 +280,9 @@ class TestAdminCreateDatabaseSync:
         )
 
         # Expected: PCU not found in the listing, creation aborted.
-        with pytest.raises(ValueError, match="Requested PCU Group ID 'd' not found"):
+        with pytest.raises(
+            DevOpsAPIException, match="Requested PCU Group ID 'd' not found"
+        ):
             mock_astra_admin.create_database(
                 "the_db_name",
                 definition=db_definition,
