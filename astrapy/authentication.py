@@ -189,6 +189,8 @@ class StaticTokenProvider(TokenProvider):
         ... )
     """
 
+    token: str | None
+
     def __init__(self, token: str | None) -> None:
         self.token = token
 
@@ -227,6 +229,10 @@ class UsernamePasswordTokenProvider(TokenProvider):
     """
 
     PREFIX = "Cassandra"
+
+    username: str
+    password: str
+    token: str
 
     def __init__(self, username: str, password: str) -> None:
         self.username = username
@@ -339,6 +345,8 @@ class EmbeddingAPIKeyHeaderProvider(EmbeddingHeadersProvider):
         ... )
     """
 
+    embedding_api_key: str | None
+
     def __init__(self, embedding_api_key: str | None) -> None:
         self.embedding_api_key = embedding_api_key
 
@@ -404,6 +412,9 @@ class AWSEmbeddingHeadersProvider(EmbeddingHeadersProvider):
         ...     embedding_api_key=my_aws_emb_api_key,
         ... )
     """
+
+    embedding_access_id: str
+    embedding_secret_id: str
 
     def __init__(self, *, embedding_access_id: str, embedding_secret_id: str) -> None:
         self.embedding_access_id = embedding_access_id
@@ -476,6 +487,8 @@ class RerankingAPIKeyHeaderProvider(RerankingHeadersProvider):
         ...     reranking_api_key=my_rrk_api_key,
         ... )
     """
+
+    reranking_api_key: str | None
 
     def __init__(self, reranking_api_key: str | None) -> None:
         self.reranking_api_key = reranking_api_key
