@@ -92,6 +92,18 @@ to maek the test startup logic work properly.
 You shoud never need to worry about keyspaces. Tests use two keyspaces, which are created if not found, with default names.
 The env templates show how to override those names, if you want to.
 
+### Empty-database requirement for integration tests
+
+The base and vectorize integration tests create and drop collections, tables, UDTs and keyspaces on the
+target database. To avoid late failures caused by leftover objects, the target database must have no
+collections, tables or UDTs in any non-system keyspace before either suite starts.
+
+If any such object is found, pytest exits with an error before the integration suite runs. Point the tests at
+a dedicated, empty database/keyspace set to run them.
+
+For intentional narrow local runs against a database that already contains unrelated objects, set
+`TOLERATE_POPULATED_DATABASE=yes` when invoking pytest.
+
 ### Multiple Python versions
 
 If may be useful to run e.g. unit tests with multiple Python versions. You can have `uv`
