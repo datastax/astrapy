@@ -25,7 +25,6 @@ from astrapy.settings.defaults import (
     DEFAULT_CREATE_DB_DB_TYPE,
     DEFAULT_CREATE_DB_TIER,
 )
-from astrapy.utils.meta import deprecated_property
 from astrapy.utils.parsing import _warn_residual_keys
 
 
@@ -87,15 +86,6 @@ class AstraDBAdminDatabaseRegionInfo:
             f"created_at={self.created_at}",
         ]
         return f"{self.__class__.__name__}({', '.join(pieces)})"
-
-    @property
-    @deprecated_property(
-        new_name="name",
-        deprecated_in="2.0.1",
-        removed_in="2.3.0",
-    )
-    def region_name(self) -> str:
-        return self.name
 
 
 @dataclass
@@ -378,15 +368,6 @@ class AstraDBAvailableRegionInfo:
             }.items()
             if v is not None
         }
-
-    @property
-    @deprecated_property(
-        new_name="name",
-        deprecated_in="2.0.1",
-        removed_in="2.3.0",
-    )
-    def region_name(self) -> str:
-        return self.name
 
     @classmethod
     def _from_dict(cls, raw_dict: dict[str, Any]) -> AstraDBAvailableRegionInfo:
