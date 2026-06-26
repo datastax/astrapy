@@ -20,8 +20,8 @@ from __future__ import annotations
 
 import functools
 import warnings
-from collections.abc import Awaitable, Iterable, Iterator
-from typing import TYPE_CHECKING, Any, Callable, TypedDict
+from collections.abc import Awaitable, Callable, Iterable, Iterator
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import pytest
 from blockbuster import BlockBuster, blockbuster_ctx
