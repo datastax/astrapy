@@ -1256,7 +1256,7 @@ class AstraDBAdmin:
                     "PCU Group ID pre-check failed. Aborting database creation."
                 )
                 if matching_pcu_groups == []:
-                    raise ValueError(
+                    raise DevOpsAPIException(
                         f"Requested PCU Group ID '{_definition.pcu_group_id}' not found for cloud provider "
                         f"('{_definition.cloud_provider}') and region ('{_definition.region}')."
                     )
@@ -1535,7 +1535,7 @@ class AstraDBAdmin:
                     "PCU Group ID pre-check failed. Aborting database creation, async."
                 )
                 if matching_pcu_groups == []:
-                    raise ValueError(
+                    raise DevOpsAPIException(
                         f"Requested PCU Group ID '{_definition.pcu_group_id}' not found for cloud provider "
                         f"('{_definition.cloud_provider}') and region ('{_definition.region}')."
                     )

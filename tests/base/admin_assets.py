@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import datetime
+from typing import Any
 
 from astrapy.info import (
     PCUGroupTypeDescriptor,
@@ -130,3 +131,15 @@ SOME_PCU_GROUP_DESCRIPTOR_KWARGS_NORESERVED = {
     "updated_by": "umWGYUwuxFvQKBKPAHwHjKef",
     "status": "CREATED",
 }
+
+MINIMAL_PCU_GROUP_DESCRIPTOR = {
+    "uuid": "minimal_pgd_id",
+    "cloudProvider": "AWS",
+    "region": "us-west-2",
+}
+
+MINIMAL_PCU_GROUP_TYPE_DESCRIPTOR = {
+    "type": "small",
+}
+
+MINIMAL_PCU_GROUP_TYPE_DETAILS_DESCRIPTOR: dict[str, Any] = {}
