@@ -1,5 +1,5 @@
-main
-====
+v 2.3.0
+=======
 Supported Python versions are now 3.10 to 3.14:
     - removal of Python 3.9 [Breaking change w.r.t. 2.2]
 `AstraDatabaseAdmin`: support for listing PCU Groups.
@@ -29,11 +29,9 @@ maintenance: base and vectorize integration tests fail fast unless all non-syste
 
 v 2.2.1
 =======
-
 Suppress warning about unexpected 'pcu_types' field in `[async_]find_available_regions`.
 Maintenance:
     - Minor edits to `release.yaml` workflow (secrets; task names/comments).
-
 
 
 v 2.2.0

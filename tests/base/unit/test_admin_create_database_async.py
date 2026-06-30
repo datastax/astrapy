@@ -19,6 +19,7 @@ from pytest_httpserver import HTTPServer
 
 from astrapy import AstraDBAdmin, DataAPIClient
 from astrapy.api_options import APIOptions, DevOpsAPIURLOptions
+from astrapy.exceptions import DevOpsAPIException
 from astrapy.info import DatabaseDefinition
 from astrapy.settings.defaults import (
     DEFAULT_CREATE_DB_CAPACITY_UNITS,
@@ -279,11 +280,79 @@ class TestAdminCreateDatabaseAsync:
             tier="tr",
             capacity_units=5,
             db_type="ty",
-            pcu_group_id="d",
+            pcu_group_id="requested_pcu_g_id",
         )
 
         # Expected: PCU not found in the listing, creation aborted.
-        with pytest.raises(ValueError, match="Requested PCU Group ID 'd' not found"):
+        with pytest.raises(
+            DevOpsAPIException,
+            match="Requested PCU Group ID 'requested_pcu_g_id' not found",
+        ):
+            await mock_astra_admin.async_create_database(
+                "the_db_name",
+                definition=db_definition,
+                wait_until_active=False,
+            )
+
+    @pytest.mark.describe(
+        "test of admin create database definition wrongregionpcucheck, async"
+    )
+    async def test_admin_create_database_definition_wrongregionpcucheck_async(
+        self,
+        httpserver: HTTPServer,
+        mock_astra_admin: AstraDBAdmin,
+    ) -> None:
+        full_payload = {
+            "name": "the_db_name",
+            "cloudProvider": "cp",
+            "region": "r",
+            "keyspace": "ks",
+            "tier": "tr",
+            "capacityUnits": 5,
+            "dbType": "ty",
+            "pcuGroupUUID": "requested_pcu_g_id",
+        }
+        # We pass a pcu ID which the listing endpoint does return but in another region, and expect db creation to fail
+
+        httpserver.expect_oneshot_request(
+            "/vx/databases",
+            method=HttpMethod.POST,
+            json=full_payload,
+        ).respond_with_data(
+            "", headers={"Location": "xyz"}, status=DEV_OPS_RESPONSE_HTTP_CREATED
+        )
+
+        httpserver.expect_oneshot_request(
+            "/vx/pcus/actions/get",
+            method=HttpMethod.POST,
+        ).respond_with_json(
+            response_json=[
+                {
+                    "uuid": "requested_pcu_g_id",
+                    **SOME_PCU_GROUP_DESC_JSON,
+                    **{
+                        "cloudProvider": "another_cp",
+                        "region": "another_r",
+                    },
+                },
+            ],
+        )
+
+        db_definition = DatabaseDefinition(
+            cloud_provider="cp",
+            region="r",
+            keyspace="ks",
+            tier="tr",
+            capacity_units=5,
+            db_type="ty",
+            pcu_group_id="requested_pcu_g_id",
+        )
+
+        # Expected: PCU not found in the listing, creation aborted.
+        with pytest.raises(
+            DevOpsAPIException,
+            match="Requested PCU Group ID 'requested_pcu_g_id' is in another",
+        ):
             await mock_astra_admin.async_create_database(
                 "the_db_name",
                 definition=db_definition,

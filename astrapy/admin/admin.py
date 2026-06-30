@@ -1236,30 +1236,53 @@ class AstraDBAdmin:
         # If a PCU group ID is provided, try to validate it
         if _definition.pcu_group_id is not None:
             logger.info("PCU Group ID pre-check: starting existence check.")
-            pcu_groups: list[PCUGroupDescriptor] | None
+            pcu_groups_overall: list[PCUGroupDescriptor] | None
             try:
-                pcu_groups = self.list_pcu_groups(
-                    cloud_provider=_definition.cloud_provider,
-                    region=_definition.region,
+                pcu_groups_overall = self.list_pcu_groups(
                     database_admin_timeout_ms=database_admin_timeout_ms,
                     request_timeout_ms=request_timeout_ms,
                     timeout_ms=timeout_ms,
                 )
             except Exception as e:
-                pcu_groups = None
+                pcu_groups_overall = None
                 logger.info(f"PCU Group ID pre-check threw an exception: {str(e)}")
-            if pcu_groups is not None:
-                matching_pcu_groups = [
-                    pg for pg in pcu_groups if pg.id == _definition.pcu_group_id
+            if pcu_groups_overall is not None:
+                matching_pcu_groups_overall = [
+                    pg for pg in pcu_groups_overall if pg.id == _definition.pcu_group_id
                 ]
-                logger.info(
-                    "PCU Group ID pre-check failed. Aborting database creation."
-                )
-                if matching_pcu_groups == []:
-                    raise ValueError(
-                        f"Requested PCU Group ID '{_definition.pcu_group_id}' not found for cloud provider "
-                        f"('{_definition.cloud_provider}') and region ('{_definition.region}')."
+                if matching_pcu_groups_overall == []:
+                    # no such pcu group id at all: abort 1
+                    logger.info(
+                        "PCU Group ID pre-check did not pass (id not found). "
+                        "Aborting database creation."
                     )
+                    raise DevOpsAPIException(
+                        f"Requested PCU Group ID '{_definition.pcu_group_id}' not "
+                        "found for cloud provider provider/region "
+                        f"('{_definition.cloud_provider}' / '{_definition.region}'). "
+                        "Aborting database creation."
+                    )
+                else:
+                    # is the matching group in the right cloud provider / region?
+                    expected_cpr = (
+                        _definition.cloud_provider.lower(),
+                        _definition.region.lower(),
+                    )
+                    found_cpr = (
+                        matching_pcu_groups_overall[0].cloud_provider.lower(),
+                        matching_pcu_groups_overall[0].region.lower(),
+                    )
+                    if expected_cpr != found_cpr:
+                        # wrong region: abort 2
+                        logger.info(
+                            "PCU Group ID pre-check did not pass (wrong "
+                            "provider/region). Aborting database creation."
+                        )
+                        raise DevOpsAPIException(
+                            f"Requested PCU Group ID '{_definition.pcu_group_id}' "
+                            f"is in another cloud provider and region ('{found_cpr[0]}' "
+                            f"/ '{found_cpr[1]}'). Aborting database creation."
+                        )
                 logger.info("PCU Group ID pre-check succeeded.")
             else:
                 logger.info("PCU Group ID pre-check aborted.")
@@ -1513,32 +1536,55 @@ class AstraDBAdmin:
         # If a PCU group ID is provided, try to validate it
         if _definition.pcu_group_id is not None:
             logger.info("PCU Group ID pre-check: starting existence check, async.")
-            pcu_groups: list[PCUGroupDescriptor] | None
+            pcu_groups_overall: list[PCUGroupDescriptor] | None
             try:
-                pcu_groups = await self.async_list_pcu_groups(
-                    cloud_provider=_definition.cloud_provider,
-                    region=_definition.region,
+                pcu_groups_overall = await self.async_list_pcu_groups(
                     database_admin_timeout_ms=database_admin_timeout_ms,
                     request_timeout_ms=request_timeout_ms,
                     timeout_ms=timeout_ms,
                 )
             except Exception as e:
-                pcu_groups = None
+                pcu_groups_overall = None
                 logger.info(
-                    f"PCU Group ID pre-check threw an exception, async: {str(e)}"
+                    f"PCU Group ID pre-check threw an exception: {str(e)}, async"
                 )
-            if pcu_groups is not None:
-                matching_pcu_groups = [
-                    pg for pg in pcu_groups if pg.id == _definition.pcu_group_id
+            if pcu_groups_overall is not None:
+                matching_pcu_groups_overall = [
+                    pg for pg in pcu_groups_overall if pg.id == _definition.pcu_group_id
                 ]
-                logger.info(
-                    "PCU Group ID pre-check failed. Aborting database creation, async."
-                )
-                if matching_pcu_groups == []:
-                    raise ValueError(
-                        f"Requested PCU Group ID '{_definition.pcu_group_id}' not found for cloud provider "
-                        f"('{_definition.cloud_provider}') and region ('{_definition.region}')."
+                if matching_pcu_groups_overall == []:
+                    # no such pcu group id at all: abort 1
+                    logger.info(
+                        "PCU Group ID pre-check did not pass (id not found). "
+                        "Aborting database creation, async."
                     )
+                    raise DevOpsAPIException(
+                        f"Requested PCU Group ID '{_definition.pcu_group_id}' "
+                        "not found for cloud provider provider/region "
+                        f"('{_definition.cloud_provider}' / '{_definition.region}'). "
+                        "Aborting database creation."
+                    )
+                else:
+                    # is the matching group in the right cloud provider / region?
+                    expected_cpr = (
+                        _definition.cloud_provider.lower(),
+                        _definition.region.lower(),
+                    )
+                    found_cpr = (
+                        matching_pcu_groups_overall[0].cloud_provider.lower(),
+                        matching_pcu_groups_overall[0].region.lower(),
+                    )
+                    if expected_cpr != found_cpr:
+                        # wrong region: abort 2
+                        logger.info(
+                            "PCU Group ID pre-check did not pass (wrong "
+                            "provider/region). Aborting database creation, async."
+                        )
+                        raise DevOpsAPIException(
+                            f"Requested PCU Group ID '{_definition.pcu_group_id}' "
+                            f"is in another cloud provider and region ('{found_cpr[0]}' "
+                            f"/ '{found_cpr[1]}'). Aborting database creation."
+                        )
                 logger.info("PCU Group ID pre-check succeeded, async.")
             else:
                 logger.info("PCU Group ID pre-check aborted, async.")
@@ -1563,7 +1609,8 @@ class AstraDBAdmin:
                 )
                 raise PermissionError(CANNOT_POLL_ERROR_MESSAGE)
         logger.info(
-            f"creating database {name}/({_definition.cloud_provider}, {_definition.region}) (DevOps API), async"
+            f"creating database {name}/({_definition.cloud_provider}, "
+            f"{_definition.region}) (DevOps API), async"
         )
         cd_raw_response = await self._dev_ops_api_commander.async_raw_request(
             caller_function_name="async_create_database",

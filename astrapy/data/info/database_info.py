@@ -545,12 +545,23 @@ class PCUGroupTypeDetailsDescriptor:
         disk_cache: the amount of disk cache for this PCU type.
     """
 
-    v_cpu: int
-    memory: str
-    disk_cache: str
+    v_cpu: int | None = None
+    memory: str | None = None
+    disk_cache: str | None = None
 
     def __repr__(self) -> str:
-        body = f"v_cpu={self.v_cpu}, memory={self.memory}, disk_cache={self.disk_cache}"
+        pieces = [
+            pc
+            for pc in (
+                f"v_cpu={self.v_cpu}" if self.v_cpu is not None else None,
+                f"memory={self.memory}" if self.memory is not None else None,
+                f"disk_cache={self.disk_cache}"
+                if self.disk_cache is not None
+                else None,
+            )
+            if pc is not None
+        ]
+        body = ", ".join(pieces)
         return f"{self.__class__.__name__}({body})"
 
     def as_dict(self) -> dict[str, Any]:
@@ -559,9 +570,13 @@ class PCUGroupTypeDetailsDescriptor:
         """
 
         return {
-            "vCPU": self.v_cpu,
-            "memory": self.memory,
-            "disk_cache": self.disk_cache,
+            k: v
+            for k, v in {
+                "vCPU": self.v_cpu,
+                "memory": self.memory,
+                "disk_cache": self.disk_cache,
+            }.items()
+            if v is not None
         }
 
     @classmethod
@@ -581,9 +596,9 @@ class PCUGroupTypeDetailsDescriptor:
             },
         )
         return PCUGroupTypeDetailsDescriptor(
-            v_cpu=raw_dict["vCPU"],
-            memory=raw_dict["memory"],
-            disk_cache=raw_dict["disk_cache"],
+            v_cpu=raw_dict.get("vCPU"),
+            memory=raw_dict.get("memory"),
+            disk_cache=raw_dict.get("disk_cache"),
         )
 
 
@@ -603,7 +618,7 @@ class PCUGroupTypeDescriptor:
     type: str
     region: str | None
     cloud_provider: str | None
-    details: PCUGroupTypeDetailsDescriptor
+    details: PCUGroupTypeDetailsDescriptor | None
 
     def __repr__(self) -> str:
         pieces = [
@@ -614,7 +629,7 @@ class PCUGroupTypeDescriptor:
                 f"cloud_provider={self.cloud_provider}"
                 if self.cloud_provider is not None
                 else None,
-                "details=...",
+                "details=..." if self.details is not None else None,
             )
             if pc is not None
         ]
@@ -632,7 +647,7 @@ class PCUGroupTypeDescriptor:
                 "type": self.type,
                 "region": self.region,
                 "provider": self.cloud_provider,
-                "details": self.details.as_dict(),
+                "details": self.details.as_dict() if self.details is not None else None,
             }.items()
             if v is not None
         }
@@ -658,7 +673,9 @@ class PCUGroupTypeDescriptor:
             type=raw_dict["type"],
             region=raw_dict.get("region"),
             cloud_provider=raw_dict["provider"] if "provider" in raw_dict else None,
-            details=PCUGroupTypeDetailsDescriptor._from_dict(raw_dict["details"]),
+            details=PCUGroupTypeDetailsDescriptor._from_dict(raw_dict["details"])
+            if "details" in raw_dict
+            else None,
         )
 
 
@@ -689,26 +706,36 @@ class PCUGroupDescriptor:
     """
 
     id: str
-    org_id: str
-    title: str
+    org_id: str | None
+    title: str | None
     cloud_provider: str
     region: str
-    instance_type: str
-    pcu_type: PCUGroupTypeDescriptor
-    provision_type: str
-    min: int
-    max: int
-    description: str
+    instance_type: str | None
+    pcu_type: PCUGroupTypeDescriptor | None
+    provision_type: str | None
+    min: int | None
+    max: int | None
+    description: str | None
     created_at: datetime.datetime | None
     updated_at: datetime.datetime | None
-    created_by: str
-    updated_by: str
-    status: str
+    created_by: str | None
+    updated_by: str | None
+    status: str | None
     reserved: int | None = None
 
     def __repr__(self) -> str:
-        body = f"id={self.id}, org_id={self.org_id}, title={self.title}, status={self.status}, ..."
-        return f"{self.__class__.__name__}({body})"
+        pieces = [
+            pc
+            for pc in (
+                f"id={self.id}" if self.id is not None else None,
+                f"org_id={self.org_id}" if self.org_id is not None else None,
+                f"title={self.title}" if self.title is not None else None,
+                f"status={self.status}" if self.status is not None else None,
+            )
+            if pc is not None
+        ]
+        body = ", ".join(pieces)
+        return f"{self.__class__.__name__}({body}, ...)"
 
     def as_dict(self) -> dict[str, Any]:
         """
@@ -724,7 +751,9 @@ class PCUGroupDescriptor:
                 "cloudProvider": self.cloud_provider,
                 "region": self.region,
                 "instanceType": self.instance_type,
-                "pcuType": self.pcu_type.as_dict(),
+                "pcuType": self.pcu_type.as_dict()
+                if self.pcu_type is not None
+                else None,
                 "provisionType": self.provision_type,
                 "min": self.min,
                 "max": self.max,
@@ -775,20 +804,22 @@ class PCUGroupDescriptor:
         )
         return PCUGroupDescriptor(
             id=raw_dict["uuid"],
-            org_id=raw_dict["orgId"],
-            title=raw_dict["title"],
+            org_id=raw_dict.get("orgId"),
+            title=raw_dict.get("title"),
             cloud_provider=raw_dict["cloudProvider"],
             region=raw_dict["region"],
-            instance_type=raw_dict["instanceType"],
-            pcu_type=PCUGroupTypeDescriptor._from_dict(raw_dict["pcuType"]),
-            provision_type=raw_dict["provisionType"],
-            min=raw_dict["min"],
-            max=raw_dict["max"],
+            instance_type=raw_dict.get("instanceType"),
+            pcu_type=PCUGroupTypeDescriptor._from_dict(raw_dict["pcuType"])
+            if "pcuType" in raw_dict
+            else None,
+            provision_type=raw_dict.get("provisionType"),
+            min=raw_dict.get("min"),
+            max=raw_dict.get("max"),
             reserved=raw_dict.get("reserved"),
-            description=raw_dict["description"],
+            description=raw_dict.get("description"),
             created_at=_failsafe_parse_date(raw_dict.get("createdAt")),
             updated_at=_failsafe_parse_date(raw_dict.get("updatedAt")),
-            created_by=raw_dict["createdBy"],
-            updated_by=raw_dict["updatedBy"],
-            status=raw_dict["status"],
+            created_by=raw_dict.get("createdBy"),
+            updated_by=raw_dict.get("updatedBy"),
+            status=raw_dict.get("status"),
         )

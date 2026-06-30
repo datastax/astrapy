@@ -25,6 +25,8 @@ from astrapy.info import (
     AstraDBAvailableRegionInfo,
     DatabaseDefinition,
     PCUGroupDescriptor,
+    PCUGroupTypeDescriptor,
+    PCUGroupTypeDetailsDescriptor,
 )
 from astrapy.settings.defaults import (
     DEFAULT_CREATE_DB_CAPACITY_UNITS,
@@ -33,6 +35,9 @@ from astrapy.settings.defaults import (
 )
 
 from ..admin_assets import (
+    MINIMAL_PCU_GROUP_DESCRIPTOR,
+    MINIMAL_PCU_GROUP_TYPE_DESCRIPTOR,
+    MINIMAL_PCU_GROUP_TYPE_DETAILS_DESCRIPTOR,
     SOME_PCU_GROUP_DESC_JSON,
     SOME_PCU_GROUP_DESC_JSON_NORESERVED,
     SOME_PCU_GROUP_DESCRIPTOR_KWARGS,
@@ -221,3 +226,23 @@ def test_parse_noreserved_pcugroupdescriptor() -> None:
 
     assert gtype_desc.as_dict() == pcugt_json
     assert PCUGroupDescriptor._from_dict(pcugt_json) == gtype_desc
+
+
+@pytest.mark.describe(
+    "test of marshaling and unmarshaling of minimal PCU Group descriptor objects"
+)
+def test_parse_minimal_pcugroupobjects() -> None:
+    assert (
+        PCUGroupDescriptor._from_dict(MINIMAL_PCU_GROUP_DESCRIPTOR).as_dict()
+        == MINIMAL_PCU_GROUP_DESCRIPTOR
+    )
+    assert (
+        PCUGroupTypeDescriptor._from_dict(MINIMAL_PCU_GROUP_TYPE_DESCRIPTOR).as_dict()
+        == MINIMAL_PCU_GROUP_TYPE_DESCRIPTOR
+    )
+    assert (
+        PCUGroupTypeDetailsDescriptor._from_dict(
+            MINIMAL_PCU_GROUP_TYPE_DETAILS_DESCRIPTOR
+        ).as_dict()
+        == MINIMAL_PCU_GROUP_TYPE_DETAILS_DESCRIPTOR
+    )
