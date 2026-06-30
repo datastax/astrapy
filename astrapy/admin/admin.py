@@ -1264,10 +1264,13 @@ class AstraDBAdmin:
                     )
                 else:
                     # is the matching group in the right cloud provider / region?
-                    expected_cpr = (_definition.cloud_provider, _definition.region)
+                    expected_cpr = (
+                        _definition.cloud_provider.lower(),
+                        _definition.region.lower(),
+                    )
                     found_cpr = (
-                        matching_pcu_groups_overall[0].cloud_provider,
-                        matching_pcu_groups_overall[0].region,
+                        matching_pcu_groups_overall[0].cloud_provider.lower(),
+                        matching_pcu_groups_overall[0].region.lower(),
                     )
                     if expected_cpr != found_cpr:
                         # wrong region: abort 2
@@ -1563,10 +1566,13 @@ class AstraDBAdmin:
                     )
                 else:
                     # is the matching group in the right cloud provider / region?
-                    expected_cpr = (_definition.cloud_provider, _definition.region)
+                    expected_cpr = (
+                        _definition.cloud_provider.lower(),
+                        _definition.region.lower(),
+                    )
                     found_cpr = (
-                        matching_pcu_groups_overall[0].cloud_provider,
-                        matching_pcu_groups_overall[0].region,
+                        matching_pcu_groups_overall[0].cloud_provider.lower(),
+                        matching_pcu_groups_overall[0].region.lower(),
                     )
                     if expected_cpr != found_cpr:
                         # wrong region: abort 2
