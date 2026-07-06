@@ -331,6 +331,7 @@ class AstraDBAvailableRegionInfo:
             identifier since it determines a region uniquely.
         reserved_for_qualified_users: a boolean flag marking availability settings.
         zone: macro-zone for the region, e.g. "na" or "emea".
+        pcu_types: the types of PCU (Provisioned Capacity Units) available for this region.
     """
 
     classification: str
@@ -416,9 +417,9 @@ class DatabaseDefinition:
     Attributes:
         cloud_provider: the cloud provider hosting the database (e.g. 'aws', 'gcp', 'azure').
         region: the region where the database will be created.
-        tier: the database tier (e.g. 'serverless'). Optional, defaults to None.
-        capacity_units: the number of capacity units for the database. Optional, defaults to None.
-        db_type: the type of database (e.g. 'vector'). Optional, defaults to None.
+        tier: the database tier (e.g. 'serverless'). Defaults to 'serverless''.
+        capacity_units: the number of capacity units for the database. Defaults to 1.
+        db_type: the type of database (e.g. 'vector'). Defaults to 'vector'.
         keyspace: the default keyspace for the database. Optional, defaults to None.
         pcu_group_id: the PCU group ID to use for provisioning the database. Optional, defaults to None.
     """
