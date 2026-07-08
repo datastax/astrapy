@@ -132,11 +132,14 @@ def test_parse_availableregioninfo() -> None:
 
 @pytest.mark.describe("test of marshaling and unmarshaling of database definition")
 def test_parse_databasedefinition() -> None:
+    # minimal, null dbType
     def_payload0 = {
         "name": "the_name0",
         "cloudProvider": "the_cloudProvider0",
         "region": "the_region0",
+        "dbType": None,  # absence of this field (signaling 'nonvector') is != a None here
     }
+    # with dbType and all fields
     def_payload1 = {
         "name": "the_name1",
         "cloudProvider": "the_cloudProvider1",
@@ -147,11 +150,22 @@ def test_parse_databasedefinition() -> None:
         "keyspace": "the_keyspace1",
         "pcuGroupUUID": "the_pcuGroupUUID1",
     }
+    # no dbType, all fields
+    def_payload2 = {
+        "name": "the_name2",
+        "cloudProvider": "the_cloudProvider2",
+        "region": "the_region2",
+        "tier": "the_tier2",
+        "capacityUnits": 3333,
+        "keyspace": "the_keyspace2",
+        "pcuGroupUUID": "the_pcuGroupUUID2",
+    }
 
     # _from_dict + default, dict match test
 
     db_def0 = DatabaseDefinition._from_dict(def_payload0)
-    db_def1 = DatabaseDefinition._from_dict(def_payload1)
+    db_def1: DatabaseDefinition = DatabaseDefinition._from_dict(def_payload1)
+    db_def2: DatabaseDefinition = DatabaseDefinition._from_dict(def_payload2)
     expected_pload0 = {
         "name": "the_name0",
         "cloudProvider": "the_cloudProvider0",
@@ -170,8 +184,18 @@ def test_parse_databasedefinition() -> None:
         "keyspace": "the_keyspace1",
         "pcuGroupUUID": "the_pcuGroupUUID1",
     }
+    expected_pload2 = {
+        "name": "the_name2",
+        "cloudProvider": "the_cloudProvider2",
+        "region": "the_region2",
+        "tier": "the_tier2",
+        "capacityUnits": 3333,
+        "keyspace": "the_keyspace2",
+        "pcuGroupUUID": "the_pcuGroupUUID2",
+    }
     assert db_def0.with_defaults().as_dict(name="the_name0") == expected_pload0
     assert db_def1.with_defaults().as_dict(name="the_name1") == expected_pload1
+    assert db_def2.with_defaults().as_dict(name="the_name2") == expected_pload2
 
     # instance match test
 
@@ -188,8 +212,33 @@ def test_parse_databasedefinition() -> None:
         keyspace="the_keyspace1",
         pcu_group_id="the_pcuGroupUUID1",
     )
+    built_def2 = DatabaseDefinition(
+        cloud_provider="the_cloudProvider2",
+        region="the_region2",
+        tier="the_tier2",
+        capacity_units=3333,
+        db_type="non_vector",
+        keyspace="the_keyspace2",
+        pcu_group_id="the_pcuGroupUUID2",
+    )
+    built_def2_variant = DatabaseDefinition(
+        cloud_provider="the_cloudProvider2",
+        region="the_region2",
+        tier="the_tier2",
+        capacity_units=3333,
+        db_type="nonVector",  # a different form
+        keyspace="the_keyspace2",
+        pcu_group_id="the_pcuGroupUUID2",
+    )
     assert built_def0 == db_def0
     assert built_def1 == db_def1
+    assert built_def2 == db_def2
+    assert built_def0.with_defaults().as_dict(name="the_name0") == expected_pload0
+    assert built_def1.with_defaults().as_dict(name="the_name1") == expected_pload1
+    assert built_def2.with_defaults().as_dict(name="the_name2") == expected_pload2
+    assert (
+        built_def2_variant.with_defaults().as_dict(name="the_name2") == expected_pload2
+    )
 
 
 @pytest.mark.describe(

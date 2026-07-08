@@ -134,6 +134,47 @@ class TestAdminCreateDatabaseSync:
                 wait_until_active=False,
             )
 
+    @pytest.mark.describe("test of admin create database definition nonvector, sync")
+    def test_admin_create_database_definition_nonvector_sync(
+        self,
+        httpserver: HTTPServer,
+        mock_astra_admin: AstraDBAdmin,
+    ) -> None:
+        full_payload = {
+            "name": "the_db_name",
+            "cloudProvider": "cp",
+            "region": "r",
+            "keyspace": "ks",
+            "tier": "tr",
+            "capacityUnits": 5,
+        }
+
+        httpserver.expect_oneshot_request(
+            "/vx/databases",
+            method=HttpMethod.POST,
+            json=full_payload,
+        ).respond_with_data(
+            "", headers={"Location": "xyz"}, status=DEV_OPS_RESPONSE_HTTP_CREATED
+        )
+
+        db_definition = DatabaseDefinition(
+            cloud_provider="cp",
+            region="r",
+            keyspace="ks",
+            tier="tr",
+            capacity_units=5,
+            db_type="non vector",  # or 'non_vector', 'non-Vector', etc
+        )
+
+        # We prepare for failure here, but it's a good failure: we want to ensure the httpserver
+        # gets the right payload and the error is when the client instantiates the db admin all right.
+        with pytest.raises(ValueError, match="Cannot parse the supplied API endpoint"):
+            mock_astra_admin.create_database(
+                "the_db_name",
+                definition=db_definition,
+                wait_until_active=False,
+            )
+
     @pytest.mark.describe("test of admin create database definition nopcucheck, sync")
     def test_admin_create_database_definition_nopcucheck_sync(
         self,
