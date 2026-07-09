@@ -1,5 +1,8 @@
 v 2.3.1
 =======
+Table vectorize config: dimension can be omitted when creating `TableVectorColumnTypeDescriptor`:
+    - cf. `TableVectorColumnTypeDescriptor(service=VectorServiceOptions(provider="...", model_name="..."))`
+    - useful when e.g. altering a table (some embedding providers do not require explicit dimension)
 `AstraDBAdmin`: `create_database` method with `DatabaseDefinition` allows creation of nonvector DBs with `db_type="nonvector"`.
 
 
