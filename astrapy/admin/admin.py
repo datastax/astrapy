@@ -2418,7 +2418,7 @@ class AstraDBAdmin:
         timeout_ms: int | None = None,
     ) -> list[PCUGroupDescriptor]:
         """
-        Get a list of the PCU Groups pertaining to the current org.
+        Get a list of the PCU (Provisioned Capacity Units) Groups pertaining to the current org.
 
         Query the DevOps API to get a listing of the PCU Groups
         for subsequent use in database creation. The return value can be limited
@@ -2527,7 +2527,7 @@ class AstraDBAdmin:
         timeout_ms: int | None = None,
     ) -> list[PCUGroupDescriptor]:
         """
-        Get a list of the PCU Groups pertaining to the current org.
+        Get a list of the PCU (Provisioned Capacity Units) Groups pertaining to the current org.
 
         Query the DevOps API to get a listing of the PCU Groups
         for subsequent use in database creation. The return value can be limited

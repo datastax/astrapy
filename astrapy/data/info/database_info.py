@@ -27,6 +27,8 @@ from astrapy.settings.defaults import (
 )
 from astrapy.utils.parsing import _warn_residual_keys
 
+NONVECTOR_DB_TYPE_STRINGS = ["non_vector", "non vector", "nonvector", "non-vector"]
+
 
 def _failsafe_parse_date(date_string: str | None) -> datetime.datetime | None:
     try:
@@ -331,6 +333,7 @@ class AstraDBAvailableRegionInfo:
             identifier since it determines a region uniquely.
         reserved_for_qualified_users: a boolean flag marking availability settings.
         zone: macro-zone for the region, e.g. "na" or "emea".
+        pcu_types: the types of PCU (Provisioned Capacity Units) available for this region.
     """
 
     classification: str
@@ -416,9 +419,10 @@ class DatabaseDefinition:
     Attributes:
         cloud_provider: the cloud provider hosting the database (e.g. 'aws', 'gcp', 'azure').
         region: the region where the database will be created.
-        tier: the database tier (e.g. 'serverless'). Optional, defaults to None.
-        capacity_units: the number of capacity units for the database. Optional, defaults to None.
-        db_type: the type of database (e.g. 'vector'). Optional, defaults to None.
+        tier: the database tier (e.g. 'serverless'). Defaults to 'serverless''.
+        capacity_units: the number of capacity units for the database. Defaults to 1.
+        db_type: the type of database: 'vector' (default), 'nonvector'.
+            Note that 'nonvector' maps to the field being absent in serialized (JSON) form.
         keyspace: the default keyspace for the database. Optional, defaults to None.
         pcu_group_id: the PCU group ID to use for provisioning the database. Optional, defaults to None.
     """
@@ -461,6 +465,14 @@ class DatabaseDefinition:
             a dictionary expressing the object (plus optionally a DB name).
         """
 
+        _serialized_db_type: str | None
+        if self.db_type is None:
+            _serialized_db_type = None
+        elif self.db_type.lower() in NONVECTOR_DB_TYPE_STRINGS:
+            _serialized_db_type = None
+        else:
+            _serialized_db_type = self.db_type
+
         return {
             k: v
             for k, v in {
@@ -469,7 +481,7 @@ class DatabaseDefinition:
                 "region": self.region,
                 "tier": self.tier,
                 "capacityUnits": self.capacity_units,
-                "dbType": self.db_type,
+                "dbType": _serialized_db_type,
                 "keyspace": self.keyspace,
                 "pcuGroupUUID": self.pcu_group_id,
             }.items()
@@ -500,12 +512,19 @@ class DatabaseDefinition:
                 "pcuGroupUUID",
             },
         )
+
+        _deserialized_db_type: str | None
+        if "dbType" not in raw_dict:
+            _deserialized_db_type = NONVECTOR_DB_TYPE_STRINGS[0]
+        else:
+            _deserialized_db_type = raw_dict["dbType"]
+
         return DatabaseDefinition(
             cloud_provider=raw_dict["cloudProvider"],
             region=raw_dict["region"],
             tier=raw_dict.get("tier"),
             capacity_units=raw_dict.get("capacityUnits"),
-            db_type=raw_dict.get("dbType"),
+            db_type=_deserialized_db_type,
             keyspace=raw_dict.get("keyspace"),
             pcu_group_id=raw_dict.get("pcuGroupUUID"),
         )
