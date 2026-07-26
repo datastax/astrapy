@@ -14,9 +14,31 @@
 
 from __future__ import annotations
 
+import pytest
+
+from astrapy import Database
+
 from ..conftest import (
     IS_ASTRA_DB,
 )
+from ..empty_database_guard import ensure_empty_target_database
+
+
+@pytest.fixture(scope="session", autouse=True)
+def require_empty_target_database(sync_database: Database) -> None:
+    """
+    Refuse to run the vectorize integration suite against a populated database.
+
+    Starting from a non-empty database can make the suite fail much later with
+    avoidable object-limit or conflict errors, so all non-system keyspaces must
+    be free of collections, tables and user-defined types.
+    """
+    ensure_empty_target_database(
+        sync_database,
+        is_astra_db=IS_ASTRA_DB,
+        test_suite_name="vectorize integration tests",
+    )
+
 
 __all__ = [
     "IS_ASTRA_DB",

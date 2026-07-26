@@ -22,7 +22,8 @@ import ipaddress
 import json
 import logging
 import math
-from typing import Any, Callable, Generic, cast
+from collections.abc import Callable
+from typing import Any, Generic, cast
 
 from astrapy.constants import ROW, MapEncodingMode
 from astrapy.data.info.table_descriptor.table_columns import (
@@ -117,7 +118,7 @@ def _create_scalar_tpostprocessor(
         def _tpostprocessor_float(raw_value: Any) -> float | None:
             if raw_value is None:
                 return None
-            elif isinstance(raw_value, (str, decimal.Decimal)):
+            elif isinstance(raw_value, str | decimal.Decimal):
                 return float(raw_value)
             # just a float already
             return cast(float, raw_value)
@@ -668,7 +669,7 @@ def preprocess_table_payload_value(
             )
             for udt_k, udt_v in udt_dict.items()
         }
-    elif isinstance(value, (dict, DataAPIMap)):
+    elif isinstance(value, dict | DataAPIMap):
         # This is a nesting structure (but not the dict-wrapper for UDTs)
         maps_can_become_tuples: bool
         if options.encode_maps_as_lists_in_tables == MapEncodingMode.NEVER:
@@ -716,7 +717,7 @@ def preprocess_table_payload_value(
             )
             for k, v in value.items()
         }
-    elif isinstance(value, (list, set, DataAPISet)):
+    elif isinstance(value, list | set | DataAPISet):
         return [
             preprocess_table_payload_value(
                 path + [""], v, options=options, map2tuple_checker=map2tuple_checker
@@ -792,7 +793,7 @@ def preprocess_table_payload_value(
         return value.to_c_string()
     elif isinstance(value, UUID):
         return str(value)
-    elif isinstance(value, (ipaddress.IPv4Address, ipaddress.IPv6Address)):
+    elif isinstance(value, ipaddress.IPv4Address | ipaddress.IPv6Address):
         return str(value)
     elif isinstance(value, datetime.timedelta):
         return DataAPIDuration.from_timedelta(value).to_c_string()
@@ -818,7 +819,7 @@ def preprocess_table_payload_value(
         ]
 
     # is it a well-known, natively-JSON-serializable type:
-    if isinstance(_uvalue, (str, int, float, bool, type(None))):
+    if isinstance(_uvalue, str | int | float | bool | type(None)):
         return _uvalue
 
     # check whether instance of a class with a registered serializer:

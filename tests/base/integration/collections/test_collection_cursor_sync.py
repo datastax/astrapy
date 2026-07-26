@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import pytest
@@ -26,9 +27,10 @@ from astrapy.exceptions import CursorException
 
 from ..conftest import DefaultCollection
 
-PAGE_SIZE = 20  # TODO: set to 50, default as per Data API config after PR 2461
-NUM_DOCS = 2 * PAGE_SIZE + 5
-NUM_DOCS_PAGINATION = 2 * (2 * PAGE_SIZE) + 5
+# TODO: once v1.0.48 is in production, hardcode 50 and bump Data API version in docker compose file:
+FIND_PAGE_SIZE = int(os.environ.get("FIND_PAGE_SIZE") or "20")
+NUM_DOCS = 2 * FIND_PAGE_SIZE + 5
+NUM_DOCS_PAGINATION = 2 * (2 * FIND_PAGE_SIZE) + 5
 
 
 @pytest.fixture
@@ -94,23 +96,23 @@ class TestCollectionCursorSync:
         with pytest.raises(CursorException):
             toclose.to_list()
 
-        cur.rewind()
-        assert cur.state == CursorState.IDLE
-        assert cur.consumed == 0
-        assert cur.buffered_count == 0
+        toclose.rewind()
+        assert toclose.state == CursorState.IDLE  # type: ignore[comparison-overlap]
+        assert toclose.consumed == 0
+        assert toclose.buffered_count == 0
 
-        cur.filter({"c": True})
-        cur.project({"c": True})
-        cur.sort({"c": SortMode.ASCENDING})
-        cur.limit(1)
-        cur.include_similarity(False)
-        cur.include_sort_vector(False)
-        cur.skip(1)
-        cur.map(lambda rw: None)
+        toclose.filter({"c": True})
+        toclose.project({"c": True})
+        toclose.sort({"c": SortMode.ASCENDING})
+        toclose.limit(1)
+        toclose.include_similarity(False)
+        toclose.include_sort_vector(False)
+        toclose.skip(1)
+        toclose.map(lambda rw: None)
 
-        cur.project({}).map(lambda rw: None)
+        toclose.project({}).map(lambda rw: None)
         with pytest.raises(CursorException):
-            cur.map(lambda rw: None).project({})
+            toclose.map(lambda rw: None).project({})
 
     @pytest.mark.describe("test of a CLOSED collection cursors properties, sync")
     def test_collection_cursors_closed_properties_sync(
@@ -150,6 +152,8 @@ class TestCollectionCursorSync:
             cur1.skip(1)
         with pytest.raises(CursorException):
             cur1.map(lambda rw: None)
+        with pytest.raises(CursorException):
+            cur1.initial_page_state("Blaaa")
 
     @pytest.mark.describe("test of a STARTED collection cursors properties, sync")
     def test_collection_cursors_started_properties_sync(
@@ -158,18 +162,18 @@ class TestCollectionCursorSync:
     ) -> None:
         cur = filled_collection.find()
         next(cur)
-        # now this has 19 items in buffer, one is consumed
+        # now this has (page - 1) items in buffer, one is consumed
         assert cur.consumed == 1
-        assert cur.buffered_count == PAGE_SIZE - 1
+        assert cur.buffered_count == FIND_PAGE_SIZE - 1
         assert len(cur.consume_buffer(3)) == 3
         assert cur.consumed == 4
-        assert cur.buffered_count == PAGE_SIZE - 4
+        assert cur.buffered_count == FIND_PAGE_SIZE - 4
         # from time to time the buffer is empty:
-        for _ in range(PAGE_SIZE - 4):
+        for _ in range(FIND_PAGE_SIZE - 4):
             next(cur)
         assert cur.buffered_count == 0
         assert cur.consume_buffer(3) == []
-        assert cur.consumed == PAGE_SIZE
+        assert cur.consumed == FIND_PAGE_SIZE
         assert cur.buffered_count == 0
 
         with pytest.raises(CursorException):
@@ -188,21 +192,31 @@ class TestCollectionCursorSync:
             cur.skip(1)
         with pytest.raises(CursorException):
             cur.map(lambda rw: None)
+        with pytest.raises(CursorException):
+            cur.initial_page_state("Blaaa")
 
     @pytest.mark.describe("test of collection cursors has_next, sync")
     def test_collection_cursors_has_next_sync(
         self,
         filled_collection: DefaultCollection,
     ) -> None:
+        # has_next sets to STARTED
+        cur_hn = filled_collection.find()
+        assert cur_hn.state == CursorState.IDLE
+        assert cur_hn.consumed == 0
+        assert cur_hn.has_next()
+        assert cur_hn.consumed == 0
+        assert cur_hn.state == CursorState.STARTED  # type: ignore[comparison-overlap]
+
+        # next sets to STARTED (and subsequent testing)
         cur = filled_collection.find()
         assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
-        assert cur.has_next()
-        assert cur.state == CursorState.IDLE
-        assert cur.consumed == 0
+        cur.__next__()
+        assert cur.state == CursorState.STARTED
         list(cur)
         assert cur.consumed == NUM_DOCS
-        assert cur.state == CursorState.CLOSED  # type: ignore[comparison-overlap]
+        assert cur.state == CursorState.CLOSED
 
         curmf = filled_collection.find()
         next(curmf)
@@ -212,12 +226,14 @@ class TestCollectionCursorSync:
         assert curmf.has_next()
         assert curmf.consumed == 2
         assert curmf.state == CursorState.STARTED
-        for _ in range(PAGE_SIZE - 2):
+        for _ in range(FIND_PAGE_SIZE - 2):
             next(curmf)
+        assert curmf.buffered_count == 0
         assert curmf.has_next()
-        assert curmf.consumed == PAGE_SIZE
+        assert curmf.buffered_count == FIND_PAGE_SIZE
+        assert curmf.consumed == FIND_PAGE_SIZE
         assert curmf.state == CursorState.STARTED
-        assert curmf.buffered_count == PAGE_SIZE
+        assert curmf.buffered_count == FIND_PAGE_SIZE
 
         cur0 = filled_collection.find()
         cur0.close()
@@ -230,7 +246,11 @@ class TestCollectionCursorSync:
     ) -> None:
         cur = filled_collection.find({"p_text": "ZZ"})
         assert not cur.has_next()
-        assert list(cur) == []
+        assert cur.state == CursorState.CLOSED
+        with pytest.raises(CursorException):
+            list(cur)
+        with pytest.raises(CursorException):
+            cur.to_list()
 
     @pytest.mark.describe("test of prematurely closing collection cursors, sync")
     def test_collection_cursors_early_closing_sync(
@@ -419,7 +439,7 @@ class TestCollectionCursorSync:
         filled_pagination_collection: DefaultCollection,
     ) -> None:
         cur0 = filled_pagination_collection.find(filter={"even": True})
-        ids0 = [doc["_id"] for _, doc in zip(range(PAGE_SIZE), cur0)]
+        ids0 = [doc["_id"] for _, doc in zip(range(FIND_PAGE_SIZE), cur0)]
         nps0 = cur0._next_page_state
         assert isinstance(nps0, str)
 
@@ -427,7 +447,7 @@ class TestCollectionCursorSync:
             filter={"even": True},
             initial_page_state=nps0,
         )
-        ids1 = [doc["_id"] for _, doc in zip(range(PAGE_SIZE), cur1)]
+        ids1 = [doc["_id"] for _, doc in zip(range(FIND_PAGE_SIZE), cur1)]
         nps1 = cur1._next_page_state
         assert isinstance(nps1, str)
 

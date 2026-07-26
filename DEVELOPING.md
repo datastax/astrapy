@@ -46,7 +46,7 @@ Steps:
 
 - Export variables as in one of the `tests/env_templates/*.base.template` examples.
 - Export variables as in the `tests/env_templates/env.vectorize-minimal.template` example.
-- Run: `uv venv --python ">=3.9,<3.15" && uv run pytest tests/base`
+- Run: `uv venv --python ">=3.10,<3.15" && uv run pytest tests/base`
 
 ### All available tests/targets
 
@@ -91,6 +91,18 @@ to maek the test startup logic work properly.
 
 You shoud never need to worry about keyspaces. Tests use two keyspaces, which are created if not found, with default names.
 The env templates show how to override those names, if you want to.
+
+### Empty-database requirement for integration tests
+
+The base and vectorize integration tests create and drop collections, tables, UDTs and keyspaces on the
+target database. To avoid late failures caused by leftover objects, the target database must have no
+collections, tables or UDTs in any non-system keyspace before either suite starts.
+
+If any such object is found, pytest exits with an error before the integration suite runs. Point the tests at
+a dedicated, empty database/keyspace set to run them.
+
+For intentional narrow local runs against a database that already contains unrelated objects, set
+`TOLERATE_POPULATED_DATABASE=yes` when invoking pytest.
 
 ### Multiple Python versions
 
@@ -170,6 +182,15 @@ certain environment variables, otherwise the associated tests are excluded from 
 
 Prepend tests with a `ASTRAPY_TEST_LATEST_MAIN=y` for features found on `main` that are not released anywhere.
 _(Tip: run a code search first to see what is currently marked as such. Chances are nothing is.)_
+
+### Page size increase (starting in v1.0.48)
+
+If tests are run against Data API v1.0.48 or higher, you must export the variable `FIND_PAGE_SIZE="50"` to ensure
+the cursor/pagination tests (Data API PR 2461) take the new setting into account (they would fail otherwise).
+
+Removal of this special flag will have to wait until the new version is regularly deployed in production, at which
+point it will make sense to bump the Data API version in the HCD integration test compose file as well and hardcode
+the value of 50.
 
 ### Legacy ordered-insert-many behaviour
 

@@ -15,21 +15,10 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
 from typing import Protocol, TypeVar
 
-# TODO: once supporting 3.11+, this can be simplified.
-# 'Self' is imported differently below 3.11, cf. below. Then:
-# 1. To appease typecheckers on e.g. 3.9, we need the `attr-defined` exception
-# 2. To appease typecheckers on 3.11+, we need the `unused-ignore` exception.
-try:
-    # Python 3.11 upward:
-    from typing import Self  # type:ignore[attr-defined,unused-ignore]
-except ImportError:
-    # 3.10 and below:
-    from typing_extensions import Self
-
-from contextlib import contextmanager
-
+from typing_extensions import Self
 from uuid6 import uuid7
 
 from astrapy.api_options import APIOptions

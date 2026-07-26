@@ -287,7 +287,7 @@ class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
         self,
         *,
         column_type: str | TableVectorColumnType = TableVectorColumnType.VECTOR,
-        dimension: int | None,
+        dimension: int | None = None,
         service: VectorServiceOptions | None = None,
         api_support: TableAPISupportDescriptor | None = None,
     ) -> None:

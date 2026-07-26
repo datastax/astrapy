@@ -87,7 +87,7 @@ class TestCollectionFindAndRerankSync:
         assert all(len(hit.scores) > 0 for hit in hits)
         # some scores can get back as None or integer
         assert all(
-            all(isinstance(sc, (float, int, type(None))) for sc in hit.scores.values())
+            all(isinstance(sc, float | int | type(None)) for sc in hit.scores.values())
             for hit in hits
         )
         assert all(
@@ -254,7 +254,7 @@ class TestCollectionFindAndRerankSync:
         assert all(len(hit.scores) > 0 for hit in hits)
         # some scores can get back as None or integer
         assert all(
-            all(isinstance(sc, (float, int, type(None))) for sc in hit.scores.values())
+            all(isinstance(sc, float | int | type(None)) for sc in hit.scores.values())
             for hit in hits
         )
         assert all(
@@ -402,7 +402,7 @@ class TestCollectionFindAndRerankSync:
         assert itm_f.scores == {}
         assert itm_t.scores != {}
         assert all(
-            isinstance(val, (float, int, type(None))) for val in itm_t.scores.values()
+            isinstance(val, float | int | type(None)) for val in itm_t.scores.values()
         )
 
     @pytest.mark.describe(
@@ -440,7 +440,7 @@ class TestCollectionFindAndRerankSync:
         assert itm_f.scores == {}
         assert itm_t.scores != {}
         assert all(
-            isinstance(val, (float, int, type(None))) for val in itm_t.scores.values()
+            isinstance(val, float | int | type(None)) for val in itm_t.scores.values()
         )
 
     @pytest.mark.describe(
@@ -466,7 +466,7 @@ class TestCollectionFindAndRerankSync:
         assert cur_n0.get_sort_vector() is None
         assert cur_f0.get_sort_vector() is None
         gsv_t0 = cur_t0.get_sort_vector()
-        assert isinstance(gsv_t0, (list, DataAPIVector))
+        assert isinstance(gsv_t0, list | DataAPIVector)
         assert isinstance(gsv_t0[0], float)
 
         cur_n1 = coll.find_and_rerank(sort={"$hybrid": "bla"})
@@ -485,7 +485,7 @@ class TestCollectionFindAndRerankSync:
         assert cur_n1.get_sort_vector() is None
         assert cur_f1.get_sort_vector() is None
         gsv_t1 = cur_t1.get_sort_vector()
-        assert isinstance(gsv_t1, (list, DataAPIVector))
+        assert isinstance(gsv_t1, list | DataAPIVector)
         assert isinstance(gsv_t1[0], float)
 
         cur_n2 = coll.find_and_rerank(sort={"$hybrid": "bla"})
@@ -504,7 +504,7 @@ class TestCollectionFindAndRerankSync:
         assert cur_n2.get_sort_vector() is None
         assert cur_f2.get_sort_vector() is None
         gsv_t2 = cur_t2.get_sort_vector()
-        assert isinstance(gsv_t2, (list, DataAPIVector))
+        assert isinstance(gsv_t2, list | DataAPIVector)
         assert isinstance(gsv_t2[0], float)
 
     @pytest.mark.describe(
@@ -538,7 +538,7 @@ class TestCollectionFindAndRerankSync:
         assert cur_n0.get_sort_vector() is None
         assert cur_f0.get_sort_vector() is None
         gsv_t0 = cur_t0.get_sort_vector()
-        assert isinstance(gsv_t0, (list, DataAPIVector))
+        assert isinstance(gsv_t0, list | DataAPIVector)
         assert isinstance(gsv_t0[0], float)
 
         cur_n1 = coll.find_and_rerank(
@@ -565,7 +565,7 @@ class TestCollectionFindAndRerankSync:
         assert cur_n1.get_sort_vector() is None
         assert cur_f1.get_sort_vector() is None
         gsv_t1 = cur_t1.get_sort_vector()
-        assert isinstance(gsv_t1, (list, DataAPIVector))
+        assert isinstance(gsv_t1, list | DataAPIVector)
         assert isinstance(gsv_t1[0], float)
 
         cur_n2 = coll.find_and_rerank(
@@ -592,5 +592,5 @@ class TestCollectionFindAndRerankSync:
         assert cur_n2.get_sort_vector() is None
         assert cur_f2.get_sort_vector() is None
         gsv_t2 = cur_t2.get_sort_vector()
-        assert isinstance(gsv_t2, (list, DataAPIVector))
+        assert isinstance(gsv_t2, list | DataAPIVector)
         assert isinstance(gsv_t2[0], float)
