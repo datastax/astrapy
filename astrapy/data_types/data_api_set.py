@@ -61,7 +61,7 @@ class DataAPISet(Generic[T], Set[T]):
         return self.__class__, (self._items,)
 
     def __eq__(self, other: Any) -> bool:
-        if isinstance(other, (set, DataAPISet)):
+        if isinstance(other, set | DataAPISet):
             return len(other) == len(self._items) and all(
                 item in self for item in other
             )

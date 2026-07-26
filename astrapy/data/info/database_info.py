@@ -20,8 +20,14 @@ from typing import Any
 
 from astrapy.admin.endpoints import build_api_endpoint, parse_api_endpoint
 from astrapy.data_types import DataAPITimestamp
-from astrapy.utils.meta import deprecated_property
+from astrapy.settings.defaults import (
+    DEFAULT_CREATE_DB_CAPACITY_UNITS,
+    DEFAULT_CREATE_DB_DB_TYPE,
+    DEFAULT_CREATE_DB_TIER,
+)
 from astrapy.utils.parsing import _warn_residual_keys
+
+NONVECTOR_DB_TYPE_STRINGS = ["non_vector", "non vector", "nonvector", "non-vector"]
 
 
 def _failsafe_parse_date(date_string: str | None) -> datetime.datetime | None:
@@ -82,15 +88,6 @@ class AstraDBAdminDatabaseRegionInfo:
             f"created_at={self.created_at}",
         ]
         return f"{self.__class__.__name__}({', '.join(pieces)})"
-
-    @property
-    @deprecated_property(
-        new_name="name",
-        deprecated_in="2.0.1",
-        removed_in="2.3.0",
-    )
-    def region_name(self) -> str:
-        return self.name
 
 
 @dataclass
@@ -336,6 +333,7 @@ class AstraDBAvailableRegionInfo:
             identifier since it determines a region uniquely.
         reserved_for_qualified_users: a boolean flag marking availability settings.
         zone: macro-zone for the region, e.g. "na" or "emea".
+        pcu_types: the types of PCU (Provisioned Capacity Units) available for this region.
     """
 
     classification: str
@@ -345,6 +343,7 @@ class AstraDBAvailableRegionInfo:
     name: str
     reserved_for_qualified_users: bool
     zone: str
+    pcu_types: list[PCUGroupTypeDescriptor] | None = None
 
     def __repr__(self) -> str:
         body = f'{self.cloud_provider}/{self.name}: "{self.display_name}", ...'
@@ -356,24 +355,22 @@ class AstraDBAvailableRegionInfo:
         """
 
         return {
-            "classification": self.classification,
-            "cloudProvider": self.cloud_provider,
-            "displayName": self.display_name,
-            "enabled": self.enabled,
-            "name": self.name,
-            "region_type": "vector",
-            "reservedForQualifiedUsers": self.reserved_for_qualified_users,
-            "zone": self.zone,
+            k: v
+            for k, v in {
+                "classification": self.classification,
+                "cloudProvider": self.cloud_provider,
+                "displayName": self.display_name,
+                "enabled": self.enabled,
+                "name": self.name,
+                "region_type": "vector",
+                "reservedForQualifiedUsers": self.reserved_for_qualified_users,
+                "zone": self.zone,
+                "pcu_types": [pcu_type.as_dict() for pcu_type in self.pcu_types]
+                if self.pcu_types is not None
+                else None,
+            }.items()
+            if v is not None
         }
-
-    @property
-    @deprecated_property(
-        new_name="name",
-        deprecated_in="2.0.1",
-        removed_in="2.3.0",
-    )
-    def region_name(self) -> str:
-        return self.name
 
     @classmethod
     def _from_dict(cls, raw_dict: dict[str, Any]) -> AstraDBAvailableRegionInfo:
@@ -394,7 +391,6 @@ class AstraDBAvailableRegionInfo:
                 "region_type",
                 "reservedForQualifiedUsers",
                 "zone",
-                # The following intentionally suppresses a warning (until full PCU support)
                 "pcu_types",
             },
         )
@@ -406,4 +402,443 @@ class AstraDBAvailableRegionInfo:
             name=raw_dict["name"],
             reserved_for_qualified_users=raw_dict["reservedForQualifiedUsers"],
             zone=raw_dict["zone"],
+            pcu_types=[
+                PCUGroupTypeDescriptor._from_dict(pcu_type_dict)
+                for pcu_type_dict in raw_dict["pcu_types"]
+            ]
+            if "pcu_types" in raw_dict
+            else None,
+        )
+
+
+@dataclass
+class DatabaseDefinition:
+    """
+    Represents a database definition for database creation operations (excluding the DB name).
+
+    Attributes:
+        cloud_provider: the cloud provider hosting the database (e.g. 'aws', 'gcp', 'azure').
+        region: the region where the database will be created.
+        tier: the database tier (e.g. 'serverless'). Defaults to 'serverless''.
+        capacity_units: the number of capacity units for the database. Defaults to 1.
+        db_type: the type of database: 'vector' (default), 'nonvector'.
+            Note that 'nonvector' maps to the field being absent in serialized (JSON) form.
+        keyspace: the default keyspace for the database. Optional, defaults to None.
+        pcu_group_id: the PCU group ID to use for provisioning the database. Optional, defaults to None.
+    """
+
+    cloud_provider: str
+    region: str
+    tier: str | None = None
+    capacity_units: int | None = None
+    db_type: str | None = None
+    keyspace: str | None = None
+    pcu_group_id: str | None = None
+
+    def __repr__(self) -> str:
+        pieces = [
+            f"cloud_provider={self.cloud_provider}",
+            f"region={self.region}",
+        ]
+        if self.tier is not None:
+            pieces.append(f"tier={self.tier}")
+        if self.capacity_units is not None:
+            pieces.append(f"capacity_units={self.capacity_units}")
+        if self.db_type is not None:
+            pieces.append(f"db_type={self.db_type}")
+        if self.keyspace is not None:
+            pieces.append(f"keyspace={self.keyspace}")
+        if self.pcu_group_id is not None:
+            pieces.append(f"pcu_group_id={self.pcu_group_id}")
+        return f"{self.__class__.__name__}({', '.join(pieces)})"
+
+    def as_dict(self, *, name: str | None) -> dict[str, Any]:
+        """
+        Recast this object into a dictionary.
+
+        Args:
+            name: if provided, this is the name of the database and will
+                be used to enrich the result making it a complete payload
+                suitable for a DevOps API create-database invocation.
+
+        Returns:
+            a dictionary expressing the object (plus optionally a DB name).
+        """
+
+        _serialized_db_type: str | None
+        if self.db_type is None:
+            _serialized_db_type = None
+        elif self.db_type.lower() in NONVECTOR_DB_TYPE_STRINGS:
+            _serialized_db_type = None
+        else:
+            _serialized_db_type = self.db_type
+
+        return {
+            k: v
+            for k, v in {
+                "name": name,
+                "cloudProvider": self.cloud_provider,
+                "region": self.region,
+                "tier": self.tier,
+                "capacityUnits": self.capacity_units,
+                "dbType": _serialized_db_type,
+                "keyspace": self.keyspace,
+                "pcuGroupUUID": self.pcu_group_id,
+            }.items()
+            if v is not None
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> DatabaseDefinition:
+        """
+        Create an instance of DatabaseDefinition from a dictionary
+        such as one from the Data API.
+
+        This operation, which should never be needed in ordinary client activity,
+        exceptionally ignores any 'name' field it would find.
+        """
+
+        _warn_residual_keys(
+            cls,
+            raw_dict,
+            {
+                "name",
+                "cloudProvider",
+                "region",
+                "tier",
+                "capacityUnits",
+                "dbType",
+                "keyspace",
+                "pcuGroupUUID",
+            },
+        )
+
+        _deserialized_db_type: str | None
+        if "dbType" not in raw_dict:
+            _deserialized_db_type = NONVECTOR_DB_TYPE_STRINGS[0]
+        else:
+            _deserialized_db_type = raw_dict["dbType"]
+
+        return DatabaseDefinition(
+            cloud_provider=raw_dict["cloudProvider"],
+            region=raw_dict["region"],
+            tier=raw_dict.get("tier"),
+            capacity_units=raw_dict.get("capacityUnits"),
+            db_type=_deserialized_db_type,
+            keyspace=raw_dict.get("keyspace"),
+            pcu_group_id=raw_dict.get("pcuGroupUUID"),
+        )
+
+    def with_defaults(self) -> DatabaseDefinition:
+        """
+        Return a new DatabaseDefinition with the default values for all
+        fields that are not set, such that the results makes for a valid
+        payload for a create-database DevOps API invocation,
+
+        This method assumes that non-optional fields are not None.
+        """
+        return DatabaseDefinition(
+            cloud_provider=self.cloud_provider,
+            region=self.region,
+            tier=self.tier if self.tier is not None else DEFAULT_CREATE_DB_TIER,
+            capacity_units=self.capacity_units
+            if self.capacity_units is not None
+            else DEFAULT_CREATE_DB_CAPACITY_UNITS,
+            db_type=self.db_type
+            if self.db_type is not None
+            else DEFAULT_CREATE_DB_DB_TYPE,
+            keyspace=self.keyspace,
+            pcu_group_id=self.pcu_group_id,
+        )
+
+
+@dataclass
+class PCUGroupTypeDetailsDescriptor:
+    """
+    Represents the details of a PCU (Provisioned Capacity Unit) group type,
+    describing the hardware specifications for a particular PCU configuration.
+
+    Attributes:
+        v_cpu: the number of virtual CPUs for this PCU type.
+        memory: the amount of memory for this PCU type.
+        disk_cache: the amount of disk cache for this PCU type.
+    """
+
+    v_cpu: int | None = None
+    memory: str | None = None
+    disk_cache: str | None = None
+
+    def __repr__(self) -> str:
+        pieces = [
+            pc
+            for pc in (
+                f"v_cpu={self.v_cpu}" if self.v_cpu is not None else None,
+                f"memory={self.memory}" if self.memory is not None else None,
+                f"disk_cache={self.disk_cache}"
+                if self.disk_cache is not None
+                else None,
+            )
+            if pc is not None
+        ]
+        body = ", ".join(pieces)
+        return f"{self.__class__.__name__}({body})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """
+        Recast this object into a dictionary.
+        """
+
+        return {
+            k: v
+            for k, v in {
+                "vCPU": self.v_cpu,
+                "memory": self.memory,
+                "disk_cache": self.disk_cache,
+            }.items()
+            if v is not None
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> PCUGroupTypeDetailsDescriptor:
+        """
+        Create an instance of PCUGroupTypeDetailsDescriptor from a dictionary
+        such as one from the DevOps API.
+        """
+
+        _warn_residual_keys(
+            cls,
+            raw_dict,
+            {
+                "vCPU",
+                "memory",
+                "disk_cache",
+            },
+        )
+        return PCUGroupTypeDetailsDescriptor(
+            v_cpu=raw_dict.get("vCPU"),
+            memory=raw_dict.get("memory"),
+            disk_cache=raw_dict.get("disk_cache"),
+        )
+
+
+@dataclass
+class PCUGroupTypeDescriptor:
+    """
+    Represents a PCU (Provisioned Capacity Unit) group type descriptor,
+    describing a specific PCU configuration available in a region.
+
+    Attributes:
+        type: the type of PCU group (e.g. 'standard').
+        region: the region where this PCU type is available.
+        cloud_provider: the cloud provider for this PCU type (e.g. 'AWS').
+        details: hardware specifications for this PCU type.
+    """
+
+    type: str
+    region: str | None
+    cloud_provider: str | None
+    details: PCUGroupTypeDetailsDescriptor | None
+
+    def __repr__(self) -> str:
+        pieces = [
+            pc
+            for pc in (
+                f"type={self.type}",
+                f"region={self.region}" if self.region is not None else None,
+                f"cloud_provider={self.cloud_provider}"
+                if self.cloud_provider is not None
+                else None,
+                "details=..." if self.details is not None else None,
+            )
+            if pc is not None
+        ]
+        body = ", ".join(pieces)
+        return f"{self.__class__.__name__}({body})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """
+        Recast this object into a dictionary.
+        """
+
+        return {
+            k: v
+            for k, v in {
+                "type": self.type,
+                "region": self.region,
+                "provider": self.cloud_provider,
+                "details": self.details.as_dict() if self.details is not None else None,
+            }.items()
+            if v is not None
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> PCUGroupTypeDescriptor:
+        """
+        Create an instance of PCUGroupTypeDescriptor from a dictionary
+        such as one from the DevOps API.
+        """
+
+        _warn_residual_keys(
+            cls,
+            raw_dict,
+            {
+                "type",
+                "region",
+                "provider",
+                "details",
+            },
+        )
+        return PCUGroupTypeDescriptor(
+            type=raw_dict["type"],
+            region=raw_dict.get("region"),
+            cloud_provider=raw_dict["provider"] if "provider" in raw_dict else None,
+            details=PCUGroupTypeDetailsDescriptor._from_dict(raw_dict["details"])
+            if "details" in raw_dict
+            else None,
+        )
+
+
+@dataclass
+class PCUGroupDescriptor:
+    """
+    Represents the descriptor for a PCU (Provisioned Capacity Unit) group,
+    such as the ones returned when querying the DevOps API for PCU groups.
+
+    Attributes:
+        id: the unique identifier for the PCU group (a UUID as a string).
+        org_id: the organization ID this PCU group belongs to.
+        title: the title (name) of the PCU group.
+        cloud_provider: the cloud provider for this PCU group (e.g. 'AWS').
+        region: the region this PCU group is ascribed to.
+        instance_type: the instance type for this PCU group.
+        pcu_type: the PCU type descriptor.
+        provision_type: the provisioning type (e.g. 'shared').
+        min: the minimum shared hourly PCUs in the group.
+        max: the maximum shared hourly PCUs in the group.
+        reserved: the absolute required PCUs in the group.
+        description: a description of the PCU group.
+        created_at: creation time of the PCU group.
+        updated_at: update time of the PCU group.
+        created_by: identifier of the user who created the PCU group.
+        updated_by: identifier of the user who updated the PCU group.
+        status: the current status of the PCU group (e.g. 'INITIALIZING').
+    """
+
+    id: str
+    org_id: str | None
+    title: str | None
+    cloud_provider: str
+    region: str
+    instance_type: str | None
+    pcu_type: PCUGroupTypeDescriptor | None
+    provision_type: str | None
+    min: int | None
+    max: int | None
+    description: str | None
+    created_at: datetime.datetime | None
+    updated_at: datetime.datetime | None
+    created_by: str | None
+    updated_by: str | None
+    status: str | None
+    reserved: int | None = None
+
+    def __repr__(self) -> str:
+        pieces = [
+            pc
+            for pc in (
+                f"id={self.id}" if self.id is not None else None,
+                f"org_id={self.org_id}" if self.org_id is not None else None,
+                f"title={self.title}" if self.title is not None else None,
+                f"status={self.status}" if self.status is not None else None,
+            )
+            if pc is not None
+        ]
+        body = ", ".join(pieces)
+        return f"{self.__class__.__name__}({body}, ...)"
+
+    def as_dict(self) -> dict[str, Any]:
+        """
+        Recast this object into a dictionary.
+        """
+
+        return {
+            k: v
+            for k, v in {
+                "uuid": self.id,
+                "orgId": self.org_id,
+                "title": self.title,
+                "cloudProvider": self.cloud_provider,
+                "region": self.region,
+                "instanceType": self.instance_type,
+                "pcuType": self.pcu_type.as_dict()
+                if self.pcu_type is not None
+                else None,
+                "provisionType": self.provision_type,
+                "min": self.min,
+                "max": self.max,
+                "reserved": self.reserved,
+                "description": self.description,
+                "createdAt": None
+                if self.created_at is None
+                else DataAPITimestamp.from_datetime(self.created_at).to_string(),
+                "updatedAt": None
+                if self.updated_at is None
+                else DataAPITimestamp.from_datetime(self.updated_at).to_string(),
+                "createdBy": self.created_by,
+                "updatedBy": self.updated_by,
+                "status": self.status,
+            }.items()
+            if v is not None
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> PCUGroupDescriptor:
+        """
+        Create an instance of PCUGroupDescriptor from a dictionary
+        such as one from the DevOps API.
+        """
+
+        _warn_residual_keys(
+            cls,
+            raw_dict,
+            {
+                "uuid",
+                "orgId",
+                "title",
+                "cloudProvider",
+                "region",
+                "instanceType",
+                "pcuType",
+                "provisionType",
+                "min",
+                "max",
+                "reserved",
+                "description",
+                "createdAt",
+                "updatedAt",
+                "createdBy",
+                "updatedBy",
+                "status",
+            },
+        )
+        return PCUGroupDescriptor(
+            id=raw_dict["uuid"],
+            org_id=raw_dict.get("orgId"),
+            title=raw_dict.get("title"),
+            cloud_provider=raw_dict["cloudProvider"],
+            region=raw_dict["region"],
+            instance_type=raw_dict.get("instanceType"),
+            pcu_type=PCUGroupTypeDescriptor._from_dict(raw_dict["pcuType"])
+            if "pcuType" in raw_dict
+            else None,
+            provision_type=raw_dict.get("provisionType"),
+            min=raw_dict.get("min"),
+            max=raw_dict.get("max"),
+            reserved=raw_dict.get("reserved"),
+            description=raw_dict.get("description"),
+            created_at=_failsafe_parse_date(raw_dict.get("createdAt")),
+            updated_at=_failsafe_parse_date(raw_dict.get("updatedAt")),
+            created_by=raw_dict.get("createdBy"),
+            updated_by=raw_dict.get("updatedBy"),
+            status=raw_dict.get("status"),
         )

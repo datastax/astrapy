@@ -198,18 +198,27 @@ class TestCollectionCursorSync:
         self,
         filled_vectorize_collection: DefaultCollection,
     ) -> None:
+        # has_next sets to STARTED
+        cur_hn = filled_vectorize_collection.find_and_rerank(
+            sort={"$hybrid": "a sentence."},
+            limit=NUM_DOCS,
+        )
+        assert cur_hn.state == CursorState.IDLE
+        assert cur_hn.consumed == 0
+        assert cur_hn.has_next()
+        assert cur_hn.consumed == 0
+        assert cur_hn.state == CursorState.STARTED  # type: ignore[comparison-overlap]
+
+        # next sets to STARTED (and subsequent testing)
         cur = filled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         )
         assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
-        assert cur.has_next()
-        assert cur.state == CursorState.IDLE
-        assert cur.consumed == 0
         list(cur)
         assert cur.consumed == NUM_DOCS
-        assert cur.state == CursorState.CLOSED  # type: ignore[comparison-overlap]
+        assert cur.state == CursorState.CLOSED
 
         curmf = filled_vectorize_collection.find_and_rerank(
             sort={"$hybrid": "a sentence."},
@@ -248,7 +257,11 @@ class TestCollectionCursorSync:
             limit=NUM_DOCS,
         )
         assert not cur.has_next()
-        assert list(cur) == []
+        assert cur.state == CursorState.CLOSED
+        with pytest.raises(CursorException):
+            assert list(cur) == []
+        with pytest.raises(CursorException):
+            cur.to_list()
 
         cur_no_sv = filled_vectorize_collection.find_and_rerank(
             {"parity": -1},

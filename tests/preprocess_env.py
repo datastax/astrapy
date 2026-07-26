@@ -163,7 +163,7 @@ if DOCKER_COMPOSE_LOCAL_DATA_API:
         The reason is that `docker-compose` is not included in the `ubuntu-latest`
         Github runner starting August 2024 (in favour of `docker compose`).
 
-        - More modern testcontainers would require python>=3.9.
+        - Moving to testcontainers >= 4 would require refactoring this setup.
         - Aliasing 'docker-compose' in the CI container is (more) brittle.
         - Pip installing a modern testcontainers in the CI yaml is 'inelegant'.
             (and would require a try/except here with different inits to keep compat.)

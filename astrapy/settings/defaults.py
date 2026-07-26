@@ -98,6 +98,11 @@ DEV_OPS_RESPONSE_HTTP_UNAUTHORIZED = 401
 
 DEV_OPS_DEFAULT_DATABASES_PAGE_SIZE = 50
 
+# defaults for DevOps create-database DB definition
+DEFAULT_CREATE_DB_TIER = "serverless"
+DEFAULT_CREATE_DB_CAPACITY_UNITS = 1
+DEFAULT_CREATE_DB_DB_TYPE = "vector"
+
 # Settings for redacting secrets in string representations and logging
 SECRETS_REDACT_ENDING = "..."
 SECRETS_REDACT_CHAR = "*"

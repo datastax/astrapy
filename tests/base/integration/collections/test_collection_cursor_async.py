@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import pytest
@@ -26,9 +27,10 @@ from astrapy.exceptions import CursorException
 
 from ..conftest import DefaultAsyncCollection
 
-PAGE_SIZE = 20  # TODO: set to 50, default as per Data API config after PR 2461
-NUM_DOCS = 2 * PAGE_SIZE + 5
-NUM_DOCS_PAGINATION = 2 * (2 * PAGE_SIZE) + 5
+# TODO: once v1.0.48 is in production, hardcode 50 and bump Data API version in docker compose file:
+FIND_PAGE_SIZE = int(os.environ.get("FIND_PAGE_SIZE") or "20")
+NUM_DOCS = 2 * FIND_PAGE_SIZE + 5
+NUM_DOCS_PAGINATION = 2 * (2 * FIND_PAGE_SIZE) + 5
 
 
 @pytest.fixture
@@ -96,23 +98,23 @@ class TestCollectionCursorSync:
         with pytest.raises(CursorException):
             await toclose.to_list()
 
-        cur.rewind()
-        assert cur.state == CursorState.IDLE
-        assert cur.consumed == 0
-        assert cur.buffered_count == 0
+        toclose.rewind()
+        assert toclose.state == CursorState.IDLE  # type: ignore[comparison-overlap]
+        assert toclose.consumed == 0
+        assert toclose.buffered_count == 0
 
-        cur.filter({"c": True})
-        cur.project({"c": True})
-        cur.sort({"c": SortMode.ASCENDING})
-        cur.limit(1)
-        cur.include_similarity(False)
-        cur.include_sort_vector(False)
-        cur.skip(1)
-        cur.map(lambda rw: None)
+        toclose.filter({"c": True})
+        toclose.project({"c": True})
+        toclose.sort({"c": SortMode.ASCENDING})
+        toclose.limit(1)
+        toclose.include_similarity(False)
+        toclose.include_sort_vector(False)
+        toclose.skip(1)
+        toclose.map(lambda rw: None)
 
-        cur.project({}).map(lambda rw: None)
+        toclose.project({}).map(lambda rw: None)
         with pytest.raises(CursorException):
-            cur.map(lambda rw: None).project({})
+            toclose.map(lambda rw: None).project({})
 
     @pytest.mark.describe("test of a CLOSED collection cursors properties, async")
     async def test_collection_cursors_closed_properties_async(
@@ -152,6 +154,8 @@ class TestCollectionCursorSync:
             cur1.skip(1)
         with pytest.raises(CursorException):
             cur1.map(lambda rw: None)
+        with pytest.raises(CursorException):
+            cur1.initial_page_state("Blaaa")
 
     @pytest.mark.describe("test of a STARTED collection cursors properties, async")
     async def test_collection_cursors_started_properties_async(
@@ -160,18 +164,18 @@ class TestCollectionCursorSync:
     ) -> None:
         cur = async_filled_collection.find()
         await cur.__anext__()
-        # now this has 19 items in buffer, one is consumed
+        # now this has (page -1 items in buffer, one is consumed
         assert cur.consumed == 1
-        assert cur.buffered_count == PAGE_SIZE - 1
+        assert cur.buffered_count == FIND_PAGE_SIZE - 1
         assert len(cur.consume_buffer(3)) == 3
         assert cur.consumed == 4
-        assert cur.buffered_count == PAGE_SIZE - 4
+        assert cur.buffered_count == FIND_PAGE_SIZE - 4
         # from time to time the buffer is empty:
-        for _ in range(PAGE_SIZE - 4):
+        for _ in range(FIND_PAGE_SIZE - 4):
             await cur.__anext__()
         assert cur.buffered_count == 0
         assert cur.consume_buffer(3) == []
-        assert cur.consumed == PAGE_SIZE
+        assert cur.consumed == FIND_PAGE_SIZE
         assert cur.buffered_count == 0
 
         with pytest.raises(CursorException):
@@ -190,36 +194,48 @@ class TestCollectionCursorSync:
             cur.skip(1)
         with pytest.raises(CursorException):
             cur.map(lambda rw: None)
+        with pytest.raises(CursorException):
+            cur.initial_page_state("Blaaa")
 
     @pytest.mark.describe("test of collection cursors has_next, async")
     async def test_collection_cursors_has_next_async(
         self,
         async_filled_collection: DefaultAsyncCollection,
     ) -> None:
+        # has_next sets to STARTED
+        cur_hn = async_filled_collection.find()
+        assert cur_hn.state == CursorState.IDLE
+        assert cur_hn.consumed == 0
+        assert await cur_hn.has_next()
+        assert cur_hn.consumed == 0
+        assert cur_hn.state == CursorState.STARTED  # type: ignore[comparison-overlap]
+
+        # next sets to STARTED (and subsequent testing)
         cur = async_filled_collection.find()
         assert cur.state == CursorState.IDLE
         assert cur.consumed == 0
-        assert cur.has_next()
-        assert cur.state == CursorState.IDLE
-        assert cur.consumed == 0
+        await cur.__anext__()
+        assert cur.state == CursorState.STARTED
         [doc async for doc in cur]
         assert cur.consumed == NUM_DOCS
-        assert cur.state == CursorState.CLOSED  # type: ignore[comparison-overlap]
+        assert cur.state == CursorState.CLOSED
 
         curmf = async_filled_collection.find()
         await curmf.__anext__()
         await curmf.__anext__()
         assert curmf.consumed == 2
         assert curmf.state == CursorState.STARTED
-        assert curmf.has_next()
+        assert await curmf.has_next()
         assert curmf.consumed == 2
         assert curmf.state == CursorState.STARTED
-        for _ in range(PAGE_SIZE - 2):
+        for _ in range(FIND_PAGE_SIZE - 2):
             await curmf.__anext__()
+        assert curmf.buffered_count == 0
         assert await curmf.has_next()
-        assert curmf.consumed == PAGE_SIZE
+        assert curmf.buffered_count == FIND_PAGE_SIZE
+        assert curmf.consumed == FIND_PAGE_SIZE
         assert curmf.state == CursorState.STARTED
-        assert curmf.buffered_count == PAGE_SIZE
+        assert curmf.buffered_count == FIND_PAGE_SIZE
 
         cur0 = async_filled_collection.find()
         cur0.close()
@@ -232,7 +248,11 @@ class TestCollectionCursorSync:
     ) -> None:
         cur = async_filled_collection.find({"p_text": "ZZ"})
         assert not await cur.has_next()
-        assert [doc async for doc in cur] == []
+        assert cur.state == CursorState.CLOSED
+        with pytest.raises(CursorException):
+            [doc async for doc in cur]
+        with pytest.raises(CursorException):
+            await cur.to_list()
 
     @pytest.mark.describe("test of prematurely closing collection cursors, async")
     async def test_collection_cursors_early_closing_async(
@@ -497,7 +517,7 @@ class TestCollectionCursorSync:
     ) -> None:
         cur0 = async_filled_pagination_collection.find(filter={"even": True})
         ids0: list[int] = []
-        for _ in range(PAGE_SIZE):
+        for _ in range(FIND_PAGE_SIZE):
             doc = await cur0.__anext__()
             ids0.append(doc["_id"])
         nps0 = cur0._next_page_state
@@ -508,7 +528,7 @@ class TestCollectionCursorSync:
             initial_page_state=nps0,
         )
         ids1: list[int] = []
-        for _ in range(PAGE_SIZE):
+        for _ in range(FIND_PAGE_SIZE):
             doc = await cur1.__anext__()
             ids1.append(doc["_id"])
         nps1 = cur1._next_page_state

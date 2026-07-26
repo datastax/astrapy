@@ -18,6 +18,10 @@ on:
         required: true
       HEADER_EMBEDDING_API_KEY_VOYAGEAI:
         required: true
+      FIND_PAGE_SIZE:
+        required: true
+      LEGACY_INSERTMANY_BEHAVIOUR_PRE2193:
+        required: true
 
 jobs:
   test:
@@ -26,6 +30,7 @@ jobs:
       ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
       HEADER_EMBEDDING_API_KEY_VOYAGEAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_VOYAGEAI }}
       LEGACY_INSERTMANY_BEHAVIOUR_PRE2193: ${{ secrets.LEGACY_INSERTMANY_BEHAVIOUR_PRE2193 }}
+      FIND_PAGE_SIZE: ${{ secrets.FIND_PAGE_SIZE }}
     runs-on: ubuntu-latest
 
     steps:

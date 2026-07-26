@@ -54,6 +54,9 @@ from .table_row_assets import (
     SIMPLE_SEVEN_ROWS_OK,
 )
 
+# TODO: once v1.0.48 is in production, hardcode 50 and bump Data API version in docker compose file:
+FIND_PAGE_SIZE = int(os.environ.get("FIND_PAGE_SIZE") or "20")
+
 
 class TestTableDMLAsync:
     @pytest.mark.describe("test of table insert_one and find_one, async")
@@ -753,6 +756,8 @@ class TestTableDMLAsync:
         async_empty_table_composite: DefaultAsyncTable,
         async_empty_table_all_returns: DefaultAsyncTable,
     ) -> None:
+        half_table_size = 5 * FIND_PAGE_SIZE + 16
+
         await async_empty_table_composite.insert_many(
             [
                 {
@@ -761,7 +766,7 @@ class TestTableDMLAsync:
                     "p_boolean": i % 2 == 0,
                     "p_vector": DataAPIVector([i, 5, 6]),
                 }
-                for i in range(120)
+                for i in range(half_table_size)
             ]
         )
         await async_empty_table_composite.insert_many(
@@ -772,17 +777,17 @@ class TestTableDMLAsync:
                     "p_boolean": i % 2 == 0,
                     "p_vector": DataAPIVector([i, 6, 5]),
                 }
-                for i in range(120)
+                for i in range(half_table_size)
             ]
         )
 
         # partition filter
         rows_a = await async_empty_table_composite.find({"p_text": "pA"}).to_list()
-        assert len(rows_a) == 120
+        assert len(rows_a) == half_table_size
         assert all(row["p_text"] == "pA" for row in rows_a)
         # no filters
         rows_all = await async_empty_table_composite.find({}).to_list()
-        assert len(rows_all) == 240
+        assert len(rows_all) == 2 * half_table_size
         # TODO: enable for Astra once #2089 gets to Astra
         if not IS_ASTRA_DB:
             # a logically-combined condition on the partition key should fail from DB:
@@ -794,13 +799,15 @@ class TestTableDMLAsync:
         rows_even_allps = await async_empty_table_composite.find(
             {"p_boolean": True}
         ).to_list()
-        assert len(rows_even_allps) == 2 * sum(1 - i % 2 for i in range(120))
+        assert len(rows_even_allps) == 2 * sum(
+            1 - i % 2 for i in range(half_table_size)
+        )
         assert all(row["p_boolean"] for row in rows_even_allps)
         # non-pk-column + partition key filter
         rows_even_a = await async_empty_table_composite.find(
             {"p_text": "pA", "p_boolean": True}
         ).to_list()
-        assert len(rows_even_a) == sum(1 - i % 2 for i in range(120))
+        assert len(rows_even_a) == sum(1 - i % 2 for i in range(half_table_size))
         assert all(row["p_text"] == "pA" for row in rows_even_a)
         assert all(row["p_boolean"] for row in rows_even_a)
 
@@ -830,7 +837,7 @@ class TestTableDMLAsync:
             limit=INSMANY_AR_ROW_HALFN + 1,
         ).to_list()
         # sorted finds in this case return at most one page and that's it:
-        assert len(srows_anycol) == 20
+        assert len(srows_anycol) == FIND_PAGE_SIZE
         srows_anycol_pints = [row["p_int"] for row in srows_anycol]
         assert sorted(srows_anycol_pints) == srows_anycol_pints[::-1]
 
