@@ -186,11 +186,13 @@ _(Tip: run a code search first to see what is currently marked as such. Chances 
 ### Page size increase (starting in v1.0.48)
 
 If tests are run against Data API v1.0.48 or higher, you must export the variable `FIND_PAGE_SIZE="50"` to ensure
-the cursor/pagination tests (Data API PR 2461) take the new setting into account (they would fail otherwise).
+the collection cursor/pagination tests (Data API PR 2461) take the new setting into account (they would fail otherwise).
 
 Removal of this special flag will have to wait until the new version is regularly deployed in production, at which
 point it will make sense to bump the Data API version in the HCD integration test compose file as well and hardcode
 the value of 50.
+
+_Note:_ A table counterpart for this environment variable, `TABLE_FIND_PAGE_SIZE`, exists. It should not be needed at this point, as long as the Data API's page size for table reads is 20, matching the default hardcoded in the (table) tests.
 
 ### Legacy ordered-insert-many behaviour
 

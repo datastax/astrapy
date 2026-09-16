@@ -28,9 +28,9 @@ from astrapy.exceptions import CursorException
 from ..conftest import DefaultTable
 
 # TODO: once v1.0.48 is in production, hardcode 50 and bump Data API version in docker compose file:
-FIND_PAGE_SIZE = int(os.environ.get("FIND_PAGE_SIZE") or "20")
-NUM_ROWS = 2 * FIND_PAGE_SIZE + 5
-NUM_ROWS_PAGINATION = 2 * (2 * FIND_PAGE_SIZE) + 5
+TABLE_FIND_PAGE_SIZE = int(os.environ.get("TABLE_FIND_PAGE_SIZE") or "20")
+NUM_ROWS = 2 * TABLE_FIND_PAGE_SIZE + 5
+NUM_ROWS_PAGINATION = 2 * (2 * TABLE_FIND_PAGE_SIZE) + 5
 
 
 @pytest.fixture
@@ -164,16 +164,16 @@ class TestTableCursorSync:
         next(cur)
         # now this has (page - 1) items in buffer, one is consumed
         assert cur.consumed == 1
-        assert cur.buffered_count == FIND_PAGE_SIZE - 1
+        assert cur.buffered_count == TABLE_FIND_PAGE_SIZE - 1
         assert len(cur.consume_buffer(3)) == 3
         assert cur.consumed == 4
-        assert cur.buffered_count == FIND_PAGE_SIZE - 4
+        assert cur.buffered_count == TABLE_FIND_PAGE_SIZE - 4
         # from time to time the buffer is empty:
-        for _ in range(FIND_PAGE_SIZE - 4):
+        for _ in range(TABLE_FIND_PAGE_SIZE - 4):
             next(cur)
         assert cur.buffered_count == 0
         assert cur.consume_buffer(3) == []
-        assert cur.consumed == FIND_PAGE_SIZE
+        assert cur.consumed == TABLE_FIND_PAGE_SIZE
         assert cur.buffered_count == 0
 
         with pytest.raises(CursorException):
@@ -226,14 +226,14 @@ class TestTableCursorSync:
         assert curmf.has_next()
         assert curmf.consumed == 2
         assert curmf.state == CursorState.STARTED
-        for _ in range(FIND_PAGE_SIZE - 2):
+        for _ in range(TABLE_FIND_PAGE_SIZE - 2):
             next(curmf)
         assert curmf.buffered_count == 0
         assert curmf.has_next()
-        assert curmf.buffered_count == FIND_PAGE_SIZE
-        assert curmf.consumed == FIND_PAGE_SIZE
+        assert curmf.buffered_count == TABLE_FIND_PAGE_SIZE
+        assert curmf.consumed == TABLE_FIND_PAGE_SIZE
         assert curmf.state == CursorState.STARTED
-        assert curmf.buffered_count == FIND_PAGE_SIZE
+        assert curmf.buffered_count == TABLE_FIND_PAGE_SIZE
 
         cur0 = filled_composite_table.find()
         cur0.close()
@@ -433,7 +433,7 @@ class TestTableCursorSync:
         filled_pagination_composite_table: DefaultTable,
     ) -> None:
         cur0 = filled_pagination_composite_table.find(filter={"p_boolean": True})
-        ids0 = [doc["p_int"] for _, doc in zip(range(FIND_PAGE_SIZE), cur0)]
+        ids0 = [doc["p_int"] for _, doc in zip(range(TABLE_FIND_PAGE_SIZE), cur0)]
         nps0 = cur0._next_page_state
         assert isinstance(nps0, str)
 
@@ -441,7 +441,7 @@ class TestTableCursorSync:
             filter={"p_boolean": True},
             initial_page_state=nps0,
         )
-        ids1 = [doc["p_int"] for _, doc in zip(range(FIND_PAGE_SIZE), cur1)]
+        ids1 = [doc["p_int"] for _, doc in zip(range(TABLE_FIND_PAGE_SIZE), cur1)]
         nps1 = cur1._next_page_state
         assert isinstance(nps1, str)
 
@@ -449,7 +449,7 @@ class TestTableCursorSync:
             filter={"p_boolean": True},
             initial_page_state=nps1,
         )
-        ids2 = [doc["p_int"] for _, doc in zip(range(FIND_PAGE_SIZE), cur2)]
+        ids2 = [doc["p_int"] for _, doc in zip(range(TABLE_FIND_PAGE_SIZE), cur2)]
         assert cur2._next_page_state is None
 
         expected_ids = [i for i in range(NUM_ROWS_PAGINATION) if i % 2 == 0]
