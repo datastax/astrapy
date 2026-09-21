@@ -54,8 +54,7 @@ from .table_row_assets import (
     SIMPLE_SEVEN_ROWS_OK,
 )
 
-# TODO: once v1.0.48 is in production, hardcode 50 and bump Data API version in docker compose file:
-FIND_PAGE_SIZE = int(os.environ.get("FIND_PAGE_SIZE") or "20")
+TABLE_FIND_PAGE_SIZE = int(os.environ.get("TABLE_FIND_PAGE_SIZE") or "20")
 
 
 class TestTableDMLAsync:
@@ -756,7 +755,7 @@ class TestTableDMLAsync:
         async_empty_table_composite: DefaultAsyncTable,
         async_empty_table_all_returns: DefaultAsyncTable,
     ) -> None:
-        half_table_size = 5 * FIND_PAGE_SIZE + 16
+        half_table_size = 5 * TABLE_FIND_PAGE_SIZE + 16
 
         await async_empty_table_composite.insert_many(
             [
@@ -837,7 +836,7 @@ class TestTableDMLAsync:
             limit=INSMANY_AR_ROW_HALFN + 1,
         ).to_list()
         # sorted finds in this case return at most one page and that's it:
-        assert len(srows_anycol) == FIND_PAGE_SIZE
+        assert len(srows_anycol) == TABLE_FIND_PAGE_SIZE
         srows_anycol_pints = [row["p_int"] for row in srows_anycol]
         assert sorted(srows_anycol_pints) == srows_anycol_pints[::-1]
 
