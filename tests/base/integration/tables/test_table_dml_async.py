@@ -55,6 +55,8 @@ from .table_row_assets import (
 )
 
 TABLE_FIND_PAGE_SIZE = int(os.environ.get("TABLE_FIND_PAGE_SIZE") or "20")
+# TODO edit or remove this setting to reflect adaptation of Data API:
+TABLE_IN_MEMORY_SORT_PAGE_SIZE = 50
 
 
 class TestTableDMLAsync:
@@ -835,8 +837,8 @@ class TestTableDMLAsync:
             sort={"p_float": SortMode.DESCENDING},
             limit=INSMANY_AR_ROW_HALFN + 1,
         ).to_list()
-        # sorted finds in this case return at most one page and that's it:
-        assert len(srows_anycol) == TABLE_FIND_PAGE_SIZE
+        # sorted finds in this case return at most one page (of a fixed size) and that's it:
+        assert len(srows_anycol) == TABLE_IN_MEMORY_SORT_PAGE_SIZE
         srows_anycol_pints = [row["p_int"] for row in srows_anycol]
         assert sorted(srows_anycol_pints) == srows_anycol_pints[::-1]
 
@@ -896,8 +898,8 @@ class TestTableDMLAsync:
             sort={"p_vector": DataAPIVector([COMPOSITE_VECTOR_ROWS_N, 0, 0])},
             limit=2 * COMPOSITE_VECTOR_ROWS_N + 2,
         ).to_list()
-        assert len(vrows_in_part) == 2 * sum(
-            1 - i % 2 for i in range(COMPOSITE_VECTOR_ROWS_N)
+        assert len(vrows_in_part) == 2 * len(
+            [1 for i in range(COMPOSITE_VECTOR_ROWS_N) if i % 2 == 0]
         )
         ints = [row["p_int"] for row in vrows_in_part]
         assert all(i % 2 == 0 for i in ints)

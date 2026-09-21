@@ -44,10 +44,9 @@ jobs:
       HEADER_EMBEDDING_API_KEY_VOYAGEAI: ${{ secrets.HEADER_EMBEDDING_API_KEY_VOYAGEAI }}
       DOCKER_COMPOSE_LOCAL_DATA_API: ${{ secrets.DOCKER_COMPOSE_LOCAL_DATA_API }}
       HEADER_RERANKING_API_KEY_NVIDIA: ${{ secrets.HEADER_RERANKING_API_KEY_NVIDIA }}
-      FIND_PAGE_SIZE: ${{ secrets.FIND_PAGE_SIZE }}
-      # Astra prod deployment has not yet a Data API version with 50 for tables: hardcoding for local
+      # Contrary to Astra DB, these are hardcoded for HCD since we pin the Data API version in the compose file:
+      FIND_PAGE_SIZE: 50
       TABLE_FIND_PAGE_SIZE: 50
-      # TABLE_FIND_PAGE_SIZE: ${{ secrets.TABLE_FIND_PAGE_SIZE }}
     runs-on: ubuntu-latest
 
 
