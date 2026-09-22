@@ -217,7 +217,7 @@ def test_parse_databasedefinition() -> None:
         region="the_region2",
         tier="the_tier2",
         capacity_units=3333,
-        db_type="non_vector",
+        db_type="nonvector",
         keyspace="the_keyspace2",
         pcu_group_id="the_pcuGroupUUID2",
     )
@@ -226,7 +226,7 @@ def test_parse_databasedefinition() -> None:
         region="the_region2",
         tier="the_tier2",
         capacity_units=3333,
-        db_type="nonVector",  # a different form
+        db_type="non-vector",  # a different form
         keyspace="the_keyspace2",
         pcu_group_id="the_pcuGroupUUID2",
     )

@@ -27,7 +27,9 @@ from astrapy.settings.defaults import (
 )
 from astrapy.utils.parsing import _warn_residual_keys
 
-NONVECTOR_DB_TYPE_STRINGS = ["non_vector", "non vector", "nonvector", "non-vector"]
+# The absence of the `dbType` field in payloads translates to
+# db_type='nonvector' in the class (or equivalent, synonymous terms):
+NONVECTOR_DB_TYPE_STRINGS = ["nonvector", "non_vector", "non vector", "non-vector"]
 
 
 def _failsafe_parse_date(date_string: str | None) -> datetime.datetime | None:
@@ -446,6 +448,8 @@ class DatabaseDefinition:
             pieces.append(f"capacity_units={self.capacity_units}")
         if self.db_type is not None:
             pieces.append(f"db_type={self.db_type}")
+        else:
+            pieces.append(f"db_type={NONVECTOR_DB_TYPE_STRINGS[0]}")
         if self.keyspace is not None:
             pieces.append(f"keyspace={self.keyspace}")
         if self.pcu_group_id is not None:
