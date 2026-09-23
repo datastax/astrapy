@@ -14,16 +14,15 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python
-      uses: actions/setup-python@v2
+
+    - name: Set up Python + uv
+      uses: "./.github/actions/uv_setup"
       with:
-        python-version: '3.11' # Or any version you prefer
+        python-version: "3.11"
 
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pipx install uv
-        make venv
+      run: uv sync --dev
+      shell: bash
 
     - name: Ruff Linting AstraPy
       run: |
