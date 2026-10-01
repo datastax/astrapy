@@ -168,6 +168,11 @@ All the usual `pytest` ways of restricting the test selection hold
 # suppress log noise
 uv run pytest [...] -o log_cli=0
 
+# bare-bones test output (adjust as desired)
+uv run pytest [...] -o addopts="-v" \
+    --log-cli-level=ERROR --no-summary \
+    --no-header
+
 # increase log level
 uv run pytest [...] -o log_cli=1 --log-cli-level=10
 ```

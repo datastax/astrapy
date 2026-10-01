@@ -1,3 +1,7 @@
+main
+====
+maintenance: introduced truncate_by_enumeration for test fixtures, to avoid schema fatigue.
+
 v 2.3.1
 =======
 Table vectorize config: dimension can be omitted when creating `TableVectorColumnTypeDescriptor`:

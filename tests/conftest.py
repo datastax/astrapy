@@ -21,6 +21,7 @@ from __future__ import annotations
 import functools
 import warnings
 from collections.abc import Awaitable, Callable, Iterable, Iterator
+from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Any, TypedDict
 
 import pytest
@@ -73,6 +74,8 @@ from .preprocess_env import (
     SECONDARY_KEYSPACE,
     USE_RERANKER_API_KEY_HEADER,
 )
+
+TRUNCATE_BY_ENUMERATION_MAX_CONCURRENCY = 50
 
 CQL_AVAILABLE = False
 try:
@@ -219,8 +222,15 @@ def truncate_by_enumeration(
             doc["_id"]
             for doc in target.find({}, projection={"_id": True, "_fake": True})
         }
-        for the_id in c_ids:
-            target.delete_one({"_id": the_id})
+
+        def c_deleter(c_id: Any) -> None:
+            target.delete_one({"_id": c_id})
+
+        with ThreadPoolExecutor(
+            max_workers=TRUNCATE_BY_ENUMERATION_MAX_CONCURRENCY
+        ) as executor:
+            executor.map(c_deleter, c_ids)
+
     elif isinstance(target, Table):
         # optimization: deletions are per-partition (and not per-row)
         table_def = target.definition()
@@ -230,10 +240,16 @@ def truncate_by_enumeration(
             tuple(row[pak] for pak in pak_fields)
             for row in target.find({}, projection=proj)
         }
-        for the_id in t_ids:
+
+        def t_deleter(t_id: Any) -> None:
             target.delete_many(
-                filter={pak: pval for pak, pval in zip(pak_fields, the_id)}
+                filter={pak: pval for pak, pval in zip(pak_fields, t_id)}
             )
+
+        with ThreadPoolExecutor(
+            max_workers=TRUNCATE_BY_ENUMERATION_MAX_CONCURRENCY
+        ) as executor:
+            executor.map(t_deleter, t_ids)
 
 
 @pytest.fixture(scope="session")
