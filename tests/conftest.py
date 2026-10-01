@@ -32,7 +32,13 @@ if TYPE_CHECKING:
     from cassio.config import get_session_and_keyspace
 
 import astrapy
-from astrapy import AsyncDatabase, DataAPIClient, Database
+from astrapy import (
+    AsyncDatabase,
+    Collection,
+    DataAPIClient,
+    Database,
+    Table,
+)
 from astrapy.admin import parse_api_endpoint
 from astrapy.api_options import APIOptions, TimeoutOptions
 from astrapy.authentication import TokenProvider
@@ -198,6 +204,36 @@ def clean_nulls_from_dict(in_dict: dict[str, Any]) -> dict[str, Any]:
             return _in
 
     return _cleand(in_dict)  # type: ignore[no-any-return]
+
+
+def truncate_by_enumeration(
+    target: Collection[dict[str, Any]] | Table[dict[str, Any]],
+) -> None:
+    """
+    Remove all documents/rows from a collection/table without issuing a truncate
+    (i.e. a `delete_many({})`), to avoid doing unnecessary metadata/schema operations.
+    """
+    if isinstance(target, Collection):
+        c_ids = {
+            # such a projection is a trick to get only the _id
+            doc["_id"]
+            for doc in target.find({}, projection={"_id": True, "_fake": True})
+        }
+        for the_id in c_ids:
+            target.delete_one({"_id": the_id})
+    elif isinstance(target, Table):
+        # optimization: deletions are per-partition (and not per-row)
+        table_def = target.definition()
+        pak_fields = table_def.primary_key.partition_by
+        proj = {pk_col: True for pk_col in pak_fields}
+        t_ids = {
+            tuple(row[pak] for pak in pak_fields)
+            for row in target.find({}, projection=proj)
+        }
+        for the_id in t_ids:
+            target.delete_many(
+                filter={pak: pval for pak, pval in zip(pak_fields, the_id)}
+            )
 
 
 @pytest.fixture(scope="session")
