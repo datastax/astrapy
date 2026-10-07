@@ -27,6 +27,7 @@ from ..conftest import (
     RUN_SHARED_SECRET_VECTORIZE_TESTS,
     VECTORIZE_TEXTS,
     DefaultTable,
+    truncate_by_enumeration,
 )
 
 
@@ -76,7 +77,7 @@ class TestTableVectorizeSync:
         )
         assert vec_row == t_row
 
-        authenticated_table.delete_many({})
+        truncate_by_enumeration(authenticated_table)
         authenticated_table.insert_many(
             [
                 {"p_text": f"t_{text_i}", "p_vector": text}
@@ -177,7 +178,7 @@ class TestTableVectorizeSync:
         )
         assert vec_row == t_row
 
-        sync_empty_table_kms_vectorize.delete_many({})
+        truncate_by_enumeration(sync_empty_table_kms_vectorize)
         sync_empty_table_kms_vectorize.insert_many(
             [
                 {"p_text": f"t_{text_i}", "p_vector": text}

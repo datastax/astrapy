@@ -18,6 +18,7 @@ Main conftest for shared fixtures (if any).
 
 from __future__ import annotations
 
+import asyncio
 import functools
 import warnings
 from collections.abc import Awaitable, Callable, Iterable, Iterator
@@ -34,7 +35,9 @@ if TYPE_CHECKING:
 
 import astrapy
 from astrapy import (
+    AsyncCollection,
     AsyncDatabase,
+    AsyncTable,
     Collection,
     DataAPIClient,
     Database,
@@ -210,7 +213,7 @@ def clean_nulls_from_dict(in_dict: dict[str, Any]) -> dict[str, Any]:
 
 
 def truncate_by_enumeration(
-    target: Collection[dict[str, Any]] | Table[dict[str, Any]],
+    target: Collection[Any] | Table[Any],
 ) -> None:
     """
     Remove all documents/rows from a collection/table without issuing a truncate
@@ -250,6 +253,43 @@ def truncate_by_enumeration(
             max_workers=TRUNCATE_BY_ENUMERATION_MAX_CONCURRENCY
         ) as executor:
             executor.map(t_deleter, t_ids)
+
+
+async def async_truncate_by_enumeration(
+    target: AsyncCollection[Any] | AsyncTable[Any],
+) -> None:
+    """
+    Remove all documents/rows from a collection/table without issuing a truncate
+    (i.e. a `delete_many({})`), to avoid doing unnecessary metadata/schema operations.
+    """
+    if isinstance(target, AsyncCollection):
+        c_ids = {
+            # such a projection is a trick to get only the _id
+            doc["_id"]
+            async for doc in target.find({}, projection={"_id": True, "_fake": True})
+        }
+
+        async def c_deleter(c_id: Any) -> None:
+            await target.delete_one({"_id": c_id})
+
+        await asyncio.gather(*[c_deleter(c_id) for c_id in c_ids])
+
+    elif isinstance(target, AsyncTable):
+        # optimization: deletions are per-partition (and not per-row)
+        table_def = await target.definition()
+        pak_fields = table_def.primary_key.partition_by
+        proj = {pk_col: True for pk_col in pak_fields}
+        t_ids = {
+            tuple(row[pak] for pak in pak_fields)
+            async for row in target.find({}, projection=proj)
+        }
+
+        async def t_deleter(t_id: Any) -> None:
+            await target.delete_many(
+                filter={pak: pval for pak, pval in zip(pak_fields, t_id)}
+            )
+
+        await asyncio.gather(*[t_deleter(t_id) for t_id in t_ids])
 
 
 @pytest.fixture(scope="session")

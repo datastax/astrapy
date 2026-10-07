@@ -35,6 +35,7 @@ from ..conftest import (
     DefaultAsyncTable,
     _repaint_NaNs,
     _typify_tuple,
+    async_truncate_by_enumeration,
 )
 from .table_row_assets import (
     AR_ROW_0,
@@ -393,14 +394,14 @@ class TestTableDMLAsync:
             assert all(exp.command != exps[0].command for exp in exps[1:])  # type: ignore[attr-defined]
 
         # ordered, good rows
-        await async_table_simple.delete_many({})
+        await async_truncate_by_enumeration(async_table_simple)
         i_result = await async_table_simple.insert_many(
             SIMPLE_SEVEN_ROWS_OK, ordered=True, chunk_size=2
         )
         await _assert_consistency(["p1", "p2", "p3", "p4", "p5", "p6", "p7"], i_result)
 
         # ordered, failing first batch
-        await async_table_simple.delete_many({})
+        await async_truncate_by_enumeration(async_table_simple)
         with pytest.raises(TableInsertManyException) as exc:
             await async_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F2, ordered=True, chunk_size=2
@@ -412,7 +413,7 @@ class TestTableDMLAsync:
         _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # ordered, failing later batch
-        await async_table_simple.delete_many({})
+        await async_truncate_by_enumeration(async_table_simple)
         with pytest.raises(TableInsertManyException) as exc:
             await async_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F4, ordered=True, chunk_size=2
@@ -424,14 +425,14 @@ class TestTableDMLAsync:
         _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # unordered/concurrency=1, good rows
-        await async_table_simple.delete_many({})
+        await async_truncate_by_enumeration(async_table_simple)
         await async_table_simple.insert_many(
             SIMPLE_SEVEN_ROWS_OK, ordered=False, chunk_size=2, concurrency=1
         )
         await _assert_consistency(["p1", "p2", "p3", "p4", "p5", "p6", "p7"], i_result)
 
         # unordered/concurrency=1, failing first batch
-        await async_table_simple.delete_many({})
+        await async_truncate_by_enumeration(async_table_simple)
         with pytest.raises(TableInsertManyException) as exc:
             await async_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F2, ordered=False, chunk_size=2, concurrency=1
@@ -440,7 +441,7 @@ class TestTableDMLAsync:
         _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # unordered/concurrency=1, failing later batch
-        await async_table_simple.delete_many({})
+        await async_truncate_by_enumeration(async_table_simple)
         with pytest.raises(TableInsertManyException) as exc:
             await async_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F4, ordered=False, chunk_size=2, concurrency=1
@@ -449,14 +450,14 @@ class TestTableDMLAsync:
         _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # unordered/concurrency=2, good rows
-        await async_table_simple.delete_many({})
+        await async_truncate_by_enumeration(async_table_simple)
         i_result = await async_table_simple.insert_many(
             SIMPLE_SEVEN_ROWS_OK, ordered=False, chunk_size=2, concurrency=2
         )
         await _assert_consistency(["p1", "p2", "p3", "p4", "p5", "p6", "p7"], i_result)
 
         # unordered/concurrency=2, failing first batch
-        await async_table_simple.delete_many({})
+        await async_truncate_by_enumeration(async_table_simple)
         with pytest.raises(TableInsertManyException) as exc:
             await async_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F2, ordered=False, chunk_size=2, concurrency=2
@@ -465,7 +466,7 @@ class TestTableDMLAsync:
         _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # unordered/concurrency=2, failing later batch
-        await async_table_simple.delete_many({})
+        await async_truncate_by_enumeration(async_table_simple)
         with pytest.raises(TableInsertManyException) as exc:
             await async_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F4, ordered=False, chunk_size=2, concurrency=2
@@ -484,19 +485,19 @@ class TestTableDMLAsync:
         many_rows = [{"p_text": f"r_{i}", "p_int": i} for i in range(200)]
         exp_tuple_set = {(row["p_text"],) for row in many_rows}
         # ordered
-        await async_table_simple.delete_many({})
+        await async_truncate_by_enumeration(async_table_simple)
         ins_res_o = await async_table_simple.insert_many(many_rows, ordered=True)
         assert set(ins_res_o.inserted_id_tuples) == exp_tuple_set
         assert len(await async_table_simple.find().to_list()) == len(many_rows)
         # unordered, concurrency=1
-        await async_table_simple.delete_many({})
+        await async_truncate_by_enumeration(async_table_simple)
         ins_res_u_c1 = await async_table_simple.insert_many(
             many_rows, ordered=False, concurrency=1
         )
         assert set(ins_res_u_c1.inserted_id_tuples) == exp_tuple_set
         assert len(await async_table_simple.find().to_list()) == len(many_rows)
         # unordered, concurrency>1
-        await async_table_simple.delete_many({})
+        await async_truncate_by_enumeration(async_table_simple)
         ins_res_u_cn = await async_table_simple.insert_many(
             many_rows, ordered=False, concurrency=10
         )
@@ -599,7 +600,7 @@ class TestTableDMLAsync:
             )
 
         # $set
-        await async_table_simple.delete_many({})
+        await async_truncate_by_enumeration(async_table_simple)
         assert await async_table_simple.find_one({"p_text": "A"}) is None
 
         # $set, new row
@@ -654,7 +655,7 @@ class TestTableDMLAsync:
         assert await async_table_simple.find_one({"p_text": "A"}) is None
 
         # $unset
-        await async_table_simple.delete_many({})
+        await async_truncate_by_enumeration(async_table_simple)
         await async_table_simple.insert_one(
             {"p_text": "B", "p_int": 123, "p_vector": DataAPIVector([9, 8, 7])}
         )
@@ -873,7 +874,7 @@ class TestTableDMLAsync:
         assert ls_rows_A == ls_rows_B
 
         # find with ANN
-        await async_empty_table_composite.delete_many({})
+        await async_truncate_by_enumeration(async_empty_table_composite)
         await async_empty_table_composite.insert_many(COMPOSITE_VECTOR_ROWS)
         # in a partition
         vrows_in_part = await async_empty_table_composite.find(
