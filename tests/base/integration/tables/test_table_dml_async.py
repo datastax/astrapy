@@ -879,7 +879,7 @@ class TestTableDMLAsync:
         # in a partition
         vrows_in_part = await async_empty_table_composite.find(
             filter={"p_text": "A"},
-            sort={"p_vector": DataAPIVector([COMPOSITE_VECTOR_ROWS_N, 0, 0])},
+            sort={"p_vector": DataAPIVector([COMPOSITE_VECTOR_ROWS_N, 0, 1])},
             limit=COMPOSITE_VECTOR_ROWS_N + 2,
         ).to_list()
         assert len(vrows_in_part) == COMPOSITE_VECTOR_ROWS_N
@@ -887,7 +887,7 @@ class TestTableDMLAsync:
         assert sorted(ints, reverse=True) == ints
         # across all partitions
         vrows_overall = await async_empty_table_composite.find(
-            sort={"p_vector": DataAPIVector([COMPOSITE_VECTOR_ROWS_N, 0, 0])},
+            sort={"p_vector": DataAPIVector([COMPOSITE_VECTOR_ROWS_N, 0, 1])},
             limit=2 * COMPOSITE_VECTOR_ROWS_N + 2,
         ).to_list()
         assert len(vrows_overall) == 2 * COMPOSITE_VECTOR_ROWS_N
@@ -896,7 +896,7 @@ class TestTableDMLAsync:
         # filtering on a non-pk column
         vrows_filtered = await async_empty_table_composite.find(
             filter={"p_boolean": True},
-            sort={"p_vector": DataAPIVector([COMPOSITE_VECTOR_ROWS_N, 0, 0])},
+            sort={"p_vector": DataAPIVector([COMPOSITE_VECTOR_ROWS_N, 0, 1])},
             limit=2 * COMPOSITE_VECTOR_ROWS_N + 2,
         ).to_list()
         assert len(vrows_filtered) == 2 * len(
