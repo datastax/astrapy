@@ -68,18 +68,63 @@ the `tests/env_templates/*.base.template` examples.
 Note that the variables defined in the desired "base" template **must** be set to run test, even for unit tests.
 
 Additionally, you will need to define the environment variables in `tests/env_templates/env.vectorize-minimal.template`,
-which are needed by the minimal set of "vectorize" testing belonging to the "base" test group.
+which are needed by the minimal set of embedding-generation testing belonging to the "base" test group.
 These rely on a single embedding provider and model
 (the one configured in `embedding_provider_switcher.py`, to match variables in the env template).
 
-For Astra DB, you can include "shared secret" vectorize tests (i.e. KMS-based authentication).
-To run those tests, you must scope an embedding provider API key
-to the target Astra DB with secret name matching the name set in
-the provider-switcher (e.g. `"SHARED_SECRET_EMBEDDING_API_KEY_VOYAGEAI"`).
-and comment the environment flag that suppresses them (see the base Astra env template).
-
 For non-Astra, the reranking-related tests run only if one sets
 `HEADER_RERANKING_API_KEY_NVIDIA="AstraCS:<dev token...>` (as shown in the Local/DockerCompose base env templates).
+
+#### Vectorize group of tests
+
+These test exercise (albeit with a simplified workload) all available providers, models and authentication modes. Additionally, for the models where it makes sense, a "minimal config" and a "full config" tests are run separately, the latter specifying all optional parameters that the former leaves to their defaults.
+
+The credentials needed are outlined in `tests/env_templates/env.vectorize.template`. In particular, the overall flag `TEST_EXTENDED_VECTORIZE="yes"` must be set for these to run.
+
+Test cases are identified by a quadruple such as `voyageAI/voyage-2/HEADER/0`, i.e. `provider/model/auth mode/config`, where `auth mode = HEADER, NONE, SHARED_SECRET` and `config = 0, f`.
+
+When these tests are run, test cases are constructed by first querying the database with `find_embedding_providers`. Available providers will yield a number of cases based on their configuration.
+
+- To run the `SHARED_SECRET` tests, the database must be scoped with the appropriate provider API Keys, with KMS secret name such as `"SHARED_SECRET_EMBEDDING_API_KEY_VOYAGEAI"` (consult the aforementioned `env.vectorize.template` for details);
+- To run the `HEADER` tests, multiple environment variables must be set for all providers (see `env.vectorize.template`);
+- The tests can be restricted to one or two specific auth modes by adding e.g. `-k "header or none"` to the `pytest` invocation.
+
+If testing a certain provider, all related env. variables seen in the `env.vectorize.template` file **must** be set as well.
+
+There are some hardcoded rules that programmatically disable certain test cases. These are probably to be changed only when something changes on the server-side.
+
+_Handpicking test cases_.
+
+The environment variable `EMBEDDING_MODEL_TAGS` allows to manually select a closed set of test cases rather than running all generated ones. It must be set to a comma-separated list of test case quadruple-strings (an example is given below). Note that this manual restriction notwithstanding, the full set of environment variables mandated by `env.vectorize.template` must be defined. Including a quadruple that is not available among the generated test cases also yields a blocking error.
+
+_Choosing a subset of providers_.
+
+By default, the tests exercise _all_ providers (save for those that are unavailable on the database or programmatically disabled). That means, missing secrets (missing environment variables) will stop the whole error run with an exception. However, by setting the environment variable `ADJUST_TO_AVAILABLE_VECTORIZE_CREDENTIALS="yes"`, the providers for which no secret is defined will simply be excluded from the test.
+
+Here is a little summary:
+
+- `TEST_EXTENDED_VECTORIZE="no"` (default if unset). Do not run any of the vectorize tests.
+- `TEST_EXTENDED_VECTORIZE="yes"`:
+    - `ADJUST_TO_AVAILABLE_VECTORIZE_CREDENTIALS="no"` (default if unset). Requires ALL credentials and accessory env. variables as per `env.vectorize.template` (no matter further prescriptions either programmatic or via `EMBEDDING_MODEL_TAGS`)
+    - `ADJUST_TO_AVAILABLE_VECTORIZE_CREDENTIALS="yes"`: provider(s) are selected[1] based on availability of `HEADER_EMBEDDING_API_KEY_<provider>` env vars (for Bedrock, the decisive env var is instead `HEADER_EMBEDDING_SECRET_ID_BEDROCK`).
+
+Notes:
+
+1. When `ADJUST_TO_AVAILABLE_VECTORIZE_CREDENTIALS="yes"`, the API Key env. variabless are used to select the providers to consider in the tests, *regardless of the auth mode*. In other words, the absence of `HEADER_EMBEDDING_API_KEY_VOYAGEAI` implies that not even `SHARED_SECRET` VoyageAI will be listed as run candidate.
+2. When adjusting to the available env. variables, `EMBEDDING_MODEL_TAGS` cannot request test cases with unavailable providers. For example, a test will stop with an error if invoked with `EMBEDDING_MODEL_TAGS="voyageAI/voyage-2/HEADER/0"` while `HEADER_EMBEDDING_API_KEY_VOYAGEAI` is not set.
+3. In a scenario where (a) there are no scoped KMS secrets and (b) only certain secrets are set as env. variables could be run like this:
+
+```
+# (export *a subset of* the various HEADER_EMBEDDING_API_KEY_<provider> first...)
+TEST_EXTENDED_VECTORIZE="yes" \
+    ADJUST_TO_AVAILABLE_VECTORIZE_CREDENTIALS="yes" \
+    uv run pytest tests/vectorize/integration -k "header or none"
+```
+
+
+_When the server exposes a new provider_.
+
+This case results in the tests breaking because the newly-generated test case is not handled by the code, and this is by design. Adding management for a new provider involves code changes.
 
 ### Docker vs. Podman
 

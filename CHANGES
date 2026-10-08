@@ -1,6 +1,9 @@
 main
 ====
 `create_database`: the preferred term for a nonvector DB is "nonvector" (instead of "non-vector")
+maintenance:
+    - added the `ADJUST_TO_AVAILABLE_VECTORIZE_CREDENTIALS` flag for the vectorize tests to pick providers based on secrets available in env. vars
+    - expanded the `DEVELOPING.md` guidance on vectorize testing.
 maintenance: bumped Data API version for HCD integration tests (v1.0.53)
 maintenance: introduced truncate_by_enumeration for test fixtures, to avoid schema fatigue.
 maintenance: finer control over table/collection find-page-size settings in tests
