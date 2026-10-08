@@ -886,23 +886,23 @@ class TestTableDMLAsync:
         ints = [row["p_int"] for row in vrows_in_part]
         assert sorted(ints, reverse=True) == ints
         # across all partitions
-        vrows_in_part = await async_empty_table_composite.find(
+        vrows_overall = await async_empty_table_composite.find(
             sort={"p_vector": DataAPIVector([COMPOSITE_VECTOR_ROWS_N, 0, 0])},
             limit=2 * COMPOSITE_VECTOR_ROWS_N + 2,
         ).to_list()
-        assert len(vrows_in_part) == 2 * COMPOSITE_VECTOR_ROWS_N
-        ints = [row["p_int"] for row in vrows_in_part]
+        assert len(vrows_overall) == 2 * COMPOSITE_VECTOR_ROWS_N
+        ints = [row["p_int"] for row in vrows_overall]
         assert sorted(ints, reverse=True) == ints
         # filtering on a non-pk column
-        vrows_in_part = await async_empty_table_composite.find(
+        vrows_filtered = await async_empty_table_composite.find(
             filter={"p_boolean": True},
             sort={"p_vector": DataAPIVector([COMPOSITE_VECTOR_ROWS_N, 0, 0])},
             limit=2 * COMPOSITE_VECTOR_ROWS_N + 2,
         ).to_list()
-        assert len(vrows_in_part) == 2 * len(
+        assert len(vrows_filtered) == 2 * len(
             [1 for i in range(COMPOSITE_VECTOR_ROWS_N) if i % 2 == 0]
         )
-        ints = [row["p_int"] for row in vrows_in_part]
+        ints = [row["p_int"] for row in vrows_filtered]
         assert all(i % 2 == 0 for i in ints)
         assert sorted(ints, reverse=True) == ints
 
