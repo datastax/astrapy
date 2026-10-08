@@ -116,7 +116,7 @@ jobs:
         with:
           name: coverage-json-push-${{ github.sha }}
           path: coverage.json
-          retention-days: 30
+          retention-days: 90
 
       - name: produce coverage HTML report
         if: ${{ github.event.action != 'closed' }}
