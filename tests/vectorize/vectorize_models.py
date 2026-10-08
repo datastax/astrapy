@@ -30,9 +30,14 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from live_provider_info import live_provider_info
 
+try:
+    from .conftest import extended_booleanize_env
+except ImportError:
+    from preprocess_env import extended_booleanize_env  # type: ignore[no-redef]
+
 alphanum = set("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890")
 
-TEST_EXTENDED_VECTORIZE = bool(os.environ.get("TEST_EXTENDED_VECTORIZE"))
+TEST_EXTENDED_VECTORIZE = extended_booleanize_env("TEST_EXTENDED_VECTORIZE")
 
 DEFAULT_TEST_ASSETS = {
     "samples": [

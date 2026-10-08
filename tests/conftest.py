@@ -76,6 +76,7 @@ from .preprocess_env import (
     RUN_SHARED_SECRET_VECTORIZE_TESTS,
     SECONDARY_KEYSPACE,
     USE_RERANKER_API_KEY_HEADER,
+    extended_booleanize_env,
 )
 
 TRUNCATE_BY_ENUMERATION_MAX_CONCURRENCY = 50
@@ -471,4 +472,5 @@ __all__ = [
     "LOCAL_DATA_API_TOKEN_PROVIDER",
     "RUN_SHARED_SECRET_VECTORIZE_TESTS",
     "USE_RERANKER_API_KEY_HEADER",
+    "extended_booleanize_env",
 ]
