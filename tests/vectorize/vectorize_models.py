@@ -135,10 +135,34 @@ def secret_env_var_name(provider_name: str) -> str | None:
 # Any "model tag" listed here is skipped no matter what.
 # (useful for models already from the findEmbProvs but not stable/working yet).
 EXCLUDED_MODEL_QUADRUPLES = {
-    # Cohere provider, while returned by FindEmbProv's, is not in scope for Vectorize and is skipped:
+    # No deployment available for us to test (as of now)
+    ("azureOpenAI", "text-embedding-3-large", "HEADER", "0"),
+    ("azureOpenAI", "text-embedding-3-large", "HEADER", "f"),
+    ("azureOpenAI", "text-embedding-3-small", "HEADER", "0"),
+    ("azureOpenAI", "text-embedding-3-small", "HEADER", "f"),
+    ("azureOpenAI", "text-embedding-ada-002", "HEADER", "f"),
+    ("azureOpenAI", "text-embedding-3-large", "SHARED_SECRET", "0"),
+    ("azureOpenAI", "text-embedding-3-large", "SHARED_SECRET", "f"),
+    ("azureOpenAI", "text-embedding-3-small", "SHARED_SECRET", "0"),
+    ("azureOpenAI", "text-embedding-3-small", "SHARED_SECRET", "f"),
+    ("azureOpenAI", "text-embedding-ada-002", "SHARED_SECRET", "f"),
+    # Cohere provider, while returned by FindEmbProv's for some DBs, is not in scope for Vectorize and is skipped:
     ("cohere", "embed-english-v2.0", "HEADER", "f"),
     ("cohere", "embed-english-v3.0", "HEADER", "f"),
     ("cohere", "embed-multilingual-v3.0", "HEADER", "f"),
+    # No working/recharged API Keys available (to my knowledge) for any HuggingFace
+    ("huggingface", "BAAI/bge-base-en-v1.5", "HEADER", "f"),
+    ("huggingface", "BAAI/bge-large-en-v1.5", "HEADER", "f"),
+    ("huggingface", "BAAI/bge-small-en-v1.5", "HEADER", "f"),
+    ("huggingface", "intfloat/multilingual-e5-large-instruct", "HEADER", "f"),
+    ("huggingface", "intfloat/multilingual-e5-large", "HEADER", "f"),
+    ("huggingface", "sentence-transformers/all-MiniLM-L6-v2", "HEADER", "f"),
+    ("huggingface", "BAAI/bge-base-en-v1.5", "SHARED_SECRET", "f"),
+    ("huggingface", "BAAI/bge-large-en-v1.5", "SHARED_SECRET", "f"),
+    ("huggingface", "BAAI/bge-small-en-v1.5", "SHARED_SECRET", "f"),
+    ("huggingface", "intfloat/multilingual-e5-large-instruct", "SHARED_SECRET", "f"),
+    ("huggingface", "intfloat/multilingual-e5-large", "SHARED_SECRET", "f"),
+    ("huggingface", "sentence-transformers/all-MiniLM-L6-v2", "SHARED_SECRET", "f"),
     # Pending a testable deployment, HuggingFace Dedicated testing is momentarily suspended:
     ("huggingfaceDedicated", "endpoint-defined-model", "HEADER", "f"),
     ("huggingfaceDedicated", "endpoint-defined-model", "SHARED_SECRET", "f"),
@@ -149,7 +173,7 @@ EXCLUDED_MODEL_QUADRUPLES = {
     ("openai", "text-embedding-3-large", "HEADER", "f"),
     ("openai", "text-embedding-3-small", "HEADER", "f"),
     ("openai", "text-embedding-ada-002", "HEADER", "f"),
-    # This appears on some DEV environments (probably will go away soon):
+    # This appears on some DEV environments (not sure if the provider will ever make into prod):
     ("vertexai", "textembedding-gecko@003", "HEADER", "0"),
     ("vertexai", "textembedding-gecko@003", "NONE", "0"),
     ("vertexai", "textembedding-gecko@003", "SHARED_SECRET", "0"),
@@ -287,9 +311,13 @@ if TEST_EXTENDED_VECTORIZE:
     # do not undergo the f/0 optional dimension because of that, rather have
     # a forced fixed, provided dimension.
     FORCE_DIMENSION_MAP = {
-        ("huggingfaceDedicated", "endpoint-defined-model"): int(
-            os.environ["HUGGINGFACEDED_DIMENSION"]
-        ),
+        duple: getter()  # type: ignore[no-untyped-call]
+        for duple, getter in {
+            ("huggingfaceDedicated", "endpoint-defined-model"): lambda: int(
+                os.environ["HUGGINGFACEDED_DIMENSION"]
+            )
+        }.items()
+        if duple[0] in providers_with_secret
     }
 else:
     # vectorize testing is entirely disabled: set empty prescriptions.
@@ -330,7 +358,10 @@ def live_test_models() -> Iterable[dict[str, Any]]:
                 for auth_type_name, auth_type_desc in sorted(
                     provider_desc.supported_authentication.items()
                 ):
-                    if auth_type_name == "NONE" or provider_name in providers_with_secret:
+                    if (
+                        auth_type_name == "NONE"
+                        or provider_name in providers_with_secret
+                    ):
                         if auth_type_desc.enabled:
                             # test assumptions on auth type
                             if auth_type_name == "NONE":
