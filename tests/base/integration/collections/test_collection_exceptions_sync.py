@@ -27,7 +27,11 @@ from astrapy.exceptions import (
     TooManyDocumentsToCountException,
 )
 
-from ..conftest import IS_ASTRA_DB, DefaultCollection
+from ..conftest import (
+    IS_ASTRA_DB,
+    DefaultCollection,
+    truncate_by_enumeration,
+)
 
 
 class TestCollectionExceptionsSync:
@@ -66,21 +70,21 @@ class TestCollectionExceptionsSync:
         assert set(im_result1.inserted_ids) == set(ok_ids)
         assert len(list(col.find({}))) == 6
 
-        col.delete_many({})
+        truncate_by_enumeration(col)
         im_result2 = col.insert_many(
             ok_docs, ordered=False, chunk_size=2, concurrency=1
         )
         assert set(im_result2.inserted_ids) == set(ok_ids)
         assert len(list(col.find({}))) == 6
 
-        col.delete_many({})
+        truncate_by_enumeration(col)
         im_result3 = col.insert_many(
             ok_docs, ordered=False, chunk_size=2, concurrency=2
         )
         assert set(im_result3.inserted_ids) == set(ok_ids)
         assert len(list(col.find({}))) == 6
 
-        col.delete_many({})
+        truncate_by_enumeration(col)
         with pytest.raises(CollectionInsertManyException) as exc:
             col.insert_many(dup_docs, ordered=True, chunk_size=2, concurrency=1)
         assert len(exc.value.exceptions) == 1
@@ -92,7 +96,7 @@ class TestCollectionExceptionsSync:
         assert exc.value.inserted_ids == ["a", "b"]
         assert {doc["_id"] for doc in col.find()} == {"a", "b"}
 
-        col.delete_many({})
+        truncate_by_enumeration(col)
         with pytest.raises(CollectionInsertManyException) as exc:
             col.insert_many(dup_docs, ordered=False, chunk_size=2, concurrency=1)
         assert len(exc.value.exceptions) == 2
@@ -110,7 +114,7 @@ class TestCollectionExceptionsSync:
         assert set(exc.value.inserted_ids) == {"a", "b", "d", "e", "f"}
         assert {doc["_id"] for doc in col.find()} == {"a", "b", "d", "e", "f"}
 
-        col.delete_many({})
+        truncate_by_enumeration(col)
         with pytest.raises(CollectionInsertManyException) as exc:
             im_result3 = col.insert_many(
                 dup_docs, ordered=False, chunk_size=2, concurrency=2
@@ -181,7 +185,7 @@ class TestCollectionExceptionsSync:
         col._name += "_hacked"
         col._api_commander.full_path += "_hacked"
         with pytest.raises(CollectionDeleteManyException):
-            col.delete_many({})
+            col.delete_many(filter={})
         with pytest.raises(CollectionUpdateManyException):
             col.update_many({}, update={"$set": {"a": 1}})
 

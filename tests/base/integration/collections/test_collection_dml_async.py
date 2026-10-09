@@ -37,7 +37,10 @@ from astrapy.ids import UUID, ObjectId
 from astrapy.results import CollectionDeleteResult, CollectionInsertOneResult
 from astrapy.utils.api_options import APIOptions, SerdesOptions
 
-from ..conftest import DefaultAsyncCollection
+from ..conftest import (
+    DefaultAsyncCollection,
+    async_truncate_by_enumeration,
+)
 
 # TODO: once v1.0.48 is in production, hardcode 50 and bump Data API version in docker compose file:
 FIND_PAGE_SIZE = int(os.environ.get("FIND_PAGE_SIZE") or "20")
@@ -330,13 +333,7 @@ class TestCollectionDMLAsync:
             == 1
         )
 
-        await async_empty_collection.delete_many({})
-        await async_empty_collection.insert_many([{"a": 1} for _ in range(50)])
-        do_result2 = await async_empty_collection.delete_many({"a": 1})
-        assert do_result2.deleted_count == 50
-        assert await async_empty_collection.count_documents({}, upper_bound=100) == 0
-
-        await async_empty_collection.delete_many({})
+        await async_truncate_by_enumeration(async_empty_collection)
         await async_empty_collection.insert_many([{"a": 1} for _ in range(50)])
         do_result2 = await async_empty_collection.delete_many({"a": 1})
         assert do_result2.deleted_count == 50
@@ -766,7 +763,7 @@ class TestCollectionDMLAsync:
 
         await acol.insert_one({"x": [{"y": "Y", "0": "ZERO"}]})
 
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
         await acol.insert_one({"x": [{"y": "Y", "0": "ZERO"}]})
 
         assert await acol.distinct(["x", "y"]) == ["Y"]
@@ -1332,35 +1329,35 @@ class TestCollectionDMLAsync:
         resp0010 = await acol.find_one_and_replace({"f": 0}, {"r": 1}, upsert=True)
         assert resp0010 is None
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         resp0011 = await acol.find_one_and_replace(
             {"f": 0}, {"r": 1}, upsert=True, sort={"x": 1}
         )
         assert resp0011 is None
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         await acol.insert_one({"f": 0})
         resp0100 = await acol.find_one_and_replace({"f": 0}, {"r": 1})
         assert resp0100 is not None
         assert resp0100["f"] == 0
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         await acol.insert_one({"f": 0})
         resp0101 = await acol.find_one_and_replace({"f": 0}, {"r": 1}, sort={"x": 1})
         assert resp0101 is not None
         assert resp0101["f"] == 0
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         await acol.insert_one({"f": 0})
         resp0110 = await acol.find_one_and_replace({"f": 0}, {"r": 1}, upsert=True)
         assert resp0110 is not None
         assert resp0110["f"] == 0
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         await acol.insert_one({"f": 0})
         resp0111 = await acol.find_one_and_replace(
@@ -1369,7 +1366,7 @@ class TestCollectionDMLAsync:
         assert resp0111 is not None
         assert resp0111["f"] == 0
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         resp1000 = await acol.find_one_and_replace(
             {"f": 0}, {"r": 1}, return_document=ReturnDocument.AFTER
@@ -1389,7 +1386,7 @@ class TestCollectionDMLAsync:
         assert resp1010 is not None
         assert resp1010["r"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         resp1011 = await acol.find_one_and_replace(
             {"f": 0},
@@ -1401,7 +1398,7 @@ class TestCollectionDMLAsync:
         assert resp1011 is not None
         assert resp1011["r"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         await acol.insert_one({"f": 0})
         resp1100 = await acol.find_one_and_replace(
@@ -1410,7 +1407,7 @@ class TestCollectionDMLAsync:
         assert resp1100 is not None
         assert resp1100["r"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         await acol.insert_one({"f": 0})
         resp1101 = await acol.find_one_and_replace(
@@ -1419,7 +1416,7 @@ class TestCollectionDMLAsync:
         assert resp1101 is not None
         assert resp1101["r"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         await acol.insert_one({"f": 0})
         resp1110 = await acol.find_one_and_replace(
@@ -1428,7 +1425,7 @@ class TestCollectionDMLAsync:
         assert resp1110 is not None
         assert resp1110["r"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         await acol.insert_one({"f": 0})
         resp1111 = await acol.find_one_and_replace(
@@ -1441,7 +1438,7 @@ class TestCollectionDMLAsync:
         assert resp1111 is not None
         assert resp1111["r"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         # projection
         await acol.insert_one({"f": 100, "name": "apple", "mode": "old"})
@@ -1461,7 +1458,7 @@ class TestCollectionDMLAsync:
         )
         assert resp_pr2 is not None
         assert set(resp_pr2.keys()) == {"mode"}
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
     @pytest.mark.describe("test of replace_one, async")
     async def test_collection_replace_one_async(
@@ -1706,14 +1703,14 @@ class TestCollectionDMLAsync:
         )
         assert resp0010 is None
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         resp0011 = await acol.find_one_and_update(
             {"f": 0}, {"$set": {"n": 1}}, upsert=True, sort={"x": 1}
         )
         assert resp0011 is None
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         await acol.insert_one({"f": 0})
         resp0100 = await acol.find_one_and_update({"f": 0}, {"$set": {"n": 1}})
@@ -1721,7 +1718,7 @@ class TestCollectionDMLAsync:
         assert resp0100["f"] == 0
         assert "n" not in resp0100
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         await acol.insert_one({"f": 0})
         resp0101 = await acol.find_one_and_update(
@@ -1731,7 +1728,7 @@ class TestCollectionDMLAsync:
         assert resp0101["f"] == 0
         assert "n" not in resp0101
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         await acol.insert_one({"f": 0})
         resp0110 = await acol.find_one_and_update(
@@ -1741,7 +1738,7 @@ class TestCollectionDMLAsync:
         assert resp0110["f"] == 0
         assert "n" not in resp0110
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         await acol.insert_one({"f": 0})
         resp0111 = await acol.find_one_and_update(
@@ -1751,7 +1748,7 @@ class TestCollectionDMLAsync:
         assert resp0111["f"] == 0
         assert "n" not in resp0111
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         resp1000 = await acol.find_one_and_update(
             {"f": 0}, {"$set": {"n": 1}}, return_document=ReturnDocument.AFTER
@@ -1777,7 +1774,7 @@ class TestCollectionDMLAsync:
         assert resp1010 is not None
         assert resp1010["n"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         resp1011 = await acol.find_one_and_update(
             {"f": 0},
@@ -1789,7 +1786,7 @@ class TestCollectionDMLAsync:
         assert resp1011 is not None
         assert resp1011["n"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         await acol.insert_one({"f": 0})
         resp1100 = await acol.find_one_and_update(
@@ -1798,7 +1795,7 @@ class TestCollectionDMLAsync:
         assert resp1100 is not None
         assert resp1100["n"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         await acol.insert_one({"f": 0})
         resp1101 = await acol.find_one_and_update(
@@ -1810,7 +1807,7 @@ class TestCollectionDMLAsync:
         assert resp1101 is not None
         assert resp1101["n"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         await acol.insert_one({"f": 0})
         resp1110 = await acol.find_one_and_update(
@@ -1822,7 +1819,7 @@ class TestCollectionDMLAsync:
         assert resp1110 is not None
         assert resp1110["n"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         await acol.insert_one({"f": 0})
         resp1111 = await acol.find_one_and_update(
@@ -1835,7 +1832,7 @@ class TestCollectionDMLAsync:
         assert resp1111 is not None
         assert resp1111["n"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
         # projection
         await acol.insert_one({"f": 100, "name": "apple", "mode": "old"})
@@ -1855,7 +1852,7 @@ class TestCollectionDMLAsync:
         )
         assert resp_pr2 is not None
         assert set(resp_pr2.keys()) == {"f"}
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
 
     @pytest.mark.describe("test of the various ids in the document id field, async")
     async def test_collection_ids_as_doc_id_async(
