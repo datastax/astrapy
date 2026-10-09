@@ -326,11 +326,11 @@ def live_test_models() -> Iterable[dict[str, Any]]:
         for provider_name, provider_desc in sorted(
             provider_info.embedding_providers.items()
         ):
-            if provider_name in providers_with_secret:
-                for model in provider_desc.models:
-                    for auth_type_name, auth_type_desc in sorted(
-                        provider_desc.supported_authentication.items()
-                    ):
+            for model in provider_desc.models:
+                for auth_type_name, auth_type_desc in sorted(
+                    provider_desc.supported_authentication.items()
+                ):
+                    if auth_type_name == "NONE" or provider_name in providers_with_secret:
                         if auth_type_desc.enabled:
                             # test assumptions on auth type
                             if auth_type_name == "NONE":
