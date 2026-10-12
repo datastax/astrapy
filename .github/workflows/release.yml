@@ -33,21 +33,6 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install dependencies including dev
-        run: uv sync --dev
-        shell: bash
-
-      # Separation of build and release, to minimize permissions to the former.
-      # See: https://github.com/pypa/gh-action-pypi-publish#non-goals
-      - name: Build project for distribution
-        run: uv build
-
-      - name: Upload build
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
       - name: Check Version
         id: check-version
         shell: python
@@ -72,10 +57,10 @@ jobs:
           import os
           import urllib.request
           import urllib.error
-          
+
           pkg_name = os.environ["PKG_NAME"]
           version = os.environ["VERSION"]
-          
+
           try:
               url = f"https://pypi.org/pypi/{pkg_name}/{version}/json"
               with urllib.request.urlopen(url, timeout=30) as response:
@@ -90,9 +75,27 @@ jobs:
               else:
                   # Other HTTP error, fail the workflow
                   raise
-          
+
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               f.write(f"version-exists={version_exists}\n")
+
+      - name: Install dependencies including dev
+        if: steps.check-pypi.outputs.version-exists == 'false'
+        run: uv sync --dev
+        shell: bash
+
+      # Separation of build and release, to minimize permissions to the former.
+      # See: https://github.com/pypa/gh-action-pypi-publish#non-goals
+      - name: Build project for distribution
+        if: steps.check-pypi.outputs.version-exists == 'false'
+        run: uv build
+
+      - name: Upload build
+        if: steps.check-pypi.outputs.version-exists == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
 
   test-pypi-publish:
     needs:
