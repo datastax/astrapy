@@ -15,7 +15,7 @@ dependencies = [
     "httpx[http2]>=0.25.2,<1",
     "h11 >= 0.16.0",
     "ipython >= 8.0.0",
-    "pymongo >= 3",
+    "pymongo >= 4.18.2",
     "toml >= 0.10.2,<1.0.0",
     "typing-extensions >= 4.0",
     "uuid6 >= 2024.1.12"
@@ -63,9 +63,9 @@ dev = [
     "setuptools >= 61.0",
     "testcontainers ~= 3.7.1",
     "types-toml >= 0.10.8.7,<1.0.0",
-    "urllib3 >= 2.7.0",
+    "urllib3 >= 2.8.0",
     "virtualenv >= 20.36.1",
-    "werkzeug >= 3.1.5"
+    "werkzeug >= 3.1.9"
 ]
 
 [tool.hatch.build.targets.wheel]

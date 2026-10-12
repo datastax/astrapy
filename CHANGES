@@ -1,3 +1,17 @@
+main
+====
+`create_database`: the preferred term for a nonvector DB is "nonvector" (instead of "non-vector")
+maintenance:
+    - added the `ADJUST_TO_AVAILABLE_VECTORIZE_CREDENTIALS` flag for the vectorize tests to pick providers based on secrets available in env. vars
+    - expanded the `DEVELOPING.md` guidance on vectorize testing.
+maintenance: bumped Data API version for HCD integration tests (v1.0.53)
+maintenance: introduced truncate_by_enumeration for test fixtures, to avoid schema fatigue.
+maintenance: finer control over table/collection find-page-size settings in tests
+maintenance: upgraded some transitive dependencies as advised by Dependabot
+maintenance: raised code-coverage artifact storage retention to 90 days for the main branch
+maintenance: re-enable some (non-projectID/orgID-based) OpenAI extended-vectorize tests
+
+
 v 2.3.1
 =======
 Table vectorize config: dimension can be omitted when creating `TableVectorColumnTypeDescriptor`:

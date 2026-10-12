@@ -57,9 +57,11 @@ from ..conftest import (
     DataAPICredentials,
     DataAPICredentialsInfo,
     async_fail_if_not_removed,
+    async_truncate_by_enumeration,
     clean_nulls_from_dict,
     is_future_version,
     sync_fail_if_not_removed,
+    truncate_by_enumeration,
 )
 from .table_structure_assets import (
     TEST_ALL_RETURNS_TABLE_DEFINITION,
@@ -208,7 +210,7 @@ def sync_empty_collection(
     sync_collection: DefaultCollection,
 ) -> Iterable[DefaultCollection]:
     """Emptied for each test function"""
-    sync_collection.delete_many({})
+    truncate_by_enumeration(sync_collection)
     yield sync_collection
 
 
@@ -272,7 +274,7 @@ def sync_empty_service_collection(
     sync_service_collection: DefaultCollection,
 ) -> Iterable[DefaultCollection]:
     """Emptied for each test function"""
-    sync_service_collection.delete_many({})
+    truncate_by_enumeration(sync_service_collection)
     yield sync_service_collection
 
 
@@ -342,7 +344,7 @@ def sync_empty_farr_vectorize_collection(
     sync_farr_vectorize_collection: DefaultCollection,
 ) -> Iterable[DefaultCollection]:
     """Emptied for each test function"""
-    sync_farr_vectorize_collection.delete_many({})
+    truncate_by_enumeration(sync_farr_vectorize_collection)
     yield sync_farr_vectorize_collection
 
 
@@ -391,7 +393,7 @@ def sync_empty_farr_vector_collection(
     sync_farr_vector_collection: DefaultCollection,
 ) -> Iterable[DefaultCollection]:
     """Emptied for each test function"""
-    sync_farr_vector_collection.delete_many({})
+    truncate_by_enumeration(sync_farr_vector_collection)
     yield sync_farr_vector_collection
 
 
@@ -482,7 +484,7 @@ def sync_empty_table_all_returns(
     sync_table_all_returns: DefaultTable,
 ) -> Iterable[DefaultTable]:
     """Emptied for each test function"""
-    sync_table_all_returns.delete_many({})
+    truncate_by_enumeration(sync_table_all_returns)
     yield sync_table_all_returns
 
 
@@ -527,7 +529,7 @@ def sync_empty_table_simple(
     sync_table_simple: DefaultTable,
 ) -> Iterable[DefaultTable]:
     """Emptied for each test function"""
-    sync_table_simple.delete_many({})
+    truncate_by_enumeration(sync_table_simple)
     yield sync_table_simple
 
 
@@ -577,7 +579,7 @@ def sync_empty_table_composite(
     sync_table_composite: DefaultTable,
 ) -> Iterable[DefaultTable]:
     """Emptied for each test function"""
-    sync_table_composite.delete_many({})
+    truncate_by_enumeration(sync_table_composite)
     yield sync_table_composite
 
 
@@ -622,7 +624,7 @@ def sync_empty_table_vectorize(
     sync_table_vectorize: DefaultTable,
 ) -> Iterable[DefaultTable]:
     """Emptied for each test function"""
-    sync_table_vectorize.delete_many({})
+    truncate_by_enumeration(sync_table_vectorize)
     yield sync_table_vectorize
 
 
@@ -674,7 +676,7 @@ def sync_empty_table_multiplevectorize(
     sync_table_multiplevectorize: DefaultTable,
 ) -> Iterable[DefaultTable]:
     """Emptied for each test function"""
-    sync_table_multiplevectorize.delete_many({})
+    truncate_by_enumeration(sync_table_multiplevectorize)
     yield sync_table_multiplevectorize
 
 
@@ -722,7 +724,7 @@ def sync_empty_table_kms_vectorize(
     sync_table_kms_vectorize: DefaultTable,
 ) -> Iterable[DefaultTable]:
     """Emptied for each test function"""
-    sync_table_kms_vectorize.delete_many({})
+    truncate_by_enumeration(sync_table_kms_vectorize)
     yield sync_table_kms_vectorize
 
 
@@ -762,7 +764,7 @@ def sync_empty_table_allmaps(
     sync_table_allmaps: DefaultTable,
 ) -> Iterable[DefaultTable]:
     """Emptied for each test function"""
-    sync_table_allmaps.delete_many({})
+    truncate_by_enumeration(sync_table_allmaps)
     yield sync_table_allmaps
 
 
@@ -817,7 +819,7 @@ def sync_empty_table_udt_player(
     sync_table_udt_player: DefaultTable,
 ) -> Iterable[DefaultTable]:
     """Emptied for each test function"""
-    sync_table_udt_player.delete_many({})
+    truncate_by_enumeration(sync_table_udt_player)
     yield sync_table_udt_player
 
 
@@ -826,7 +828,7 @@ def sync_empty_table_udt_extended_player(
     sync_table_udt_extended_player: DefaultTable,
 ) -> Iterable[DefaultTable]:
     """Emptied for each test function"""
-    sync_table_udt_extended_player.delete_many({})
+    truncate_by_enumeration(sync_table_udt_extended_player)
     yield sync_table_udt_extended_player
 
 
@@ -869,7 +871,7 @@ def sync_empty_table_udtcollindexed(
     sync_table_udtcollindexed: DefaultTable,
 ) -> Iterable[DefaultTable]:
     """Emptied for each test function"""
-    sync_table_udtcollindexed.delete_many({})
+    truncate_by_enumeration(sync_table_udtcollindexed)
     yield sync_table_udtcollindexed
 
 
@@ -903,7 +905,7 @@ def sync_empty_table_collindexed(
     sync_table_collindexed: DefaultTable,
 ) -> Iterable[DefaultTable]:
     """Emptied for each test function"""
-    sync_table_collindexed.delete_many({})
+    truncate_by_enumeration(sync_table_collindexed)
     yield sync_table_collindexed
 
 
@@ -939,7 +941,7 @@ def sync_empty_table_textindex(
     sync_table_textindex: DefaultTable,
 ) -> Iterable[DefaultTable]:
     """Emptied for each test function"""
-    sync_table_textindex.delete_many({})
+    truncate_by_enumeration(sync_table_textindex)
     yield sync_table_textindex
 
 
@@ -981,7 +983,7 @@ def sync_empty_table_logicalfiltering(
     sync_table_logicalfiltering: DefaultTable,
 ) -> Iterable[DefaultTable]:
     """Emptied for each test function"""
-    sync_table_logicalfiltering.delete_many({})
+    truncate_by_enumeration(sync_table_logicalfiltering)
     yield sync_table_logicalfiltering
 
 
@@ -997,6 +999,8 @@ __all__ = [
     "DataAPICredentials",
     "DataAPICredentialsInfo",
     "async_fail_if_not_removed",
+    "async_truncate_by_enumeration",
+    "truncate_by_enumeration",
     "clean_nulls_from_dict",
     "is_future_version",
     "sync_fail_if_not_removed",

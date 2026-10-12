@@ -37,7 +37,10 @@ from astrapy.ids import UUID, ObjectId
 from astrapy.results import CollectionDeleteResult, CollectionInsertOneResult
 from astrapy.utils.api_options import APIOptions, SerdesOptions
 
-from ..conftest import DefaultCollection
+from ..conftest import (
+    DefaultCollection,
+    truncate_by_enumeration,
+)
 
 # TODO: once v1.0.48 is in production, hardcode 50 and bump Data API version in docker compose file:
 FIND_PAGE_SIZE = int(os.environ.get("FIND_PAGE_SIZE") or "20")
@@ -285,7 +288,7 @@ class TestCollectionDMLSync:
         assert do_result1.deleted_count == 2
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 1
 
-        sync_empty_collection.delete_many({})
+        truncate_by_enumeration(sync_empty_collection)
         sync_empty_collection.insert_many([{"a": 1} for _ in range(50)])
         do_result2 = sync_empty_collection.delete_many({"a": 1})
         assert do_result2.deleted_count == 50
@@ -703,7 +706,7 @@ class TestCollectionDMLSync:
 
         col.insert_one({"x": [{"y": "Y", "0": "ZERO"}]})
 
-        col.delete_many({})
+        truncate_by_enumeration(col)
         col.insert_one({"x": [{"y": "Y", "0": "ZERO"}]})
 
         assert col.distinct(["x", "y"]) == ["Y"]
@@ -1257,35 +1260,35 @@ class TestCollectionDMLSync:
         resp0010 = col.find_one_and_replace({"f": 0}, {"r": 1}, upsert=True)
         assert resp0010 is None
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         resp0011 = col.find_one_and_replace(
             {"f": 0}, {"r": 1}, upsert=True, sort={"x": 1}
         )
         assert resp0011 is None
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         col.insert_one({"f": 0})
         resp0100 = col.find_one_and_replace({"f": 0}, {"r": 1})
         assert resp0100 is not None
         assert resp0100["f"] == 0
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         col.insert_one({"f": 0})
         resp0101 = col.find_one_and_replace({"f": 0}, {"r": 1}, sort={"x": 1})
         assert resp0101 is not None
         assert resp0101["f"] == 0
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         col.insert_one({"f": 0})
         resp0110 = col.find_one_and_replace({"f": 0}, {"r": 1}, upsert=True)
         assert resp0110 is not None
         assert resp0110["f"] == 0
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         col.insert_one({"f": 0})
         resp0111 = col.find_one_and_replace(
@@ -1294,7 +1297,7 @@ class TestCollectionDMLSync:
         assert resp0111 is not None
         assert resp0111["f"] == 0
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         resp1000 = col.find_one_and_replace(
             {"f": 0}, {"r": 1}, return_document=ReturnDocument.AFTER
@@ -1314,7 +1317,7 @@ class TestCollectionDMLSync:
         assert resp1010 is not None
         assert resp1010["r"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         resp1011 = col.find_one_and_replace(
             {"f": 0},
@@ -1326,7 +1329,7 @@ class TestCollectionDMLSync:
         assert resp1011 is not None
         assert resp1011["r"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         col.insert_one({"f": 0})
         resp1100 = col.find_one_and_replace(
@@ -1335,7 +1338,7 @@ class TestCollectionDMLSync:
         assert resp1100 is not None
         assert resp1100["r"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         col.insert_one({"f": 0})
         resp1101 = col.find_one_and_replace(
@@ -1344,7 +1347,7 @@ class TestCollectionDMLSync:
         assert resp1101 is not None
         assert resp1101["r"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         col.insert_one({"f": 0})
         resp1110 = col.find_one_and_replace(
@@ -1353,7 +1356,7 @@ class TestCollectionDMLSync:
         assert resp1110 is not None
         assert resp1110["r"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         col.insert_one({"f": 0})
         resp1111 = col.find_one_and_replace(
@@ -1366,7 +1369,7 @@ class TestCollectionDMLSync:
         assert resp1111 is not None
         assert resp1111["r"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         # projection
         col.insert_one({"f": 100, "name": "apple", "mode": "old"})
@@ -1386,7 +1389,7 @@ class TestCollectionDMLSync:
         )
         assert resp_pr2 is not None
         assert set(resp_pr2.keys()) == {"mode"}
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
     @pytest.mark.describe("test of replace_one, sync")
     def test_collection_replace_one_sync(
@@ -1604,14 +1607,14 @@ class TestCollectionDMLSync:
         resp0010 = col.find_one_and_update({"f": 0}, {"$set": {"n": 1}}, upsert=True)
         assert resp0010 is None
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         resp0011 = col.find_one_and_update(
             {"f": 0}, {"$set": {"n": 1}}, upsert=True, sort={"x": 1}
         )
         assert resp0011 is None
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         col.insert_one({"f": 0})
         resp0100 = col.find_one_and_update({"f": 0}, {"$set": {"n": 1}})
@@ -1619,7 +1622,7 @@ class TestCollectionDMLSync:
         assert resp0100["f"] == 0
         assert "n" not in resp0100
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         col.insert_one({"f": 0})
         resp0101 = col.find_one_and_update({"f": 0}, {"$set": {"n": 1}}, sort={"x": 1})
@@ -1627,7 +1630,7 @@ class TestCollectionDMLSync:
         assert resp0101["f"] == 0
         assert "n" not in resp0101
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         col.insert_one({"f": 0})
         resp0110 = col.find_one_and_update({"f": 0}, {"$set": {"n": 1}}, upsert=True)
@@ -1635,7 +1638,7 @@ class TestCollectionDMLSync:
         assert resp0110["f"] == 0
         assert "n" not in resp0110
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         col.insert_one({"f": 0})
         resp0111 = col.find_one_and_update(
@@ -1645,7 +1648,7 @@ class TestCollectionDMLSync:
         assert resp0111["f"] == 0
         assert "n" not in resp0111
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         resp1000 = col.find_one_and_update(
             {"f": 0}, {"$set": {"n": 1}}, return_document=ReturnDocument.AFTER
@@ -1671,7 +1674,7 @@ class TestCollectionDMLSync:
         assert resp1010 is not None
         assert resp1010["n"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         resp1011 = col.find_one_and_update(
             {"f": 0},
@@ -1683,7 +1686,7 @@ class TestCollectionDMLSync:
         assert resp1011 is not None
         assert resp1011["n"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         col.insert_one({"f": 0})
         resp1100 = col.find_one_and_update(
@@ -1692,7 +1695,7 @@ class TestCollectionDMLSync:
         assert resp1100 is not None
         assert resp1100["n"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         col.insert_one({"f": 0})
         resp1101 = col.find_one_and_update(
@@ -1704,7 +1707,7 @@ class TestCollectionDMLSync:
         assert resp1101 is not None
         assert resp1101["n"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         col.insert_one({"f": 0})
         resp1110 = col.find_one_and_update(
@@ -1716,7 +1719,7 @@ class TestCollectionDMLSync:
         assert resp1110 is not None
         assert resp1110["n"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         col.insert_one({"f": 0})
         resp1111 = col.find_one_and_update(
@@ -1729,7 +1732,7 @@ class TestCollectionDMLSync:
         assert resp1111 is not None
         assert resp1111["n"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
         # projection
         col.insert_one({"f": 100, "name": "apple", "mode": "old"})
@@ -1749,7 +1752,7 @@ class TestCollectionDMLSync:
         )
         assert resp_pr2 is not None
         assert set(resp_pr2.keys()) == {"f"}
-        col.delete_many({})
+        truncate_by_enumeration(col)
 
     @pytest.mark.describe("test of the various ids in the document id field, sync")
     def test_collection_ids_as_doc_id_sync(

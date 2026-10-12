@@ -16,7 +16,11 @@ from __future__ import annotations
 
 import pytest
 
-from ..conftest import IS_ASTRA_DB, DefaultAsyncCollection
+from ..conftest import (
+    IS_ASTRA_DB,
+    DefaultAsyncCollection,
+    async_truncate_by_enumeration,
+)
 
 PJ = {"_id": True, "title": False}
 
@@ -88,7 +92,7 @@ class TestCollectionGeneralBM25Async:
         ).to_list()
         assert fcv_docs == [{"_id": "hy"}]
 
-        await acoll.delete_many({})
+        await async_truncate_by_enumeration(acoll)
 
         await acoll.insert_one(
             {

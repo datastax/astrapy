@@ -16,7 +16,11 @@ from __future__ import annotations
 
 import pytest
 
-from ..conftest import IS_ASTRA_DB, DefaultCollection
+from ..conftest import (
+    IS_ASTRA_DB,
+    DefaultCollection,
+    truncate_by_enumeration,
+)
 
 PJ = {"_id": True, "title": False}
 
@@ -84,7 +88,7 @@ class TestCollectionGeneralBM25Sync:
         ).to_list()
         assert fcv_docs == [{"_id": "hy"}]
 
-        coll.delete_many({})
+        truncate_by_enumeration(coll)
 
         coll.insert_one(
             {
