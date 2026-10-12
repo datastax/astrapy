@@ -20,6 +20,9 @@ from astrapy import Database
 
 from ..conftest import (
     IS_ASTRA_DB,
+    async_truncate_by_enumeration,
+    extended_booleanize_env,
+    truncate_by_enumeration,
 )
 from ..empty_database_guard import ensure_empty_target_database
 
@@ -42,4 +45,7 @@ def require_empty_target_database(sync_database: Database) -> None:
 
 __all__ = [
     "IS_ASTRA_DB",
+    "async_truncate_by_enumeration",
+    "extended_booleanize_env",
+    "truncate_by_enumeration",
 ]

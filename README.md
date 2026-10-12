@@ -483,7 +483,7 @@ client = DataAPIClient(environment=Environment.HCD)
 database = client.get_database("http://localhost:8181", token=tp)
 ```
 
-For more on this case, please consult the [dedicated reference](https://docs.datastax.com/en/hyper-converged-database/1.0/connect/python-client.html).
+For more on this case, please consult the [dedicated reference](https://docs.datastax.com/en/hyper-converged-database/2.0/api-reference/dataapiclient.html).
 
 ## AstraPy's API
 

@@ -28,7 +28,11 @@ from astrapy.exceptions import (
     TooManyDocumentsToCountException,
 )
 
-from ..conftest import IS_ASTRA_DB, DefaultAsyncCollection
+from ..conftest import (
+    IS_ASTRA_DB,
+    DefaultAsyncCollection,
+    async_truncate_by_enumeration,
+)
 
 
 class TestCollectionExceptionsAsync:
@@ -76,21 +80,21 @@ class TestCollectionExceptionsAsync:
         assert set(im_result1.inserted_ids) == set(ok_ids)
         assert len(await _alist(acol.find({}))) == 6
 
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
         im_result2 = await acol.insert_many(
             ok_docs, ordered=False, chunk_size=2, concurrency=1
         )
         assert set(im_result2.inserted_ids) == set(ok_ids)
         assert len(await _alist(acol.find({}))) == 6
 
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
         im_result3 = await acol.insert_many(
             ok_docs, ordered=False, chunk_size=2, concurrency=2
         )
         assert set(im_result3.inserted_ids) == set(ok_ids)
         assert len(await _alist(acol.find({}))) == 6
 
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
         with pytest.raises(CollectionInsertManyException) as exc:
             await acol.insert_many(dup_docs, ordered=True, chunk_size=2, concurrency=1)
         assert len(exc.value.exceptions) == 1
@@ -102,7 +106,7 @@ class TestCollectionExceptionsAsync:
         assert exc.value.inserted_ids == ["a", "b"]
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
 
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
         with pytest.raises(CollectionInsertManyException) as exc:
             await acol.insert_many(dup_docs, ordered=False, chunk_size=2, concurrency=1)
         assert len(exc.value.exceptions) == 2
@@ -120,7 +124,7 @@ class TestCollectionExceptionsAsync:
         assert set(exc.value.inserted_ids) == {"a", "b", "d", "e", "f"}
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "d", "e", "f"}
 
-        await acol.delete_many({})
+        await async_truncate_by_enumeration(acol)
         with pytest.raises(CollectionInsertManyException) as exc:
             im_result3 = await acol.insert_many(
                 dup_docs, ordered=False, chunk_size=2, concurrency=2
@@ -191,7 +195,7 @@ class TestCollectionExceptionsAsync:
         acol._name += "_hacked"
         acol._api_commander.full_path += "_hacked"
         with pytest.raises(CollectionDeleteManyException):
-            await acol.delete_many({})
+            await acol.delete_many(filter={})
         with pytest.raises(CollectionUpdateManyException):
             await acol.update_many({}, update={"$set": {"a": 1}})
 

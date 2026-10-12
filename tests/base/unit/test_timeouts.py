@@ -178,7 +178,7 @@ class TestTimeouts:
             )
         )
         with pytest.raises(DataAPITimeoutException):
-            collection_S_L.delete_many({})
+            collection_S_L.delete_many(filter={})
 
         # no method arg, the short generalmethod makes it timeout
         httpserver.expect_oneshot_request(
@@ -196,7 +196,7 @@ class TestTimeouts:
             )
         )
         with pytest.raises(DataAPITimeoutException):
-            collection_L_S.delete_many({})
+            collection_L_S.delete_many(filter={})
 
         # this avoids dangling timing-out response to pollute next test:
         httpserver.stop()  # type: ignore[no-untyped-call]
@@ -246,7 +246,7 @@ class TestTimeouts:
                 },
             )
         )
-        dmr_SL_rq = collection_S_L.delete_many({}, request_timeout_ms=1500)
+        dmr_SL_rq = collection_S_L.delete_many(filter={}, request_timeout_ms=1500)
         assert dmr_SL_rq.deleted_count == 12
 
         # remove the timeout with method genmeth-timeout override
@@ -264,7 +264,9 @@ class TestTimeouts:
                 },
             )
         )
-        dmr_LS_rq = collection_L_S.delete_many({}, general_method_timeout_ms=1500)
+        dmr_LS_rq = collection_L_S.delete_many(
+            filter={}, general_method_timeout_ms=1500
+        )
         assert dmr_LS_rq.deleted_count == 12
 
         # remove the timeout completely with a zero per-method per-req timeout
@@ -282,7 +284,7 @@ class TestTimeouts:
                 },
             )
         )
-        dmr_SL_zrq = collection_S_L.delete_many({}, request_timeout_ms=0)
+        dmr_SL_zrq = collection_S_L.delete_many(filter={}, request_timeout_ms=0)
         assert dmr_SL_zrq.deleted_count == 12
 
         # remove the timeout completely with a zero per-method genmeth-timeout override
@@ -300,7 +302,7 @@ class TestTimeouts:
                 },
             )
         )
-        dmr_LS_zrq = collection_L_S.delete_many({}, general_method_timeout_ms=0)
+        dmr_LS_zrq = collection_L_S.delete_many(filter={}, general_method_timeout_ms=0)
         assert dmr_LS_zrq.deleted_count == 12
 
         # remove the timeout completely: a zero per-method 'general_method_timeout_ms'
@@ -318,7 +320,7 @@ class TestTimeouts:
                 },
             )
         )
-        dmr_LS_zgrq = collection_L_S.delete_many({}, general_method_timeout_ms=0)
+        dmr_LS_zgrq = collection_L_S.delete_many(filter={}, general_method_timeout_ms=0)
         assert dmr_LS_zgrq.deleted_count == 12
 
     @pytest.mark.describe(
@@ -367,7 +369,7 @@ class TestTimeouts:
             )
         )
         with pytest.raises(DataAPITimeoutException):
-            await acollection_S_L.delete_many({})
+            await acollection_S_L.delete_many(filter={})
 
         # no method arg, the short generalmethod makes it timeout
         httpserver.expect_oneshot_request(
@@ -385,7 +387,7 @@ class TestTimeouts:
             )
         )
         with pytest.raises(DataAPITimeoutException):
-            await acollection_L_S.delete_many({})
+            await acollection_L_S.delete_many(filter={})
 
         # this avoids dangling timing-out response to pollute next test:
         httpserver.stop()  # type: ignore[no-untyped-call]
@@ -437,7 +439,9 @@ class TestTimeouts:
                 },
             )
         )
-        dmr_SL_rq = await acollection_S_L.delete_many({}, request_timeout_ms=1500)
+        dmr_SL_rq = await acollection_S_L.delete_many(
+            filter={}, request_timeout_ms=1500
+        )
         assert dmr_SL_rq.deleted_count == 12
 
         # remove the timeout with method genmeth-timeout override
@@ -475,7 +479,7 @@ class TestTimeouts:
                 },
             )
         )
-        dmr_SL_zrq = await acollection_S_L.delete_many({}, request_timeout_ms=0)
+        dmr_SL_zrq = await acollection_S_L.delete_many(filter={}, request_timeout_ms=0)
         assert dmr_SL_zrq.deleted_count == 12
 
         # remove the timeout completely with a zero per-method genmeth-timeout override
@@ -493,7 +497,9 @@ class TestTimeouts:
                 },
             )
         )
-        dmr_LS_zrq = await acollection_L_S.delete_many({}, general_method_timeout_ms=0)
+        dmr_LS_zrq = await acollection_L_S.delete_many(
+            filter={}, general_method_timeout_ms=0
+        )
         assert dmr_LS_zrq.deleted_count == 12
 
         # remove the timeout completely: a zero per-method 'general_method_timeout_ms'
@@ -511,5 +517,7 @@ class TestTimeouts:
                 },
             )
         )
-        dmr_LS_zgrq = await acollection_L_S.delete_many({}, general_method_timeout_ms=0)
+        dmr_LS_zgrq = await acollection_L_S.delete_many(
+            filter={}, general_method_timeout_ms=0
+        )
         assert dmr_LS_zgrq.deleted_count == 12

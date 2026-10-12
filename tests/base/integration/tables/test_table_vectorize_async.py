@@ -27,6 +27,7 @@ from ..conftest import (
     RUN_SHARED_SECRET_VECTORIZE_TESTS,
     VECTORIZE_TEXTS,
     DefaultAsyncTable,
+    async_truncate_by_enumeration,
 )
 
 
@@ -76,7 +77,7 @@ class TestTableVectorizeAsync:
         )
         assert vec_row == t_row
 
-        await aauthenticated_table.delete_many({})
+        await async_truncate_by_enumeration(aauthenticated_table)
         await aauthenticated_table.insert_many(
             [
                 {"p_text": f"t_{text_i}", "p_vector": text}
@@ -177,7 +178,7 @@ class TestTableVectorizeAsync:
         )
         assert vec_row == t_row
 
-        await async_empty_table_kms_vectorize.delete_many({})
+        await async_truncate_by_enumeration(async_empty_table_kms_vectorize)
         await async_empty_table_kms_vectorize.insert_many(
             [
                 {"p_text": f"t_{text_i}", "p_vector": text}
