@@ -273,7 +273,7 @@ COMPOSITE_VECTOR_ROWS = [
         "p_text": p_t,
         "p_int": p_i,
         "p_boolean": p_i % 2 == 0,
-        "p_vector": DataAPIVector([p_i + {"A": 0.0, "B": 0.1}[p_t], 1, 0]),
+        "p_vector": DataAPIVector([p_i + {"A": 0.3, "B": 0.7}[p_t], 1, 1]),
     }
     for p_t in {"A", "B"}
     for p_i in range(COMPOSITE_VECTOR_ROWS_N)

@@ -28,6 +28,8 @@ from ..conftest import (
     USE_RERANKER_API_KEY_HEADER,
     DefaultAsyncCollection,
     DefaultCollection,
+    async_truncate_by_enumeration,
+    truncate_by_enumeration,
 )
 
 RUN_RERANKER_TESTS = IS_ASTRA_DB or USE_RERANKER_API_KEY_HEADER
@@ -111,7 +113,7 @@ class TestCollectionTyping:
         with pytest.raises(KeyError):
             cucur_y = cucur_doc["c"]  # noqa: F841
 
-        c_co_untyped.delete_many({})
+        truncate_by_enumeration(c_co_untyped)
 
         # Typed
         c_co_typed: Collection[MyTestDoc] = sync_database.create_collection(
@@ -156,7 +158,7 @@ class TestCollectionTyping:
         with pytest.raises(KeyError):
             ctcur_y = ctcur_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
 
-        c_co_typed.delete_many({})
+        truncate_by_enumeration(c_co_typed)
 
     @pytest.mark.describe("test of typing get_collection, sync")
     def test_get_collection_typing_sync(
@@ -183,7 +185,7 @@ class TestCollectionTyping:
         with pytest.raises(KeyError):
             gu_y = gu_doc["c"]  # noqa: F841
 
-        g_co_untyped.delete_many({})
+        truncate_by_enumeration(g_co_untyped)
 
         # Typed
         g_co_typed: Collection[MyTestDoc] = sync_database.get_collection(
@@ -205,7 +207,7 @@ class TestCollectionTyping:
         with pytest.raises(KeyError):
             gt_y = gt_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
 
-        g_co_typed.delete_many({})
+        truncate_by_enumeration(g_co_typed)
 
     @pytest.mark.describe("test of typing collection cursors with map, sync")
     def test_collection_cursormap_typing_sync(
@@ -321,7 +323,7 @@ class TestCollectionTyping:
         with pytest.raises(KeyError):
             gt_rbuf_y = t_doc_rbuf4["c"]  # type: ignore[typeddict-item]  # noqa: F841
 
-        g_co_typed.delete_many({})
+        truncate_by_enumeration(g_co_typed)
 
     @pytest.mark.skipif(
         not RUN_RERANKER_TESTS,
@@ -365,7 +367,7 @@ class TestCollectionTyping:
         with pytest.raises(KeyError):
             fu_y = farr_u_doc["c"]  # noqa: F841
 
-        f_co_untyped.delete_many({})
+        truncate_by_enumeration(f_co_untyped)
 
         # Typed
         f_co_typed: Collection[MyTestDoc] = sync_database.get_collection(
@@ -412,7 +414,7 @@ class TestCollectionTyping:
             ftm_a = farr_tm_doc["p_ascii"]  # type: ignore[typeddict-item]  # noqa: F841
         ftm_b = farr_tm_doc["p_bigint"]  # noqa: F841
 
-        f_co_typed.delete_many({})
+        truncate_by_enumeration(f_co_typed)
 
     @pytest.mark.describe("test of typing create_collection, async")
     async def test_create_collection_typing_async(
@@ -462,7 +464,7 @@ class TestCollectionTyping:
         with pytest.raises(KeyError):
             cucur_y = cucur_doc["c"]  # noqa: F841
 
-        await ac_co_untyped.delete_many({})
+        await async_truncate_by_enumeration(ac_co_untyped)
 
         # Typed
         ac_co_typed: AsyncCollection[
@@ -509,7 +511,7 @@ class TestCollectionTyping:
         with pytest.raises(KeyError):
             ctcur_y = ctcur_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
 
-        await ac_co_typed.delete_many({})
+        await async_truncate_by_enumeration(ac_co_typed)
 
     @pytest.mark.describe("test of typing get_collection, async")
     async def test_get_collection_typing_async(
@@ -536,7 +538,7 @@ class TestCollectionTyping:
         with pytest.raises(KeyError):
             gu_y = gu_doc["c"]  # noqa: F841
 
-        await ag_co_untyped.delete_many({})
+        await async_truncate_by_enumeration(ag_co_untyped)
 
         # Typed
         ag_co_typed: AsyncCollection[MyTestDoc] = async_database.get_collection(
@@ -558,7 +560,7 @@ class TestCollectionTyping:
         with pytest.raises(KeyError):
             gt_y = gt_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
 
-        await ag_co_typed.delete_many({})
+        await async_truncate_by_enumeration(ag_co_typed)
 
     @pytest.mark.describe("test of typing collection cursors with map, async")
     async def test_collection_cursormap_typing_async(
@@ -674,7 +676,7 @@ class TestCollectionTyping:
         with pytest.raises(KeyError):
             gt_rbuf_y = t_doc_rbuf4["c"]  # type: ignore[typeddict-item]  # noqa: F841
 
-        await ag_co_typed.delete_many({})
+        await async_truncate_by_enumeration(ag_co_typed)
 
     @pytest.mark.skipif(
         not RUN_RERANKER_TESTS,
@@ -718,7 +720,7 @@ class TestCollectionTyping:
         with pytest.raises(KeyError):
             fu_y = farr_u_doc["c"]  # noqa: F841
 
-        await f_co_untyped.delete_many({})
+        await async_truncate_by_enumeration(f_co_untyped)
 
         # Typed
         af_co_typed: AsyncCollection[MyTestDoc] = async_database.get_collection(
@@ -765,4 +767,4 @@ class TestCollectionTyping:
             ftm_a = farr_tm_doc["p_ascii"]  # type: ignore[typeddict-item]  # noqa: F841
         ftm_b = farr_tm_doc["p_bigint"]  # noqa: F841
 
-        await af_co_typed.delete_many({})
+        await async_truncate_by_enumeration(af_co_typed)

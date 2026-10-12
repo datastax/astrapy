@@ -35,6 +35,7 @@ from ..conftest import (
     DefaultTable,
     _repaint_NaNs,
     _typify_tuple,
+    truncate_by_enumeration,
 )
 from .table_row_assets import (
     AR_ROW_0,
@@ -375,14 +376,14 @@ class TestTableDMLSync:
             assert all(exp.command != exps[0].command for exp in exps[1:])  # type: ignore[attr-defined]
 
         # ordered, good rows
-        sync_table_simple.delete_many({})
+        truncate_by_enumeration(sync_table_simple)
         i_result = sync_table_simple.insert_many(
             SIMPLE_SEVEN_ROWS_OK, ordered=True, chunk_size=2
         )
         _assert_consistency(["p1", "p2", "p3", "p4", "p5", "p6", "p7"], i_result)
 
         # ordered, failing first batch
-        sync_table_simple.delete_many({})
+        truncate_by_enumeration(sync_table_simple)
         with pytest.raises(TableInsertManyException) as exc:
             sync_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F2, ordered=True, chunk_size=2
@@ -394,7 +395,7 @@ class TestTableDMLSync:
         _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # ordered, failing later batch
-        sync_table_simple.delete_many({})
+        truncate_by_enumeration(sync_table_simple)
         with pytest.raises(TableInsertManyException) as exc:
             sync_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F4, ordered=True, chunk_size=2
@@ -406,14 +407,14 @@ class TestTableDMLSync:
         _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # unordered/concurrency=1, good rows
-        sync_table_simple.delete_many({})
+        truncate_by_enumeration(sync_table_simple)
         sync_table_simple.insert_many(
             SIMPLE_SEVEN_ROWS_OK, ordered=False, chunk_size=2, concurrency=1
         )
         _assert_consistency(["p1", "p2", "p3", "p4", "p5", "p6", "p7"], i_result)
 
         # unordered/concurrency=1, failing first batch
-        sync_table_simple.delete_many({})
+        truncate_by_enumeration(sync_table_simple)
         with pytest.raises(TableInsertManyException) as exc:
             sync_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F2, ordered=False, chunk_size=2, concurrency=1
@@ -422,7 +423,7 @@ class TestTableDMLSync:
         _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # unordered/concurrency=1, failing later batch
-        sync_table_simple.delete_many({})
+        truncate_by_enumeration(sync_table_simple)
         with pytest.raises(TableInsertManyException) as exc:
             sync_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F4, ordered=False, chunk_size=2, concurrency=1
@@ -431,14 +432,14 @@ class TestTableDMLSync:
         _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # unordered/concurrency=2, good rows
-        sync_table_simple.delete_many({})
+        truncate_by_enumeration(sync_table_simple)
         i_result = sync_table_simple.insert_many(
             SIMPLE_SEVEN_ROWS_OK, ordered=False, chunk_size=2, concurrency=2
         )
         _assert_consistency(["p1", "p2", "p3", "p4", "p5", "p6", "p7"], i_result)
 
         # unordered/concurrency=2, failing first batch
-        sync_table_simple.delete_many({})
+        truncate_by_enumeration(sync_table_simple)
         with pytest.raises(TableInsertManyException) as exc:
             sync_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F2, ordered=False, chunk_size=2, concurrency=2
@@ -447,7 +448,7 @@ class TestTableDMLSync:
         _assert_tim_exceptions(exc.value.exceptions, count=1)
 
         # unordered/concurrency=2, failing later batch
-        sync_table_simple.delete_many({})
+        truncate_by_enumeration(sync_table_simple)
         with pytest.raises(TableInsertManyException) as exc:
             sync_table_simple.insert_many(
                 SIMPLE_SEVEN_ROWS_F4, ordered=False, chunk_size=2, concurrency=2
@@ -466,19 +467,19 @@ class TestTableDMLSync:
         many_rows = [{"p_text": f"r_{i}", "p_int": i} for i in range(200)]
         exp_tuple_set = {(row["p_text"],) for row in many_rows}
         # ordered
-        sync_table_simple.delete_many({})
+        truncate_by_enumeration(sync_table_simple)
         ins_res_o = sync_table_simple.insert_many(many_rows, ordered=True)
         assert set(ins_res_o.inserted_id_tuples) == exp_tuple_set
         assert len(sync_table_simple.find().to_list()) == len(many_rows)
         # unordered, concurrency=1
-        sync_table_simple.delete_many({})
+        truncate_by_enumeration(sync_table_simple)
         ins_res_u_c1 = sync_table_simple.insert_many(
             many_rows, ordered=False, concurrency=1
         )
         assert set(ins_res_u_c1.inserted_id_tuples) == exp_tuple_set
         assert len(sync_table_simple.find().to_list()) == len(many_rows)
         # unordered, concurrency>1
-        sync_table_simple.delete_many({})
+        truncate_by_enumeration(sync_table_simple)
         ins_res_u_cn = sync_table_simple.insert_many(
             many_rows, ordered=False, concurrency=10
         )
@@ -579,7 +580,7 @@ class TestTableDMLSync:
             )
 
         # $set
-        sync_table_simple.delete_many({})
+        truncate_by_enumeration(sync_table_simple)
         assert sync_table_simple.find_one({"p_text": "A"}) is None
 
         # $set, new row
@@ -634,7 +635,7 @@ class TestTableDMLSync:
         assert sync_table_simple.find_one({"p_text": "A"}) is None
 
         # $unset
-        sync_table_simple.delete_many({})
+        truncate_by_enumeration(sync_table_simple)
         sync_table_simple.insert_one(
             {"p_text": "B", "p_int": 123, "p_vector": DataAPIVector([9, 8, 7])}
         )
@@ -851,35 +852,35 @@ class TestTableDMLSync:
         assert ls_rows_A == ls_rows_B
 
         # find with ANN
-        sync_empty_table_composite.delete_many({})
+        truncate_by_enumeration(sync_empty_table_composite)
         sync_empty_table_composite.insert_many(COMPOSITE_VECTOR_ROWS)
         # in a partition
         vrows_in_part = sync_empty_table_composite.find(
             filter={"p_text": "A"},
-            sort={"p_vector": DataAPIVector([COMPOSITE_VECTOR_ROWS_N, 0, 0])},
+            sort={"p_vector": DataAPIVector([COMPOSITE_VECTOR_ROWS_N, 0, 1])},
             limit=COMPOSITE_VECTOR_ROWS_N + 2,
         ).to_list()
         assert len(vrows_in_part) == COMPOSITE_VECTOR_ROWS_N
         ints = [row["p_int"] for row in vrows_in_part]
         assert sorted(ints, reverse=True) == ints
         # across all partitions
-        vrows_in_part = sync_empty_table_composite.find(
-            sort={"p_vector": DataAPIVector([COMPOSITE_VECTOR_ROWS_N, 0, 0])},
+        vrows_overall = sync_empty_table_composite.find(
+            sort={"p_vector": DataAPIVector([COMPOSITE_VECTOR_ROWS_N, 0, 1])},
             limit=2 * COMPOSITE_VECTOR_ROWS_N + 2,
         ).to_list()
-        assert len(vrows_in_part) == 2 * COMPOSITE_VECTOR_ROWS_N
-        ints = [row["p_int"] for row in vrows_in_part]
+        assert len(vrows_overall) == 2 * COMPOSITE_VECTOR_ROWS_N
+        ints = [row["p_int"] for row in vrows_overall]
         assert sorted(ints, reverse=True) == ints
         # filtering on a non-pk column
-        vrows_in_part = sync_empty_table_composite.find(
+        vrows_filtered = sync_empty_table_composite.find(
             filter={"p_boolean": True},
-            sort={"p_vector": DataAPIVector([COMPOSITE_VECTOR_ROWS_N, 0, 0])},
+            sort={"p_vector": DataAPIVector([COMPOSITE_VECTOR_ROWS_N, 0, 1])},
             limit=2 * COMPOSITE_VECTOR_ROWS_N + 2,
         ).to_list()
-        assert len(vrows_in_part) == 2 * len(
+        assert len(vrows_filtered) == 2 * len(
             [1 for i in range(COMPOSITE_VECTOR_ROWS_N) if i % 2 == 0]
         )
-        ints = [row["p_int"] for row in vrows_in_part]
+        ints = [row["p_int"] for row in vrows_filtered]
         assert all(i % 2 == 0 for i in ints)
         assert sorted(ints, reverse=True) == ints
 

@@ -18,9 +18,11 @@ Main conftest for shared fixtures (if any).
 
 from __future__ import annotations
 
+import asyncio
 import functools
 import warnings
 from collections.abc import Awaitable, Callable, Iterable, Iterator
+from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Any, TypedDict
 
 import pytest
@@ -32,7 +34,15 @@ if TYPE_CHECKING:
     from cassio.config import get_session_and_keyspace
 
 import astrapy
-from astrapy import AsyncDatabase, DataAPIClient, Database
+from astrapy import (
+    AsyncCollection,
+    AsyncDatabase,
+    AsyncTable,
+    Collection,
+    DataAPIClient,
+    Database,
+    Table,
+)
 from astrapy.admin import parse_api_endpoint
 from astrapy.api_options import APIOptions, TimeoutOptions
 from astrapy.authentication import TokenProvider
@@ -66,7 +76,10 @@ from .preprocess_env import (
     RUN_SHARED_SECRET_VECTORIZE_TESTS,
     SECONDARY_KEYSPACE,
     USE_RERANKER_API_KEY_HEADER,
+    extended_booleanize_env,
 )
+
+TRUNCATE_BY_ENUMERATION_MAX_CONCURRENCY = 50
 
 CQL_AVAILABLE = False
 try:
@@ -198,6 +211,86 @@ def clean_nulls_from_dict(in_dict: dict[str, Any]) -> dict[str, Any]:
             return _in
 
     return _cleand(in_dict)  # type: ignore[no-any-return]
+
+
+def truncate_by_enumeration(
+    target: Collection[Any] | Table[Any],
+) -> None:
+    """
+    Remove all documents/rows from a collection/table without issuing a truncate
+    (i.e. a `delete_many({})`), to avoid doing unnecessary metadata/schema operations.
+    """
+    if isinstance(target, Collection):
+        c_ids = {
+            # such a projection is a trick to get only the _id
+            doc["_id"]
+            for doc in target.find({}, projection={"_id": True, "_fake": True})
+        }
+
+        def c_deleter(c_id: Any) -> None:
+            target.delete_one({"_id": c_id})
+
+        with ThreadPoolExecutor(
+            max_workers=TRUNCATE_BY_ENUMERATION_MAX_CONCURRENCY
+        ) as executor:
+            executor.map(c_deleter, c_ids)
+
+    elif isinstance(target, Table):
+        # optimization: deletions are per-partition (and not per-row)
+        table_def = target.definition()
+        pak_fields = table_def.primary_key.partition_by
+        proj = {pk_col: True for pk_col in pak_fields}
+        t_ids = {
+            tuple(row[pak] for pak in pak_fields)
+            for row in target.find({}, projection=proj)
+        }
+
+        def t_deleter(t_id: Any) -> None:
+            target.delete_many(
+                filter={pak: pval for pak, pval in zip(pak_fields, t_id)}
+            )
+
+        with ThreadPoolExecutor(
+            max_workers=TRUNCATE_BY_ENUMERATION_MAX_CONCURRENCY
+        ) as executor:
+            executor.map(t_deleter, t_ids)
+
+
+async def async_truncate_by_enumeration(
+    target: AsyncCollection[Any] | AsyncTable[Any],
+) -> None:
+    """
+    Remove all documents/rows from a collection/table without issuing a truncate
+    (i.e. a `delete_many({})`), to avoid doing unnecessary metadata/schema operations.
+    """
+    if isinstance(target, AsyncCollection):
+        c_ids = {
+            # such a projection is a trick to get only the _id
+            doc["_id"]
+            async for doc in target.find({}, projection={"_id": True, "_fake": True})
+        }
+
+        async def c_deleter(c_id: Any) -> None:
+            await target.delete_one({"_id": c_id})
+
+        await asyncio.gather(*[c_deleter(c_id) for c_id in c_ids])
+
+    elif isinstance(target, AsyncTable):
+        # optimization: deletions are per-partition (and not per-row)
+        table_def = await target.definition()
+        pak_fields = table_def.primary_key.partition_by
+        proj = {pk_col: True for pk_col in pak_fields}
+        t_ids = {
+            tuple(row[pak] for pak in pak_fields)
+            async for row in target.find({}, projection=proj)
+        }
+
+        async def t_deleter(t_id: Any) -> None:
+            await target.delete_many(
+                filter={pak: pval for pak, pval in zip(pak_fields, t_id)}
+            )
+
+        await asyncio.gather(*[t_deleter(t_id) for t_id in t_ids])
 
 
 @pytest.fixture(scope="session")
@@ -379,4 +472,5 @@ __all__ = [
     "LOCAL_DATA_API_TOKEN_PROVIDER",
     "RUN_SHARED_SECRET_VECTORIZE_TESTS",
     "USE_RERANKER_API_KEY_HEADER",
+    "extended_booleanize_env",
 ]

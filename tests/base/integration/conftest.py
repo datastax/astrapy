@@ -41,8 +41,10 @@ from ..conftest import (
     _repaint_NaNs,
     _typify_tuple,
     async_fail_if_not_removed,
+    async_truncate_by_enumeration,
     clean_nulls_from_dict,
     sync_fail_if_not_removed,
+    truncate_by_enumeration,
 )
 from ..table_structure_assets import dict_equal_same_class
 from ..table_udt_assets import (
@@ -86,6 +88,8 @@ __all__ = [
     "DataAPICredentials",
     "DataAPICredentialsInfo",
     "async_fail_if_not_removed",
+    "async_truncate_by_enumeration",
+    "truncate_by_enumeration",
     "clean_nulls_from_dict",
     "sync_fail_if_not_removed",
     "EMBEDDING_PROVIDER_API_KEY",
