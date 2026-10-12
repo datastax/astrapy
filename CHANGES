@@ -1,5 +1,7 @@
 main
 ====
+Supported Python versions are now 3.10 to 3.15:
+    - added Python 3.15 support
 `create_database`: the preferred term for a nonvector DB is "nonvector" (instead of "non-vector")
 maintenance:
     - added the `ADJUST_TO_AVAILABLE_VECTORIZE_CREDENTIALS` flag for the vectorize tests to pick providers based on secrets available in env. vars
