@@ -73,7 +73,7 @@ jobs:
     steps:
       - name: Checkout code
         if: ${{ github.event.action != 'closed' }}
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           # needed to retrieve the parents of the merge commit (hence the base commit on main)
           fetch-depth: 2
@@ -128,7 +128,7 @@ jobs:
         uses: actions/upload-artifact@v4
         id: upload_html
         with:
-          name: coverage-html-report-${{ inputs.sha }}
+          name: coverage-html-report-${{ github.sha }}
           path: htmlcov
           retention-days: 7
           include-hidden-files: true
