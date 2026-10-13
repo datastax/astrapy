@@ -5,6 +5,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
     branches: [main]
+  merge_group:
+    branches: [main]
 
 permissions:
   # required to post on the PR
@@ -25,7 +27,9 @@ env:
 jobs:
   main_it:
     uses: ./.github/workflows/main.yml
-    if: ${{ github.event.action != 'closed' }}
+    # Astra tests share one DB, so they run only in the merge queue
+    # (one at a time, right before merge) instead of on every PR push.
+    if: ${{ github.event_name == 'merge_group' }}
     with:
       coverage_prefix: main_it
       sha: ${{ github.sha }}
@@ -70,6 +74,9 @@ jobs:
   aggregate:
     runs-on: ubuntu-latest
     needs: [main_it, local_it, ut]
+    # main_it is skipped outside the merge queue; coverage must still
+    # aggregate from the local and unit runs on ordinary PRs.
+    if: ${{ !cancelled() && needs.local_it.result == 'success' && needs.ut.result == 'success' && (needs.main_it.result == 'success' || needs.main_it.result == 'skipped') }}
     steps:
       - name: Checkout code
         if: ${{ github.event.action != 'closed' }}
