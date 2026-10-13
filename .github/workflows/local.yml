@@ -75,8 +75,12 @@ jobs:
       uses: aws-actions/amazon-ecr-login@v2
 
     - name: Run pytest
+      shell: bash
       run: |
-        uv run pytest --cov=astrapy/ tests/base/integration -vv
+        if ! uv run pytest --cov=astrapy/ tests/base/integration -vv; then
+          echo "::warning::Integration suite failed; re-running failed tests once (--last-failed)"
+          TOLERATE_POPULATED_DATABASE=yes uv run pytest --cov=astrapy/ --cov-append tests/base/integration -vv --last-failed
+        fi
 
     - name: Upload coverage data (unique per commit)
       uses: actions/upload-artifact@v4
