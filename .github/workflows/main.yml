@@ -54,7 +54,7 @@ jobs:
       run: |
         if ! uv run pytest --cov=astrapy/ tests/base/integration -vv; then
           echo "::warning::Integration suite failed; re-running failed tests once (--last-failed)"
-          uv run pytest --cov=astrapy/ --cov-append tests/base/integration -vv --last-failed
+          TOLERATE_POPULATED_DATABASE=yes uv run pytest --cov=astrapy/ --cov-append tests/base/integration -vv --last-failed
         fi
 
     - name: Upload coverage data (unique per commit)
