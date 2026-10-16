@@ -3,11 +3,8 @@ description: Set up Python and uv
 
 inputs:
   python-version:
-    description: Python version, supporting MAJOR.MINOR only
+    description: Python version, such as 3.12 or 3.12.7
     required: true
-
-env:
-  UV_VERSION: "0.8.11"
 
 runs:
   using: composite
@@ -15,5 +12,9 @@ runs:
     - name: Install uv and set the python version
       uses: astral-sh/setup-uv@v6
       with:
-        version: ${{ env.UV_VERSION }}
+        version: "0.13.0"
         python-version: ${{ inputs.python-version }}
+
+    - name: Install requested Python
+      shell: bash
+      run: uv python install "$UV_PYTHON"
