@@ -83,5 +83,5 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
           # This setting ONLY IN CI AND ON TEST PYPI! See https://github.com/pypa/gh-action-pypi-publish#tolerating-release-package-file-duplicates
           skip-existing: true
-          # TODO determine whether to enable attestations later on, and how
+          # Keep attestations disabled while publishing from this reusable workflow.
           attestations: false
