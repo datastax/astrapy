@@ -1,5 +1,5 @@
-main
-====
+v 2.3.2
+=======
 Supported Python versions are now 3.10 to 3.15:
     - added Python 3.15 support
 `create_database`: the preferred term for a nonvector DB is "nonvector" (instead of "non-vector")
@@ -12,6 +12,8 @@ maintenance: finer control over table/collection find-page-size settings in test
 maintenance: upgraded some transitive dependencies as advised by Dependabot
 maintenance: raised code-coverage artifact storage retention to 90 days for the main branch
 maintenance: re-enable some (non-projectID/orgID-based) OpenAI extended-vectorize tests
+maintenance: release workflow skips already-published versions and enables Sigstore attestations for PyPI
+maintenance: CI workflows share Python/uv setup and install development dependencies with `uv sync --dev`
 
 
 v 2.3.1
