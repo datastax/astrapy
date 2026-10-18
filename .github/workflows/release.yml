@@ -23,6 +23,7 @@ jobs:
     outputs:
       pkg-name: ${{ steps.check-version.outputs.pkg-name }}
       version: ${{ steps.check-version.outputs.version }}
+      version-exists: ${{ steps.check-pypi.outputs.version-exists }}
 
     steps:
       - uses: actions/checkout@v4
@@ -31,21 +32,6 @@ jobs:
         uses: "./.github/actions/uv_setup"
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install dependencies including dev
-        run: uv sync --dev
-        shell: bash
-
-      # Separation of build and release, to minimize permissions to the former.
-      # See: https://github.com/pypa/gh-action-pypi-publish#non-goals
-      - name: Build project for distribution
-        run: uv build
-
-      - name: Upload build
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
 
       - name: Check Version
         id: check-version
@@ -61,9 +47,60 @@ jobs:
               f.write(f"pkg-name={pkg_name}\n")
               f.write(f"version={version}\n")
 
+      - name: Check if version exists on PyPI
+        id: check-pypi
+        shell: python
+        env:
+          PKG_NAME: ${{ steps.check-version.outputs.pkg-name }}
+          VERSION: ${{ steps.check-version.outputs.version }}
+        run: |
+          import os
+          import urllib.request
+          import urllib.error
+
+          pkg_name = os.environ["PKG_NAME"]
+          version = os.environ["VERSION"]
+
+          try:
+              url = f"https://pypi.org/pypi/{pkg_name}/{version}/json"
+              with urllib.request.urlopen(url, timeout=30) as response:
+                  # If we get here, the version exists on PyPI
+                  print(f"Version {version} already exists on PyPI")
+                  version_exists = "true"
+          except urllib.error.HTTPError as e:
+              if e.code == 404:
+                  # Version doesn't exist, we can proceed
+                  print(f"Version {version} does not exist on PyPI, proceeding with release")
+                  version_exists = "false"
+              else:
+                  # Other HTTP error, fail the workflow
+                  raise
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"version-exists={version_exists}\n")
+
+      - name: Install dependencies including dev
+        if: steps.check-pypi.outputs.version-exists == 'false'
+        run: uv sync --dev
+        shell: bash
+
+      # Separation of build and release, to minimize permissions to the former.
+      # See: https://github.com/pypa/gh-action-pypi-publish#non-goals
+      - name: Build project for distribution
+        if: steps.check-pypi.outputs.version-exists == 'false'
+        run: uv build
+
+      - name: Upload build
+        if: steps.check-pypi.outputs.version-exists == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
   test-pypi-publish:
     needs:
       - build
+    if: success() && needs.build.outputs.version-exists == 'false'
     uses:
       ./.github/workflows/_test_release.yml
     permissions: write-all
@@ -75,6 +112,7 @@ jobs:
     needs:
       - build
       - test-pypi-publish
+    if: success() && needs.build.outputs.version-exists == 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -134,6 +172,7 @@ jobs:
     needs:
       - build
       - test-pypi-publish
+    if: success() && needs.build.outputs.version-exists == 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -171,8 +210,11 @@ jobs:
       - test-pypi-publish
       - pre-release-checks
       - pre-release-unit-lowest-python
+    if: success() && needs.build.outputs.version-exists == 'false'
     runs-on: ubuntu-latest
     # This requires an 'environment' with this name on the github repo (and is best practice to restrict permissions)
+    # NOTE: Once this trusted publishing workflow is fully verified with actual releases,
+    # revoke any legacy PyPI API tokens/keys for astrapy for enhanced security.
     environment: pypi
     permissions:
       # Needed by trusted publish: https://blog.pypi.org/posts/2023-04-20-introducing-trusted-publishers/
@@ -198,8 +240,7 @@ jobs:
           packages-dir: dist/
           verbose: true
           print-hash: true
-          # TODO determine whether to enable attestations later on, and how
-          attestations: false
+          attestations: true
 
   mark-release:
     needs:
@@ -208,6 +249,7 @@ jobs:
       - pre-release-checks
       - pre-release-unit-lowest-python
       - publish
+    if: success() && needs.build.outputs.version-exists == 'false'
     runs-on: ubuntu-latest
     permissions:
       # Needed by `ncipollo/release-action` for creating the release
