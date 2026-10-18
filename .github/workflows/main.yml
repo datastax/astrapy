@@ -27,6 +27,10 @@ on:
 
 jobs:
   test:
+    # These tests share one Astra DB: never run two at the same time.
+    concurrency:
+      group: astra-integration-shared-db
+      cancel-in-progress: false
     env:
       ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
       ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
