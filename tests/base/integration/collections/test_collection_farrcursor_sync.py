@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import pytest
 
-from astrapy.api_options import APIOptions, SerdesOptions
+from astrapy.api_options import APIOptions, SerdesOptions, TimeoutOptions
 from astrapy.constants import DefaultDocumentType
 from astrapy.cursors import CursorState, RerankedResult
 from astrapy.data_types import DataAPIVector
@@ -28,11 +28,14 @@ NUM_DOCS = 25  # keep this between 20 and 39
 RUN_RERANKER_TESTS = IS_ASTRA_DB or USE_RERANKER_API_KEY_HEADER
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def filled_vectorize_collection(
-    sync_empty_farr_vectorize_collection: DefaultCollection,
+    sync_farr_vectorize_collection: DefaultCollection,
 ) -> DefaultCollection:
-    sync_empty_farr_vectorize_collection.insert_many(
+    # These tests only read the data, so embed it once per module.
+    sync_farr_vectorize_collection.with_options(
+        api_options=APIOptions(timeout_options=TimeoutOptions(request_timeout_ms=60000))
+    ).insert_many(
         [
             {
                 "_id": f"doc_{i:02}",
@@ -43,7 +46,7 @@ def filled_vectorize_collection(
             for i in range(NUM_DOCS)
         ]
     )
-    return sync_empty_farr_vectorize_collection
+    return sync_farr_vectorize_collection
 
 
 @pytest.mark.skipif(
@@ -54,15 +57,15 @@ class TestCollectionCursorSync:
     @pytest.mark.describe("test of an IDLE collection farr-cursors properties, sync")
     def test_collection_farrcursors_idle_properties_sync(
         self,
-        filled_vectorize_collection: DefaultCollection,
+        sync_collection_instance: DefaultCollection,
     ) -> None:
-        cur = filled_vectorize_collection.find_and_rerank(
+        cur = sync_collection_instance.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         )
         assert cur.state == CursorState.IDLE
 
-        assert cur.data_source == filled_vectorize_collection
+        assert cur.data_source == sync_collection_instance
 
         assert cur.consumed == 0
         assert cur.consume_buffer(3) == []

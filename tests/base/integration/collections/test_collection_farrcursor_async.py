@@ -16,23 +16,31 @@ from __future__ import annotations
 
 import pytest
 
-from astrapy.api_options import APIOptions, SerdesOptions
+from astrapy.api_options import APIOptions, SerdesOptions, TimeoutOptions
 from astrapy.constants import DefaultDocumentType
 from astrapy.cursors import CursorState, RerankedResult
 from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import CursorException
 
-from ..conftest import IS_ASTRA_DB, USE_RERANKER_API_KEY_HEADER, DefaultAsyncCollection
+from ..conftest import (
+    IS_ASTRA_DB,
+    USE_RERANKER_API_KEY_HEADER,
+    DefaultAsyncCollection,
+    DefaultCollection,
+)
 
 NUM_DOCS = 25  # keep this between 20 and 39
 RUN_RERANKER_TESTS = IS_ASTRA_DB or USE_RERANKER_API_KEY_HEADER
 
 
-@pytest.fixture
-def afilled_vectorize_collection(
-    async_empty_farr_vectorize_collection: DefaultAsyncCollection,
-) -> DefaultAsyncCollection:
-    async_empty_farr_vectorize_collection.to_sync().insert_many(
+@pytest.fixture(scope="module")
+def filled_vectorize_collection(
+    sync_farr_vectorize_collection: DefaultCollection,
+) -> DefaultCollection:
+    # These tests only read the data, so embed it once per module.
+    sync_farr_vectorize_collection.with_options(
+        api_options=APIOptions(timeout_options=TimeoutOptions(request_timeout_ms=60000))
+    ).insert_many(
         [
             {
                 "_id": f"doc_{i:02}",
@@ -43,7 +51,14 @@ def afilled_vectorize_collection(
             for i in range(NUM_DOCS)
         ]
     )
-    return async_empty_farr_vectorize_collection
+    return sync_farr_vectorize_collection
+
+
+@pytest.fixture
+def afilled_vectorize_collection(
+    filled_vectorize_collection: DefaultCollection,
+) -> DefaultAsyncCollection:
+    return filled_vectorize_collection.to_async()
 
 
 @pytest.mark.skipif(
@@ -54,15 +69,15 @@ class TestCollectionCursorSync:
     @pytest.mark.describe("test of an IDLE collection farr-cursors properties, async")
     async def test_collection_farrcursors_idle_properties_async(
         self,
-        afilled_vectorize_collection: DefaultAsyncCollection,
+        async_collection_instance: DefaultAsyncCollection,
     ) -> None:
-        cur = afilled_vectorize_collection.find_and_rerank(
+        cur = async_collection_instance.find_and_rerank(
             sort={"$hybrid": "a sentence."},
             limit=NUM_DOCS,
         )
         assert cur.state == CursorState.IDLE
 
-        assert cur.data_source == afilled_vectorize_collection
+        assert cur.data_source == async_collection_instance
 
         assert cur.consumed == 0
         assert cur.consume_buffer(3) == []
