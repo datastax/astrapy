@@ -53,7 +53,7 @@ from ..conftest import (
     _player_serializer,
     dict_equal_same_class,
 )
-from .table_cql_assets import _extract_udt_definition
+from .table_cql_assets import _assert_udt_definition
 from .table_row_assets import (
     UDT_ALTER_OP_1,
     UDT_ALTER_OP_2,
@@ -95,10 +95,11 @@ class TestTableUserDefinedTypes:
                 sync_database.create_type(UDT_NAME, definition=UDT_DEF0)
             sync_database.create_type(UDT_NAME, definition=UDT_DEF0, if_not_exists=True)
 
-            assert UDT_DEF0 == _extract_udt_definition(
+            _assert_udt_definition(
                 cql_session,
                 data_api_credentials_kwargs["keyspace"],
                 UDT_NAME,
+                UDT_DEF0,
             )
 
             assert UDT_NAME in sync_database.list_type_names()
@@ -115,20 +116,19 @@ class TestTableUserDefinedTypes:
             with pytest.raises(DataAPIResponseException):
                 sync_database.alter_type(UDT_NAME, operation=UDT_ALTER_OP_1)
 
-            assert UDT_DEF1 == _extract_udt_definition(
+            _assert_udt_definition(
                 cql_session,
                 data_api_credentials_kwargs["keyspace"],
                 UDT_NAME,
+                UDT_DEF1,
             )
 
             sync_database.drop_type(UDT_NAME)
-            assert (
-                _extract_udt_definition(
-                    cql_session,
-                    data_api_credentials_kwargs["keyspace"],
-                    UDT_NAME,
-                )
-                is None
+            _assert_udt_definition(
+                cql_session,
+                data_api_credentials_kwargs["keyspace"],
+                UDT_NAME,
+                None,
             )
             with pytest.raises(DataAPIResponseException):
                 sync_database.drop_type(UDT_NAME)
