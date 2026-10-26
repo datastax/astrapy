@@ -25,6 +25,7 @@ name = "astrapy"
 version = "2.3.2"
 source = { editable = "." }
 dependencies = [
+    { name = "certifi" },
     { name = "deprecation" },
     { name = "h11" },
     { name = "httpx", extra = ["http2"] },
@@ -64,6 +65,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "certifi", specifier = ">=2026.10.19" },
     { name = "deprecation", specifier = "~=2.1.0" },
     { name = "h11", specifier = ">=0.16.0" },
     { name = "httpx", extras = ["http2"], specifier = ">=0.25.2,<1" },

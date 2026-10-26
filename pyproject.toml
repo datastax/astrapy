@@ -11,6 +11,7 @@ readme = "README.md"
 
 keywords = ["DataStax", "Astra DB", "Astra"]
 dependencies = [
+    "certifi >= 2026.10.19",
     "deprecation ~= 2.1.0",
     "httpx[http2]>=0.25.2,<1",
     "h11 >= 0.16.0",
