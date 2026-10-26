@@ -1,6 +1,7 @@
 main
 ====
 maintenance: upgraded dependencies (transitive and explicit) as advised by Dependabot
+README restructuring: minimal README (mostly deferring to docs website), + a document for technical details on selected topics
 
 
 v 2.3.2
