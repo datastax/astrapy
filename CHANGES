@@ -1,3 +1,8 @@
+main
+====
+maintenance: upgraded dependencies (transitive and explicit) as advised by Dependabot
+
+
 v 2.3.2
 =======
 Supported Python versions are now 3.10 to 3.15:
