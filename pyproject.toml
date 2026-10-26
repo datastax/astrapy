@@ -61,11 +61,11 @@ dev = [
     "python-dotenv >= 1.2.2,<2",
     "pytest-httpserver ~= 1.0.8",
     "requests >= 2.33.0",
-    "setuptools >= 61.0",
+    "setuptools >= 84.1.0",
     "testcontainers ~= 3.7.1",
     "types-toml >= 0.10.8.7,<1.0.0",
     "urllib3 >= 2.8.0",
-    "virtualenv >= 20.36.1",
+    "virtualenv >= 21.14.9",
     "werkzeug >= 3.1.9"
 ]
 
