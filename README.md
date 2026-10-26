@@ -67,9 +67,9 @@ collection = database.create_collection(
 )
 
 collection.insert_many([
-    {"name": "Apple", "score" 10, "$vectorize": "This fruit ..."},
-    {"name": "Peach", "score" 5, "$vectorize": "A delicious ..."},
-    {"name": "Walnut", "score" 8, "$vectorize": "Rich in ..."},
+    {"name": "Apple", "score": 10, "$vectorize": "This fruit ..."},
+    {"name": "Peach", "score": 5, "$vectorize": "A delicious ..."},
+    {"name": "Walnut", "score": 8, "$vectorize": "Rich in ..."},
     # ...
 ])
 
