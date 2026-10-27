@@ -18,24 +18,6 @@ With `make format-fix` the style and imports are autofixed (by `ruff`)
 Features must be thoroughly covered in tests (have a look at `tests/*` to infer
 naming convention and module structure).
 
-## astrapy-repl
-
-Astrapy comes with a REPL, a customized Python interactive shell, which pre-loads
-all relevant imports and comes with `client` and `database` objects instantiated and
-ready-to-use.
-
-Just ensure you have defined the environment variable as you would need for testing (see below),
-or set them as command-line parameters. Start the shell with:
-
-```
-astrapy-repl
-```
-
-Try `-h` for more guidance on passing options. In a local development environment, you will
-have to launch it as `uv run astrapy-repl`.
-
-![AstraPy, REPL screenshot](https://raw.githubusercontent.com/datastax/astrapy/main/pictures/astrapy_repl.png)
-
 ## Running tests
 
 ### Typical testing
