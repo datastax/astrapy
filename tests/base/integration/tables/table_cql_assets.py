@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from cassandra.cluster import Session
 
 
-SCHEMA_PROPAGATION_DELAY_SECONDS = 1.0
+SCHEMA_PROPAGATION_TIMEOUT_SECONDS = 10.0
 
 TABLE_NAME_COUNTER = "test_table_counter"
 CREATE_TABLE_COUNTER = (
@@ -129,21 +129,36 @@ LOWSUPPORT_TIMEUUID_DOC1 = {
 }
 
 
-def _extract_udt_definition(
+def _assert_udt_definition(
     session: Session,
     keyspace: str,
     udt_name: str,
-    allow_schema_propagation_delay: bool = True,
-) -> CreateTypeDefinition | None:
-    if allow_schema_propagation_delay:
-        time.sleep(SCHEMA_PROPAGATION_DELAY_SECONDS)
+    expected_definition: CreateTypeDefinition | None,
+) -> None:
+    deadline = time.monotonic() + SCHEMA_PROPAGATION_TIMEOUT_SECONDS
+    while True:
+        # Data API schema changes reach the CQL driver's cache asynchronously.
+        session.cluster.refresh_user_type_metadata(
+            keyspace,
+            udt_name,
+            max_schema_agreement_wait=max(0.0, deadline - time.monotonic()),
+        )
+        metadata_type = session.cluster.metadata.keyspaces[keyspace].user_types.get(
+            udt_name
+        )
+        definition = (
+            None
+            if metadata_type is None
+            else CreateTypeDefinition(
+                fields=dict(zip(metadata_type.field_names, metadata_type.field_types))
+            )
+        )
+        if definition == expected_definition:
+            return
 
-    metadata_type = session.cluster.metadata.keyspaces[keyspace].user_types.get(
-        udt_name
-    )
-    if metadata_type is None:
-        return None
-
-    fields = dict(zip(metadata_type.field_names, metadata_type.field_types))
-
-    return CreateTypeDefinition(fields=dict(fields))
+        remaining = deadline - time.monotonic()
+        assert remaining > 0, (
+            f"Schema for {keyspace}.{udt_name} did not converge. "
+            f"Expected {expected_definition!r}, got {definition!r}"
+        )
+        time.sleep(min(0.1, remaining))
