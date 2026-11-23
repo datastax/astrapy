@@ -26,14 +26,14 @@ from astrapy.exceptions import CollectionInsertManyException, DataAPIResponseExc
 from astrapy.info import CollectionDefinition
 
 from ..conftest import (
-    EMBEDDING_PROVIDER_API_KEY,
+    ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
     DefaultAsyncCollection,
 )
 
 
 @pytest.mark.skipif(
-    EMBEDDING_PROVIDER_API_KEY is None,
-    reason="No embedding API Key credential",
+    ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+    reason="Embedding API Key missing and tolerate-mode set.",
 )
 class TestCollectionVectorizeMethodsAsync:
     @pytest.mark.describe("test of vectorize in collection methods, async")

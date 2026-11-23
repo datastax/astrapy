@@ -48,6 +48,7 @@ Tests can be run on three types of Data API _targets_ (with slight differences i
 Depending on the target chosen, different environment variables are needed: refer to
 the `tests/env_templates/*.base.template` examples.
 Note that the variables defined in the desired "base" template **must** be set to run test, even for unit tests.
+(Exception: if no embedding API Key is available, vectorize tests can be skipped by setting `ADJUST_TO_AVAILABLE_VECTORIZE_CREDENTIALS="yes"`.)
 
 Additionally, you will need to define the environment variables in `tests/env_templates/env.vectorize-minimal.template`,
 which are needed by the minimal set of embedding-generation testing belonging to the "base" test group.

@@ -23,7 +23,12 @@ from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import DataAPIResponseException
 from astrapy.info import CollectionRerankOptions, RerankServiceOptions
 
-from ..conftest import IS_ASTRA_DB, USE_RERANKER_API_KEY_HEADER, DefaultCollection
+from ..conftest import (
+    ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+    IS_ASTRA_DB,
+    USE_RERANKER_API_KEY_HEADER,
+    DefaultCollection,
+)
 
 RUN_RERANKER_TESTS = IS_ASTRA_DB or USE_RERANKER_API_KEY_HEADER
 
@@ -33,6 +38,10 @@ RUN_RERANKER_TESTS = IS_ASTRA_DB or USE_RERANKER_API_KEY_HEADER
     reason="Reranker-related tests skipped (no Astra and no header reranker key provided)",
 )
 class TestCollectionFindAndRerankSync:
+    @pytest.mark.skipif(
+        ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+        reason="Embedding API Key missing and tolerate-mode set.",
+    )
     @pytest.mark.describe("test of collection find-and-rerank vectorize, sync")
     def test_collection_farr_vectorize_sync(
         self,
@@ -131,6 +140,10 @@ class TestCollectionFindAndRerankSync:
         assert len(cur_nu_hl.to_list()) == 2
         assert len(cur_ob_hl.to_list()) == 2
 
+    @pytest.mark.skipif(
+        ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+        reason="Embedding API Key missing and tolerate-mode set.",
+    )
     @pytest.mark.skipif(
         "ASTRAPY_TEST_LATEST_MAIN" not in os.environ,
         reason="Not in latest-main testing mode",
@@ -375,6 +388,10 @@ class TestCollectionFindAndRerankSync:
                 rerank_service=wrong_service,
             ).to_list()
 
+    @pytest.mark.skipif(
+        ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+        reason="Embedding API Key missing and tolerate-mode set.",
+    )
     @pytest.mark.describe(
         "test of collection find-and-rerank include_scores, vectorize, sync"
     )
@@ -443,6 +460,10 @@ class TestCollectionFindAndRerankSync:
             isinstance(val, float | int | type(None)) for val in itm_t.scores.values()
         )
 
+    @pytest.mark.skipif(
+        ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+        reason="Embedding API Key missing and tolerate-mode set.",
+    )
     @pytest.mark.describe(
         "test of collection find-and-rerank get_sort_vector, vectorize, sync"
     )
