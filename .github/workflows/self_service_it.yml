@@ -1,7 +1,40 @@
+name: Self-service base integration tests on Astra DB
+
 on:
-  push:
+  workflow_dispatch:
+    inputs:
+      ASTRA_DB_API_ENDPOINT:
+        description: "API Endpoint"
+        type: string
+        required: true
+      ASTRA_DB_APPLICATION_TOKEN:
+        description: "Token (Note: DB-SPECIFIC!)"
+        type: string
+        required: true
+
 jobs:
-  job:
+  test:
+    env:
+      ASTRA_DB_APPLICATION_TOKEN: ${{ inputs.ASTRA_DB_APPLICATION_TOKEN }}
+      ASTRA_DB_API_ENDPOINT: ${{ inputs.ASTRA_DB_API_ENDPOINT }}
+      FIND_PAGE_SIZE: ${{ secrets.FIND_PAGE_SIZE }}
+      TABLE_FIND_PAGE_SIZE: ${{ secrets.TABLE_FIND_PAGE_SIZE }}
+      ADJUST_TO_AVAILABLE_VECTORIZE_CREDENTIALS: "yes"
     runs-on: ubuntu-latest
+
     steps:
-      - run: echo OK
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python + uv
+      uses: "./.github/actions/uv_setup"
+      with:
+        python-version: "3.15"
+
+    - name: Install dependencies
+      run: uv sync --dev
+      shell: bash
+
+    - name: Run pytest
+      run: |
+        uv run pytest tests/base/integration -vv
