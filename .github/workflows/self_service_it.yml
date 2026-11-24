@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       ASTRA_DB_API_ENDPOINT:
-        description: "API Endpoint"
+        description: "API Endpoint (DB must be empty)"
         type: string
         required: true
       ASTRA_DB_APPLICATION_TOKEN:
-        description: "Token (Note: DB-SPECIFIC!)"
+        description: "Token (use a DB-SPECIFIC token)"
         type: string
         required: true
 
