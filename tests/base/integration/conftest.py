@@ -20,6 +20,7 @@ from astrapy import Database
 
 from ...empty_database_guard import ensure_empty_target_database
 from ..conftest import (
+    ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
     ADMIN_ENV_LIST,
     ADMIN_ENV_VARIABLE_MAP,
     CQL_AVAILABLE,
@@ -96,6 +97,7 @@ __all__ = [
     "EMBEDDING_PROVIDER_DIMENSION",
     "EMBEDDING_PROVIDER_SHARED_SECRET_KEY_NAME",
     "IS_ASTRA_DB",
+    "ACCEPTABLE_MISSING_EMBEDDING_API_KEY",
     "ADMIN_ENV_LIST",
     "ADMIN_ENV_VARIABLE_MAP",
     "CQL_AVAILABLE",

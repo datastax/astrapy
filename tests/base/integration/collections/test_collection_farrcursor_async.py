@@ -22,7 +22,12 @@ from astrapy.cursors import CursorState, RerankedResult
 from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import CursorException
 
-from ..conftest import IS_ASTRA_DB, USE_RERANKER_API_KEY_HEADER, DefaultAsyncCollection
+from ..conftest import (
+    ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+    IS_ASTRA_DB,
+    USE_RERANKER_API_KEY_HEADER,
+    DefaultAsyncCollection,
+)
 
 NUM_DOCS = 25  # keep this between 20 and 39
 RUN_RERANKER_TESTS = IS_ASTRA_DB or USE_RERANKER_API_KEY_HEADER
@@ -51,6 +56,10 @@ def afilled_vectorize_collection(
     reason="Reranker-related tests skipped (no Astra and no header reranker key provided)",
 )
 class TestCollectionCursorSync:
+    @pytest.mark.skipif(
+        ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+        reason="Embedding API Key missing and tolerate-mode set.",
+    )
     @pytest.mark.describe("test of an IDLE collection farr-cursors properties, async")
     async def test_collection_farrcursors_idle_properties_async(
         self,
@@ -102,6 +111,10 @@ class TestCollectionCursorSync:
         with pytest.raises(CursorException):
             cur.map(lambda r_res: None).project({})
 
+    @pytest.mark.skipif(
+        ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+        reason="Embedding API Key missing and tolerate-mode set.",
+    )
     @pytest.mark.describe("test of a CLOSED collection farr-cursors properties, async")
     async def test_collection_farrcursors_closed_properties_async(
         self,
@@ -149,6 +162,10 @@ class TestCollectionCursorSync:
         with pytest.raises(CursorException):
             cur1.map(lambda rw: None)
 
+    @pytest.mark.skipif(
+        ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+        reason="Embedding API Key missing and tolerate-mode set.",
+    )
     @pytest.mark.describe("test of a STARTED collection farr-cursors properties, async")
     async def test_collection_farrcursors_started_properties_async(
         self,
@@ -193,6 +210,10 @@ class TestCollectionCursorSync:
         with pytest.raises(CursorException):
             cur.map(lambda rw: None)
 
+    @pytest.mark.skipif(
+        ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+        reason="Embedding API Key missing and tolerate-mode set.",
+    )
     @pytest.mark.describe("test of collection farr-cursors has_next, async")
     async def test_collection_farrcursors_has_next_async(
         self,
@@ -252,6 +273,10 @@ class TestCollectionCursorSync:
         cur0.close()
         assert not (await cur0.has_next())
 
+    @pytest.mark.skipif(
+        ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+        reason="Embedding API Key missing and tolerate-mode set.",
+    )
     @pytest.mark.describe("test of collection farr-cursors zero matches, async")
     async def test_collection_farrcursors_zeromatches_async(
         self,
@@ -289,6 +314,10 @@ class TestCollectionCursorSync:
         assert sort_vector is not None
         assert isinstance(sort_vector, DataAPIVector)
 
+    @pytest.mark.skipif(
+        ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+        reason="Embedding API Key missing and tolerate-mode set.",
+    )
     @pytest.mark.describe("test of prematurely farr-closing collection cursors, async")
     async def test_collection_farrcursors_early_closing_async(
         self,
@@ -308,6 +337,10 @@ class TestCollectionCursorSync:
         cur.rewind()
         assert len([r_res async for r_res in cur]) == NUM_DOCS
 
+    @pytest.mark.skipif(
+        ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+        reason="Embedding API Key missing and tolerate-mode set.",
+    )
     @pytest.mark.describe("test of mappings with collection farr-cursors, async")
     async def test_collection_farrcursors_mapping_async(
         self,
@@ -383,6 +416,10 @@ class TestCollectionCursorSync:
         cl_unmapped = rwcur.clone()
         assert await cl_unmapped.__anext__() == mint(base_rows[0])
 
+    @pytest.mark.skipif(
+        ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+        reason="Embedding API Key missing and tolerate-mode set.",
+    )
     @pytest.mark.describe(
         "test of collection farr-cursors, for_each and to_list, async"
     )
@@ -522,6 +559,10 @@ class TestCollectionCursorSync:
         assert accum4 == base_rows
         assert nbfe_cur.state == CursorState.CLOSED
 
+    @pytest.mark.skipif(
+        ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+        reason="Embedding API Key missing and tolerate-mode set.",
+    )
     @pytest.mark.describe(
         "test of collection farr-cursors, serdes options obeyance, async"
     )
@@ -561,6 +602,10 @@ class TestCollectionCursorSync:
             for c_r_res in custom_rows
         )
 
+    @pytest.mark.skipif(
+        ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+        reason="Embedding API Key missing and tolerate-mode set.",
+    )
     @pytest.mark.describe(
         "test of collection farr-cursors, include_sort_vector and serdes, async"
     )
@@ -638,6 +683,10 @@ class TestCollectionCursorSync:
         assert isinstance(sv_v1_d0, DataAPIVector)
         assert isinstance(sv_v1_d1, DataAPIVector)
 
+    @pytest.mark.skipif(
+        ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+        reason="Embedding API Key missing and tolerate-mode set.",
+    )
     @pytest.mark.describe("test of farr collection cursors fetch_next_page, async")
     async def test_collection_farrcursors_fetchnextpage_async(
         self,

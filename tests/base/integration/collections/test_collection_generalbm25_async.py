@@ -17,6 +17,7 @@ from __future__ import annotations
 import pytest
 
 from ..conftest import (
+    ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
     IS_ASTRA_DB,
     DefaultAsyncCollection,
     async_truncate_by_enumeration,
@@ -26,6 +27,10 @@ PJ = {"_id": True, "title": False}
 
 
 class TestCollectionGeneralBM25Async:
+    @pytest.mark.skipif(
+        ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+        reason="Embedding API Key missing and tolerate-mode set.",
+    )
     @pytest.mark.skipif(IS_ASTRA_DB, reason="Feature not on Astra DB yet")
     @pytest.mark.describe("test of collection bm25 DML with vectorize, async")
     async def test_collection_bm25_dml_vectorize_async(

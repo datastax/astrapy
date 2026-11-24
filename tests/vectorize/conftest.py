@@ -19,6 +19,7 @@ import pytest
 from astrapy import Database
 
 from ..conftest import (
+    ADJUST_TO_AVAILABLE_VECTORIZE_CREDENTIALS,
     IS_ASTRA_DB,
     async_truncate_by_enumeration,
     extended_booleanize_env,
@@ -44,6 +45,7 @@ def require_empty_target_database(sync_database: Database) -> None:
 
 
 __all__ = [
+    "ADJUST_TO_AVAILABLE_VECTORIZE_CREDENTIALS",
     "IS_ASTRA_DB",
     "async_truncate_by_enumeration",
     "extended_booleanize_env",

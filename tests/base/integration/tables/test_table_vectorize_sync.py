@@ -21,6 +21,7 @@ from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import TableInsertManyException
 
 from ..conftest import (
+    ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
     EMBEDDING_PROVIDER_API_KEY,
     EMBEDDING_PROVIDER_DIMENSION,
     IS_ASTRA_DB,
@@ -33,8 +34,8 @@ from ..conftest import (
 
 class TestTableVectorizeSync:
     @pytest.mark.skipif(
-        EMBEDDING_PROVIDER_API_KEY is None,
-        reason="No embedding API Key credential",
+        ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+        reason="Embedding API Key missing and tolerate-mode set.",
     )
     @pytest.mark.describe("test of basic table vectorize with key via header, sync")
     def test_table_vectorize_header_sync(
@@ -103,8 +104,8 @@ class TestTableVectorizeSync:
         # assert isinstance(match0["$similarity"], float)
 
     @pytest.mark.skipif(
-        EMBEDDING_PROVIDER_API_KEY is None,
-        reason="No embedding API Key credential",
+        ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+        reason="Embedding API Key missing and tolerate-mode set.",
     )
     @pytest.mark.describe(
         "test of vectorize-based table insert many grand failures, sync"
@@ -205,8 +206,8 @@ class TestTableVectorizeSync:
         # assert isinstance(match0["$similarity"], float)
 
     @pytest.mark.skipif(
-        EMBEDDING_PROVIDER_API_KEY is None,
-        reason="No embedding API Key credential",
+        ACCEPTABLE_MISSING_EMBEDDING_API_KEY,
+        reason="Embedding API Key missing and tolerate-mode set.",
     )
     @pytest.mark.describe("test of multiple-vectorize table usage via header, sync")
     def test_table_multiplevectorize_header_sync(
