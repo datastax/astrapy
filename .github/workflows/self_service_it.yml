@@ -20,6 +20,7 @@ jobs:
       FIND_PAGE_SIZE: ${{ secrets.FIND_PAGE_SIZE }}
       TABLE_FIND_PAGE_SIZE: ${{ secrets.TABLE_FIND_PAGE_SIZE }}
       ADJUST_TO_AVAILABLE_VECTORIZE_CREDENTIALS: "yes"
+      RUN_SHARED_SECRET_VECTORIZE_TESTS: "no"
     runs-on: ubuntu-latest
 
     steps:
